@@ -1,0 +1,3 @@
+[submodule "replay"]
+	path = replay
+	url = https://github.com/deanlee/openpilot-replay.git

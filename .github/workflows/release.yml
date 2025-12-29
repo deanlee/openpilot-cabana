@@ -1,0 +1,100 @@
+name: Build cabana (SCons)
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  linux-x86_64:
+    name: Linux x86_64
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+          persist-credentials: true
+
+      - name: Verify submodules
+        run: |
+          git submodule status --recursive
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install system dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y \
+            g++ clang \
+            capnproto \
+            libcurl4-openssl-dev \
+            libzmq3-dev \
+            libssl-dev \
+            libbz2-dev \
+            libavcodec-dev \
+            libavformat-dev \
+            libavutil-dev \
+            libswscale-dev \
+            libavdevice-dev \
+            libavfilter-dev \
+            libffi-dev \
+            libgles2-mesa-dev \
+            libglfw3-dev \
+            libglib2.0-0 \
+            libjpeg-dev \
+            libncurses5-dev \
+            libusb-1.0-0-dev \
+            libzmq3-dev \
+            libzstd-dev \
+            libcapnp-dev \
+            opencl-headers \
+            ocl-icd-libopencl1 \
+            ocl-icd-opencl-dev \
+            qttools5-dev-tools \
+            libqt5charts5-dev \
+            libqt5svg5-dev \
+            libqt5serialbus5-dev  \
+            libqt5x11extras5-dev \
+            libqt5opengl5-dev
+
+      - name: Install Python build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install --no-cache-dir scons numpy "cython>=3.0" setuptools pycapnp
+
+      - name: Build (SCons)
+        run: |
+          scons -j$(nproc)
+
+      - name: Package binary
+        run: |
+          REL_NAME="cabana-linux-x86_64"
+          mkdir -p "$REL_NAME/opendbc"
+          if [ -f "src/cabana" ]; then
+            cp src/cabana "$REL_NAME/cabana"
+            strip "$REL_NAME/cabana"
+            chmod +x "$REL_NAME/cabana"
+          else
+            echo "Error: Binary not found at src/cabana"
+            exit 1
+          fi
+          cp -L src/opendbc/*.dbc "$REL_NAME/opendbc/" 2>/dev/null || true
+          cp -L src/opendbc/*.json "$REL_NAME/opendbc/" 2>/dev/null || true
+
+          cp README.md LICENSE "$REL_NAME/" 2>/dev/null || true
+          tar -czvf "$REL_NAME.tar.gz" "$REL_NAME"
+
+      - name: Upload to GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: cabana-linux-x86_64.tar.gz

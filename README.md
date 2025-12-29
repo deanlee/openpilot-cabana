@@ -1,6 +1,66 @@
-# Cabana
+![Screenshot](src/assets/screenshot.png)
 
-Cabana is a tool developed to view raw CAN data. One use for this is creating and editing [CAN Dictionaries](http://socialledge.com/sjsu/index.php/DBC_Format) (DBC files), and the tool provides direct integration with [commaai/opendbc](https://github.com/commaai/opendbc) (a collection of DBC files), allowing you to load the DBC files direct from source, and save to your fork. In addition, you can load routes from [comma connect](https://connect.comma.ai).
+## Cabana: CAN Bus Visualizer & Analyzer
+
+Cabana is a Qt-based graphical tool for viewing, analyzing, and reverse-engineering raw CAN bus data. It supports creating and editing DBC (Database CAN) files, plotting signals over time, and optional synchronized video playback.
+
+Cabana was originally developed by the repository author for the [openpilot](https://github.com/commaai/openpilot), and is now maintained as a standalone, general-purpose CAN analysis tool.
+
+It supports multiple CAN data sources, including:
+
+- SocketCAN interfaces
+- comma.ai panda hardware
+- Live streaming via ZMQ/Msgq
+- Recorded logs (openpilot routes or custom formats)
+
+No openpilot installation is required. Cabana is suitable for automotive diagnostics, CAN reverse-engineering, research, and any project involving CAN networks.
+
+## Prerequisites
+
+Before running or compiling **openpilot-cabana**, install these dependencies.
+
+### Ubuntu / Debian
+
+```bash
+sudo apt update
+sudo apt install -y g++ clang capnproto libcurl4-openssl-dev libzmq3-dev libssl-dev libbz2-dev libavcodec-dev libavformat-dev libavutil-dev libswscale-dev libavdevice-dev libavfilter-dev libffi-dev libgles2-mesa-dev libglfw3-dev libglib2.0-0 libjpeg-dev libncurses5-dev libusb-1.0-0-dev libzstd-dev libcapnp-dev opencl-headers ocl-icd-libopencl1 ocl-icd-opencl-dev qttools5-dev-tools libqt5charts5-dev libqt5svg5-dev libqt5serialbus5-dev libqt5x11extras5-dev libqt5opengl5-dev
+
+```
+
+## Clone, Compile
+
+### Clone the repository
+
+```bash
+git clone https://github.com/deanlee/openpilot-cabana.git
+cd openpilot-cabana
+git submodule update --init --recursive
+```
+
+### Install Python packages
+
+```bash
+python3 -m pip install --upgrade pip
+python -m pip install --no-cache-dir scons numpy "cython>=3.0" setuptools pycapnp
+```
+
+### Build
+
+```bash
+scons
+```
+
+## Download Precompiled Binary
+
+You can also download a precompiled binary from the [Releases](https://github.com/deanlee/openpilot-cabana/releases) page:
+
+```bash
+# Make executable
+chmod +x cabana-linux-x86_64
+
+# Run the demo route
+./cabana-linux-x86_64 --demo
+```
 
 ## Usage Instructions
 
@@ -95,6 +155,9 @@ If you run Cabana without any arguments, a stream selector dialog will pop up, a
 cabana
 ```
 
-## Additional Information
 
-For more information, see the [openpilot wiki](https://github.com/commaai/openpilot/wiki/Cabana)
+## Contributors
+
+<a href="https://github.com/deanlee/openpilot-cabana/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=deanlee/openpilot-cabana" />
+</a>
