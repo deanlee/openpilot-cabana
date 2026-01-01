@@ -305,11 +305,11 @@ void CanData::compute(const MessageId &msg_id, const uint8_t *can_data, const in
         }
 
         // Track bit level changes
-        auto &row_bit_flips = bit_flip_counts[i];
         const uint8_t diff = (cur ^ last);
-        for (int bit = 0; bit < 8; bit++) {
-          if (diff & (1u << bit)) {
-            ++row_bit_flips[7 - bit];
+        if (diff) {
+          auto &row_bit_flips = bit_flip_counts[i];
+          for (int bit = 0; bit < 8; bit++) {
+            row_bit_flips[7 - bit] += (diff >> bit) & 1;
           }
         }
 
