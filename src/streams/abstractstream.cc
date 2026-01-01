@@ -319,7 +319,8 @@ void CanData::compute(const MessageId &msg_id, const uint8_t *can_data, const in
         // Fade out
         colors[i].setAlphaF(std::max(0.0, colors[i].alphaF() - alpha_delta));
       }
+
+      dat[i] = can_data[i];
     }
   }
-  memcpy(dat.data(), can_data, size);
 }
