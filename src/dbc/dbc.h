@@ -28,7 +28,7 @@ struct MessageId {
   }
 
   QString toString() const {
-    return QString("%1:%2").arg(source).arg(QString::number(address, 16).toUpper());
+    return QString("%1:%2").arg(source).arg(address, 0, 16).toUpper();
   }
 
   inline static MessageId fromString(const QString &str) {
