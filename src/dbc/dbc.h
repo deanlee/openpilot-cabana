@@ -44,13 +44,11 @@ struct MessageId {
 };
 #pragma pack(pop)
 
-uint qHash(const MessageId &item);
-
 Q_DECLARE_METATYPE(MessageId);
 
 template <>
 struct std::hash<MessageId> {
-  std::size_t operator()(const MessageId &k) const noexcept { return qHash(k); }
+  std::size_t operator()(const MessageId &k) const noexcept { return std::hash<uint64_t>{}(k.raw); }
 };
 
 typedef std::vector<std::pair<double, QString>> ValueDescription;

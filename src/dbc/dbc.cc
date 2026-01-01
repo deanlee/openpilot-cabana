@@ -4,10 +4,6 @@
 
 #include "utils/util.h"
 
-uint qHash(const MessageId &item) {
-  return qHash(item.raw);
-}
-
 // cabana::Msg
 
 cabana::Msg::~Msg() {
