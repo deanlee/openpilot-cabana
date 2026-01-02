@@ -421,8 +421,11 @@ void MessageView::wheelEvent(QWheelEvent *event) {
 // MessageViewHeader
 
 MessageViewHeader::MessageViewHeader(QWidget *parent) : QHeaderView(Qt::Horizontal, parent) {
-  QObject::connect(this, &QHeaderView::sectionResized, this, &MessageViewHeader::updateHeaderPositions);
-  QObject::connect(this, &QHeaderView::sectionMoved, this, &MessageViewHeader::updateHeaderPositions);
+  filter_timer.setSingleShot(true);
+  filter_timer.setInterval(300);
+  connect(&filter_timer, &QTimer::timeout, this, &MessageViewHeader::updateFilters);
+  connect(this, &QHeaderView::sectionResized, this, &MessageViewHeader::updateHeaderPositions);
+  connect(this, &QHeaderView::sectionMoved, this, &MessageViewHeader::updateHeaderPositions);
 }
 
 void MessageViewHeader::updateFilters() {
@@ -454,7 +457,14 @@ void MessageViewHeader::updateGeometries() {
       editors[i]->setClearButtonEnabled(true);
       editors[i]->setPlaceholderText(tr("Filter %1").arg(column_name));
 
-      QObject::connect(editors[i], &QLineEdit::textChanged, this, &MessageViewHeader::updateFilters);
+      connect(editors[i], &QLineEdit::textChanged, [this](const QString& text) {
+        if (text.isEmpty()) {
+          filter_timer.stop();
+          updateFilters();  // Instant clear
+        } else {
+          filter_timer.start();  // Debounced search
+        }
+      });
     }
   }
   setViewportMargins(0, 0, 0, editors[0] ? editors[0]->sizeHint().height() : 0);

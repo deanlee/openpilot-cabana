@@ -9,6 +9,7 @@
 #include <QHeaderView>
 #include <QLineEdit>
 #include <QMenu>
+#include <QTimer>
 #include <QTreeView>
 #include <QWheelEvent>
 
@@ -89,6 +90,7 @@ public:
   void updateFilters();
 
   QMap<int, QLineEdit *> editors;
+  QTimer filter_timer;
 };
 
 class MessagesWidget : public QWidget {
