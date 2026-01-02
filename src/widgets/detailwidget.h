@@ -10,10 +10,10 @@
 #include <set>
 
 #include "binaryview.h"
+#include "common_widgets.h"
 #include "chart/chartswidget.h"
 #include "historylog.h"
 #include "signalview.h"
-#include "utils/elidedlabel.h"
 
 class EditMessageDialog : public QDialog {
 public:

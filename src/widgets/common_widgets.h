@@ -1,4 +1,6 @@
 #pragma once
+#include <QLabel>
+#include <QPainter>
 #include <QSlider>
 #include <QTabBar>
 #include <QToolButton>
@@ -38,4 +40,10 @@ public:
 
 private:
   double factor, log_min = 0, log_max = 1;
+};
+
+class ElidedLabel : public QLabel {
+public:
+  ElidedLabel(QWidget *parent);
+  void paintEvent(QPaintEvent *event) override;
 };

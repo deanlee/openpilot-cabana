@@ -70,3 +70,16 @@ void LogSlider::setValue(int v) {
   v = minimum() + (maximum() - minimum()) * ((log_v - log_min) / (log_max - log_min));
   QSlider::setValue(v);
 }
+
+// ElidedLabel
+
+ElidedLabel::ElidedLabel(QWidget *parent) : QLabel(parent) {
+  setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
+  setMinimumWidth(1);
+}
+
+void ElidedLabel::paintEvent(QPaintEvent* event) {
+  QPainter painter(this);
+  QString elidedText = fontMetrics().elidedText(text(), Qt::ElideRight, width());
+  painter.drawText(rect(), alignment(), elidedText);
+}
