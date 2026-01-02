@@ -1,0 +1,232 @@
+#include "signal_tree.h"
+
+#include <QMessageBox>
+
+#include "commands.h"
+#include "dbc/dbcmanager.h"
+
+QString signalTypeToString(cabana::Signal::Type type) {
+  if (type == cabana::Signal::Type::Multiplexor) return "Multiplexor Signal";
+  else if (type == cabana::Signal::Type::Multiplexed) return "Multiplexed Signal";
+  else return "Normal Signal";
+}
+
+SignalTreeModel::SignalTreeModel(QObject *parent) : root(new Item), QAbstractItemModel(parent) {
+  connect(dbc(), &DBCManager::DBCFileChanged, this, &SignalTreeModel::refresh);
+  connect(dbc(), &DBCManager::msgUpdated, this, &SignalTreeModel::handleMsgChanged);
+  connect(dbc(), &DBCManager::msgRemoved, this, &SignalTreeModel::handleMsgChanged);
+  connect(dbc(), &DBCManager::signalAdded, this, &SignalTreeModel::handleSignalAdded);
+  connect(dbc(), &DBCManager::signalUpdated, this, &SignalTreeModel::handleSignalUpdated);
+  connect(dbc(), &DBCManager::signalRemoved, this, &SignalTreeModel::handleSignalRemoved);
+}
+
+void SignalTreeModel::insertItem(SignalTreeModel::Item *root_item, int pos, const cabana::Signal *sig) {
+  Item *parent_item = new Item{.sig = sig, .parent = root_item, .title = sig->name, .type = Item::Sig};
+  root_item->children.insert(pos, parent_item);
+  QString titles[]{"Name", "Size", "Receiver Nodes", "Little Endian", "Signed", "Offset", "Factor", "Type",
+                   "Multiplex Value", "Extra Info", "Unit", "Comment", "Minimum Value", "Maximum Value", "Value Table"};
+  for (int i = 0; i < std::size(titles); ++i) {
+    auto item = new Item{.sig = sig, .parent = parent_item, .title = titles[i], .type = (Item::Type)(i + Item::Name)};
+    parent_item->children.push_back(item);
+    if (item->type == Item::ExtraInfo) {
+      parent_item = item;
+    }
+  }
+}
+
+void SignalTreeModel::setMessage(const MessageId &id) {
+  msg_id = id;
+  filter_str = "";
+  refresh();
+}
+
+void SignalTreeModel::setFilter(const QString &txt) {
+  filter_str = txt;
+  refresh();
+}
+
+void SignalTreeModel::refresh() {
+  beginResetModel();
+  root.reset(new SignalTreeModel::Item);
+  if (auto msg = dbc()->msg(msg_id)) {
+    for (auto s : msg->getSignals()) {
+      if (filter_str.isEmpty() || s->name.contains(filter_str, Qt::CaseInsensitive)) {
+        insertItem(root.get(), root->children.size(), s);
+      }
+    }
+  }
+  endResetModel();
+}
+
+SignalTreeModel::Item *SignalTreeModel::getItem(const QModelIndex &index) const {
+  auto item = index.isValid() ? (SignalTreeModel::Item *)index.internalPointer() : nullptr;
+  return item ? item : root.get();
+}
+
+int SignalTreeModel::rowCount(const QModelIndex &parent) const {
+  if (parent.isValid() && parent.column() > 0) return 0;
+
+  return getItem(parent)->children.size();
+}
+
+Qt::ItemFlags SignalTreeModel::flags(const QModelIndex &index) const {
+  if (!index.isValid()) return Qt::NoItemFlags;
+
+  auto item = getItem(index);
+  Qt::ItemFlags flags = Qt::ItemIsSelectable | Qt::ItemIsEnabled;
+  if (index.column() == 1  && item->children.empty()) {
+    flags |= (item->type == Item::Endian || item->type == Item::Signed) ? Qt::ItemIsUserCheckable : Qt::ItemIsEditable;
+  }
+  if (item->type == Item::MultiplexValue && item->sig->type != cabana::Signal::Type::Multiplexed) {
+    flags &= ~Qt::ItemIsEnabled;
+  }
+  return flags;
+}
+
+int SignalTreeModel::signalRow(const cabana::Signal *sig) const {
+  for (int i = 0; i < root->children.size(); ++i) {
+    if (root->children[i]->sig == sig) return i;
+  }
+  return -1;
+}
+
+QModelIndex SignalTreeModel::index(int row, int column, const QModelIndex &parent) const {
+  if (parent.isValid() && parent.column() != 0) return {};
+
+  auto parent_item = getItem(parent);
+  if (parent_item && row < parent_item->children.size()) {
+    return createIndex(row, column, parent_item->children[row]);
+  }
+  return {};
+}
+
+QModelIndex SignalTreeModel::parent(const QModelIndex &index) const {
+  if (!index.isValid()) return {};
+  Item *parent_item = getItem(index)->parent;
+  return !parent_item || parent_item == root.get() ? QModelIndex() : createIndex(parent_item->row(), 0, parent_item);
+}
+
+QVariant SignalTreeModel::data(const QModelIndex &index, int role) const {
+  if (index.isValid()) {
+    const Item *item = getItem(index);
+    if (role == Qt::DisplayRole || role == Qt::EditRole) {
+      if (index.column() == 0) {
+        return item->type == Item::Sig ? item->sig->name : item->title;
+      } else {
+        switch (item->type) {
+          case Item::Sig: return item->sig_val;
+          case Item::Name: return item->sig->name;
+          case Item::Size: return item->sig->size;
+          case Item::Node: return item->sig->receiver_name;
+          case Item::SignalType: return signalTypeToString(item->sig->type);
+          case Item::MultiplexValue: return item->sig->multiplex_value;
+          case Item::Offset: return doubleToString(item->sig->offset);
+          case Item::Factor: return doubleToString(item->sig->factor);
+          case Item::Unit: return item->sig->unit;
+          case Item::Comment: return item->sig->comment;
+          case Item::Min: return doubleToString(item->sig->min);
+          case Item::Max: return doubleToString(item->sig->max);
+          case Item::Desc: {
+            QStringList val_desc;
+            for (auto &[val, desc] : item->sig->val_desc) {
+              val_desc << QString("%1 \"%2\"").arg(val).arg(desc);
+            }
+            return val_desc.join(" ");
+          }
+          default: break;
+        }
+      }
+    } else if (role == Qt::CheckStateRole && index.column() == 1) {
+      if (item->type == Item::Endian) return item->sig->is_little_endian ? Qt::Checked : Qt::Unchecked;
+      if (item->type == Item::Signed) return item->sig->is_signed ? Qt::Checked : Qt::Unchecked;
+    } else if (role == Qt::ToolTipRole && item->type == Item::Sig) {
+      return (index.column() == 0) ? signalToolTip(item->sig) : QString();
+    }
+  }
+  return {};
+}
+
+bool SignalTreeModel::setData(const QModelIndex &index, const QVariant &value, int role) {
+  if (role != Qt::EditRole && role != Qt::CheckStateRole) return false;
+
+  Item *item = getItem(index);
+  cabana::Signal s = *item->sig;
+  switch (item->type) {
+    case Item::Name: s.name = value.toString(); break;
+    case Item::Size: s.size = value.toInt(); break;
+    case Item::Node: s.receiver_name = value.toString().trimmed(); break;
+    case Item::SignalType: s.type = (cabana::Signal::Type)value.toInt(); break;
+    case Item::MultiplexValue: s.multiplex_value = value.toInt(); break;
+    case Item::Endian: s.is_little_endian = value.toBool(); break;
+    case Item::Signed: s.is_signed = value.toBool(); break;
+    case Item::Offset: s.offset = value.toDouble(); break;
+    case Item::Factor: s.factor = value.toDouble(); break;
+    case Item::Unit: s.unit = value.toString(); break;
+    case Item::Comment: s.comment = value.toString(); break;
+    case Item::Min: s.min = value.toDouble(); break;
+    case Item::Max: s.max = value.toDouble(); break;
+    case Item::Desc: s.val_desc = value.value<ValueDescription>(); break;
+    default: return false;
+  }
+  bool ret = saveSignal(item->sig, s);
+  emit dataChanged(index, index, {Qt::DisplayRole, Qt::EditRole, Qt::CheckStateRole});
+  return ret;
+}
+
+bool SignalTreeModel::saveSignal(const cabana::Signal *origin_s, cabana::Signal &s) {
+  auto msg = dbc()->msg(msg_id);
+  if (s.name != origin_s->name && msg->sig(s.name) != nullptr) {
+    QString text = tr("There is already a signal with the same name '%1'").arg(s.name);
+    QMessageBox::warning(nullptr, tr("Failed to save signal"), text);
+    return false;
+  }
+
+  if (s.is_little_endian != origin_s->is_little_endian) {
+    s.start_bit = flipBitPos(s.start_bit);
+  }
+  UndoStack::push(new EditSignalCommand(msg_id, origin_s, s));
+  return true;
+}
+
+void SignalTreeModel::handleMsgChanged(MessageId id) {
+  if (id.address == msg_id.address) {
+    refresh();
+  }
+}
+
+void SignalTreeModel::handleSignalAdded(MessageId id, const cabana::Signal *sig) {
+  if (id == msg_id) {
+    if (filter_str.isEmpty()) {
+      int i = dbc()->msg(msg_id)->indexOf(sig);
+      beginInsertRows({}, i, i);
+      insertItem(root.get(), i, sig);
+      endInsertRows();
+    } else if (sig->name.contains(filter_str, Qt::CaseInsensitive)) {
+      refresh();
+    }
+  }
+}
+
+void SignalTreeModel::handleSignalUpdated(const cabana::Signal *sig) {
+  if (int row = signalRow(sig); row != -1) {
+    emit dataChanged(index(row, 0), index(row, 1), {Qt::DisplayRole, Qt::EditRole, Qt::CheckStateRole});
+
+    if (filter_str.isEmpty()) {
+      // move row when the order changes.
+      int to = dbc()->msg(msg_id)->indexOf(sig);
+      if (to != row) {
+        beginMoveRows({}, row, row, {}, to > row ? to + 1 : to);
+        root->children.move(row, to);
+        endMoveRows();
+      }
+    }
+  }
+}
+
+void SignalTreeModel::handleSignalRemoved(const cabana::Signal *sig) {
+  if (int row = signalRow(sig); row != -1) {
+    beginRemoveRows({}, row, row);
+    delete root->children.takeAt(row);
+    endRemoveRows();
+  }
+}

@@ -50,7 +50,7 @@ DetailWidget::DetailWidget(ChartsWidget *charts, QWidget *parent) : charts(chart
 
   connect(binary_view, &BinaryView::signalHovered, signal_view, &SignalView::signalHovered);
   connect(binary_view, &BinaryView::signalClicked, [this](const cabana::Signal *s) { signal_view->selectSignal(s, true); });
-  connect(binary_view, &BinaryView::editSignal, signal_view->model, &SignalModel::saveSignal);
+  connect(binary_view, &BinaryView::editSignal, signal_view->model, &SignalTreeModel::saveSignal);
   connect(binary_view, &BinaryView::showChart, charts, &ChartsWidget::showChart);
   connect(signal_view, &SignalView::showChart, charts, &ChartsWidget::showChart);
   connect(signal_view, &SignalView::highlight, binary_view, &BinaryView::highlight);

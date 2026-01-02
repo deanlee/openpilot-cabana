@@ -6,7 +6,6 @@
 #include <QDialogButtonBox>
 #include <QHBoxLayout>
 #include <QHeaderView>
-#include <QMessageBox>
 #include <QPainter>
 #include <QPainterPath>
 #include <QPushButton>
@@ -15,234 +14,6 @@
 #include <QVBoxLayout>
 
 #include "commands.h"
-
-// SignalModel
-
-static QString signalTypeToString(cabana::Signal::Type type) {
-  if (type == cabana::Signal::Type::Multiplexor) return "Multiplexor Signal";
-  else if (type == cabana::Signal::Type::Multiplexed) return "Multiplexed Signal";
-  else return "Normal Signal";
-}
-
-SignalModel::SignalModel(QObject *parent) : root(new Item), QAbstractItemModel(parent) {
-  connect(dbc(), &DBCManager::DBCFileChanged, this, &SignalModel::refresh);
-  connect(dbc(), &DBCManager::msgUpdated, this, &SignalModel::handleMsgChanged);
-  connect(dbc(), &DBCManager::msgRemoved, this, &SignalModel::handleMsgChanged);
-  connect(dbc(), &DBCManager::signalAdded, this, &SignalModel::handleSignalAdded);
-  connect(dbc(), &DBCManager::signalUpdated, this, &SignalModel::handleSignalUpdated);
-  connect(dbc(), &DBCManager::signalRemoved, this, &SignalModel::handleSignalRemoved);
-}
-
-void SignalModel::insertItem(SignalModel::Item *root_item, int pos, const cabana::Signal *sig) {
-  Item *parent_item = new Item{.sig = sig, .parent = root_item, .title = sig->name, .type = Item::Sig};
-  root_item->children.insert(pos, parent_item);
-  QString titles[]{"Name", "Size", "Receiver Nodes", "Little Endian", "Signed", "Offset", "Factor", "Type",
-                   "Multiplex Value", "Extra Info", "Unit", "Comment", "Minimum Value", "Maximum Value", "Value Table"};
-  for (int i = 0; i < std::size(titles); ++i) {
-    auto item = new Item{.sig = sig, .parent = parent_item, .title = titles[i], .type = (Item::Type)(i + Item::Name)};
-    parent_item->children.push_back(item);
-    if (item->type == Item::ExtraInfo) {
-      parent_item = item;
-    }
-  }
-}
-
-void SignalModel::setMessage(const MessageId &id) {
-  msg_id = id;
-  filter_str = "";
-  refresh();
-}
-
-void SignalModel::setFilter(const QString &txt) {
-  filter_str = txt;
-  refresh();
-}
-
-void SignalModel::refresh() {
-  beginResetModel();
-  root.reset(new SignalModel::Item);
-  if (auto msg = dbc()->msg(msg_id)) {
-    for (auto s : msg->getSignals()) {
-      if (filter_str.isEmpty() || s->name.contains(filter_str, Qt::CaseInsensitive)) {
-        insertItem(root.get(), root->children.size(), s);
-      }
-    }
-  }
-  endResetModel();
-}
-
-SignalModel::Item *SignalModel::getItem(const QModelIndex &index) const {
-  auto item = index.isValid() ? (SignalModel::Item *)index.internalPointer() : nullptr;
-  return item ? item : root.get();
-}
-
-int SignalModel::rowCount(const QModelIndex &parent) const {
-  if (parent.isValid() && parent.column() > 0) return 0;
-
-  return getItem(parent)->children.size();
-}
-
-Qt::ItemFlags SignalModel::flags(const QModelIndex &index) const {
-  if (!index.isValid()) return Qt::NoItemFlags;
-
-  auto item = getItem(index);
-  Qt::ItemFlags flags = Qt::ItemIsSelectable | Qt::ItemIsEnabled;
-  if (index.column() == 1  && item->children.empty()) {
-    flags |= (item->type == Item::Endian || item->type == Item::Signed) ? Qt::ItemIsUserCheckable : Qt::ItemIsEditable;
-  }
-  if (item->type == Item::MultiplexValue && item->sig->type != cabana::Signal::Type::Multiplexed) {
-    flags &= ~Qt::ItemIsEnabled;
-  }
-  return flags;
-}
-
-int SignalModel::signalRow(const cabana::Signal *sig) const {
-  for (int i = 0; i < root->children.size(); ++i) {
-    if (root->children[i]->sig == sig) return i;
-  }
-  return -1;
-}
-
-QModelIndex SignalModel::index(int row, int column, const QModelIndex &parent) const {
-  if (parent.isValid() && parent.column() != 0) return {};
-
-  auto parent_item = getItem(parent);
-  if (parent_item && row < parent_item->children.size()) {
-    return createIndex(row, column, parent_item->children[row]);
-  }
-  return {};
-}
-
-QModelIndex SignalModel::parent(const QModelIndex &index) const {
-  if (!index.isValid()) return {};
-  Item *parent_item = getItem(index)->parent;
-  return !parent_item || parent_item == root.get() ? QModelIndex() : createIndex(parent_item->row(), 0, parent_item);
-}
-
-QVariant SignalModel::data(const QModelIndex &index, int role) const {
-  if (index.isValid()) {
-    const Item *item = getItem(index);
-    if (role == Qt::DisplayRole || role == Qt::EditRole) {
-      if (index.column() == 0) {
-        return item->type == Item::Sig ? item->sig->name : item->title;
-      } else {
-        switch (item->type) {
-          case Item::Sig: return item->sig_val;
-          case Item::Name: return item->sig->name;
-          case Item::Size: return item->sig->size;
-          case Item::Node: return item->sig->receiver_name;
-          case Item::SignalType: return signalTypeToString(item->sig->type);
-          case Item::MultiplexValue: return item->sig->multiplex_value;
-          case Item::Offset: return doubleToString(item->sig->offset);
-          case Item::Factor: return doubleToString(item->sig->factor);
-          case Item::Unit: return item->sig->unit;
-          case Item::Comment: return item->sig->comment;
-          case Item::Min: return doubleToString(item->sig->min);
-          case Item::Max: return doubleToString(item->sig->max);
-          case Item::Desc: {
-            QStringList val_desc;
-            for (auto &[val, desc] : item->sig->val_desc) {
-              val_desc << QString("%1 \"%2\"").arg(val).arg(desc);
-            }
-            return val_desc.join(" ");
-          }
-          default: break;
-        }
-      }
-    } else if (role == Qt::CheckStateRole && index.column() == 1) {
-      if (item->type == Item::Endian) return item->sig->is_little_endian ? Qt::Checked : Qt::Unchecked;
-      if (item->type == Item::Signed) return item->sig->is_signed ? Qt::Checked : Qt::Unchecked;
-    } else if (role == Qt::ToolTipRole && item->type == Item::Sig) {
-      return (index.column() == 0) ? signalToolTip(item->sig) : QString();
-    }
-  }
-  return {};
-}
-
-bool SignalModel::setData(const QModelIndex &index, const QVariant &value, int role) {
-  if (role != Qt::EditRole && role != Qt::CheckStateRole) return false;
-
-  Item *item = getItem(index);
-  cabana::Signal s = *item->sig;
-  switch (item->type) {
-    case Item::Name: s.name = value.toString(); break;
-    case Item::Size: s.size = value.toInt(); break;
-    case Item::Node: s.receiver_name = value.toString().trimmed(); break;
-    case Item::SignalType: s.type = (cabana::Signal::Type)value.toInt(); break;
-    case Item::MultiplexValue: s.multiplex_value = value.toInt(); break;
-    case Item::Endian: s.is_little_endian = value.toBool(); break;
-    case Item::Signed: s.is_signed = value.toBool(); break;
-    case Item::Offset: s.offset = value.toDouble(); break;
-    case Item::Factor: s.factor = value.toDouble(); break;
-    case Item::Unit: s.unit = value.toString(); break;
-    case Item::Comment: s.comment = value.toString(); break;
-    case Item::Min: s.min = value.toDouble(); break;
-    case Item::Max: s.max = value.toDouble(); break;
-    case Item::Desc: s.val_desc = value.value<ValueDescription>(); break;
-    default: return false;
-  }
-  bool ret = saveSignal(item->sig, s);
-  emit dataChanged(index, index, {Qt::DisplayRole, Qt::EditRole, Qt::CheckStateRole});
-  return ret;
-}
-
-bool SignalModel::saveSignal(const cabana::Signal *origin_s, cabana::Signal &s) {
-  auto msg = dbc()->msg(msg_id);
-  if (s.name != origin_s->name && msg->sig(s.name) != nullptr) {
-    QString text = tr("There is already a signal with the same name '%1'").arg(s.name);
-    QMessageBox::warning(nullptr, tr("Failed to save signal"), text);
-    return false;
-  }
-
-  if (s.is_little_endian != origin_s->is_little_endian) {
-    s.start_bit = flipBitPos(s.start_bit);
-  }
-  UndoStack::push(new EditSignalCommand(msg_id, origin_s, s));
-  return true;
-}
-
-void SignalModel::handleMsgChanged(MessageId id) {
-  if (id.address == msg_id.address) {
-    refresh();
-  }
-}
-
-void SignalModel::handleSignalAdded(MessageId id, const cabana::Signal *sig) {
-  if (id == msg_id) {
-    if (filter_str.isEmpty()) {
-      int i = dbc()->msg(msg_id)->indexOf(sig);
-      beginInsertRows({}, i, i);
-      insertItem(root.get(), i, sig);
-      endInsertRows();
-    } else if (sig->name.contains(filter_str, Qt::CaseInsensitive)) {
-      refresh();
-    }
-  }
-}
-
-void SignalModel::handleSignalUpdated(const cabana::Signal *sig) {
-  if (int row = signalRow(sig); row != -1) {
-    emit dataChanged(index(row, 0), index(row, 1), {Qt::DisplayRole, Qt::EditRole, Qt::CheckStateRole});
-
-    if (filter_str.isEmpty()) {
-      // move row when the order changes.
-      int to = dbc()->msg(msg_id)->indexOf(sig);
-      if (to != row) {
-        beginMoveRows({}, row, row, {}, to > row ? to + 1 : to);
-        root->children.move(row, to);
-        endMoveRows();
-      }
-    }
-  }
-}
-
-void SignalModel::handleSignalRemoved(const cabana::Signal *sig) {
-  if (int row = signalRow(sig); row != -1) {
-    beginRemoveRows({}, row, row);
-    delete root->children.takeAt(row);
-    endRemoveRows();
-  }
-}
 
 // SignalItemDelegate
 
@@ -260,8 +31,8 @@ QSize SignalItemDelegate::sizeHint(const QStyleOptionViewItem &option, const QMo
   if (index.column() == 0) {
     int spacing = option.widget->style()->pixelMetric(QStyle::PM_TreeViewIndentation) + color_label_width + 8;
     auto text = index.data(Qt::DisplayRole).toString();
-    auto item = (SignalModel::Item *)index.internalPointer();
-    if (item->type == SignalModel::Item::Sig && item->sig->type != cabana::Signal::Type::Normal) {
+    auto item = (SignalTreeModel::Item *)index.internalPointer();
+    if (item->type == SignalTreeModel::Item::Sig && item->sig->type != cabana::Signal::Type::Normal) {
       text += item->sig->type == cabana::Signal::Type::Multiplexor ? QString(" M ") : QString(" m%1 ").arg(item->sig->multiplex_value);
       spacing += (option.widget->style()->pixelMetric(QStyle::PM_FocusFrameHMargin) + 1) * 2;
     }
@@ -271,8 +42,8 @@ QSize SignalItemDelegate::sizeHint(const QStyleOptionViewItem &option, const QMo
 }
 
 void SignalItemDelegate::updateEditorGeometry(QWidget *editor, const QStyleOptionViewItem &option, const QModelIndex &index) const {
-  auto item = (SignalModel::Item *)index.internalPointer();
-  if (editor && item->type == SignalModel::Item::Sig && index.column() == 1) {
+  auto item = (SignalTreeModel::Item *)index.internalPointer();
+  if (editor && item->type == SignalTreeModel::Item::Sig && index.column() == 1) {
     QRect geom = option.rect;
     geom.setLeft(geom.right() - editor->sizeHint().width());
     editor->setGeometry(geom);
@@ -285,7 +56,7 @@ void SignalItemDelegate::updateEditorGeometry(QWidget *editor, const QStyleOptio
 void SignalItemDelegate::paint(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const {
   const int h_margin = option.widget->style()->pixelMetric(QStyle::PM_FocusFrameHMargin) + 1;
   const int v_margin = option.widget->style()->pixelMetric(QStyle::PM_FocusFrameVMargin);
-  auto item = static_cast<SignalModel::Item*>(index.internalPointer());
+  auto item = static_cast<SignalTreeModel::Item*>(index.internalPointer());
 
   QRect rect = option.rect.adjusted(h_margin, v_margin, -h_margin, -v_margin);
   painter->setRenderHint(QPainter::Antialiasing);
@@ -294,7 +65,7 @@ void SignalItemDelegate::paint(QPainter *painter, const QStyleOptionViewItem &op
   }
 
   if (index.column() == 0) {
-    if (item->type == SignalModel::Item::Sig) {
+    if (item->type == SignalTreeModel::Item::Sig) {
       // color label
       QPainterPath path;
       QRect icon_rect{rect.x(), rect.y(), color_label_width, rect.height()};
@@ -362,38 +133,38 @@ void SignalItemDelegate::paint(QPainter *painter, const QStyleOptionViewItem &op
 }
 
 QWidget *SignalItemDelegate::createEditor(QWidget *parent, const QStyleOptionViewItem &option, const QModelIndex &index) const {
-  auto item = (SignalModel::Item *)index.internalPointer();
-  if (item->type == SignalModel::Item::Name || item->type == SignalModel::Item::Node || item->type == SignalModel::Item::Offset ||
-      item->type == SignalModel::Item::Factor || item->type == SignalModel::Item::MultiplexValue ||
-      item->type == SignalModel::Item::Min || item->type == SignalModel::Item::Max) {
+  auto item = (SignalTreeModel::Item *)index.internalPointer();
+  if (item->type == SignalTreeModel::Item::Name || item->type == SignalTreeModel::Item::Node || item->type == SignalTreeModel::Item::Offset ||
+      item->type == SignalTreeModel::Item::Factor || item->type == SignalTreeModel::Item::MultiplexValue ||
+      item->type == SignalTreeModel::Item::Min || item->type == SignalTreeModel::Item::Max) {
     QLineEdit *e = new QLineEdit(parent);
     e->setFrame(false);
-    if (item->type == SignalModel::Item::Name) e->setValidator(name_validator);
-    else if (item->type == SignalModel::Item::Node) e->setValidator(node_validator);
+    if (item->type == SignalTreeModel::Item::Name) e->setValidator(name_validator);
+    else if (item->type == SignalTreeModel::Item::Node) e->setValidator(node_validator);
     else e->setValidator(double_validator);
 
-    if (item->type == SignalModel::Item::Name) {
+    if (item->type == SignalTreeModel::Item::Name) {
       QCompleter *completer = new QCompleter(dbc()->signalNames(), e);
       completer->setCaseSensitivity(Qt::CaseInsensitive);
       completer->setFilterMode(Qt::MatchContains);
       e->setCompleter(completer);
     }
     return e;
-  } else if (item->type == SignalModel::Item::Size) {
+  } else if (item->type == SignalTreeModel::Item::Size) {
     QSpinBox *spin = new QSpinBox(parent);
     spin->setFrame(false);
     spin->setRange(1, CAN_MAX_DATA_BYTES);
     return spin;
-  } else if (item->type == SignalModel::Item::SignalType) {
+  } else if (item->type == SignalTreeModel::Item::SignalType) {
     QComboBox *c = new QComboBox(parent);
     c->addItem(signalTypeToString(cabana::Signal::Type::Normal), (int)cabana::Signal::Type::Normal);
-    if (!dbc()->msg(((SignalModel *)index.model())->msg_id)->multiplexor) {
+    if (!dbc()->msg(((SignalTreeModel *)index.model())->msg_id)->multiplexor) {
       c->addItem(signalTypeToString(cabana::Signal::Type::Multiplexor), (int)cabana::Signal::Type::Multiplexor);
     } else if (item->sig->type != cabana::Signal::Type::Multiplexor) {
       c->addItem(signalTypeToString(cabana::Signal::Type::Multiplexed), (int)cabana::Signal::Type::Multiplexed);
     }
     return c;
-  } else if (item->type == SignalModel::Item::Desc) {
+  } else if (item->type == SignalTreeModel::Item::Desc) {
     ValueDescriptionDlg dlg(item->sig->val_desc, parent);
     dlg.setWindowTitle(item->sig->name);
     if (dlg.exec()) {
@@ -405,8 +176,8 @@ QWidget *SignalItemDelegate::createEditor(QWidget *parent, const QStyleOptionVie
 }
 
 void SignalItemDelegate::setModelData(QWidget *editor, QAbstractItemModel *model, const QModelIndex &index) const {
-  auto item = (SignalModel::Item *)index.internalPointer();
-  if (item->type == SignalModel::Item::SignalType) {
+  auto item = (SignalTreeModel::Item *)index.internalPointer();
+  if (item->type == SignalTreeModel::Item::SignalType) {
     model->setData(index, ((QComboBox*)editor)->currentData().toInt());
     return;
   }
@@ -445,7 +216,7 @@ SignalView::SignalView(ChartsWidget *charts, QWidget *parent) : charts(charts), 
 
   // tree view
   tree = new TreeView(this);
-  tree->setModel(model = new SignalModel(this));
+  tree->setModel(model = new SignalTreeModel(this));
   tree->setItemDelegate(delegate = new SignalItemDelegate(this));
   tree->setFrameShape(QFrame::NoFrame);
   tree->setHeaderHidden(true);
@@ -467,7 +238,7 @@ SignalView::SignalView(ChartsWidget *charts, QWidget *parent) : charts(charts), 
   main_layout->addWidget(tree);
   updateToolBar();
 
-  connect(filter_edit, &QLineEdit::textEdited, model, &SignalModel::setFilter);
+  connect(filter_edit, &QLineEdit::textEdited, model, &SignalTreeModel::setFilter);
   connect(sparkline_range_slider, &QSlider::valueChanged, this, &SignalView::setSparklineRange);
   connect(collapse_btn, &QPushButton::clicked, tree, &QTreeView::collapseAll);
   connect(tree, &QAbstractItemView::clicked, this, &SignalView::rowClicked);
@@ -531,7 +302,7 @@ void SignalView::rowsChanged() {
 
 void SignalView::rowClicked(const QModelIndex &index) {
   auto item = model->getItem(index);
-  if (item->type == SignalModel::Item::Sig || item->type == SignalModel::Item::ExtraInfo) {
+  if (item->type == SignalTreeModel::Item::Sig || item->type == SignalTreeModel::Item::ExtraInfo) {
     auto expand_index = model->index(index.row(), 0, index.parent());
     tree->setExpanded(expand_index, !tree->isExpanded(expand_index));
   }
