@@ -164,17 +164,19 @@ void AbstractStream::updateSnapshotsTo(double sec) {
   std::unordered_map<MessageId, CanData> next_state;
   next_state.reserve(events_.size());
 
-  for (const auto &[id, ev] : events_) {
+  bool id_changed = false;
+
+  for (const auto& [id, ev] : events_) {
     auto it = std::upper_bound(ev.begin(), ev.end(), last_ts, CompareCanEvent());
     if (it == ev.begin()) continue;
 
-    auto &m = next_state[id];
+    auto& m = next_state[id];
     auto prev_ev = *std::prev(it);
     double freq = 0;
     // Keep suppressed bits.
     if (auto old_it = master_state_.find(id); old_it != master_state_.end()) {
       freq = old_it->second.freq;
-      const auto &old_changes = old_it->second.last_changes;
+      const auto& old_changes = old_it->second.last_changes;
       m.last_changes.resize(old_changes.size());
       for (size_t i = 0; i < old_changes.size(); ++i) {
         m.last_changes[i].suppressed = old_changes[i].suppressed;
@@ -182,19 +184,33 @@ void AbstractStream::updateSnapshotsTo(double sec) {
     }
     m.update(id, prev_ev->dat, prev_ev->size, toSeconds(prev_ev->mono_time), getSpeed(), {}, freq);
     m.count = std::distance(ev.begin(), it);
+
+    auto& snap_ptr = snapshot_map_[id];
+    if (!snap_ptr) {
+      snap_ptr = std::make_unique<CanData>(m);
+      id_changed = true;
+    } else {
+      *snap_ptr = m;
+    }
+  }
+
+  if (!id_changed && next_state.size() != snapshot_map_.size()) {
+    id_changed = true;
+  }
+
+  if (id_changed) {
+    for (auto it = snapshot_map_.begin(); it != snapshot_map_.end();) {
+      if (next_state.find(it->first) == next_state.end()) {
+        it = snapshot_map_.erase(it);
+      } else {
+        ++it;
+      }
+    }
   }
 
   dirty_ids_.clear();
   master_state_ = std::move(next_state);
 
-  bool id_changed = master_state_.size() != snapshot_map_.size() ||
-                    std::any_of(master_state_.cbegin(), master_state_.cend(),
-                                [this](const auto &m) { return !snapshot_map_.count(m.first); });
-  // Syc to snapshots
-  snapshot_map_.clear();
-  for (const auto &[id, m] : master_state_) {
-    snapshot_map_[id] = std::make_unique<CanData>(m);
-  }
   emit snapshotsUpdated(nullptr, id_changed);
 
   std::lock_guard lk(mutex_);
