@@ -1,4 +1,4 @@
-#include "streams/routes.h"
+#include "routes_dialog.h"
 
 #include <QDateTime>
 #include <QDialogButtonBox>

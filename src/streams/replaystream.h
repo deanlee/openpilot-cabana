@@ -1,9 +1,5 @@
 #pragma once
 
-#include <QCheckBox>
-#include <QLineEdit>
-#include <QPushButton>
-#include <QDialog>
 #include <algorithm>
 #include <memory>
 #include <set>
@@ -45,16 +41,4 @@ private:
   std::unique_ptr<Replay> replay = nullptr;
   std::set<int> processed_segments;
   std::unique_ptr<OpenpilotPrefix> op_prefix;
-};
-
-class OpenReplayWidget : public AbstractOpenStreamWidget {
-  Q_OBJECT
-
-public:
-  OpenReplayWidget(QWidget *parent = nullptr);
-  AbstractStream *open() override;
-
-private:
-  QLineEdit *route_edit;
-  std::vector<QCheckBox *> cameras;
 };

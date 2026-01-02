@@ -1,5 +1,6 @@
 #pragma once
 
+#include <QDateTime>
 #include <algorithm>
 #include <array>
 #include <condition_variable>
@@ -11,14 +12,11 @@
 #include <utility>
 #include <vector>
 
-#include <QDateTime>
-#include <QWidget>
-
-#include "cereal/messaging/messaging.h"
 #include "candata.h"
+#include "cereal/messaging/messaging.h"
 #include "dbc/dbcmanager.h"
-#include "utils/util.h"
 #include "replay/include/util.h"
+#include "utils/util.h"
 
 struct CanEvent {
   uint8_t src;
@@ -113,16 +111,6 @@ private:
   std::set<MessageId> dirty_ids_;
   std::unordered_map<MessageId, CanData> master_state_;
   std::unordered_map<MessageId, std::vector<uint8_t>> masks_;
-};
-
-class AbstractOpenStreamWidget : public QWidget {
-  Q_OBJECT
-public:
-  AbstractOpenStreamWidget(QWidget *parent = nullptr) : QWidget(parent) {}
-  virtual AbstractStream *open() = 0;
-
-signals:
-  void enableOpenButton(bool);
 };
 
 class DummyStream : public AbstractStream {

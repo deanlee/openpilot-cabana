@@ -3,9 +3,6 @@
 #include <memory>
 #include <vector>
 
-#include <QComboBox>
-#include <QFormLayout>
-
 #include "streams/livestream.h"
 #include "panda.h"
 
@@ -37,21 +34,5 @@ protected:
   void streamThread() override;
 
   std::unique_ptr<Panda> panda;
-  PandaStreamConfig config = {};
-};
-
-class OpenPandaWidget : public AbstractOpenStreamWidget {
-  Q_OBJECT
-
-public:
-  OpenPandaWidget(QWidget *parent = nullptr);
-  AbstractStream *open() override;
-
-private:
-  void refreshSerials();
-  void buildConfigForm();
-
-  QComboBox *serial_edit;
-  QFormLayout *form_layout;
   PandaStreamConfig config = {};
 };

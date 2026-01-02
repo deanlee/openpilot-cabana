@@ -9,6 +9,7 @@
 #include <QPropertyAnimation>
 #include <QSlider>
 #include <QToolBar>
+#include <QToolButton>
 #include <QTabBar>
 
 #include "cameraview.h"
