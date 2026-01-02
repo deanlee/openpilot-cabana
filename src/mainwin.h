@@ -11,10 +11,10 @@
 
 #include "chart/chartswidget.h"
 #include "dbc/dbcmanager.h"
-#include "detailwidget.h"
-#include "messageswidget.h"
-#include "videowidget.h"
 #include "tools/findsimilarbits.h"
+#include "widgets/detailwidget.h"
+#include "widgets/messageswidget.h"
+#include "widgets/videowidget.h"
 
 class MainWindow : public QMainWindow {
   Q_OBJECT

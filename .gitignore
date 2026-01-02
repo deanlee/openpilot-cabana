@@ -1,7 +1,4 @@
-moc_*
-*.moc
-*.o
+build/
 cabana
 tests/test_cabana
 *.dblite
-*.a

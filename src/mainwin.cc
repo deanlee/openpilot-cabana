@@ -21,10 +21,10 @@
 #include <QWidgetAction>
 
 #include "commands.h"
-#include "streamselector.h"
 #include "tools/findsignal.h"
 #include "utils/export.h"
 #include "replay/include/http.h"
+#include "widgets/streamselector.h"
 
 MainWindow::MainWindow(AbstractStream *stream, const QString &dbc_file) : QMainWindow() {
   loadFingerprints();
@@ -73,7 +73,7 @@ MainWindow::MainWindow(AbstractStream *stream, const QString &dbc_file) : QMainW
 }
 
 void MainWindow::loadFingerprints() {
-  QFile json_file(QApplication::applicationDirPath() + "/opendbc/car_fingerprint_to_dbc.json");
+  QFile json_file(QApplication::applicationDirPath() + "/data/opendbc/car_fingerprint_to_dbc.json");
   if (json_file.open(QIODevice::ReadOnly)) {
     fingerprint_to_dbc = QJsonDocument::fromJson(json_file.readAll());
   }
@@ -100,7 +100,7 @@ void MainWindow::createActions() {
 
   file_menu->addSeparator();
   QMenu *load_opendbc_menu = file_menu->addMenu(tr("Load DBC from commaai/opendbc"));
-  QString local_opendbc_path = QDir::current().absoluteFilePath("opendbc");
+  QString local_opendbc_path = QDir::current().absoluteFilePath("data/opendbc");
   QDir opendbc_dir(local_opendbc_path);
   if (opendbc_dir.exists()) {
     for (const auto& dbc_name : opendbc_dir.entryList({"*.dbc"}, QDir::Files, QDir::Name)) {
@@ -302,7 +302,7 @@ void MainWindow::loadFile(const QString &fn, SourceSet s) {
 }
 
 void MainWindow::loadDBCFromOpendbc(const QString &name) {
-  QString local_opendbc_path = QDir::current().absoluteFilePath("opendbc");
+  QString local_opendbc_path = QDir::current().absoluteFilePath("data/opendbc");
   loadFile(QString("%1/%2").arg(local_opendbc_path, name));
 }
 
