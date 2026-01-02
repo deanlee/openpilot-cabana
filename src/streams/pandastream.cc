@@ -95,8 +95,8 @@ OpenPandaWidget::OpenPandaWidget(QWidget *parent) : AbstractOpenStreamWidget(par
   serial_layout->addWidget(refresh);
   form_layout->addRow(tr("Serial"), serial_layout);
 
-  QObject::connect(refresh, &QPushButton::clicked, this, &OpenPandaWidget::refreshSerials);
-  QObject::connect(serial_edit, &QComboBox::currentTextChanged, this, &OpenPandaWidget::buildConfigForm);
+  connect(refresh, &QPushButton::clicked, this, &OpenPandaWidget::refreshSerials);
+  connect(serial_edit, &QComboBox::currentTextChanged, this, &OpenPandaWidget::buildConfigForm);
 
   // Populate serials
   refreshSerials();
@@ -144,7 +144,7 @@ void OpenPandaWidget::buildConfigForm() {
           can_speed->setCurrentIndex(j);
         }
       }
-      QObject::connect(can_speed, qOverload<int>(&QComboBox::currentIndexChanged), [=](int index) {config.bus_config[i].can_speed_kbps = speeds[index];});
+      connect(can_speed, qOverload<int>(&QComboBox::currentIndexChanged), [=](int index) {config.bus_config[i].can_speed_kbps = speeds[index];});
       bus_layout->addWidget(can_speed);
 
       // CAN-FD Speed
@@ -164,9 +164,9 @@ void OpenPandaWidget::buildConfigForm() {
         data_speed->setEnabled(false);
         bus_layout->addWidget(data_speed);
 
-        QObject::connect(data_speed, qOverload<int>(&QComboBox::currentIndexChanged), [=](int index) {config.bus_config[i].data_speed_kbps = data_speeds[index];});
-        QObject::connect(enable_fd, &QCheckBox::stateChanged, data_speed, &QComboBox::setEnabled);
-        QObject::connect(enable_fd, &QCheckBox::stateChanged, [=](int state) {config.bus_config[i].can_fd = (bool)state;});
+        connect(data_speed, qOverload<int>(&QComboBox::currentIndexChanged), [=](int index) {config.bus_config[i].data_speed_kbps = data_speeds[index];});
+        connect(enable_fd, &QCheckBox::stateChanged, data_speed, &QComboBox::setEnabled);
+        connect(enable_fd, &QCheckBox::stateChanged, [=](int state) {config.bus_config[i].can_fd = (bool)state;});
       }
 
       form_layout->addRow(tr("Bus %1:").arg(i), bus_layout);

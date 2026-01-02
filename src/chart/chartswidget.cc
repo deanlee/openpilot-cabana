@@ -113,25 +113,25 @@ ChartsWidget::ChartsWidget(QWidget *parent) : QFrame(parent) {
   updateToolBar();
 
   align_timer->setSingleShot(true);
-  QObject::connect(align_timer, &QTimer::timeout, this, &ChartsWidget::alignCharts);
-  QObject::connect(auto_scroll_timer, &QTimer::timeout, this, &ChartsWidget::doAutoScroll);
-  QObject::connect(dbc(), &DBCManager::DBCFileChanged, this, &ChartsWidget::removeAll);
-  QObject::connect(can, &AbstractStream::eventsMerged, this, &ChartsWidget::eventsMerged);
-  QObject::connect(can, &AbstractStream::snapshotsUpdated, this, &ChartsWidget::updateState);
-  QObject::connect(can, &AbstractStream::seeking, this, &ChartsWidget::updateState);
-  QObject::connect(can, &AbstractStream::timeRangeChanged, this, &ChartsWidget::timeRangeChanged);
-  QObject::connect(range_slider, &QSlider::valueChanged, this, &ChartsWidget::setMaxChartRange);
-  QObject::connect(new_plot_btn, &QToolButton::clicked, this, &ChartsWidget::newChart);
-  QObject::connect(remove_all_btn, &QToolButton::clicked, this, &ChartsWidget::removeAll);
-  QObject::connect(reset_zoom_btn, &QToolButton::clicked, this, &ChartsWidget::zoomReset);
-  QObject::connect(&settings, &Settings::changed, this, &ChartsWidget::settingChanged);
-  QObject::connect(new_tab_btn, &QToolButton::clicked, this, &ChartsWidget::newTab);
-  QObject::connect(this, &ChartsWidget::seriesChanged, this, &ChartsWidget::updateTabBar);
-  QObject::connect(tabbar, &QTabBar::tabCloseRequested, this, &ChartsWidget::removeTab);
-  QObject::connect(tabbar, &QTabBar::currentChanged, [this](int index) {
+  connect(align_timer, &QTimer::timeout, this, &ChartsWidget::alignCharts);
+  connect(auto_scroll_timer, &QTimer::timeout, this, &ChartsWidget::doAutoScroll);
+  connect(dbc(), &DBCManager::DBCFileChanged, this, &ChartsWidget::removeAll);
+  connect(can, &AbstractStream::eventsMerged, this, &ChartsWidget::eventsMerged);
+  connect(can, &AbstractStream::snapshotsUpdated, this, &ChartsWidget::updateState);
+  connect(can, &AbstractStream::seeking, this, &ChartsWidget::updateState);
+  connect(can, &AbstractStream::timeRangeChanged, this, &ChartsWidget::timeRangeChanged);
+  connect(range_slider, &QSlider::valueChanged, this, &ChartsWidget::setMaxChartRange);
+  connect(new_plot_btn, &QToolButton::clicked, this, &ChartsWidget::newChart);
+  connect(remove_all_btn, &QToolButton::clicked, this, &ChartsWidget::removeAll);
+  connect(reset_zoom_btn, &QToolButton::clicked, this, &ChartsWidget::zoomReset);
+  connect(&settings, &Settings::changed, this, &ChartsWidget::settingChanged);
+  connect(new_tab_btn, &QToolButton::clicked, this, &ChartsWidget::newTab);
+  connect(this, &ChartsWidget::seriesChanged, this, &ChartsWidget::updateTabBar);
+  connect(tabbar, &QTabBar::tabCloseRequested, this, &ChartsWidget::removeTab);
+  connect(tabbar, &QTabBar::currentChanged, [this](int index) {
     if (index != -1) updateLayout(true);
   });
-  QObject::connect(dock_btn, &QToolButton::clicked, this, &ChartsWidget::toggleChartsDocking);
+  connect(dock_btn, &QToolButton::clicked, this, &ChartsWidget::toggleChartsDocking);
 
   setIsDocked(true);
   newTab();
@@ -280,7 +280,7 @@ ChartView *ChartsWidget::createChart(int pos) {
   chart->setFixedHeight(settings.chart_height);
   chart->setMinimumWidth(CHART_MIN_WIDTH);
   chart->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Fixed);
-  QObject::connect(chart, &ChartView::axisYLabelWidthChanged, align_timer, qOverload<>(&QTimer::start));
+  connect(chart, &ChartView::axisYLabelWidthChanged, align_timer, qOverload<>(&QTimer::start));
   pos = std::clamp(pos, 0, charts.size());
   charts.insert(pos, chart);
   currentCharts().insert(pos, chart);

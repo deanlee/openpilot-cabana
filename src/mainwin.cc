@@ -62,11 +62,11 @@ MainWindow::MainWindow(AbstractStream *stream, const QString &dbc_file) : QMainW
     height: %1px; /* when horizontal */
   })").arg(style()->pixelMetric(QStyle::PM_SplitterWidth)));
 
-  QObject::connect(this, &MainWindow::showMessage, statusBar(), &QStatusBar::showMessage);
-  QObject::connect(this, &MainWindow::updateProgressBar, this, &MainWindow::updateDownloadProgress);
-  QObject::connect(dbc(), &DBCManager::DBCFileChanged, this, &MainWindow::DBCFileChanged);
-  QObject::connect(UndoStack::instance(), &QUndoStack::cleanChanged, this, &MainWindow::undoStackCleanChanged);
-  QObject::connect(&settings, &Settings::changed, this, &MainWindow::updateStatus);
+  connect(this, &MainWindow::showMessage, statusBar(), &QStatusBar::showMessage);
+  connect(this, &MainWindow::updateProgressBar, this, &MainWindow::updateDownloadProgress);
+  connect(dbc(), &DBCManager::DBCFileChanged, this, &MainWindow::DBCFileChanged);
+  connect(UndoStack::instance(), &QUndoStack::cleanChanged, this, &MainWindow::undoStackCleanChanged);
+  connect(&settings, &Settings::changed, this, &MainWindow::updateStatus);
 
   QTimer::singleShot(0, this, [=]() { stream ? openStream(stream, dbc_file) : selectAndOpenStream(); });
   show();
@@ -93,10 +93,10 @@ void MainWindow::createActions() {
   file_menu->addAction(tr("Open DBC File..."), [this]() { openFile(); }, QKeySequence::Open);
 
   manage_dbcs_menu = file_menu->addMenu(tr("Manage &DBC Files"));
-  QObject::connect(manage_dbcs_menu, &QMenu::aboutToShow, this, &MainWindow::updateLoadSaveMenus);
+  connect(manage_dbcs_menu, &QMenu::aboutToShow, this, &MainWindow::updateLoadSaveMenus);
 
   open_recent_menu = file_menu->addMenu(tr("Open &Recent"));
-  QObject::connect(open_recent_menu, &QMenu::aboutToShow, this, &MainWindow::updateRecentFileMenu);
+  connect(open_recent_menu, &QMenu::aboutToShow, this, &MainWindow::updateRecentFileMenu);
 
   file_menu->addSeparator();
   QMenu *load_opendbc_menu = file_menu->addMenu(tr("Load DBC from commaai/opendbc"));
@@ -178,8 +178,8 @@ void MainWindow::createDockWindows() {
 void MainWindow::createDockWidgets() {
   messages_widget = new MessagesWidget(this);
   messages_dock->setWidget(messages_widget);
-  QObject::connect(messages_widget, &MessagesWidget::titleChanged, messages_dock, &QDockWidget::setWindowTitle);
-  QObject::connect(messages_widget, &MessagesWidget::msgSelectionChanged, center_widget, &CenterWidget::setMessage);
+  connect(messages_widget, &MessagesWidget::titleChanged, messages_dock, &QDockWidget::setWindowTitle);
+  connect(messages_widget, &MessagesWidget::msgSelectionChanged, center_widget, &CenterWidget::setMessage);
 
   // right panel
   charts_widget = new ChartsWidget(this);
@@ -198,8 +198,8 @@ void MainWindow::createDockWidgets() {
   video_splitter->restoreState(settings.video_splitter_state);
   video_splitter->handle(1)->setEnabled(!can->liveStreaming());
   video_dock->setWidget(video_splitter);
-  QObject::connect(charts_widget, &ChartsWidget::toggleChartsDocking, this, &MainWindow::toggleChartsDocking);
-  QObject::connect(charts_widget, &ChartsWidget::showTip, video_widget, &VideoWidget::showThumbnail);
+  connect(charts_widget, &ChartsWidget::toggleChartsDocking, this, &MainWindow::toggleChartsDocking);
+  connect(charts_widget, &ChartsWidget::showTip, video_widget, &VideoWidget::showThumbnail);
 }
 
 void MainWindow::createStatusBar() {
@@ -216,7 +216,7 @@ void MainWindow::createStatusBar() {
 
 void MainWindow::createShortcuts() {
   auto shortcut = new QShortcut(QKeySequence(Qt::Key_Space), this, nullptr, nullptr, Qt::ApplicationShortcut);
-  QObject::connect(shortcut, &QShortcut::activated, this, []() {
+  connect(shortcut, &QShortcut::activated, this, []() {
     if (can) can->pause(!can->isPaused());
   });
   // TODO: add more shortcuts here.
@@ -323,7 +323,7 @@ void MainWindow::loadFromClipboard(SourceSet s, bool close_all) {
 
 void MainWindow::openStream(AbstractStream *stream, const QString &dbc_file) {
   if (can) {
-    QObject::connect(can, &QObject::destroyed, this, [=]() { startStream(stream, dbc_file); });
+    connect(can, &QObject::destroyed, this, [=]() { startStream(stream, dbc_file); });
     can->deleteLater();
   } else {
     startStream(stream, dbc_file);
@@ -358,7 +358,7 @@ void MainWindow::startStream(AbstractStream *stream, QString dbc_file) {
     newFile();
   }
 
-  QObject::connect(can, &AbstractStream::eventsMerged, this, &MainWindow::eventsMerged);
+  connect(can, &AbstractStream::eventsMerged, this, &MainWindow::eventsMerged);
 
   if (has_stream) {
     auto wait_dlg = new QProgressDialog(
@@ -366,9 +366,9 @@ void MainWindow::startStream(AbstractStream *stream, QString dbc_file) {
         tr("&Abort"), 0, 100, this);
     wait_dlg->setWindowModality(Qt::WindowModal);
     wait_dlg->setFixedSize(400, wait_dlg->sizeHint().height());
-    QObject::connect(wait_dlg, &QProgressDialog::canceled, this, &MainWindow::close);
-    QObject::connect(can, &AbstractStream::eventsMerged, wait_dlg, &QProgressDialog::deleteLater);
-    QObject::connect(this, &MainWindow::updateProgressBar, wait_dlg, [=](uint64_t cur, uint64_t total, bool success) {
+    connect(wait_dlg, &QProgressDialog::canceled, this, &MainWindow::close);
+    connect(can, &AbstractStream::eventsMerged, wait_dlg, &QProgressDialog::deleteLater);
+    connect(this, &MainWindow::updateProgressBar, wait_dlg, [=](uint64_t cur, uint64_t total, bool success) {
       wait_dlg->setValue((int)((cur / (double)total) * 100));
     });
   }
@@ -593,13 +593,13 @@ void MainWindow::setOption() {
 
 void MainWindow::findSimilarBits() {
   FindSimilarBitsDlg *dlg = new FindSimilarBitsDlg(this);
-  QObject::connect(dlg, &FindSimilarBitsDlg::openMessage, messages_widget, &MessagesWidget::selectMessage);
+  connect(dlg, &FindSimilarBitsDlg::openMessage, messages_widget, &MessagesWidget::selectMessage);
   dlg->show();
 }
 
 void MainWindow::findSignal() {
   FindSignalDlg *dlg = new FindSignalDlg(this);
-  QObject::connect(dlg, &FindSignalDlg::openMessage, messages_widget, &MessagesWidget::selectMessage);
+  connect(dlg, &FindSignalDlg::openMessage, messages_widget, &MessagesWidget::selectMessage);
   dlg->show();
 }
 

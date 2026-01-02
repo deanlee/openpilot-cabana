@@ -19,7 +19,7 @@ ReplayStream::ReplayStream(QObject *parent) : AbstractStream(parent) {
   op_prefix = std::make_unique<OpenpilotPrefix>();
 #endif
 
-  QObject::connect(&settings, &Settings::changed, this, [this]() {
+  connect(&settings, &Settings::changed, this, [this]() {
     if (replay) replay->setSegmentCacheLimit(settings.max_cached_minutes);
   });
 }
@@ -141,14 +141,14 @@ OpenReplayWidget::OpenReplayWidget(QWidget *parent) : AbstractOpenStreamWidget(p
   grid_layout->addItem(camera_layout, 1, 1);
 
   setMinimumWidth(550);
-  QObject::connect(browse_local_btn, &QPushButton::clicked, [=]() {
+  connect(browse_local_btn, &QPushButton::clicked, [=]() {
     QString dir = QFileDialog::getExistingDirectory(this, tr("Open Local Route"), settings.last_route_dir);
     if (!dir.isEmpty()) {
       route_edit->setText(dir);
       settings.last_route_dir = QFileInfo(dir).absolutePath();
     }
   });
-  QObject::connect(browse_remote_btn, &QPushButton::clicked, [this]() {
+  connect(browse_remote_btn, &QPushButton::clicked, [this]() {
     RoutesDialog route_dlg(this);
     if (route_dlg.exec()) {
       route_edit->setText(route_dlg.route());

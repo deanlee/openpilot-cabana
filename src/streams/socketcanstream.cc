@@ -86,8 +86,8 @@ OpenSocketCanWidget::OpenSocketCanWidget(QWidget *parent) : AbstractOpenStreamWi
 
   main_layout->addStretch(1);
 
-  QObject::connect(refresh, &QPushButton::clicked, this, &OpenSocketCanWidget::refreshDevices);
-  QObject::connect(device_edit, &QComboBox::currentTextChanged, this, [=]{ config.device = device_edit->currentText(); });
+  connect(refresh, &QPushButton::clicked, this, &OpenSocketCanWidget::refreshDevices);
+  connect(device_edit, &QComboBox::currentTextChanged, this, [=]{ config.device = device_edit->currentText(); });
 
   // Populate devices
   refreshDevices();

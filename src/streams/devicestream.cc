@@ -54,7 +54,7 @@ OpenDeviceWidget::OpenDeviceWidget(QWidget *parent) : AbstractOpenStreamWidget(p
   QFormLayout *form_layout = new QFormLayout(this);
   form_layout->addRow(msgq);
   form_layout->addRow(zmq, ip_address);
-  QObject::connect(group, qOverload<QAbstractButton *, bool>(&QButtonGroup::buttonToggled), [=](QAbstractButton *button, bool checked) {
+  connect(group, qOverload<QAbstractButton *, bool>(&QButtonGroup::buttonToggled), [=](QAbstractButton *button, bool checked) {
     ip_address->setEnabled(button == zmq && checked);
   });
   zmq->setChecked(true);

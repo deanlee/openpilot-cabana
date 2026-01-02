@@ -133,7 +133,7 @@ int TabBar::addTab(const QString &text) {
   int height = style()->pixelMetric(QStyle::PM_TabCloseIndicatorHeight, nullptr, btn);
   btn->setFixedSize({width, height});
   setTabButton(index, QTabBar::RightSide, btn);
-  QObject::connect(btn, &QToolButton::clicked, this, &TabBar::closeTabClicked);
+  connect(btn, &QToolButton::clicked, this, &TabBar::closeTabClicked);
   return index;
 }
 

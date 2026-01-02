@@ -37,9 +37,9 @@ LiveStream::LiveStream(QObject *parent) : AbstractStream(parent) {
   }
   stream_thread = new QThread(this);
 
-  QObject::connect(&settings, &Settings::changed, this, &LiveStream::startUpdateTimer);
-  QObject::connect(stream_thread, &QThread::started, [=]() { streamThread(); });
-  QObject::connect(stream_thread, &QThread::finished, stream_thread, &QThread::deleteLater);
+  connect(&settings, &Settings::changed, this, &LiveStream::startUpdateTimer);
+  connect(stream_thread, &QThread::started, [=]() { streamThread(); });
+  connect(stream_thread, &QThread::finished, stream_thread, &QThread::deleteLater);
 }
 
 LiveStream::~LiveStream() {
