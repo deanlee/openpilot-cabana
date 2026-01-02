@@ -1,26 +1,12 @@
 #pragma once
 
-#include <QList>
 #include <QSet>
-#include <QStyledItemDelegate>
 #include <QTableView>
 #include <tuple>
-#include <vector>
 
+#include "delegates/message_bytes.h"
 #include "models/message_bytes.h"
 #include "streams/abstractstream.h"
-
-class BinaryItemDelegate : public QStyledItemDelegate {
-public:
-  BinaryItemDelegate(QObject *parent);
-  void paint(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const override;
-  bool hasSignal(const QModelIndex &index, int dx, int dy, const cabana::Signal *sig) const;
-  void drawSignalCell(QPainter* painter, const QStyleOptionViewItem &option, const QModelIndex &index, const cabana::Signal *sig) const;
-
-  QFont small_font, hex_font;
-  std::array<QStaticText, 256> hex_text_table;
-  std::array<QStaticText, 2> bin_text_table;
-};
 
 class BinaryView : public QTableView {
   Q_OBJECT
@@ -57,9 +43,9 @@ private:
 
   QModelIndex anchor_index;
   MessageBytesModel *model;
-  BinaryItemDelegate *delegate;
+  MessageBytesDelegate *delegate;
   bool is_message_active = false;
   const cabana::Signal *resize_sig = nullptr;
   const cabana::Signal *hovered_sig = nullptr;
-  friend class BinaryItemDelegate;
+  friend class MessageBytesDelegate;
 };

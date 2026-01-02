@@ -15,7 +15,6 @@
 #include <QSocketNotifier>
 #include <QStaticText>
 #include <QStringBuilder>
-#include <QStyledItemDelegate>
 #include <QToolButton>
 
 #include "dbc/dbc.h"
@@ -47,11 +46,6 @@ private:
   double factor, log_min = 0, log_max = 1;
 };
 
-enum {
-  ColorsRole = Qt::UserRole + 1,
-  BytesRole = Qt::UserRole + 2
-};
-
 class SegmentTree {
 public:
   SegmentTree() = default;
@@ -63,25 +57,6 @@ private:
   void build_tree(const std::vector<QPointF> &arr, int n, int left, int right);
   std::vector<std::pair<double, double>> tree;
   int size = 0;
-};
-
-class MessageBytesDelegate : public QStyledItemDelegate {
-  Q_OBJECT
-public:
-  MessageBytesDelegate(QObject *parent, bool multiple_lines = false);
-  void paint(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const override;
-  QSize sizeHint(const QStyleOptionViewItem &option, const QModelIndex &index) const override;
-  bool multipleLines() const { return multiple_lines; }
-  void setMultipleLines(bool v) { multiple_lines = v; }
-  QSize sizeForBytes(int n) const;
-
-private:
-  std::array<QStaticText, 256> hex_text_table;
-  QFontMetrics font_metrics;
-  QFont fixed_font;
-  QSize byte_size = {};
-  bool multiple_lines = false;
-  int h_margin, v_margin;
 };
 
 class NameValidator : public QRegExpValidator {

@@ -5,6 +5,7 @@
 #include <QLineEdit>
 #include <QTableView>
 
+#include "delegates/message_table.h"
 #include "models/message_log.h"
 #include "streams/abstractstream.h"
 
@@ -36,5 +37,5 @@ private:
   QLineEdit *value_edit;
   QWidget *filters_widget;
   ToolButton *export_btn;
-  MessageBytesDelegate *delegate;
+  MessageTableDelegate *delegate;
 };

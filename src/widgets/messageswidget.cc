@@ -17,7 +17,7 @@ MessagesWidget::MessagesWidget(QWidget *parent) : menu(new QMenu(this)), QWidget
   main_layout->addWidget(createToolBar());
   // message table
   main_layout->addWidget(view = new MessageView(this));
-  view->setItemDelegate(delegate = new MessageBytesDelegate(view, settings.multiple_lines_hex));
+  view->setItemDelegate(delegate = new MessageTableDelegate(view, settings.multiple_lines_hex));
   view->setModel(model = new MessageTableModel(this));
   view->setHeader(header = new MessageViewHeader(this));
   view->setSortingEnabled(true);
@@ -190,7 +190,7 @@ void MessageView::dataChanged(const QModelIndex &topLeft, const QModelIndex &bot
 }
 
 void MessageView::updateBytesSectionSize() {
-  auto delegate = ((MessageBytesDelegate *)itemDelegate());
+  auto delegate = ((MessageTableDelegate *)itemDelegate());
   int max_bytes = 8;
   if (!delegate->multipleLines()) {
     for (const auto &[_, m] : can->snapshots()) {

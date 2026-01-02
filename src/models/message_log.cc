@@ -3,6 +3,7 @@
 #include <functional>
 
 #include "dbc/dbcmanager.h"
+#include "delegates/message_table.h"
 #include "streams/abstractstream.h"
 
 QVariant MessageLogModel::data(const QModelIndex &index, int role) const {

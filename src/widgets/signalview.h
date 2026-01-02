@@ -4,47 +4,15 @@
 #include <set>
 #include <utility>
 
-#include <QAbstractItemModel>
 #include <QLabel>
 #include <QLineEdit>
 #include <QSlider>
-#include <QStyledItemDelegate>
-#include <QTableWidget>
 #include <QTreeView>
 
 #include "chart/chartswidget.h"
 #include "chart/sparkline.h"
+#include "delegates/signal_tree.h"
 #include "models/signal_tree.h"
-
-class ValueDescriptionDlg : public QDialog {
-public:
-  ValueDescriptionDlg(const ValueDescription &descriptions, QWidget *parent);
-  ValueDescription val_desc;
-
-private:
-  struct Delegate : public QStyledItemDelegate {
-    Delegate(QWidget *parent) : QStyledItemDelegate(parent) {}
-    QWidget *createEditor(QWidget *parent, const QStyleOptionViewItem &option, const QModelIndex &index) const override;
-  };
-
-  void save();
-  QTableWidget *table;
-};
-
-class SignalItemDelegate : public QStyledItemDelegate {
-public:
-  SignalItemDelegate(QObject *parent);
-  void paint(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const override;
-  QSize sizeHint(const QStyleOptionViewItem &option, const QModelIndex &index) const override;
-  QWidget *createEditor(QWidget *parent, const QStyleOptionViewItem &option, const QModelIndex &index) const override;
-  void updateEditorGeometry(QWidget *editor, const QStyleOptionViewItem &option, const QModelIndex &index) const override;
-  void setModelData(QWidget *editor, QAbstractItemModel *model, const QModelIndex &index) const override;
-
-  QValidator *name_validator, *double_validator, *node_validator;
-  QFont label_font, minmax_font;
-  const int color_label_width = 18;
-  mutable QSize button_size;
-};
 
 class SignalView : public QFrame {
   Q_OBJECT
@@ -96,5 +64,5 @@ private:
   QLineEdit *filter_edit;
   ChartsWidget *charts;
   QLabel *signal_count_lb;
-  SignalItemDelegate *delegate;
+  SignalTreeDelegate *delegate;
 };
