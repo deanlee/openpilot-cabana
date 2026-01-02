@@ -37,7 +37,7 @@ public:
   void sort(int column, Qt::SortOrder order = Qt::AscendingOrder) override;
   void setFilterStrings(const QMap<int, QString> &filters);
   void showInactivemessages(bool show);
-  void msgsReceived(const std::set<MessageId> *new_msgs, bool has_new_ids);
+  void onSnapshotsUpdated(const std::set<MessageId> *ids, bool needs_rebuild);
   bool filterAndSort();
   void dbcModified();
 

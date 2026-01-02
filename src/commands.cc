@@ -66,7 +66,7 @@ void AddSigCommand::undo() {
 void AddSigCommand::redo() {
   if (auto msg = dbc()->msg(id); !msg) {
     msg_created = true;
-    dbc()->updateMsg(id, dbc()->newMsgName(id), can->lastMessage(id)->dat.size(), "", "");
+    dbc()->updateMsg(id, dbc()->newMsgName(id), can->snapshot(id)->dat.size(), "", "");
   }
   signal.name = dbc()->newSignalName(id);
   signal.max = std::pow(2, signal.size) - 1;

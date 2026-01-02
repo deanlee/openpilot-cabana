@@ -43,7 +43,7 @@ VideoWidget::VideoWidget(QWidget *parent) : QFrame(parent) {
   setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Maximum);
   QObject::connect(can, &AbstractStream::paused, this, &VideoWidget::updatePlayBtnState);
   QObject::connect(can, &AbstractStream::resume, this, &VideoWidget::updatePlayBtnState);
-  QObject::connect(can, &AbstractStream::msgsReceived, this, &VideoWidget::updateState);
+  QObject::connect(can, &AbstractStream::snapshotsUpdated, this, &VideoWidget::updateState);
   QObject::connect(can, &AbstractStream::seeking, this, &VideoWidget::updateState);
   QObject::connect(can, &AbstractStream::timeRangeChanged, this, &VideoWidget::timeRangeChanged);
 

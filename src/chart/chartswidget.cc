@@ -117,7 +117,7 @@ ChartsWidget::ChartsWidget(QWidget *parent) : QFrame(parent) {
   QObject::connect(auto_scroll_timer, &QTimer::timeout, this, &ChartsWidget::doAutoScroll);
   QObject::connect(dbc(), &DBCManager::DBCFileChanged, this, &ChartsWidget::removeAll);
   QObject::connect(can, &AbstractStream::eventsMerged, this, &ChartsWidget::eventsMerged);
-  QObject::connect(can, &AbstractStream::msgsReceived, this, &ChartsWidget::updateState);
+  QObject::connect(can, &AbstractStream::snapshotsUpdated, this, &ChartsWidget::updateState);
   QObject::connect(can, &AbstractStream::seeking, this, &ChartsWidget::updateState);
   QObject::connect(can, &AbstractStream::timeRangeChanged, this, &ChartsWidget::timeRangeChanged);
   QObject::connect(range_slider, &QSlider::valueChanged, this, &ChartsWidget::setMaxChartRange);
