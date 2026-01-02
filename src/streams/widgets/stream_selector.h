@@ -5,6 +5,7 @@
 #include <QLineEdit>
 #include <QTabWidget>
 
+#include "abstract.h"
 #include "streams/abstractstream.h"
 
 class StreamSelector : public QDialog {
@@ -12,7 +13,7 @@ class StreamSelector : public QDialog {
 
 public:
   StreamSelector(QWidget *parent = nullptr);
-  void addStreamWidget(AbstractOpenStreamWidget *w, const QString &title);
+  void addStreamWidget(AbstractStreamWidget *w, const QString &title);
   QString dbcFile() const { return dbc_file->text(); }
   AbstractStream *stream() const { return stream_; }
 

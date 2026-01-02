@@ -5,7 +5,6 @@
 #include <QtSerialBus/QCanBus>
 #include <QtSerialBus/QCanBusDevice>
 #include <QtSerialBus/QCanBusDeviceInfo>
-#include <QComboBox>
 
 #include "streams/livestream.h"
 
@@ -30,18 +29,4 @@ protected:
 
   SocketCanStreamConfig config = {};
   std::unique_ptr<QCanBusDevice> device;
-};
-
-class OpenSocketCanWidget : public AbstractOpenStreamWidget {
-  Q_OBJECT
-
-public:
-  OpenSocketCanWidget(QWidget *parent = nullptr);
-  AbstractStream *open() override;
-
-private:
-  void refreshDevices();
-
-  QComboBox *device_edit;
-  SocketCanStreamConfig config = {};
 };

@@ -1,14 +1,13 @@
-#include "streamselector.h"
+#include "stream_selector.h"
 
 #include <QFileDialog>
 #include <QLabel>
 #include <QPushButton>
 
-#include "streams/socketcanstream.h"
-#include "streams/devicestream.h"
-#include "streams/pandastream.h"
-#include "streams/replaystream.h"
-#include "streams/socketcanstream.h"
+#include "open_device.h"
+#include "open_panda.h"
+#include "open_replay.h"
+#include "open_socketcan.h"
 #include "settings.h"
 
 StreamSelector::StreamSelector(QWidget *parent) : QDialog(parent) {
@@ -44,7 +43,7 @@ StreamSelector::StreamSelector(QWidget *parent) : QDialog(parent) {
   connect(btn_box, &QDialogButtonBox::rejected, this, &QDialog::reject);
   connect(btn_box, &QDialogButtonBox::accepted, [=]() {
     setEnabled(false);
-    if (stream_ = ((AbstractOpenStreamWidget *)tab->currentWidget())->open(); stream_) {
+    if (stream_ = ((AbstractStreamWidget *)tab->currentWidget())->open(); stream_) {
       accept();
     }
     setEnabled(true);
@@ -58,8 +57,8 @@ StreamSelector::StreamSelector(QWidget *parent) : QDialog(parent) {
   });
 }
 
-void StreamSelector::addStreamWidget(AbstractOpenStreamWidget *w, const QString &title) {
+void StreamSelector::addStreamWidget(AbstractStreamWidget *w, const QString &title) {
   tab->addTab(w, title);
   auto open_btn = btn_box->button(QDialogButtonBox::Open);
-  connect(w, &AbstractOpenStreamWidget::enableOpenButton, open_btn, &QPushButton::setEnabled);
+  connect(w, &AbstractStreamWidget::enableOpenButton, open_btn, &QPushButton::setEnabled);
 }

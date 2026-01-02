@@ -25,7 +25,9 @@
 #include "tools/findsignal.h"
 #include "utils/export.h"
 #include "replay/include/http.h"
-#include "widgets/streamselector.h"
+#include "streams/abstractstream.h"
+#include "streams/widgets/stream_selector.h"
+
 
 MainWindow::MainWindow(AbstractStream *stream, const QString &dbc_file) : QMainWindow() {
   loadFingerprints();
