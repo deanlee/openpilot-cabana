@@ -1,111 +1,22 @@
 #include "utils/util.h"
 
-#include <algorithm>
-#include <csignal>
-#include <limits>
-#include <memory>
-#include <string>
-#include <sys/socket.h>
 #include <unistd.h>
 
+#include <QApplication>
 #include <QColor>
 #include <QDateTime>
 #include <QDir>
 #include <QLocale>
+#include <QPalette>
 #include <QPixmapCache>
 #include <QSurfaceFormat>
 #include <QFileInfo>
+#include <QStyle>
 #include <QTextStream>
 #include <QtXml/QDomDocument>
+#include <QWidget>
 #include "common/util.h"
-
-// SegmentTree
-
-void SegmentTree::build(const std::vector<QPointF> &arr) {
-  size = arr.size();
-  tree.resize(4 * size);  // size of the tree is 4 times the size of the array
-  if (size > 0) {
-    build_tree(arr, 1, 0, size - 1);
-  }
-}
-
-void SegmentTree::build_tree(const std::vector<QPointF> &arr, int n, int left, int right) {
-  if (left == right) {
-    const double y = arr[left].y();
-    tree[n] = {y, y};
-  } else {
-    const int mid = (left + right) >> 1;
-    build_tree(arr, 2 * n, left, mid);
-    build_tree(arr, 2 * n + 1, mid + 1, right);
-    tree[n] = {std::min(tree[2 * n].first, tree[2 * n + 1].first), std::max(tree[2 * n].second, tree[2 * n + 1].second)};
-  }
-}
-
-std::pair<double, double> SegmentTree::get_minmax(int n, int left, int right, int range_left, int range_right) const {
-  if (range_left > right || range_right < left)
-    return {std::numeric_limits<double>::max(), std::numeric_limits<double>::lowest()};
-  if (range_left <= left && range_right >= right)
-    return tree[n];
-  int mid = (left + right) >> 1;
-  auto l = get_minmax(2 * n, left, mid, range_left, range_right);
-  auto r = get_minmax(2 * n + 1, mid + 1, right, range_left, range_right);
-  return {std::min(l.first, r.first), std::max(l.second, r.second)};
-}
-
-// TabBar
-
-int TabBar::addTab(const QString &text) {
-  int index = QTabBar::addTab(text);
-  QToolButton *btn = new ToolButton("x", tr("Close Tab"));
-  int width = style()->pixelMetric(QStyle::PM_TabCloseIndicatorWidth, nullptr, btn);
-  int height = style()->pixelMetric(QStyle::PM_TabCloseIndicatorHeight, nullptr, btn);
-  btn->setFixedSize({width, height});
-  setTabButton(index, QTabBar::RightSide, btn);
-  connect(btn, &QToolButton::clicked, this, &TabBar::closeTabClicked);
-  return index;
-}
-
-void TabBar::closeTabClicked() {
-  QObject *object = sender();
-  for (int i = 0; i < count(); ++i) {
-    if (tabButton(i, QTabBar::RightSide) == object) {
-      emit tabCloseRequested(i);
-      break;
-    }
-  }
-}
-
-// UnixSignalHandler
-
-UnixSignalHandler::UnixSignalHandler(QObject *parent) : QObject(nullptr) {
-  if (::socketpair(AF_UNIX, SOCK_STREAM, 0, sig_fd)) {
-    qFatal("Couldn't create TERM socketpair");
-  }
-
-  sn = new QSocketNotifier(sig_fd[1], QSocketNotifier::Read, this);
-  connect(sn, &QSocketNotifier::activated, this, &UnixSignalHandler::handleSigTerm);
-  std::signal(SIGINT, signalHandler);
-  std::signal(SIGTERM, UnixSignalHandler::signalHandler);
-}
-
-UnixSignalHandler::~UnixSignalHandler() {
-  ::close(sig_fd[0]);
-  ::close(sig_fd[1]);
-}
-
-void UnixSignalHandler::signalHandler(int s) {
-  ::write(sig_fd[0], &s, sizeof(s));
-}
-
-void UnixSignalHandler::handleSigTerm() {
-  sn->setEnabled(false);
-  int tmp;
-  ::read(sig_fd[1], &tmp, sizeof(tmp));
-
-  printf("\nexiting...\n");
-  qApp->closeAllWindows();
-  qApp->exit();
-}
+#include "settings.h"
 
 // NameValidator
 
@@ -193,22 +104,6 @@ QString formatSeconds(double sec, bool include_milliseconds, bool absolute_time)
 }
 
 }  // namespace utils
-
-int num_decimals(double num) {
-  const QString string = QString::number(num);
-  auto dot_pos = string.indexOf('.');
-  return dot_pos == -1 ? 0 : string.size() - dot_pos - 1;
-}
-
-QString signalToolTip(const cabana::Signal *sig) {
-  return QObject::tr(R"(
-    %1<br /><span font-size:small">
-    Start Bit: %2 Size: %3<br />
-    MSB: %4 LSB: %5<br />
-    Little Endian: %6 Signed: %7</span>
-  )").arg(sig->name).arg(sig->start_bit).arg(sig->size).arg(sig->msb).arg(sig->lsb)
-     .arg(sig->is_little_endian ? "Y" : "N").arg(sig->is_signed ? "Y" : "N");
-}
 
 void setSurfaceFormat() {
   QSurfaceFormat fmt;

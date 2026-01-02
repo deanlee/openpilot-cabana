@@ -1,6 +1,7 @@
-#include <QApplication>
-
 #include "commands.h"
+
+#include <QApplication>
+#include <cmath>
 
 // EditMsgCommand
 

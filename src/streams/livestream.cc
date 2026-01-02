@@ -1,12 +1,14 @@
 #include "streams/livestream.h"
 
 #include <QThread>
+#include <QTimerEvent>
 #include <algorithm>
 #include <fstream>
 #include <memory>
 
 #include "common/timing.h"
 #include "common/util.h"
+#include "settings.h"
 
 struct LiveStream::Logger {
   Logger() : start_ts(seconds_since_epoch()), segment_num(-1) {}

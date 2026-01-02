@@ -5,6 +5,7 @@
 #include <QLineEdit>
 #include <QTableView>
 
+#include "common_widgets.h"
 #include "delegates/message_table.h"
 #include "models/message_log.h"
 #include "streams/abstractstream.h"

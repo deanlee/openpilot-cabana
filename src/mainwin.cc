@@ -4,6 +4,7 @@
 #include <iostream>
 #include <string>
 
+#include <QApplication>
 #include <QClipboard>
 #include <QDesktopWidget>
 #include <QFile>

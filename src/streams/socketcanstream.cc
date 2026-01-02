@@ -1,5 +1,6 @@
 #include "streams/socketcanstream.h"
 
+#include <QApplication>
 #include <QDebug>
 #include <QFormLayout>
 #include <QHBoxLayout>

@@ -19,6 +19,7 @@
 #include <QWindow>
 
 #include "chart/chartswidget.h"
+#include "settings.h"
 
 // ChartAxisElement's padding is 4 (https://codebrowser.dev/qt5/qtcharts/src/charts/axis/chartaxiselement_p.h.html)
 const int AXIS_X_TOP_MARGIN = 4;

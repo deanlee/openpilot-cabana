@@ -1,6 +1,7 @@
 #include "message_bytes.h"
 
 #include <algorithm>
+#include <cmath>
 #include <QDebug>
 
 #include "streams/abstractstream.h"
@@ -142,4 +143,14 @@ QVariant MessageBytesModel::headerData(int section, Qt::Orientation orientation,
 QVariant MessageBytesModel::data(const QModelIndex &index, int role) const {
   auto item = (const MessageBytesModel::Item *)index.internalPointer();
   return role == Qt::ToolTipRole && item && !item->sigs.empty() ? signalToolTip(item->sigs.back()) : QVariant();
+}
+
+QString signalToolTip(const cabana::Signal *sig) {
+  return QObject::tr(R"(
+    %1<br /><span font-size:small">
+    Start Bit: %2 Size: %3<br />
+    MSB: %4 LSB: %5<br />
+    Little Endian: %6 Signed: %7</span>
+  )").arg(sig->name).arg(sig->start_bit).arg(sig->size).arg(sig->msb).arg(sig->lsb)
+     .arg(sig->is_little_endian ? "Y" : "N").arg(sig->is_signed ? "Y" : "N");
 }

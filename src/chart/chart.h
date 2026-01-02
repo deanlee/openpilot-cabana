@@ -17,6 +17,7 @@ using namespace QtCharts;
 #include "chart/tiplabel.h"
 #include "dbc/dbcmanager.h"
 #include "streams/abstractstream.h"
+#include "utils/segment_tree.h"
 
 enum class SeriesType {
   Line = 0,

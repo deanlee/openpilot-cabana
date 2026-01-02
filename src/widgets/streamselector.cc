@@ -9,6 +9,7 @@
 #include "streams/pandastream.h"
 #include "streams/replaystream.h"
 #include "streams/socketcanstream.h"
+#include "settings.h"
 
 StreamSelector::StreamSelector(QWidget *parent) : QDialog(parent) {
   setWindowTitle(tr("Open stream"));

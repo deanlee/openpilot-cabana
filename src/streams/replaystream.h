@@ -1,6 +1,9 @@
 #pragma once
 
 #include <QCheckBox>
+#include <QLineEdit>
+#include <QPushButton>
+#include <QDialog>
 #include <algorithm>
 #include <memory>
 #include <set>

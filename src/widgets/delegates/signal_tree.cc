@@ -1,12 +1,14 @@
 #include "signal_tree.h"
 
 #include <QCompleter>
+#include <QComboBox>
 #include <QDialogButtonBox>
 #include <QHBoxLayout>
 #include <QHeaderView>
 #include <QLineEdit>
 #include <QPainterPath>
 #include <QPushButton>
+#include <QSpinBox>
 
 #include "models/signal_tree.h"
 

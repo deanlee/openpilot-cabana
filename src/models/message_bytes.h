@@ -47,3 +47,5 @@ class MessageBytesModel : public QAbstractTableModel {
   int row_count = 0;
   const int column_count = 9;
 };
+
+QString signalToolTip(const cabana::Signal *sig);

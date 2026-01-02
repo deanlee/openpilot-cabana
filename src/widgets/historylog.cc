@@ -5,6 +5,7 @@
 #include <QVBoxLayout>
 
 #include "commands.h"
+#include "settings.h"
 #include "utils/export.h"
 
 QSize HeaderView::sectionSizeFromContents(int logicalIndex) const {

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <QButtonGroup>
+#include <QLineEdit>
 #include "streams/livestream.h"
 
 class DeviceStream : public LiveStream {

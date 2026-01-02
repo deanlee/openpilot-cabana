@@ -7,11 +7,16 @@
 #include <QMenu>
 #include <QMouseEvent>
 #include <QPainter>
+#include <QStyle>
 #include <QStyleOptionSlider>
+#include <QToolBar>
+#include <QToolButton>
 #include <QVBoxLayout>
 #include <QtConcurrent>
 
+#include "common_widgets.h"
 #include "tools/routeinfo.h"
+#include "settings.h"
 
 const int MIN_VIDEO_HEIGHT = 100;
 const int THUMBNAIL_MARGIN = 3;

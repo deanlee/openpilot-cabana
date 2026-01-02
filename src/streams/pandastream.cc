@@ -1,5 +1,6 @@
 #include "streams/pandastream.h"
 
+#include <QApplication>
 #include <QDebug>
 #include <QCheckBox>
 #include <QLabel>

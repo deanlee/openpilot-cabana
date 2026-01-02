@@ -4,6 +4,9 @@
 #include <QSplitter>
 #include <QTabWidget>
 #include <QTextEdit>
+#include <QSpinBox>
+
+
 #include <set>
 
 #include "binaryview.h"

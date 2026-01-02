@@ -1,5 +1,6 @@
 #include "messageswidget.h"
 
+#include <QApplication>
 #include <QCheckBox>
 #include <QHBoxLayout>
 #include <QPainter>
@@ -9,6 +10,8 @@
 #include <QVBoxLayout>
 
 #include "commands.h"
+#include "common_widgets.h"
+#include "settings.h"
 
 MessagesWidget::MessagesWidget(QWidget *parent) : menu(new QMenu(this)), QWidget(parent) {
   QVBoxLayout *main_layout = new QVBoxLayout(this);

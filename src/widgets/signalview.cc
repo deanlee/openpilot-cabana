@@ -1,5 +1,6 @@
 #include "signalview.h"
 
+#include <QApplication>
 #include <QHBoxLayout>
 #include <QHeaderView>
 #include <QPainter>
@@ -9,6 +10,7 @@
 #include <QVBoxLayout>
 
 #include "commands.h"
+#include "settings.h"
 
 SignalView::SignalView(ChartsWidget *charts, QWidget *parent) : charts(charts), QFrame(parent) {
   setFrameStyle(QFrame::StyledPanel | QFrame::Plain);

@@ -4,6 +4,7 @@
 
 #include "commands.h"
 #include "dbc/dbcmanager.h"
+#include "message_bytes.h"
 
 QString signalTypeToString(cabana::Signal::Type type) {
   if (type == cabana::Signal::Type::Multiplexor) return "Multiplexor Signal";

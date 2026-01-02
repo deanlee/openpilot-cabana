@@ -8,6 +8,7 @@
 #include <QToolTip>
 
 #include "commands.h"
+#include "settings.h"
 
 const int CELL_HEIGHT = 36;
 inline int get_bit_pos(const QModelIndex &index) { return flipBitPos(index.row() * 8 + index.column()); }

@@ -1,6 +1,8 @@
 #include "streams/replaystream.h"
 
+#include <QApplication>
 #include <QLabel>
+#include <QLineEdit>
 #include <QFileDialog>
 #include <QGridLayout>
 #include <QMessageBox>
@@ -8,6 +10,7 @@
 
 #include "common/timing.h"
 #include "common/util.h"
+#include "settings.h"
 #include "streams/routes.h"
 
 ReplayStream::ReplayStream(QObject *parent) : AbstractStream(parent) {

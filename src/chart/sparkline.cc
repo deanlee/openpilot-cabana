@@ -1,5 +1,6 @@
 #include "chart/sparkline.h"
 
+#include <QApplication>
 #include <algorithm>
 #include <limits>
 #include <QPainter>

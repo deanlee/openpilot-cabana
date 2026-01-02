@@ -10,6 +10,7 @@
 #include <QtConcurrent>
 
 #include "chart/chart.h"
+#include "settings.h"
 
 const int MAX_COLUMN_COUNT = 4;
 const int CHART_SPACING = 4;

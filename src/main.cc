@@ -2,10 +2,12 @@
 #include <QCommandLineParser>
 
 #include "mainwin.h"
+#include "settings.h"
 #include "streams/devicestream.h"
 #include "streams/pandastream.h"
 #include "streams/replaystream.h"
 #include "streams/socketcanstream.h"
+#include "utils/system_signal_handler.h"
 
 static AbstractStream* createStream(QCommandLineParser& p, QApplication* app) {
   if (p.isSet("msgq") || p.isSet("zmq"))
@@ -42,7 +44,7 @@ int main(int argc, char* argv[]) {
   app.setApplicationDisplayName("Cabana");
   app.setWindowIcon(QIcon(":cabana-icon.png"));
 
-  UnixSignalHandler signalHandler;
+  SystemSignalHandler signal_handler;
   utils::setTheme(settings.theme);
 
   QCommandLineParser parser;

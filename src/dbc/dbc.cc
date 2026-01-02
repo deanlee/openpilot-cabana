@@ -1,8 +1,15 @@
 #include "dbc/dbc.h"
 
 #include <algorithm>
+#include <cmath>
 
 #include "utils/util.h"
+
+static int num_decimals(double num) {
+  const QString string = QString::number(num);
+  auto dot_pos = string.indexOf('.');
+  return dot_pos == -1 ? 0 : string.size() - dot_pos - 1;
+}
 
 // cabana::Msg
 
@@ -130,7 +137,7 @@ void cabana::Signal::update() {
   }
 
   float h = 19 * (float)lsb / 64.0;
-  h = fmod(h, 1.0);
+  h = std::fmod(h, 1.0);
   size_t hash = qHash(name);
   float s = 0.25 + 0.25 * (float)(hash & 0xff) / 255.0;
   float v = 0.75 + 0.25 * (float)((hash >> 8) & 0xff) / 255.0;
@@ -141,7 +148,7 @@ void cabana::Signal::update() {
 
 QString cabana::Signal::formatValue(double value, bool with_unit) const {
   // Show enum string
-  int64_t raw_value = round((value - offset) / factor);
+  int64_t raw_value = std::round((value - offset) / factor);
   for (const auto &[val, desc] : val_desc) {
     if (std::abs(raw_value - val) < 1e-6) {
       return desc;

@@ -1,8 +1,5 @@
 #pragma once
 
-#include <unordered_map>
-#include <utility>
-
 #include <QGridLayout>
 #include <QLabel>
 #include <QScrollArea>
@@ -10,8 +7,11 @@
 #include <QToolBar>
 #include <QUndoCommand>
 #include <QUndoStack>
+#include <unordered_map>
+#include <utility>
 
 #include "chart/signalselector.h"
+#include "common_widgets.h"
 #include "dbc/dbcmanager.h"
 #include "streams/abstractstream.h"
 

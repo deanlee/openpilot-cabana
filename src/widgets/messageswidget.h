@@ -3,6 +3,7 @@
 #include <QHeaderView>
 #include <QLineEdit>
 #include <QMenu>
+#include <QPushButton>
 #include <QTimer>
 #include <QTreeView>
 #include <QWheelEvent>

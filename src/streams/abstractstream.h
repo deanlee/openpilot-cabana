@@ -12,6 +12,7 @@
 #include <vector>
 
 #include <QDateTime>
+#include <QWidget>
 
 #include "cereal/messaging/messaging.h"
 #include "candata.h"

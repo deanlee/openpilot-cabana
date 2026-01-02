@@ -5,6 +5,7 @@
 
 #include "cereal/services.h"
 
+#include <QApplication>
 #include <QButtonGroup>
 #include <QFormLayout>
 #include <QRadioButton>

@@ -1,6 +1,13 @@
 #include "message_table.h"
 
+#include <cmath>
+
 #include "widgets/messageswidget.h"
+#include "settings.h"
+
+inline QString toHexString(int value) { 
+  return QString("0x%1").arg(QString::number(value, 16).toUpper(), 2, '0'); 
+}
 
 QVariant MessageTableModel::headerData(int section, Qt::Orientation orientation, int role) const {
   if (orientation == Qt::Horizontal && role == Qt::DisplayRole) {
