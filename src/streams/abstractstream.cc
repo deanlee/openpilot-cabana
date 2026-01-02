@@ -15,11 +15,11 @@ AbstractStream::AbstractStream(QObject *parent) : QObject(parent) {
   assert(parent != nullptr);
   event_buffer_ = std::make_unique<MonotonicBuffer>(EVENT_NEXT_BUFFER_SIZE);
 
-  QObject::connect(this, &AbstractStream::privateUpdateLastMsgsSignal, this, &AbstractStream::commitSnapshots, Qt::QueuedConnection);
-  QObject::connect(this, &AbstractStream::seekedTo, this, &AbstractStream::updateSnapshotsTo);
-  QObject::connect(this, &AbstractStream::seeking, this, [this](double sec) { current_sec_ = sec; });
-  QObject::connect(dbc(), &DBCManager::DBCFileChanged, this, &AbstractStream::updateMasks);
-  QObject::connect(dbc(), &DBCManager::maskUpdated, this, &AbstractStream::updateMasks);
+  connect(this, &AbstractStream::privateUpdateLastMsgsSignal, this, &AbstractStream::commitSnapshots, Qt::QueuedConnection);
+  connect(this, &AbstractStream::seekedTo, this, &AbstractStream::updateSnapshotsTo);
+  connect(this, &AbstractStream::seeking, this, [this](double sec) { current_sec_ = sec; });
+  connect(dbc(), &DBCManager::DBCFileChanged, this, &AbstractStream::updateMasks);
+  connect(dbc(), &DBCManager::maskUpdated, this, &AbstractStream::updateMasks);
 }
 
 void AbstractStream::updateMasks() {

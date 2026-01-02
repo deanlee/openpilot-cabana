@@ -34,8 +34,8 @@ BinaryView::BinaryView(QWidget *parent) : QTableView(parent) {
   setMouseTracking(true);
   setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 
-  QObject::connect(dbc(), &DBCManager::DBCFileChanged, this, &BinaryView::refresh);
-  QObject::connect(UndoStack::instance(), &QUndoStack::indexChanged, this, &BinaryView::refresh);
+  connect(dbc(), &DBCManager::DBCFileChanged, this, &BinaryView::refresh);
+  connect(UndoStack::instance(), &QUndoStack::indexChanged, this, &BinaryView::refresh);
 
   addShortcuts();
   setWhatsThis(R"(
@@ -60,9 +60,9 @@ void BinaryView::addShortcuts() {
   QShortcut *shortcut_delete_x = new QShortcut(QKeySequence(Qt::Key_X), this);
   QShortcut *shortcut_delete_backspace = new QShortcut(QKeySequence(Qt::Key_Backspace), this);
   QShortcut *shortcut_delete_delete = new QShortcut(QKeySequence(Qt::Key_Delete), this);
-  QObject::connect(shortcut_delete_delete, &QShortcut::activated, shortcut_delete_x, &QShortcut::activated);
-  QObject::connect(shortcut_delete_backspace, &QShortcut::activated, shortcut_delete_x, &QShortcut::activated);
-  QObject::connect(shortcut_delete_x, &QShortcut::activated, [=]{
+  connect(shortcut_delete_delete, &QShortcut::activated, shortcut_delete_x, &QShortcut::activated);
+  connect(shortcut_delete_backspace, &QShortcut::activated, shortcut_delete_x, &QShortcut::activated);
+  connect(shortcut_delete_x, &QShortcut::activated, [=]{
     if (hovered_sig != nullptr) {
       UndoStack::push(new RemoveSigCommand(model->msg_id, hovered_sig));
       hovered_sig = nullptr;
@@ -71,7 +71,7 @@ void BinaryView::addShortcuts() {
 
   // Change endianness (e)
   QShortcut *shortcut_endian = new QShortcut(QKeySequence(Qt::Key_E), this);
-  QObject::connect(shortcut_endian, &QShortcut::activated, [=]{
+  connect(shortcut_endian, &QShortcut::activated, [=]{
     if (hovered_sig != nullptr) {
       cabana::Signal s = *hovered_sig;
       s.is_little_endian = !s.is_little_endian;
@@ -81,7 +81,7 @@ void BinaryView::addShortcuts() {
 
   // Change signedness (s)
   QShortcut *shortcut_sign = new QShortcut(QKeySequence(Qt::Key_S), this);
-  QObject::connect(shortcut_sign, &QShortcut::activated, [=]{
+  connect(shortcut_sign, &QShortcut::activated, [=]{
     if (hovered_sig != nullptr) {
       cabana::Signal s = *hovered_sig;
       s.is_signed = !s.is_signed;
@@ -93,9 +93,9 @@ void BinaryView::addShortcuts() {
   QShortcut *shortcut_plot = new QShortcut(QKeySequence(Qt::Key_P), this);
   QShortcut *shortcut_plot_g = new QShortcut(QKeySequence(Qt::Key_G), this);
   QShortcut *shortcut_plot_c = new QShortcut(QKeySequence(Qt::Key_C), this);
-  QObject::connect(shortcut_plot_g, &QShortcut::activated, shortcut_plot, &QShortcut::activated);
-  QObject::connect(shortcut_plot_c, &QShortcut::activated, shortcut_plot, &QShortcut::activated);
-  QObject::connect(shortcut_plot, &QShortcut::activated, [=]{
+  connect(shortcut_plot_g, &QShortcut::activated, shortcut_plot, &QShortcut::activated);
+  connect(shortcut_plot_c, &QShortcut::activated, shortcut_plot, &QShortcut::activated);
+  connect(shortcut_plot, &QShortcut::activated, [=]{
     if (hovered_sig != nullptr) {
       emit showChart(model->msg_id, hovered_sig, true, false);
     }

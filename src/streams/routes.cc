@@ -60,16 +60,16 @@ RoutesDialog::RoutesDialog(QWidget *parent) : QDialog(parent), route_requester_(
   period_selector_->addItem(tr("Preserved"), -1);
 
   // Connect signals and slots
-  QObject::connect(route_requester_, &HttpRequest::requestDone, this, &RoutesDialog::parseRouteList);
+  connect(route_requester_, &HttpRequest::requestDone, this, &RoutesDialog::parseRouteList);
   connect(device_list_, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &RoutesDialog::fetchRoutes);
   connect(period_selector_, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &RoutesDialog::fetchRoutes);
   connect(route_list_, &QListWidget::itemDoubleClicked, this, &QDialog::accept);
-  QObject::connect(button_box, &QDialogButtonBox::accepted, this, &QDialog::accept);
-  QObject::connect(button_box, &QDialogButtonBox::rejected, this, &QDialog::reject);
+  connect(button_box, &QDialogButtonBox::accepted, this, &QDialog::accept);
+  connect(button_box, &QDialogButtonBox::rejected, this, &QDialog::reject);
 
   // Send request to fetch devices
   HttpRequest *http = new HttpRequest(this, false);
-  QObject::connect(http, &HttpRequest::requestDone, this, &RoutesDialog::parseDeviceList);
+  connect(http, &HttpRequest::requestDone, this, &RoutesDialog::parseDeviceList);
   http->sendRequest(CommaApi::BASE_URL + "/v1/me/devices/");
 }
 

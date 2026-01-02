@@ -39,20 +39,20 @@ MessagesWidget::MessagesWidget(QWidget *parent) : menu(new QMenu(this)), QWidget
   header->setContextMenuPolicy(Qt::CustomContextMenu);
 
   // signals/slots
-  QObject::connect(menu, &QMenu::aboutToShow, this, &MessagesWidget::menuAboutToShow);
-  QObject::connect(header, &MessageViewHeader::customContextMenuRequested, this, &MessagesWidget::headerContextMenuEvent);
-  QObject::connect(view->horizontalScrollBar(), &QScrollBar::valueChanged, header, &MessageViewHeader::updateHeaderPositions);
-  QObject::connect(can, &AbstractStream::snapshotsUpdated, model, &MessageListModel::onSnapshotsUpdated);
-  QObject::connect(dbc(), &DBCManager::DBCFileChanged, model, &MessageListModel::dbcModified);
-  QObject::connect(UndoStack::instance(), &QUndoStack::indexChanged, model, &MessageListModel::dbcModified);
-  QObject::connect(model, &MessageListModel::modelReset, [this]() {
+  connect(menu, &QMenu::aboutToShow, this, &MessagesWidget::menuAboutToShow);
+  connect(header, &MessageViewHeader::customContextMenuRequested, this, &MessagesWidget::headerContextMenuEvent);
+  connect(view->horizontalScrollBar(), &QScrollBar::valueChanged, header, &MessageViewHeader::updateHeaderPositions);
+  connect(can, &AbstractStream::snapshotsUpdated, model, &MessageListModel::onSnapshotsUpdated);
+  connect(dbc(), &DBCManager::DBCFileChanged, model, &MessageListModel::dbcModified);
+  connect(UndoStack::instance(), &QUndoStack::indexChanged, model, &MessageListModel::dbcModified);
+  connect(model, &MessageListModel::modelReset, [this]() {
     if (current_msg_id) {
       selectMessage(*current_msg_id);
     }
     view->updateBytesSectionSize();
     updateTitle();
   });
-  QObject::connect(view->selectionModel(), &QItemSelectionModel::currentChanged, [=](const QModelIndex &current, const QModelIndex &previous) {
+  connect(view->selectionModel(), &QItemSelectionModel::currentChanged, [=](const QModelIndex &current, const QModelIndex &previous) {
     if (current.isValid() && current.row() < model->items_.size()) {
       const auto &id = model->items_[current.row()].id;
       if (!current_msg_id || id != *current_msg_id) {
@@ -93,9 +93,9 @@ QWidget *MessagesWidget::createToolBar() {
   view_button->setStyleSheet("QToolButton::menu-indicator { image: none; }");
   layout->addWidget(view_button);
 
-  QObject::connect(suppress_add, &QPushButton::clicked, this, &MessagesWidget::suppressHighlighted);
-  QObject::connect(suppress_clear, &QPushButton::clicked, this, &MessagesWidget::suppressHighlighted);
-  QObject::connect(suppress_defined_signals, &QCheckBox::stateChanged, can, &AbstractStream::suppressDefinedSignals);
+  connect(suppress_add, &QPushButton::clicked, this, &MessagesWidget::suppressHighlighted);
+  connect(suppress_clear, &QPushButton::clicked, this, &MessagesWidget::suppressHighlighted);
+  connect(suppress_defined_signals, &QCheckBox::stateChanged, can, &AbstractStream::suppressDefinedSignals);
 
   suppressHighlighted();
   return toolbar;

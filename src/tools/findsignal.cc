@@ -157,15 +157,15 @@ FindSignalDlg::FindSignalDlg(QWidget *parent) : QDialog(parent, Qt::WindowFlags(
   main_layout->addWidget(stats_label = new QLabel());
 
   setMinimumSize({700, 650});
-  QObject::connect(search_btn, &QPushButton::clicked, this, &FindSignalDlg::search);
-  QObject::connect(undo_btn, &QPushButton::clicked, model, &FindSignalModel::undo);
-  QObject::connect(model, &QAbstractItemModel::modelReset, this, &FindSignalDlg::modelReset);
-  QObject::connect(reset_btn, &QPushButton::clicked, model, &FindSignalModel::reset);
-  QObject::connect(view, &QTableView::customContextMenuRequested, this, &FindSignalDlg::customMenuRequested);
-  QObject::connect(view, &QTableView::doubleClicked, [this](const QModelIndex &index) {
+  connect(search_btn, &QPushButton::clicked, this, &FindSignalDlg::search);
+  connect(undo_btn, &QPushButton::clicked, model, &FindSignalModel::undo);
+  connect(model, &QAbstractItemModel::modelReset, this, &FindSignalDlg::modelReset);
+  connect(reset_btn, &QPushButton::clicked, model, &FindSignalModel::reset);
+  connect(view, &QTableView::customContextMenuRequested, this, &FindSignalDlg::customMenuRequested);
+  connect(view, &QTableView::doubleClicked, [this](const QModelIndex &index) {
     if (index.isValid()) emit openMessage(model->filtered_signals[index.row()].id);
   });
-  QObject::connect(compare_cb, qOverload<int>(&QComboBox::currentIndexChanged), [=](int index) {
+  connect(compare_cb, qOverload<int>(&QComboBox::currentIndexChanged), [=](int index) {
     to_label->setVisible(index == compare_cb->count() - 1);
     value2->setVisible(index == compare_cb->count() - 1);
   });

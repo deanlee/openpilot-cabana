@@ -112,7 +112,7 @@ SettingsDlg::SettingsDlg(QWidget *parent) : QDialog(parent) {
   main_layout->addWidget(buttonBox);
   setFixedSize(400, sizeHint().height());
 
-  QObject::connect(browse_btn, &QPushButton::clicked, [this]() {
+  connect(browse_btn, &QPushButton::clicked, [this]() {
     QString fn = QFileDialog::getExistingDirectory(
         this, tr("Log File Location"),
         QStandardPaths::writableLocation(QStandardPaths::HomeLocation),
@@ -121,8 +121,8 @@ SettingsDlg::SettingsDlg(QWidget *parent) : QDialog(parent) {
       log_path->setText(fn);
     }
   });
-  QObject::connect(buttonBox, &QDialogButtonBox::rejected, this, &QDialog::reject);
-  QObject::connect(buttonBox, &QDialogButtonBox::accepted, this, &SettingsDlg::save);
+  connect(buttonBox, &QDialogButtonBox::rejected, this, &QDialog::reject);
+  connect(buttonBox, &QDialogButtonBox::accepted, this, &SettingsDlg::save);
 }
 
 void SettingsDlg::save() {

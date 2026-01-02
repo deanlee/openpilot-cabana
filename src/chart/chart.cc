@@ -48,14 +48,14 @@ ChartView::ChartView(const std::pair<double, double> &x_range, ChartsWidget *par
   setTheme(utils::isDarkTheme() ? QChart::QChart::ChartThemeDark : QChart::ChartThemeLight);
   signal_value_font.setPointSize(9);
 
-  QObject::connect(axis_y, &QValueAxis::rangeChanged, this, &ChartView::resetChartCache);
-  QObject::connect(axis_y, &QAbstractAxis::titleTextChanged, this, &ChartView::resetChartCache);
-  QObject::connect(window()->windowHandle(), &QWindow::screenChanged, this, &ChartView::resetChartCache);
+  connect(axis_y, &QValueAxis::rangeChanged, this, &ChartView::resetChartCache);
+  connect(axis_y, &QAbstractAxis::titleTextChanged, this, &ChartView::resetChartCache);
+  connect(window()->windowHandle(), &QWindow::screenChanged, this, &ChartView::resetChartCache);
 
-  QObject::connect(dbc(), &DBCManager::signalRemoved, this, &ChartView::signalRemoved);
-  QObject::connect(dbc(), &DBCManager::signalUpdated, this, &ChartView::signalUpdated);
-  QObject::connect(dbc(), &DBCManager::msgRemoved, this, &ChartView::msgRemoved);
-  QObject::connect(dbc(), &DBCManager::msgUpdated, this, &ChartView::msgUpdated);
+  connect(dbc(), &DBCManager::signalRemoved, this, &ChartView::signalRemoved);
+  connect(dbc(), &DBCManager::signalUpdated, this, &ChartView::signalUpdated);
+  connect(dbc(), &DBCManager::msgRemoved, this, &ChartView::msgRemoved);
+  connect(dbc(), &DBCManager::msgUpdated, this, &ChartView::msgUpdated);
 }
 
 void ChartView::createToolButtons() {
@@ -92,9 +92,9 @@ void ChartView::createToolButtons() {
   manage_btn_proxy->setZValue(chart()->zValue() + 11);
 
   close_act = new QAction(tr("Close"), this);
-  QObject::connect(close_act, &QAction::triggered, [this] () { charts_widget->removeChart(this); });
-  QObject::connect(remove_btn, &QToolButton::clicked, close_act, &QAction::triggered);
-  QObject::connect(change_series_group, &QActionGroup::triggered, [this](QAction *action) {
+  connect(close_act, &QAction::triggered, [this] () { charts_widget->removeChart(this); });
+  connect(remove_btn, &QToolButton::clicked, close_act, &QAction::triggered);
+  connect(change_series_group, &QActionGroup::triggered, [this](QAction *action) {
     setSeriesType((SeriesType)action->data().toInt());
   });
 }
@@ -224,7 +224,7 @@ void ChartView::updatePlotArea(int left_pos, bool force) {
 
 void ChartView::updateTitle() {
   for (QLegendMarker *marker : chart()->legend()->markers()) {
-    QObject::connect(marker, &QLegendMarker::clicked, this, &ChartView::handleMarkerClicked, Qt::UniqueConnection);
+    connect(marker, &QLegendMarker::clicked, this, &ChartView::handleMarkerClicked, Qt::UniqueConnection);
   }
 
   // Use CSS to draw titles in the WindowText color

@@ -48,24 +48,24 @@ DetailWidget::DetailWidget(ChartsWidget *charts, QWidget *parent) : charts(chart
   tab_widget->addTab(history_log = new LogsWidget(this), utils::icon("stopwatch"), "&Logs");
   main_layout->addWidget(tab_widget);
 
-  QObject::connect(binary_view, &BinaryView::signalHovered, signal_view, &SignalView::signalHovered);
-  QObject::connect(binary_view, &BinaryView::signalClicked, [this](const cabana::Signal *s) { signal_view->selectSignal(s, true); });
-  QObject::connect(binary_view, &BinaryView::editSignal, signal_view->model, &SignalModel::saveSignal);
-  QObject::connect(binary_view, &BinaryView::showChart, charts, &ChartsWidget::showChart);
-  QObject::connect(signal_view, &SignalView::showChart, charts, &ChartsWidget::showChart);
-  QObject::connect(signal_view, &SignalView::highlight, binary_view, &BinaryView::highlight);
-  QObject::connect(tab_widget, &QTabWidget::currentChanged, [this]() { updateState(); });
-  QObject::connect(can, &AbstractStream::snapshotsUpdated, this, &DetailWidget::updateState);
-  QObject::connect(dbc(), &DBCManager::DBCFileChanged, this, &DetailWidget::refresh);
-  QObject::connect(UndoStack::instance(), &QUndoStack::indexChanged, this, &DetailWidget::refresh);
-  QObject::connect(tabbar, &QTabBar::customContextMenuRequested, this, &DetailWidget::showTabBarContextMenu);
-  QObject::connect(tabbar, &QTabBar::currentChanged, [this](int index) {
+  connect(binary_view, &BinaryView::signalHovered, signal_view, &SignalView::signalHovered);
+  connect(binary_view, &BinaryView::signalClicked, [this](const cabana::Signal *s) { signal_view->selectSignal(s, true); });
+  connect(binary_view, &BinaryView::editSignal, signal_view->model, &SignalModel::saveSignal);
+  connect(binary_view, &BinaryView::showChart, charts, &ChartsWidget::showChart);
+  connect(signal_view, &SignalView::showChart, charts, &ChartsWidget::showChart);
+  connect(signal_view, &SignalView::highlight, binary_view, &BinaryView::highlight);
+  connect(tab_widget, &QTabWidget::currentChanged, [this]() { updateState(); });
+  connect(can, &AbstractStream::snapshotsUpdated, this, &DetailWidget::updateState);
+  connect(dbc(), &DBCManager::DBCFileChanged, this, &DetailWidget::refresh);
+  connect(UndoStack::instance(), &QUndoStack::indexChanged, this, &DetailWidget::refresh);
+  connect(tabbar, &QTabBar::customContextMenuRequested, this, &DetailWidget::showTabBarContextMenu);
+  connect(tabbar, &QTabBar::currentChanged, [this](int index) {
     if (index != -1) {
       setMessage(tabbar->tabData(index).value<MessageId>());
     }
   });
-  QObject::connect(tabbar, &QTabBar::tabCloseRequested, tabbar, &QTabBar::removeTab);
-  QObject::connect(charts, &ChartsWidget::seriesChanged, signal_view, &SignalView::updateChartState);
+  connect(tabbar, &QTabBar::tabCloseRequested, tabbar, &QTabBar::removeTab);
+  connect(charts, &ChartsWidget::seriesChanged, signal_view, &SignalView::updateChartState);
 }
 
 void DetailWidget::createToolBar() {

@@ -41,11 +41,11 @@ VideoWidget::VideoWidget(QWidget *parent) : QFrame(parent) {
   createPlaybackController();
 
   setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Maximum);
-  QObject::connect(can, &AbstractStream::paused, this, &VideoWidget::updatePlayBtnState);
-  QObject::connect(can, &AbstractStream::resume, this, &VideoWidget::updatePlayBtnState);
-  QObject::connect(can, &AbstractStream::snapshotsUpdated, this, &VideoWidget::updateState);
-  QObject::connect(can, &AbstractStream::seeking, this, &VideoWidget::updateState);
-  QObject::connect(can, &AbstractStream::timeRangeChanged, this, &VideoWidget::timeRangeChanged);
+  connect(can, &AbstractStream::paused, this, &VideoWidget::updatePlayBtnState);
+  connect(can, &AbstractStream::resume, this, &VideoWidget::updatePlayBtnState);
+  connect(can, &AbstractStream::snapshotsUpdated, this, &VideoWidget::updateState);
+  connect(can, &AbstractStream::seeking, this, &VideoWidget::updateState);
+  connect(can, &AbstractStream::timeRangeChanged, this, &VideoWidget::timeRangeChanged);
 
   updatePlayBtnState();
   setWhatsThis(tr(R"(
@@ -155,15 +155,15 @@ QWidget *VideoWidget::createCameraWidget() {
   slider->setSingleStep(0);
   slider->setTimeRange(can->minSeconds(), can->maxSeconds());
 
-  QObject::connect(slider, &QSlider::sliderReleased, [this]() { can->seekTo(slider->currentSecond()); });
-  QObject::connect(can, &AbstractStream::paused, cam_widget, [c = cam_widget]() { c->showPausedOverlay(); });
-  QObject::connect(can, &AbstractStream::eventsMerged, this, [this]() { slider->update(); });
-  QObject::connect(cam_widget, &CameraWidget::clicked, []() { can->pause(!can->isPaused()); });
-  QObject::connect(cam_widget, &CameraWidget::vipcAvailableStreamsUpdated, this, &VideoWidget::vipcAvailableStreamsUpdated);
-  QObject::connect(camera_tab, &QTabBar::currentChanged, [this](int index) {
+  connect(slider, &QSlider::sliderReleased, [this]() { can->seekTo(slider->currentSecond()); });
+  connect(can, &AbstractStream::paused, cam_widget, [c = cam_widget]() { c->showPausedOverlay(); });
+  connect(can, &AbstractStream::eventsMerged, this, [this]() { slider->update(); });
+  connect(cam_widget, &CameraWidget::clicked, []() { can->pause(!can->isPaused()); });
+  connect(cam_widget, &CameraWidget::vipcAvailableStreamsUpdated, this, &VideoWidget::vipcAvailableStreamsUpdated);
+  connect(camera_tab, &QTabBar::currentChanged, [this](int index) {
     if (index != -1) cam_widget->setStreamType((VisionStreamType)camera_tab->tabData(index).toInt());
   });
-  QObject::connect(static_cast<ReplayStream*>(can), &ReplayStream::qLogLoaded, cam_widget, &StreamCameraView::parseQLog, Qt::QueuedConnection);
+  connect(static_cast<ReplayStream*>(can), &ReplayStream::qLogLoaded, cam_widget, &StreamCameraView::parseQLog, Qt::QueuedConnection);
   slider->installEventFilter(this);
   return w;
 }

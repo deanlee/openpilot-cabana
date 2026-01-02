@@ -201,16 +201,16 @@ LogsWidget::LogsWidget(QWidget *parent) : QFrame(parent) {
   logs->verticalHeader()->setDefaultSectionSize(delegate->sizeForBytes(8).height());
   logs->setFrameShape(QFrame::NoFrame);
 
-  QObject::connect(display_type_cb, qOverload<int>(&QComboBox::activated), model, &HistoryLogModel::setHexMode);
-  QObject::connect(signals_cb, SIGNAL(activated(int)), this, SLOT(filterChanged()));
-  QObject::connect(comp_box, SIGNAL(activated(int)), this, SLOT(filterChanged()));
-  QObject::connect(value_edit, &QLineEdit::textEdited, this, &LogsWidget::filterChanged);
-  QObject::connect(export_btn, &QToolButton::clicked, this, &LogsWidget::exportToCSV);
-  QObject::connect(can, &AbstractStream::seekedTo, model, &HistoryLogModel::reset);
-  QObject::connect(dbc(), &DBCManager::DBCFileChanged, model, &HistoryLogModel::reset);
-  QObject::connect(UndoStack::instance(), &QUndoStack::indexChanged, model, &HistoryLogModel::reset);
-  QObject::connect(model, &HistoryLogModel::modelReset, this, &LogsWidget::modelReset);
-  QObject::connect(model, &HistoryLogModel::rowsInserted, [this]() { export_btn->setEnabled(true); });
+  connect(display_type_cb, qOverload<int>(&QComboBox::activated), model, &HistoryLogModel::setHexMode);
+  connect(signals_cb, SIGNAL(activated(int)), this, SLOT(filterChanged()));
+  connect(comp_box, SIGNAL(activated(int)), this, SLOT(filterChanged()));
+  connect(value_edit, &QLineEdit::textEdited, this, &LogsWidget::filterChanged);
+  connect(export_btn, &QToolButton::clicked, this, &LogsWidget::exportToCSV);
+  connect(can, &AbstractStream::seekedTo, model, &HistoryLogModel::reset);
+  connect(dbc(), &DBCManager::DBCFileChanged, model, &HistoryLogModel::reset);
+  connect(UndoStack::instance(), &QUndoStack::indexChanged, model, &HistoryLogModel::reset);
+  connect(model, &HistoryLogModel::modelReset, this, &LogsWidget::modelReset);
+  connect(model, &HistoryLogModel::rowsInserted, [this]() { export_btn->setEnabled(true); });
 }
 
 void LogsWidget::modelReset() {

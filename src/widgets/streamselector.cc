@@ -40,15 +40,15 @@ StreamSelector::StreamSelector(QWidget *parent) : QDialog(parent) {
   }
   addStreamWidget(new OpenDeviceWidget, tr("&Device"));
 
-  QObject::connect(btn_box, &QDialogButtonBox::rejected, this, &QDialog::reject);
-  QObject::connect(btn_box, &QDialogButtonBox::accepted, [=]() {
+  connect(btn_box, &QDialogButtonBox::rejected, this, &QDialog::reject);
+  connect(btn_box, &QDialogButtonBox::accepted, [=]() {
     setEnabled(false);
     if (stream_ = ((AbstractOpenStreamWidget *)tab->currentWidget())->open(); stream_) {
       accept();
     }
     setEnabled(true);
   });
-  QObject::connect(file_btn, &QPushButton::clicked, [this]() {
+  connect(file_btn, &QPushButton::clicked, [this]() {
     QString fn = QFileDialog::getOpenFileName(this, tr("Open File"), settings.last_dir, "DBC (*.dbc)");
     if (!fn.isEmpty()) {
       dbc_file->setText(fn);
@@ -60,5 +60,5 @@ StreamSelector::StreamSelector(QWidget *parent) : QDialog(parent) {
 void StreamSelector::addStreamWidget(AbstractOpenStreamWidget *w, const QString &title) {
   tab->addTab(w, title);
   auto open_btn = btn_box->button(QDialogButtonBox::Open);
-  QObject::connect(w, &AbstractOpenStreamWidget::enableOpenButton, open_btn, &QPushButton::setEnabled);
+  connect(w, &AbstractOpenStreamWidget::enableOpenButton, open_btn, &QPushButton::setEnabled);
 }

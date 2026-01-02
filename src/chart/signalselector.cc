@@ -52,15 +52,15 @@ SignalSelector::SignalSelector(QString title, QWidget *parent) : QDialog(parent)
   msgs_combo->model()->sort(0);
   msgs_combo->setCurrentIndex(-1);
 
-  QObject::connect(msgs_combo, qOverload<int>(&QComboBox::currentIndexChanged), this, &SignalSelector::updateAvailableList);
-  QObject::connect(available_list, &QListWidget::currentRowChanged, [=](int row) { add_btn->setEnabled(row != -1); });
-  QObject::connect(selected_list, &QListWidget::currentRowChanged, [=](int row) { remove_btn->setEnabled(row != -1); });
-  QObject::connect(available_list, &QListWidget::itemDoubleClicked, this, &SignalSelector::add);
-  QObject::connect(selected_list, &QListWidget::itemDoubleClicked, this, &SignalSelector::remove);
-  QObject::connect(add_btn, &QPushButton::clicked, [this]() { if (auto item = available_list->currentItem()) add(item); });
-  QObject::connect(remove_btn, &QPushButton::clicked, [this]() { if (auto item = selected_list->currentItem()) remove(item); });
-  QObject::connect(buttonBox, &QDialogButtonBox::accepted, this, &QDialog::accept);
-  QObject::connect(buttonBox, &QDialogButtonBox::rejected, this, &QDialog::reject);
+  connect(msgs_combo, qOverload<int>(&QComboBox::currentIndexChanged), this, &SignalSelector::updateAvailableList);
+  connect(available_list, &QListWidget::currentRowChanged, [=](int row) { add_btn->setEnabled(row != -1); });
+  connect(selected_list, &QListWidget::currentRowChanged, [=](int row) { remove_btn->setEnabled(row != -1); });
+  connect(available_list, &QListWidget::itemDoubleClicked, this, &SignalSelector::add);
+  connect(selected_list, &QListWidget::itemDoubleClicked, this, &SignalSelector::remove);
+  connect(add_btn, &QPushButton::clicked, [this]() { if (auto item = available_list->currentItem()) add(item); });
+  connect(remove_btn, &QPushButton::clicked, [this]() { if (auto item = selected_list->currentItem()) remove(item); });
+  connect(buttonBox, &QDialogButtonBox::accepted, this, &QDialog::accept);
+  connect(buttonBox, &QDialogButtonBox::rejected, this, &QDialog::reject);
 }
 
 void SignalSelector::add(QListWidgetItem *item) {

@@ -25,12 +25,12 @@ static QString signalTypeToString(cabana::Signal::Type type) {
 }
 
 SignalModel::SignalModel(QObject *parent) : root(new Item), QAbstractItemModel(parent) {
-  QObject::connect(dbc(), &DBCManager::DBCFileChanged, this, &SignalModel::refresh);
-  QObject::connect(dbc(), &DBCManager::msgUpdated, this, &SignalModel::handleMsgChanged);
-  QObject::connect(dbc(), &DBCManager::msgRemoved, this, &SignalModel::handleMsgChanged);
-  QObject::connect(dbc(), &DBCManager::signalAdded, this, &SignalModel::handleSignalAdded);
-  QObject::connect(dbc(), &DBCManager::signalUpdated, this, &SignalModel::handleSignalUpdated);
-  QObject::connect(dbc(), &DBCManager::signalRemoved, this, &SignalModel::handleSignalRemoved);
+  connect(dbc(), &DBCManager::DBCFileChanged, this, &SignalModel::refresh);
+  connect(dbc(), &DBCManager::msgUpdated, this, &SignalModel::handleMsgChanged);
+  connect(dbc(), &DBCManager::msgRemoved, this, &SignalModel::handleMsgChanged);
+  connect(dbc(), &DBCManager::signalAdded, this, &SignalModel::handleSignalAdded);
+  connect(dbc(), &DBCManager::signalUpdated, this, &SignalModel::handleSignalUpdated);
+  connect(dbc(), &DBCManager::signalRemoved, this, &SignalModel::handleSignalRemoved);
 }
 
 void SignalModel::insertItem(SignalModel::Item *root_item, int pos, const cabana::Signal *sig) {
@@ -467,20 +467,20 @@ SignalView::SignalView(ChartsWidget *charts, QWidget *parent) : charts(charts), 
   main_layout->addWidget(tree);
   updateToolBar();
 
-  QObject::connect(filter_edit, &QLineEdit::textEdited, model, &SignalModel::setFilter);
-  QObject::connect(sparkline_range_slider, &QSlider::valueChanged, this, &SignalView::setSparklineRange);
-  QObject::connect(collapse_btn, &QPushButton::clicked, tree, &QTreeView::collapseAll);
-  QObject::connect(tree, &QAbstractItemView::clicked, this, &SignalView::rowClicked);
-  QObject::connect(tree, &QTreeView::viewportEntered, [this]() { emit highlight(nullptr); });
-  QObject::connect(tree, &QTreeView::entered, [this](const QModelIndex &index) { emit highlight(model->getItem(index)->sig); });
-  QObject::connect(model, &QAbstractItemModel::modelReset, this, &SignalView::rowsChanged);
-  QObject::connect(model, &QAbstractItemModel::rowsRemoved, this, &SignalView::rowsChanged);
-  QObject::connect(dbc(), &DBCManager::signalAdded, this, &SignalView::handleSignalAdded);
-  QObject::connect(dbc(), &DBCManager::signalUpdated, this, &SignalView::handleSignalUpdated);
-  QObject::connect(tree->verticalScrollBar(), &QScrollBar::valueChanged, [this]() { updateState(); });
-  QObject::connect(tree->verticalScrollBar(), &QScrollBar::rangeChanged, [this]() { updateState(); });
-  QObject::connect(can, &AbstractStream::snapshotsUpdated, this, &SignalView::updateState);
-  QObject::connect(tree->header(), &QHeaderView::sectionResized, [this](int logicalIndex, int oldSize, int newSize) {
+  connect(filter_edit, &QLineEdit::textEdited, model, &SignalModel::setFilter);
+  connect(sparkline_range_slider, &QSlider::valueChanged, this, &SignalView::setSparklineRange);
+  connect(collapse_btn, &QPushButton::clicked, tree, &QTreeView::collapseAll);
+  connect(tree, &QAbstractItemView::clicked, this, &SignalView::rowClicked);
+  connect(tree, &QTreeView::viewportEntered, [this]() { emit highlight(nullptr); });
+  connect(tree, &QTreeView::entered, [this](const QModelIndex &index) { emit highlight(model->getItem(index)->sig); });
+  connect(model, &QAbstractItemModel::modelReset, this, &SignalView::rowsChanged);
+  connect(model, &QAbstractItemModel::rowsRemoved, this, &SignalView::rowsChanged);
+  connect(dbc(), &DBCManager::signalAdded, this, &SignalView::handleSignalAdded);
+  connect(dbc(), &DBCManager::signalUpdated, this, &SignalView::handleSignalUpdated);
+  connect(tree->verticalScrollBar(), &QScrollBar::valueChanged, [this]() { updateState(); });
+  connect(tree->verticalScrollBar(), &QScrollBar::rangeChanged, [this]() { updateState(); });
+  connect(can, &AbstractStream::snapshotsUpdated, this, &SignalView::updateState);
+  connect(tree->header(), &QHeaderView::sectionResized, [this](int logicalIndex, int oldSize, int newSize) {
     if (logicalIndex == 1) {
       value_column_width = newSize;
       updateState();
@@ -518,8 +518,8 @@ void SignalView::rowsChanged() {
 
       tree->setIndexWidget(index, w);
       auto sig = model->getItem(index)->sig;
-      QObject::connect(remove_btn, &QToolButton::clicked, [=]() { UndoStack::push(new RemoveSigCommand(model->msg_id, sig)); });
-      QObject::connect(plot_btn, &QToolButton::clicked, [=](bool checked) {
+      connect(remove_btn, &QToolButton::clicked, [=]() { UndoStack::push(new RemoveSigCommand(model->msg_id, sig)); });
+      connect(plot_btn, &QToolButton::clicked, [=](bool checked) {
         emit showChart(model->msg_id, sig, checked, QGuiApplication::keyboardModifiers() & Qt::ShiftModifier);
       });
     }
@@ -688,15 +688,15 @@ ValueDescriptionDlg::ValueDescriptionDlg(const ValueDescription &descriptions, Q
   main_layout->addWidget(btn_box);
   setMinimumWidth(500);
 
-  QObject::connect(btn_box, &QDialogButtonBox::accepted, this, &ValueDescriptionDlg::save);
-  QObject::connect(btn_box, &QDialogButtonBox::rejected, this, &QDialog::reject);
-  QObject::connect(add, &QPushButton::clicked, [this]() {
+  connect(btn_box, &QDialogButtonBox::accepted, this, &ValueDescriptionDlg::save);
+  connect(btn_box, &QDialogButtonBox::rejected, this, &QDialog::reject);
+  connect(add, &QPushButton::clicked, [this]() {
     table->setRowCount(table->rowCount() + 1);
     table->setItem(table->rowCount() - 1, 0, new QTableWidgetItem);
     table->setItem(table->rowCount() - 1, 1, new QTableWidgetItem);
   });
-  QObject::connect(remove, &QPushButton::clicked, [this]() { table->removeRow(table->currentRow()); });
-  QObject::connect(table, &QTableWidget::itemSelectionChanged, [=]() {
+  connect(remove, &QPushButton::clicked, [this]() { table->removeRow(table->currentRow()); });
+  connect(table, &QTableWidget::itemSelectionChanged, [=]() {
     remove->setEnabled(table->currentRow() != -1);
   });
 }
