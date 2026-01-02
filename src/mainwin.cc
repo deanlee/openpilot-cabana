@@ -27,6 +27,7 @@
 #include "replay/include/http.h"
 #include "streams/abstractstream.h"
 #include "streams/widgets/stream_selector.h"
+#include "widgets/settings_dialog.h"
 
 
 MainWindow::MainWindow(AbstractStream *stream, const QString &dbc_file) : QMainWindow() {
@@ -590,7 +591,7 @@ void MainWindow::closeEvent(QCloseEvent *event) {
 }
 
 void MainWindow::setOption() {
-  SettingsDlg dlg(this);
+  SettingsDialog dlg(this);
   dlg.exec();
 }
 

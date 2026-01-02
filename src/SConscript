@@ -106,6 +106,7 @@ cabana_lib = cabana_env.Library(
         "build/streams/widgets/stream_selector.cc",
         "build/streams/widgets/routes_dialog.cc",
         "build/streams/widgets/abstract.cc",
+        "build/widgets/settings_dialog.cc",
         "build/widgets/binaryview.cc",
         "build/widgets/historylog.cc",
         "build/widgets/videowidget.cc",

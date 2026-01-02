@@ -1,11 +1,9 @@
 #pragma once
 
+#include <QObject>
 #include <QByteArray>
-#include <QComboBox>
-#include <QDialog>
-#include <QGroupBox>
-#include <QLineEdit>
-#include <QSpinBox>
+#include <QString>
+#include <QStringList>
 
 #define LIGHT_THEME 1
 #define DARK_THEME 2
@@ -54,20 +52,6 @@ public:
 
 signals:
   void changed();
-};
-
-class SettingsDlg : public QDialog {
-public:
-  SettingsDlg(QWidget *parent);
-  void save();
-  QSpinBox *fps;
-  QSpinBox *cached_minutes;
-  QSpinBox *chart_height;
-  QComboBox *chart_series_type;
-  QComboBox *theme;
-  QGroupBox *log_livestream;
-  QLineEdit *log_path;
-  QComboBox *drag_direction;
 };
 
 extern Settings settings;

@@ -3,6 +3,7 @@
 #include <utility>
 
 #include <QApplication>
+#include <QStyleOptionFrame>
 #include <QStylePainter>
 #include <QToolTip>
 
