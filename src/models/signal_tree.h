@@ -4,6 +4,7 @@
 #include <memory>
 
 #include "chart/sparkline.h"
+#include "dbc/dbc.h"
 
 class SignalTreeModel : public QAbstractItemModel {
   Q_OBJECT
@@ -50,7 +51,7 @@ private:
   QString filter_str;
   std::unique_ptr<Item> root;
   friend class SignalView;
-  friend class SignalItemDelegate;
+  friend class SignalTreeDelegate;
 };
 
 QString signalTypeToString(cabana::Signal::Type type);

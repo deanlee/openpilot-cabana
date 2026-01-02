@@ -66,7 +66,7 @@ LogsWidget::LogsWidget(QWidget *parent) : QFrame(parent) {
   main_layout->addWidget(line);
   main_layout->addWidget(logs = new QTableView(this));
   logs->setModel(model = new MessageLogModel(this));
-  logs->setItemDelegate(delegate = new MessageBytesDelegate(this));
+  logs->setItemDelegate(delegate = new MessageTableDelegate(this));
   logs->setHorizontalHeader(new HeaderView(Qt::Horizontal, this));
   logs->horizontalHeader()->setDefaultAlignment(Qt::AlignRight | (Qt::Alignment)Qt::TextWordWrap);
   logs->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
