@@ -7,7 +7,34 @@
 #include "streams/replaystream.h"
 #include "streams/socketcanstream.h"
 
-int main(int argc, char *argv[]) {
+static AbstractStream* createStream(QCommandLineParser& p, QApplication* app) {
+  if (p.isSet("msgq") || p.isSet("zmq"))
+    return new DeviceStream(app, p.value("zmq"));
+
+  if (p.isSet("panda") || p.isSet("panda-serial")) {
+    try { return new PandaStream(app, {p.value("panda-serial")}); }
+    catch (const std::exception& e) { qWarning() << e.what(); return nullptr; }
+  }
+
+  if (SocketCanStream::available() && p.isSet("socketcan"))
+    return new SocketCanStream(app, {p.value("socketcan")});
+
+  QString route = p.positionalArguments().value(0, p.isSet("demo") ? DEMO_ROUTE : "");
+  if (!route.isEmpty()) {
+    uint32_t flags = 0;
+    if (p.isSet("ecam"))    flags |= REPLAY_FLAG_ECAM;
+    if (p.isSet("qcam"))    flags |= REPLAY_FLAG_QCAMERA;
+    if (p.isSet("dcam"))    flags |= REPLAY_FLAG_DCAM;
+    if (p.isSet("no-vipc")) flags |= REPLAY_FLAG_NO_VIPC;
+
+    auto replay = std::make_unique<ReplayStream>(app);
+    if (replay->loadRoute(route, p.value("data_dir"), flags, p.isSet("auto")))
+      return replay.release();
+  }
+  return nullptr;
+}
+
+int main(int argc, char* argv[]) {
   QCoreApplication::setApplicationName("Cabana");
   QCoreApplication::setAttribute(Qt::AA_ShareOpenGLContexts);
   initApp(argc, argv, false);
@@ -18,65 +45,29 @@ int main(int argc, char *argv[]) {
   UnixSignalHandler signalHandler;
   utils::setTheme(settings.theme);
 
-  QCommandLineParser cmd_parser;
-  cmd_parser.addHelpOption();
-  cmd_parser.addPositionalArgument("route", "the drive to replay. find your drives at connect.comma.ai");
-  cmd_parser.addOption({"demo", "use a demo route instead of providing your own"});
-  cmd_parser.addOption({"auto", "Auto load the route from the best available source (no video): internal, openpilotci, comma_api, car_segments, testing_closet"});
-  cmd_parser.addOption({"qcam", "load qcamera"});
-  cmd_parser.addOption({"ecam", "load wide road camera"});
-  cmd_parser.addOption({"dcam", "load driver camera"});
-  cmd_parser.addOption({"msgq", "read can messages from the msgq"});
-  cmd_parser.addOption({"panda", "read can messages from panda"});
-  cmd_parser.addOption({"panda-serial", "read can messages from panda with given serial", "panda-serial"});
-  if (SocketCanStream::available()) {
-    cmd_parser.addOption({"socketcan", "read can messages from given SocketCAN device", "socketcan"});
-  }
-  cmd_parser.addOption({"zmq", "read can messages from zmq at the specified ip-address", "ip-address"});
-  cmd_parser.addOption({"data_dir", "local directory with routes", "data_dir"});
-  cmd_parser.addOption({"no-vipc", "do not output video"});
-  cmd_parser.addOption({"dbc", "dbc file to open", "dbc"});
-  cmd_parser.process(app);
+  QCommandLineParser parser;
+  parser.addHelpOption();
+  parser.addPositionalArgument("route", "the drive to replay. find your drives at connect.comma.ai");
+  parser.addOptions({
+    {"demo", "use a demo route instead of providing your own"},
+    {"auto", "Auto load the route from the best available source (no video): internal, openpilotci, comma_api, car_segments, testing_closet"},
+    {"qcam", "load qcamera"},
+    {"ecam", "load wide road camera"},
+    {"dcam", "load driver camera"},
+    {"msgq", "read can messages from the msgq"},
+    {"panda", "read can messages from panda"},
+    {{"panda-serial", "s"}, "read can messages from panda with given serial", "panda-serial"},
+    {{"zmq", "z"}, "read can messages from zmq at the specified ip-address", "ip-address"},
+    {{"data_dir", "d"}, "local directory with routes", "data_dir"},
+    {"no-vipc", "do not output video"},
+    {{"dbc", "b"}, "dbc file to open", "dbc"}
+  });
+  if (SocketCanStream::available())
+    parser.addOption({"socketcan", "read can messages from given SocketCAN device", "socketcan"});
 
-  AbstractStream *stream = nullptr;
+  parser.process(app);
 
-  if (cmd_parser.isSet("msgq")) {
-    stream = new DeviceStream(&app);
-  } else if (cmd_parser.isSet("zmq")) {
-    stream = new DeviceStream(&app, cmd_parser.value("zmq"));
-  } else if (cmd_parser.isSet("panda") || cmd_parser.isSet("panda-serial")) {
-    try {
-      stream = new PandaStream(&app, {.serial = cmd_parser.value("panda-serial")});
-    } catch (std::exception &e) {
-      qWarning() << e.what();
-      return 0;
-    }
-  } else if (SocketCanStream::available() && cmd_parser.isSet("socketcan")) {
-    stream = new SocketCanStream(&app, {.device = cmd_parser.value("socketcan")});
-  } else {
-    uint32_t replay_flags = REPLAY_FLAG_NONE;
-    if (cmd_parser.isSet("ecam")) replay_flags |= REPLAY_FLAG_ECAM;
-    if (cmd_parser.isSet("qcam")) replay_flags |= REPLAY_FLAG_QCAMERA;
-    if (cmd_parser.isSet("dcam")) replay_flags |= REPLAY_FLAG_DCAM;
-    if (cmd_parser.isSet("no-vipc")) replay_flags |= REPLAY_FLAG_NO_VIPC;
-
-    const QStringList args = cmd_parser.positionalArguments();
-    QString route;
-    if (args.size() > 0) {
-      route = args.first();
-    } else if (cmd_parser.isSet("demo")) {
-      route = DEMO_ROUTE;
-    }
-    if (!route.isEmpty()) {
-      auto replay_stream = std::make_unique<ReplayStream>(&app);
-      bool auto_source = cmd_parser.isSet("auto");
-      if (!replay_stream->loadRoute(route, cmd_parser.value("data_dir"), replay_flags, auto_source)) {
-        return 0;
-      }
-      stream = replay_stream.release();
-    }
-  }
-
-  MainWindow w(stream, cmd_parser.value("dbc"));
+  AbstractStream* stream = createStream(parser, &app);
+  MainWindow w(stream, parser.value("dbc"));
   return app.exec();
 }
