@@ -1,5 +1,6 @@
 import subprocess
 import os
+from pathlib import Path
 
 Import('env', 'arch', 'common', 'messaging', 'visionipc', 'replay_lib', 'cereal')
 
@@ -7,7 +8,6 @@ qt_env = env.Clone()
 
 # Configure build directory
 build_dir = Dir('#build').abspath
-qt_env.VariantDir('build', '.', duplicate=0)
 qt_env['QT_MOCFROMHDIR'] = os.path.join(build_dir, 'moc')
 qt_env['QT_MOCFROMCXXDIR'] = os.path.join(build_dir, 'moc')
 
@@ -77,72 +77,22 @@ qt_libs = base_libs
 cabana_env = qt_env.Clone()
 
 # Set build output directory for object files
-cabana_env.VariantDir('build', '.', duplicate=0)
+cabana_env.VariantDir('#build', '.', duplicate=0)
 
 cabana_libs = [cereal, messaging, visionipc, replay_lib, 'avutil', 'avcodec', 'avformat', 'swscale','bz2', 'zstd', 'curl', 'usb-1.0'] + qt_libs
 
 # build assets
-assets = "build/assets/assets.cc"
+assets = "#build/assets/assets.cc"
 assets_src = "assets/assets.qrc"
 cabana_env.Command(assets, assets_src, f"rcc $SOURCES -o $TARGET")
 cabana_env.Depends(assets, Glob('assets/*', exclude=[assets, assets_src, "assets/assets.o"]))
+src_files = Glob('#src/*.cc') + Glob('#src/*/*.cc') + Glob('#src/*/*/*.cc')
+src_file_strings = ['#build/' + str(f) for f in src_files if f != 'main.cc']
 
 cabana_lib = cabana_env.Library(
-    "build/cabana_lib",
-    [
-        "build/mainwin.cc",
-        "build/streams/socketcanstream.cc",
-        "build/streams/pandastream.cc",
-        "build/streams/devicestream.cc",
-        "build/streams/livestream.cc",
-        "build/streams/abstractstream.cc",
-        "build/streams/replaystream.cc",
-        "build/streams/candata.cc",
-        "build/streams/panda.cc",
-        "build/streams/widgets/open_replay.cc",
-        "build/streams/widgets/open_panda.cc",
-        "build/streams/widgets/open_socketcan.cc",
-        "build/streams/widgets/open_device.cc",
-        "build/streams/widgets/stream_selector.cc",
-        "build/streams/widgets/routes_dialog.cc",
-        "build/streams/widgets/abstract.cc",
-        "build/widgets/settings_dialog.cc",
-        "build/widgets/binaryview.cc",
-        "build/widgets/historylog.cc",
-        "build/widgets/videowidget.cc",
-        "build/widgets/signalview.cc",
-        "build/widgets/common_widgets.cc",
-        "build/models/message_bytes.cc",
-        "build/models/signal_tree.cc",
-        "build/models/message_log.cc",
-        "build/models/message_table.cc",
-        "build/widgets/delegates/message_table.cc",
-        "build/widgets/delegates/message_bytes.cc",
-        "build/widgets/delegates/signal_tree.cc",
-        "build/dbc/dbc.cc",
-        "build/dbc/dbcfile.cc",
-        "build/dbc/dbcmanager.cc",
-        "build/utils/export.cc",
-        "build/utils/util.cc",
-        "build/utils/segment_tree.cc",
-        "build/utils/system_signal_handler.cc",
-        "build/utils/elidedlabel.cc",
-        "build/utils/api.cc",
-        "build/chart/chartswidget.cc",
-        "build/chart/chart.cc",
-        "build/chart/signalselector.cc",
-        "build/chart/tiplabel.cc",
-        "build/chart/sparkline.cc",
-        "build/commands.cc",
-        "build/widgets/messageswidget.cc",
-        "build/settings.cc",
-        "build/widgets/cameraview.cc",
-        "build/widgets/detailwidget.cc",
-        "build/tools/findsimilarbits.cc",
-        "build/tools/findsignal.cc",
-        "build/tools/routeinfo.cc",
-    ],
+    "#build/cabana_lib",
+    src_file_strings,
     LIBS=cabana_libs,
     FRAMEWORKS=base_frameworks,
 )
-cabana_env.Program('../cabana', ['build/main.cc', cabana_lib, assets], LIBS=cabana_libs, FRAMEWORKS=base_frameworks)
+cabana_env.Program('#cabana', ['#build/main.cc', cabana_lib, assets], LIBS=cabana_libs, FRAMEWORKS=base_frameworks)
