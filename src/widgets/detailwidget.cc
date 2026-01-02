@@ -118,16 +118,13 @@ void DetailWidget::showTabBarContextMenu(const QPoint &pt) {
   }
 }
 
-int DetailWidget::findOrAddTab(const MessageId& message_id) {
-  int index = tabbar->count() - 1;
-  for (/**/; index >= 0; --index) {
-    if (tabbar->tabData(index).value<MessageId>() == message_id) break;
+int DetailWidget::findOrAddTab(const MessageId& id) {
+  for (int i = 0; i < tabbar->count(); ++i) {
+    if (tabbar->tabData(i).value<MessageId>() == id) return i;
   }
-  if (index == -1) {
-    index = tabbar->addTab(message_id.toString());
-    tabbar->setTabData(index, QVariant::fromValue(message_id));
-    tabbar->setTabToolTip(index, msgName(message_id));
-  }
+  int index = tabbar->addTab(id.toString());
+  tabbar->setTabData(index, QVariant::fromValue(id));
+  tabbar->setTabToolTip(index, msgName(id));
   return index;
 }
 
