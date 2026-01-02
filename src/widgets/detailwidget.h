@@ -39,7 +39,7 @@ public:
 
 private:
   void createToolBar();
-  int findOrAddTab(const MessageId& message_id);
+  int findOrAddTab(const MessageId& id);
   void showTabBarContextMenu(const QPoint &pt);
   void editMsg();
   void removeMsg();
