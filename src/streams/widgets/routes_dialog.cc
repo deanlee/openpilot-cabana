@@ -1,5 +1,7 @@
 #include "routes_dialog.h"
 
+#include <QApplication>
+#include <QCursor>
 #include <QDateTime>
 #include <QDialogButtonBox>
 #include <QFormLayout>
@@ -9,29 +11,17 @@
 #include <QMessageBox>
 #include <QPainter>
 
-class OneShotHttpRequest : public HttpRequest {
-public:
-  OneShotHttpRequest(QObject *parent) : HttpRequest(parent, false) {}
-  void send(const QString &url) {
-    if (reply) {
-      reply->disconnect();
-      reply->abort();
-      reply->deleteLater();
-      reply = nullptr;
-    }
-    sendRequest(url);
-  }
-};
+#include "replay/include/api.h"
 
 // The RouteListWidget class extends QListWidget to display a custom message when empty
 class RouteListWidget : public QListWidget {
-public:
-  RouteListWidget(QWidget *parent = nullptr) : QListWidget(parent) {}
-  void setEmptyText(const QString &text) {
+ public:
+  RouteListWidget(QWidget* parent = nullptr) : QListWidget(parent) {}
+  void setEmptyText(const QString& text) {
     empty_text_ = text;
     viewport()->update();
   }
-  void paintEvent(QPaintEvent *event) override {
+  void paintEvent(QPaintEvent* event) override {
     QListWidget::paintEvent(event);
     if (count() == 0) {
       QPainter painter(viewport());
@@ -41,52 +31,55 @@ public:
   QString empty_text_ = tr("No items");
 };
 
-RoutesDialog::RoutesDialog(QWidget *parent) : QDialog(parent), route_requester_(new OneShotHttpRequest(this)) {
+RoutesDialog::RoutesDialog(QWidget* parent) : QDialog(parent) {
   setWindowTitle(tr("Remote routes"));
 
-  QFormLayout *layout = new QFormLayout(this);
+  QFormLayout* layout = new QFormLayout(this);
   layout->addRow(tr("Device"), device_list_ = new QComboBox(this));
   layout->addRow(period_selector_ = new QComboBox(this));
   layout->addRow(route_list_ = new RouteListWidget(this));
   auto button_box = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
   layout->addRow(button_box);
 
-  device_list_->addItem(tr("Loading..."));
-  // Populate period selector with predefined durations
+  // Populate periods
   period_selector_->addItem(tr("Last week"), 7);
   period_selector_->addItem(tr("Last 2 weeks"), 14);
   period_selector_->addItem(tr("Last month"), 30);
   period_selector_->addItem(tr("Last 6 months"), 180);
   period_selector_->addItem(tr("Preserved"), -1);
 
-  // Connect signals and slots
-  connect(route_requester_, &HttpRequest::requestDone, this, &RoutesDialog::parseRouteList);
+  // Connect local UI changes
   connect(device_list_, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &RoutesDialog::fetchRoutes);
   connect(period_selector_, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &RoutesDialog::fetchRoutes);
   connect(route_list_, &QListWidget::itemDoubleClicked, this, &QDialog::accept);
   connect(button_box, &QDialogButtonBox::accepted, this, &QDialog::accept);
   connect(button_box, &QDialogButtonBox::rejected, this, &QDialog::reject);
 
-  // Send request to fetch devices
-  HttpRequest *http = new HttpRequest(this, false);
-  connect(http, &HttpRequest::requestDone, this, &RoutesDialog::parseDeviceList);
-  http->sendRequest(CommaApi::BASE_URL + "/v1/me/devices/");
+  // Initial Fetch (Blocking)
+  fetchDeviceList();
 }
 
-void RoutesDialog::parseDeviceList(const QString &json, bool success, QNetworkReply::NetworkError err) {
-  if (success) {
+void RoutesDialog::fetchDeviceList() {
+  device_list_->addItem(tr("Loading..."));
+  QGuiApplication::setOverrideCursor(Qt::WaitCursor);
+
+  // Using your blocking implementation
+  long result = 0;
+  QString json = QString::fromStdString(CommaApi2::httpGet(CommaApi2::BASE_URL + "/v1/me/devices/", &result));
+
+  QGuiApplication::restoreOverrideCursor();
+
+  if (!json.isEmpty()) {
     device_list_->clear();
     auto devices = QJsonDocument::fromJson(json.toUtf8()).array();
-    for (const QJsonValue &device : devices) {
+    for (const QJsonValue& device : devices) {
       QString dongle_id = device["dongle_id"].toString();
       device_list_->addItem(dongle_id, dongle_id);
     }
   } else {
-    bool unauthorized = (err == QNetworkReply::ContentAccessDenied || err == QNetworkReply::AuthenticationRequiredError);
-    QMessageBox::warning(this, tr("Error"), unauthorized ? tr("Unauthorized, Authenticate with tools/lib/auth.py") : tr("Network error"));
+    QMessageBox::warning(this, tr("Error"), tr("Network error or Unauthorized."));
     reject();
   }
-  sender()->deleteLater();
 }
 
 void RoutesDialog::fetchRoutes() {
@@ -95,8 +88,9 @@ void RoutesDialog::fetchRoutes() {
 
   route_list_->clear();
   route_list_->setEmptyText(tr("Loading..."));
-  // Construct URL with selected device and date range
-  QString url = QString("%1/v1/devices/%2").arg(CommaApi::BASE_URL, device_list_->currentText());
+
+  // 1. Build URL
+  QString url = QString("%1/v1/devices/%2").arg(QString::fromStdString(CommaApi2::BASE_URL), device_list_->currentText());
   int period = period_selector_->currentData().toInt();
   if (period == -1) {
     url += "/routes/preserved";
@@ -106,14 +100,19 @@ void RoutesDialog::fetchRoutes() {
                .arg(now.addDays(-period).toMSecsSinceEpoch())
                .arg(now.toMSecsSinceEpoch());
   }
-  route_requester_->send(url);
-}
 
-void RoutesDialog::parseRouteList(const QString &json, bool success, QNetworkReply::NetworkError err) {
-  if (success) {
-    for (const QJsonValue &route : QJsonDocument::fromJson(json.toUtf8()).array()) {
+  // 2. Blocking Call
+  QGuiApplication::setOverrideCursor(Qt::WaitCursor);
+  long result = 0;
+  QString json = QString::fromStdString(CommaApi2::httpGet(url.toStdString(), &result));
+  QGuiApplication::restoreOverrideCursor();
+
+  // 3. Parse immediately
+  if (!json.isEmpty()) {
+    auto routes = QJsonDocument::fromJson(json.toUtf8()).array();
+    for (const QJsonValue& route : routes) {
       QDateTime from, to;
-      if (period_selector_->currentData().toInt() == -1) {
+      if (period == -1) {
         from = QDateTime::fromString(route["start_time"].toString(), Qt::ISODateWithMs);
         to = QDateTime::fromString(route["end_time"].toString(), Qt::ISODateWithMs);
       } else {
@@ -125,9 +124,6 @@ void RoutesDialog::parseRouteList(const QString &json, bool success, QNetworkRep
       route_list_->addItem(item);
     }
     if (route_list_->count() > 0) route_list_->setCurrentRow(0);
-  } else {
-    QMessageBox::warning(this, tr("Error"), tr("Failed to fetch routes. Check your network connection."));
-    reject();
   }
   route_list_->setEmptyText(tr("No items"));
 }
