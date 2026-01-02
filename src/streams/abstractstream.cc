@@ -161,35 +161,37 @@ bool AbstractStream::isMessageActive(const MessageId &id) const {
 void AbstractStream::updateSnapshotsTo(double sec) {
   current_sec_ = sec;
   uint64_t last_ts = toMonoTime(sec);
-  std::unordered_map<MessageId, CanData> msgs;
-  msgs.reserve(events_.size());
+  std::unordered_map<MessageId, CanData> next_state;
+  next_state.reserve(events_.size());
 
   for (const auto &[id, ev] : events_) {
     auto it = std::upper_bound(ev.begin(), ev.end(), last_ts, CompareCanEvent());
-    if (it != ev.begin()) {
-      auto &m = msgs[id];
-      double freq = 0;
-      // Keep suppressed bits.
-      if (auto old_m = master_state_.find(id); old_m != master_state_.end()) {
-        freq = old_m->second.freq;
-        m.last_changes.reserve(old_m->second.last_changes.size());
-        std::transform(old_m->second.last_changes.cbegin(), old_m->second.last_changes.cend(),
-                       std::back_inserter(m.last_changes),
-                       [](const auto &change) { return CanData::ByteLastChange{.suppressed = change.suppressed}; });
-      }
+    if (it == ev.begin()) continue;
 
-      auto prev = std::prev(it);
-      m.update(id, (*prev)->dat, (*prev)->size, toSeconds((*prev)->mono_time), getSpeed(), {}, freq);
-      m.count = std::distance(ev.begin(), prev) + 1;
+    auto &m = next_state[id];
+    auto prev_ev = *std::prev(it);
+    double freq = 0;
+    // Keep suppressed bits.
+    if (auto old_it = master_state_.find(id); old_it != master_state_.end()) {
+      freq = old_it->second.freq;
+      const auto &old_changes = old_it->second.last_changes;
+      m.last_changes.resize(old_changes.size());
+      for (size_t i = 0; i < old_changes.size(); ++i) {
+        m.last_changes[i].suppressed = old_changes[i].suppressed;
+      }
     }
+    m.update(id, prev_ev->dat, prev_ev->size, toSeconds(prev_ev->mono_time), getSpeed(), {}, freq);
+    m.count = std::distance(ev.begin(), it);
   }
 
   dirty_ids_.clear();
-  master_state_ = std::move(msgs);
+  master_state_ = std::move(next_state);
 
   bool id_changed = master_state_.size() != snapshot_map_.size() ||
                     std::any_of(master_state_.cbegin(), master_state_.cend(),
                                 [this](const auto &m) { return !snapshot_map_.count(m.first); });
+  // Syc to snapshots
+  snapshot_map_.clear();
   for (const auto &[id, m] : master_state_) {
     snapshot_map_[id] = std::make_unique<CanData>(m);
   }
