@@ -120,4 +120,5 @@ protected:
   QPushButton *suppress_add;
   QPushButton *suppress_clear;
   QMenu *menu;
+  friend class MessageListModel;
 };

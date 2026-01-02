@@ -350,7 +350,10 @@ void MessageListModel::onSnapshotsUpdated(const std::set<MessageId> *ids, bool n
   }
 
   // Update viewport
-  emit dataChanged(index(0, 0), index(rowCount() - 1, columnCount() - 1));
+  MessagesWidget *widget = qobject_cast<MessagesWidget*>(parent());
+  if (widget && widget->view) {
+    widget->view->viewport()->update();
+  }
 }
 
 void MessageListModel::sort(int column, Qt::SortOrder order) {
