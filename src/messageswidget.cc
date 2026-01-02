@@ -42,7 +42,7 @@ MessagesWidget::MessagesWidget(QWidget *parent) : menu(new QMenu(this)), QWidget
   QObject::connect(menu, &QMenu::aboutToShow, this, &MessagesWidget::menuAboutToShow);
   QObject::connect(header, &MessageViewHeader::customContextMenuRequested, this, &MessagesWidget::headerContextMenuEvent);
   QObject::connect(view->horizontalScrollBar(), &QScrollBar::valueChanged, header, &MessageViewHeader::updateHeaderPositions);
-  QObject::connect(can, &AbstractStream::msgsReceived, model, &MessageListModel::msgsReceived);
+  QObject::connect(can, &AbstractStream::snapshotsUpdated, model, &MessageListModel::onSnapshotsUpdated);
   QObject::connect(dbc(), &DBCManager::DBCFileChanged, model, &MessageListModel::dbcModified);
   QObject::connect(UndoStack::instance(), &QUndoStack::indexChanged, model, &MessageListModel::dbcModified);
   QObject::connect(model, &MessageListModel::modelReset, [this]() {
@@ -307,9 +307,9 @@ bool MessageListModel::match(const MessageListModel::Item &item) {
 bool MessageListModel::filterAndSort() {
   // merge CAN and DBC messages
   std::vector<MessageId> all_messages;
-  all_messages.reserve(can->lastMessages().size() + dbc_messages_.size());
+  all_messages.reserve(can->snapshots().size() + dbc_messages_.size());
   auto dbc_msgs = dbc_messages_;
-  for (const auto &[id, m] : can->lastMessages()) {
+  for (const auto &[id, m] : can->snapshots()) {
     all_messages.push_back(id);
     dbc_msgs.erase(MessageId{INVALID_SOURCE, id.address});
   }
@@ -325,7 +325,7 @@ bool MessageListModel::filterAndSort() {
           .id = id,
           .name = msg ? msg->name : UNTITLED,
           .node = msg ? msg->transmitter : QString(),
-          .data = can->lastMessage(id),
+          .data = can->snapshot(id),
       };
       if (match(item))
         items.emplace_back(item);
@@ -342,8 +342,8 @@ bool MessageListModel::filterAndSort() {
   return false;
 }
 
-void MessageListModel::msgsReceived(const std::set<MessageId> *new_msgs, bool has_new_ids) {
-  if (has_new_ids || ((filters_.count(Column::FREQ) || filters_.count(Column::COUNT) || filters_.count(Column::DATA)) &&
+void MessageListModel::onSnapshotsUpdated(const std::set<MessageId> *ids, bool needs_rebuild) {
+  if (needs_rebuild || ((filters_.count(Column::FREQ) || filters_.count(Column::COUNT) || filters_.count(Column::DATA)) &&
                       ++sort_threshold_ == settings.fps)) {
     sort_threshold_ = 0;
     if (filterAndSort()) return;
@@ -399,7 +399,7 @@ void MessageView::updateBytesSectionSize() {
   auto delegate = ((MessageBytesDelegate *)itemDelegate());
   int max_bytes = 8;
   if (!delegate->multipleLines()) {
-    for (const auto &[_, m] : can->lastMessages()) {
+    for (const auto &[_, m] : can->snapshots()) {
       max_bytes = std::max<int>(max_bytes, m->dat.size());
     }
   }

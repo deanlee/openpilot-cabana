@@ -479,7 +479,7 @@ SignalView::SignalView(ChartsWidget *charts, QWidget *parent) : charts(charts), 
   QObject::connect(dbc(), &DBCManager::signalUpdated, this, &SignalView::handleSignalUpdated);
   QObject::connect(tree->verticalScrollBar(), &QScrollBar::valueChanged, [this]() { updateState(); });
   QObject::connect(tree->verticalScrollBar(), &QScrollBar::rangeChanged, [this]() { updateState(); });
-  QObject::connect(can, &AbstractStream::msgsReceived, this, &SignalView::updateState);
+  QObject::connect(can, &AbstractStream::snapshotsUpdated, this, &SignalView::updateState);
   QObject::connect(tree->header(), &QHeaderView::sectionResized, [this](int logicalIndex, int oldSize, int newSize) {
     if (logicalIndex == 1) {
       value_column_width = newSize;
@@ -615,7 +615,7 @@ std::pair<QModelIndex, QModelIndex> SignalView::visibleSignalRange() {
 }
 
 void SignalView::updateState(const std::set<MessageId> *msgs) {
-  const auto *last_msg = can->lastMessage(model->msg_id);
+  const auto *last_msg = can->snapshot(model->msg_id);
   if (model->rowCount() == 0 || (msgs && !msgs->count(model->msg_id)) || last_msg->dat.size() == 0) return;
 
   for (auto item : model->root->children) {

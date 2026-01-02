@@ -15,7 +15,7 @@ AbstractStream::AbstractStream(QObject *parent) : QObject(parent) {
   assert(parent != nullptr);
   event_buffer_ = std::make_unique<MonotonicBuffer>(EVENT_NEXT_BUFFER_SIZE);
 
-  QObject::connect(this, &AbstractStream::privateUpdateLastMsgsSignal, this, &AbstractStream::syncLastMessages, Qt::QueuedConnection);
+  QObject::connect(this, &AbstractStream::privateUpdateLastMsgsSignal, this, &AbstractStream::commitSnapshots, Qt::QueuedConnection);
   QObject::connect(this, &AbstractStream::seekedTo, this, &AbstractStream::updateLastMsgsTo);
   QObject::connect(this, &AbstractStream::seeking, this, [this](double sec) { current_sec_ = sec; });
   QObject::connect(dbc(), &DBCManager::DBCFileChanged, this, &AbstractStream::updateMasks);
@@ -34,7 +34,7 @@ void AbstractStream::updateMasks() {
     }
   }
   // clear bit change counts
-  for (auto &[id, m] : messages_) {
+  for (auto &[id, m] : master_state_) {
     auto &mask = masks_[id];
     const int size = std::min(mask.size(), m.last_changes.size());
     for (int i = 0; i < size; ++i) {
@@ -53,7 +53,7 @@ void AbstractStream::suppressDefinedSignals(bool suppress) {
 size_t AbstractStream::suppressHighlighted() {
   std::lock_guard lk(mutex_);
   size_t cnt = 0;
-  for (auto &[_, m] : messages_) {
+  for (auto &[_, m] : master_state_) {
     for (auto &last_change : m.last_changes) {
       const double dt = current_sec_ - last_change.ts;
       if (dt < 2.0) {
@@ -68,24 +68,24 @@ size_t AbstractStream::suppressHighlighted() {
 
 void AbstractStream::clearSuppressed() {
   std::lock_guard lk(mutex_);
-  for (auto &[_, m] : messages_) {
+  for (auto &[_, m] : master_state_) {
     std::for_each(m.last_changes.begin(), m.last_changes.end(), [](auto &c) { c.suppressed = false; });
   }
 }
 
-void AbstractStream::syncLastMessages() {
+void AbstractStream::commitSnapshots() {
   std::vector<std::pair<MessageId, CanData>> snapshots;
   std::set<MessageId> msgs;
 
   {
     std::lock_guard lk(mutex_);
-    if (new_msgs_.empty()) return;
+    if (dirty_ids_.empty()) return;
 
-    snapshots.reserve(new_msgs_.size());
-    for (const auto& id : new_msgs_) {
-      snapshots.emplace_back(id, messages_[id]);
+    snapshots.reserve(dirty_ids_.size());
+    for (const auto& id : dirty_ids_) {
+      snapshots.emplace_back(id, master_state_[id]);
     }
-    msgs = std::move(new_msgs_);
+    msgs = std::move(dirty_ids_);
   }
 
   bool structure_changed = false;
@@ -94,7 +94,7 @@ void AbstractStream::syncLastMessages() {
   for (auto& [id, data] : snapshots) {
     current_sec_ = std::max(current_sec_, data.ts);
 
-    auto& target = last_msgs[id];
+    auto& target = snapshot_map_[id];
     if (target) {
       *target = std::move(data);
     } else {
@@ -114,7 +114,7 @@ void AbstractStream::syncLastMessages() {
     updateMasks();
     emit sourcesUpdated(sources);
   }
-  emit msgsReceived(&msgs, structure_changed);
+  emit snapshotsUpdated(&msgs, structure_changed);
 }
 
 void AbstractStream::setTimeRange(const std::optional<std::pair<double, double>> &range) {
@@ -127,8 +127,8 @@ void AbstractStream::setTimeRange(const std::optional<std::pair<double, double>>
 
 void AbstractStream::updateEvent(const MessageId &id, double sec, const uint8_t *data, uint8_t size) {
   std::lock_guard lk(mutex_);
-  messages_[id].update(id, data, size, sec, getSpeed(), masks_[id]);
-  new_msgs_.insert(id);
+  master_state_[id].update(id, data, size, sec, getSpeed(), masks_[id]);
+  dirty_ids_.insert(id);
 }
 
 const std::vector<const CanEvent *> &AbstractStream::events(const MessageId &id) const {
@@ -137,10 +137,10 @@ const std::vector<const CanEvent *> &AbstractStream::events(const MessageId &id)
   return it != events_.end() ? it->second : empty_events;
 }
 
-const CanData *AbstractStream::lastMessage(const MessageId &id) const {
+const CanData *AbstractStream::snapshot(const MessageId &id) const {
   static CanData empty_data = {};
-  auto it = last_msgs.find(id);
-  return it != last_msgs.end() ? it->second.get() : &empty_data;
+  auto it = snapshot_map_.find(id);
+  return it != snapshot_map_.end() ? it->second.get() : &empty_data;
 }
 
 bool AbstractStream::isMessageActive(const MessageId &id) const {
@@ -148,7 +148,7 @@ bool AbstractStream::isMessageActive(const MessageId &id) const {
     return false;
   }
   // Check if the message is active based on time difference and frequency
-  const auto *m = lastMessage(id);
+  const auto *m = snapshot(id);
   float delta = currentSec() - m->ts;
 
   if (m->freq < std::numeric_limits<double>::epsilon()) {
@@ -170,7 +170,7 @@ void AbstractStream::updateLastMsgsTo(double sec) {
       auto &m = msgs[id];
       double freq = 0;
       // Keep suppressed bits.
-      if (auto old_m = messages_.find(id); old_m != messages_.end()) {
+      if (auto old_m = master_state_.find(id); old_m != master_state_.end()) {
         freq = old_m->second.freq;
         m.last_changes.reserve(old_m->second.last_changes.size());
         std::transform(old_m->second.last_changes.cbegin(), old_m->second.last_changes.cend(),
@@ -184,16 +184,16 @@ void AbstractStream::updateLastMsgsTo(double sec) {
     }
   }
 
-  new_msgs_.clear();
-  messages_ = std::move(msgs);
+  dirty_ids_.clear();
+  master_state_ = std::move(msgs);
 
-  bool id_changed = messages_.size() != last_msgs.size() ||
-                    std::any_of(messages_.cbegin(), messages_.cend(),
-                                [this](const auto &m) { return !last_msgs.count(m.first); });
-  for (const auto &[id, m] : messages_) {
-    last_msgs[id] = std::make_unique<CanData>(m);
+  bool id_changed = master_state_.size() != snapshot_map_.size() ||
+                    std::any_of(master_state_.cbegin(), master_state_.cend(),
+                                [this](const auto &m) { return !snapshot_map_.count(m.first); });
+  for (const auto &[id, m] : master_state_) {
+    snapshot_map_[id] = std::make_unique<CanData>(m);
   }
-  emit msgsReceived(nullptr, id_changed);
+  emit snapshotsUpdated(nullptr, id_changed);
 
   std::lock_guard lk(mutex_);
   seek_finished_ = true;
@@ -336,7 +336,7 @@ void CanData::update(const MessageId &msg_id, const uint8_t *can_data, const int
         last_change.ts = ts;
         last_change.delta = delta;
       } else if (color.alphaF() > 0.0) {
-        color.setAlphaF(color.alphaF() - alpha_delta);
+        colors[i].setAlphaF(std::max(0.0, colors[i].alphaF() - alpha_delta));
       }
 
       dat[i] = can_data[i];

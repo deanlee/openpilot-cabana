@@ -87,11 +87,11 @@ public:
   inline uint64_t toMonoTime(double sec) const { return beginMonoTime() + std::max(sec, 0.0) * 1e9; }
   inline double toSeconds(uint64_t mono_time) const { return std::max(0.0, (mono_time - beginMonoTime()) / 1e9); }
 
-  inline const std::unordered_map<MessageId, std::unique_ptr<CanData>> &lastMessages() const { return last_msgs; }
+  inline const std::unordered_map<MessageId, std::unique_ptr<CanData>> &snapshots() const { return snapshot_map_; }
   bool isMessageActive(const MessageId &id) const;
   inline const MessageEventsMap &eventsMap() const { return events_; }
   inline const std::vector<const CanEvent *> &allEvents() const { return all_events_; }
-  const CanData* lastMessage(const MessageId& id) const;
+  const CanData* snapshot(const MessageId& id) const;
   const std::vector<const CanEvent *> &events(const MessageId &id) const;
   std::pair<CanEventIter, CanEventIter> eventsInRange(const MessageId &id, std::optional<std::pair<double, double>> time_range) const;
 
@@ -106,7 +106,7 @@ signals:
   void seekedTo(double sec);
   void timeRangeChanged(const std::optional<std::pair<double, double>> &range);
   void eventsMerged(const MessageEventsMap &events_map);
-  void msgsReceived(const std::set<MessageId> *new_msgs, bool has_new_ids);
+  void snapshotsUpdated(const std::set<MessageId> *ids, bool needs_rebuild);
   void sourcesUpdated(const SourceSet &s);
   void privateUpdateLastMsgsSignal();
 
@@ -123,20 +123,20 @@ protected:
   std::optional<std::pair<double, double>> time_range_;
 
 private:
-  void syncLastMessages();
+  void commitSnapshots();
   void updateLastMsgsTo(double sec);
   void updateMasks();
 
   MessageEventsMap events_;
-  std::unordered_map<MessageId, std::unique_ptr<CanData>> last_msgs;
+  std::unordered_map<MessageId, std::unique_ptr<CanData>> snapshot_map_;
   std::unique_ptr<MonotonicBuffer> event_buffer_;
 
   // Members accessed in multiple threads. (mutex protected)
   std::mutex mutex_;
   std::condition_variable seek_finished_cv_;
   bool seek_finished_ = false;
-  std::set<MessageId> new_msgs_;
-  std::unordered_map<MessageId, CanData> messages_;
+  std::set<MessageId> dirty_ids_;
+  std::unordered_map<MessageId, CanData> master_state_;
   std::unordered_map<MessageId, std::vector<uint8_t>> masks_;
 };
 

@@ -80,7 +80,7 @@ void HistoryLogModel::updateState(bool clear) {
     messages.clear();
     endRemoveRows();
   }
-  uint64_t current_time = can->toMonoTime(can->lastMessage(msg_id)->ts) + 1;
+  uint64_t current_time = can->toMonoTime(can->snapshot(msg_id)->ts) + 1;
   fetchData(messages.begin(), current_time, messages.empty() ? 0 : messages.front().mono_time);
 }
 
@@ -118,7 +118,7 @@ void HistoryLogModel::fetchData(std::deque<Message>::iterator insert_pos, uint64
 
   if (!msgs.empty()) {
     if (isHexMode() && (min_time > 0 || messages.empty())) {
-      const auto freq = can->lastMessage(msg_id)->freq;
+      const auto freq = can->snapshot(msg_id)->freq;
       const std::vector<uint8_t> no_mask;
       for (auto &m : msgs) {
         hex_colors.update(msg_id, m.data.data(), m.data.size(), m.mono_time / (double)1e9, can->getSpeed(), no_mask, freq);

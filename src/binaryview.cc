@@ -272,7 +272,7 @@ void BinaryViewModel::refresh() {
       }
     }
   } else {
-    row_count = can->lastMessage(msg_id)->dat.size();
+    row_count = can->snapshot(msg_id)->dat.size();
     items.resize(row_count * column_count);
   }
   endResetModel();
@@ -291,7 +291,7 @@ void BinaryViewModel::updateItem(int row, int col, uint8_t val, const QColor &co
 }
 
 void BinaryViewModel::updateState() {
-  const auto *last_msg = can->lastMessage(msg_id);
+  const auto *last_msg = can->snapshot(msg_id);
   const auto &binary = last_msg->dat;
   // Handle size changes in binary data
   if (binary.size() > row_count) {
