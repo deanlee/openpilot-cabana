@@ -36,10 +36,10 @@ void AbstractStream::updateMasks() {
   // clear bit change counts
   for (auto &[id, m] : master_state_) {
     auto &mask = masks_[id];
-    const int size = std::min(mask.size(), m.last_changes.size());
+    const int size = std::min(mask.size(), m.byte_states.size());
     for (int i = 0; i < size; ++i) {
       for (int j = 0; j < 8; ++j) {
-        if (((mask[i] >> (7 - j)) & 1) != 0) m.bit_flip_counts[i][j] = 0;
+        if (((mask[i] >> (7 - j)) & 1) != 0) m.bit_flips[i][j] = 0;
       }
     }
   }
@@ -54,14 +54,14 @@ size_t AbstractStream::suppressHighlighted() {
   std::lock_guard lk(mutex_);
   size_t cnt = 0;
   for (auto &[_, m] : master_state_) {
-    for (auto &last_change : m.last_changes) {
-      const double dt = current_sec_ - last_change.ts;
+    for (auto &state : m.byte_states) {
+      const double dt = current_sec_ - state.last_ts;
       if (dt < 2.0) {
-        last_change.suppressed = true;
+        state.suppressed = true;
       }
-      cnt += last_change.suppressed;
+      cnt += state.suppressed;
     }
-    for (auto &flip_counts : m.bit_flip_counts) flip_counts.fill(0);
+    for (auto &flip_counts : m.bit_flips) flip_counts.fill(0);
   }
   return cnt;
 }
@@ -69,12 +69,12 @@ size_t AbstractStream::suppressHighlighted() {
 void AbstractStream::clearSuppressed() {
   std::lock_guard lk(mutex_);
   for (auto &[_, m] : master_state_) {
-    std::for_each(m.last_changes.begin(), m.last_changes.end(), [](auto &c) { c.suppressed = false; });
+    std::for_each(m.byte_states.begin(), m.byte_states.end(), [](auto &c) { c.suppressed = false; });
   }
 }
 
 void AbstractStream::commitSnapshots() {
-  std::vector<std::pair<MessageId, CanData>> snapshots;
+  std::vector<std::pair<MessageId, MessageState>> snapshots;
   std::set<MessageId> msgs;
 
   {
@@ -98,7 +98,7 @@ void AbstractStream::commitSnapshots() {
     if (target) {
       *target = std::move(data);
     } else {
-      target = std::make_unique<CanData>(std::move(data));
+      target = std::make_unique<MessageState>(std::move(data));
       structure_changed = true;
     }
 
@@ -137,8 +137,8 @@ const std::vector<const CanEvent *> &AbstractStream::events(const MessageId &id)
   return it != events_.end() ? it->second : empty_events;
 }
 
-const CanData *AbstractStream::snapshot(const MessageId &id) const {
-  static CanData empty_data = {};
+const MessageState *AbstractStream::snapshot(const MessageId &id) const {
+  static MessageState empty_data = {};
   auto it = snapshot_map_.find(id);
   return it != snapshot_map_.end() ? it->second.get() : &empty_data;
 }
@@ -161,7 +161,7 @@ bool AbstractStream::isMessageActive(const MessageId &id) const {
 void AbstractStream::updateSnapshotsTo(double sec) {
   current_sec_ = sec;
   uint64_t last_ts = toMonoTime(sec);
-  std::unordered_map<MessageId, CanData> next_state;
+  std::unordered_map<MessageId, MessageState> next_state;
   next_state.reserve(events_.size());
 
   bool id_changed = false;
@@ -176,10 +176,10 @@ void AbstractStream::updateSnapshotsTo(double sec) {
     // Keep suppressed bits.
     if (auto old_it = master_state_.find(id); old_it != master_state_.end()) {
       freq = old_it->second.freq;
-      const auto& old_changes = old_it->second.last_changes;
-      m.last_changes.resize(old_changes.size());
+      const auto& old_changes = old_it->second.byte_states;
+      m.byte_states.resize(old_changes.size());
       for (size_t i = 0; i < old_changes.size(); ++i) {
-        m.last_changes[i].suppressed = old_changes[i].suppressed;
+        m.byte_states[i].suppressed = old_changes[i].suppressed;
       }
     }
     m.update(id, prev_ev->dat, prev_ev->size, toSeconds(prev_ev->mono_time), getSpeed(), {}, freq);
@@ -187,7 +187,7 @@ void AbstractStream::updateSnapshotsTo(double sec) {
 
     auto& snap_ptr = snapshot_map_[id];
     if (!snap_ptr) {
-      snap_ptr = std::make_unique<CanData>(m);
+      snap_ptr = std::make_unique<MessageState>(m);
       id_changed = true;
     } else {
       *snap_ptr = m;
