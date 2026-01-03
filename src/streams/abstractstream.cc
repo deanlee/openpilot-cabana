@@ -143,19 +143,17 @@ const MessageState *AbstractStream::snapshot(const MessageId &id) const {
   return it != snapshot_map_.end() ? it->second.get() : &empty_data;
 }
 
-bool AbstractStream::isMessageActive(const MessageId &id) const {
-  if (id.source == INVALID_SOURCE) {
-    return false;
-  }
-  // Check if the message is active based on time difference and frequency
-  const auto *m = snapshot(id);
-  float delta = currentSec() - m->ts;
+bool AbstractStream::isMessageActive(const MessageId& id) const {
+  const auto* m = snapshot(id);
+  if (!m || m->ts <= 0) return false;
 
-  if (m->freq < std::numeric_limits<double>::epsilon()) {
-    return delta < 1.5;
-  }
+  double elapsed = current_sec_ - m->ts;
+  if (elapsed < 0) return true;  // Handling seek/jitter
 
-  return delta < (5.0 / m->freq) + (1.0 / settings.fps);
+  // If freq is low/zero, 1.5s timeout.
+  // If freq is high, wait for 5 missed packets + 1 UI frame margin.
+  double threshold = (m->freq < 0.1) ? 1.5 : (5.0 / m->freq) + (1.0 / settings.fps);
+  return elapsed < threshold;
 }
 
 void AbstractStream::updateSnapshotsTo(double sec) {
