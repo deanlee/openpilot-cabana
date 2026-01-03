@@ -91,7 +91,7 @@ void CanData::update(const MessageId &msg_id, const uint8_t *can_data, const int
         last_change.ts = ts;
         last_change.delta = delta;
       } else if (color.alphaF() > 0.0) {
-        colors[i].setAlphaF(std::max(0.0, colors[i].alphaF() - alpha_delta));
+        color.setAlphaF(std::max(0.0, color.alphaF() - alpha_delta));
       }
 
       dat[i] = can_data[i];
