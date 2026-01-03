@@ -99,14 +99,14 @@ void LiveStream::timerEvent(QTimerEvent *event) {
     }
     if (!all_events_.empty()) {
       begin_event_ts = all_events_.front()->mono_time;
-      updateEvents();
+      processNewMessages();
       return;
     }
   }
   QObject::timerEvent(event);
 }
 
-void LiveStream::updateEvents() {
+void LiveStream::processNewMessages() {
   static double prev_speed = 1.0;
 
   if (first_update_ts == 0) {
@@ -130,7 +130,7 @@ void LiveStream::updateEvents() {
   for (auto it = first; it != last; ++it) {
     const CanEvent *e = *it;
     MessageId id(e->src, e->address);
-    updateEvent(id, (e->mono_time - begin_event_ts) / 1e9, e->dat, e->size);
+    processNewMessage(id, (e->mono_time - begin_event_ts) / 1e9, e->dat, e->size);
     current_event_ts = e->mono_time;
   }
   emit privateUpdateLastMsgsSignal();

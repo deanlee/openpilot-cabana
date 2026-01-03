@@ -89,7 +89,7 @@ public:
 protected:
   void mergeEvents(const std::vector<const CanEvent *> &events);
   const CanEvent *newEvent(uint64_t mono_time, const cereal::CanData::Reader &c);
-  void updateEvent(const MessageId &id, double sec, const uint8_t *data, uint8_t size);
+  void processNewMessage(const MessageId &id, double sec, const uint8_t *data, uint8_t size);
   void waitForSeekFinshed();
   std::vector<const CanEvent *> all_events_;
   double current_sec_ = 0;

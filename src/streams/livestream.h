@@ -32,7 +32,7 @@ protected:
 private:
   void startUpdateTimer();
   void timerEvent(QTimerEvent *event) override;
-  void updateEvents();
+  void processNewMessages();
 
   std::mutex lock;
   QThread *stream_thread;

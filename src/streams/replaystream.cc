@@ -99,7 +99,7 @@ bool ReplayStream::eventFilter(const Event *event) {
     for (const auto &c : e.getCan()) {
       MessageId id(c.getSrc(), c.getAddress());
       const auto dat = c.getDat();
-      updateEvent(id, current_sec, (const uint8_t*)dat.begin(), dat.size());
+      processNewMessage(id, current_sec, (const uint8_t*)dat.begin(), dat.size());
     }
   }
 
