@@ -61,7 +61,7 @@ void MessageBytesModel::updateState() {
     endInsertRows();
   }
 
-  auto &bit_flips = heatmap_live_mode ? last_msg->bit_flip_counts : getBitFlipChanges(binary.size());
+  auto &bit_flips = heatmap_live_mode ? last_msg->bit_flips : getBitFlipChanges(binary.size());
   // Find the maximum bit flip count across the message
   uint32_t max_bit_flip_count = 1;  // Default to 1 to avoid division by zero
   for (const auto &row : bit_flips) {

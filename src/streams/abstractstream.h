@@ -12,9 +12,9 @@
 #include <utility>
 #include <vector>
 
-#include "candata.h"
 #include "cereal/messaging/messaging.h"
 #include "dbc/dbcmanager.h"
+#include "message_state.h"
 #include "replay/include/util.h"
 #include "utils/util.h"
 
@@ -60,11 +60,11 @@ public:
   inline uint64_t toMonoTime(double sec) const { return beginMonoTime() + std::max(sec, 0.0) * 1e9; }
   inline double toSeconds(uint64_t mono_time) const { return std::max(0.0, (mono_time - beginMonoTime()) / 1e9); }
 
-  inline const std::unordered_map<MessageId, std::unique_ptr<CanData>> &snapshots() const { return snapshot_map_; }
+  inline const std::unordered_map<MessageId, std::unique_ptr<MessageState>> &snapshots() const { return snapshot_map_; }
   bool isMessageActive(const MessageId &id) const;
   inline const MessageEventsMap &eventsMap() const { return events_; }
   inline const std::vector<const CanEvent *> &allEvents() const { return all_events_; }
-  const CanData* snapshot(const MessageId& id) const;
+  const MessageState* snapshot(const MessageId& id) const;
   const std::vector<const CanEvent *> &events(const MessageId &id) const;
   std::pair<CanEventIter, CanEventIter> eventsInRange(const MessageId &id, std::optional<std::pair<double, double>> time_range) const;
 
@@ -101,7 +101,7 @@ private:
   void updateMasks();
 
   MessageEventsMap events_;
-  std::unordered_map<MessageId, std::unique_ptr<CanData>> snapshot_map_;
+  std::unordered_map<MessageId, std::unique_ptr<MessageState>> snapshot_map_;
   std::unique_ptr<MonotonicBuffer> event_buffer_;
 
   // Members accessed in multiple threads. (mutex protected)
@@ -109,7 +109,7 @@ private:
   std::condition_variable seek_finished_cv_;
   bool seek_finished_ = false;
   std::set<MessageId> dirty_ids_;
-  std::unordered_map<MessageId, CanData> master_state_;
+  std::unordered_map<MessageId, MessageState> master_state_;
   std::unordered_map<MessageId, std::vector<uint8_t>> masks_;
 };
 
