@@ -62,6 +62,13 @@ RouteBrowserDialog::RouteBrowserDialog(QWidget* parent) : QDialog(parent) {
   fetchDeviceList();
 }
 
+RouteBrowserDialog::~RouteBrowserDialog() {
+  device_watcher.disconnect();
+  route_watcher.disconnect();
+  device_watcher.cancel();
+  route_watcher.cancel();
+}
+
 void RouteBrowserDialog::fetchDeviceList() {
   device_list_->clear();
   device_list_->addItem(tr("Loading devices..."));

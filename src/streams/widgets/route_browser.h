@@ -10,6 +10,7 @@ class RouteBrowserDialog : public QDialog {
   Q_OBJECT
 public:
   RouteBrowserDialog(QWidget *parent);
+  ~RouteBrowserDialog();
   QString route();
 
 protected:
