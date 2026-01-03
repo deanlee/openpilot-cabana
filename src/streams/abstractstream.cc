@@ -233,34 +233,125 @@ const CanEvent *AbstractStream::newEvent(uint64_t mono_time, const cereal::CanDa
   return e;
 }
 
-void AbstractStream::mergeEvents(const std::vector<const CanEvent *> &events) {
-  static MessageEventsMap msg_events;
-  std::for_each(msg_events.begin(), msg_events.end(), [](auto &e) { e.second.clear(); });
 
-  // Group events by message ID
+void AbstractStream::mergeEvents(const std::vector<const CanEvent*>& events) {
+  if (events.empty()) return;
+
+  // 1. Group by ID more efficiently
+  // Hint: If MessageEventsMap is a map, it creates many small allocations.
+  // Using a local temporary grouping is often cleaner.
+  MessageEventsMap msg_events; 
   for (auto e : events) {
     msg_events[{e->src, e->address}].push_back(e);
   }
 
-  if (!events.empty()) {
-    for (const auto &[id, new_e] : msg_events) {
-      if (!new_e.empty()) {
-        auto &e = events_[id];
-        auto pos = std::upper_bound(e.cbegin(), e.cend(), new_e.front()->mono_time, CompareCanEvent());
-        e.insert(pos, new_e.cbegin(), new_e.cend());
+  // Determine if we are appending to the global log
+  bool is_global_append = all_events_.empty() || events.front()->mono_time >= all_events_.back()->mono_time;
+
+  for (const auto& [id, new_e] : msg_events) {
+    auto& e = events_[id];
+    bool is_append = e.empty() || new_e.front()->mono_time >= e.back()->mono_time;
+
+    if (is_append) {
+      e.insert(e.end(), new_e.begin(), new_e.end());
+    } else {
+      auto pos = std::upper_bound(e.begin(), e.end(), new_e.front()->mono_time, CompareCanEvent());
+      e.insert(pos, new_e.begin(), new_e.end());
+    }
+
+    // Indexing logic
+    if (e.size() > 1000) {
+      if (is_append) {
+        updateIncrementalIndex(id, new_e);
+      } else {
+        buildTimeIndex(id);
       }
     }
-    auto pos = std::upper_bound(all_events_.cbegin(), all_events_.cend(), events.front()->mono_time, CompareCanEvent());
-    all_events_.insert(pos, events.cbegin(), events.cend());
-    emit eventsMerged(msg_events);
+  }
+
+  // 2. Global Event List Update
+  // If we are just appending data (live stream), don't use upper_bound!
+  if (is_global_append) {
+    all_events_.insert(all_events_.end(), events.begin(), events.end());
+  } else {
+    auto pos = std::upper_bound(all_events_.begin(), all_events_.end(), events.front()->mono_time, CompareCanEvent());
+    all_events_.insert(pos, events.begin(), events.end());
+  }
+
+  emit eventsMerged(msg_events);
+}
+
+std::pair<size_t, size_t> AbstractStream::getBounds(const MessageId& id, uint64_t ts_ns) const {
+  const auto& evs = events_.at(id);
+  auto it = time_index_map_.find(id);
+  if (it == time_index_map_.end() || ts_ns <= evs.front()->mono_time) {
+    return {0, evs.size()};
+  }
+
+  const auto& idx_list = it->second;
+  size_t sec = (ts_ns - evs.front()->mono_time) / 1000000000;
+
+  if (sec >= idx_list.size()) return {idx_list.back(), evs.size()};
+
+  size_t min_idx = idx_list[sec];
+  size_t max_idx = (sec + 1 < idx_list.size()) ? idx_list[sec + 1] : evs.size();
+
+  return {min_idx, max_idx};
+}
+
+void AbstractStream::updateIncrementalIndex(const MessageId& id, const std::vector<const CanEvent*>& new_events) {
+  auto& idx_list = time_index_map_[id];
+  const auto& all_evs = events_[id];
+
+  if (idx_list.empty()) {
+    buildTimeIndex(id);
+    return;
+  }
+
+  uint64_t log_start_ns = all_evs.front()->mono_time;
+  // Process only the newly appended events
+  for (size_t i = all_evs.size() - new_events.size(); i < all_evs.size(); ++i) {
+    size_t sec = (all_evs[i]->mono_time - log_start_ns) / 1000000000;
+
+    // Fill all seconds between the last indexed event and this one
+    // This is crucial for 0.33Hz messages to ensure no "holes" in the index
+    while (idx_list.size() <= sec) {
+      idx_list.push_back(i);
+    }
   }
 }
 
-std::pair<CanEventIter, CanEventIter> AbstractStream::eventsInRange(const MessageId &id, std::optional<std::pair<double, double>> time_range) const {
-  const auto &events = can->events(id);
-  if (!time_range) return {events.begin(), events.end()};
+void AbstractStream::buildTimeIndex(const MessageId& id) {
+  const auto& evs = events_[id];
+  if (evs.empty()) return;
 
-  auto first = std::lower_bound(events.begin(), events.end(), can->toMonoTime(time_range->first), CompareCanEvent());
-  auto last = std::upper_bound(first, events.end(), can->toMonoTime(time_range->second), CompareCanEvent());
+  auto& idx_list = time_index_map_[id];
+  idx_list.clear();
+
+  uint64_t log_start_ns = evs.front()->mono_time;
+  for (size_t i = 0; i < evs.size(); ++i) {
+    size_t sec = (evs[i]->mono_time - log_start_ns) / 1000000000;
+    while (idx_list.size() <= sec) {
+      idx_list.push_back(i);
+    }
+  }
+}
+
+std::pair<CanEventIter, CanEventIter> AbstractStream::eventsInRange(const MessageId& id, std::optional<std::pair<double, double>> range) const {
+  const auto& evs = events(id);
+  if (evs.empty() || !range) return {evs.begin(), evs.end()};
+
+  uint64_t t_start = toMonoTime(range->first);
+  uint64_t t_end = toMonoTime(range->second);
+
+  // Use a simple helper that returns [min_idx, max_idx]
+  auto [s_min, s_max] = getBounds(id, t_start);
+  auto first = std::lower_bound(evs.begin() + s_min, evs.begin() + s_max, t_start, CompareCanEvent());
+
+  auto [e_min, e_max] = getBounds(id, t_end);
+  // Optimization: ensure 'last' search starts at 'first'
+  size_t start_for_last = std::max((size_t)std::distance(evs.begin(), first), e_min);
+  auto last = std::upper_bound(evs.begin() + start_for_last, evs.begin() + e_max, t_end, CompareCanEvent());
+
   return {first, last};
 }

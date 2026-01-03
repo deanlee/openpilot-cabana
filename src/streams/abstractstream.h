@@ -99,6 +99,9 @@ private:
   void commitSnapshots();
   void updateSnapshotsTo(double sec);
   void updateMasks();
+  void buildTimeIndex(const MessageId& id);
+  void updateIncrementalIndex(const MessageId &id, const std::vector<const CanEvent*> &new_events);
+  std::pair<size_t, size_t> getBounds(const MessageId& id, uint64_t ts_ns) const;
 
   MessageEventsMap events_;
   std::unordered_map<MessageId, std::unique_ptr<MessageState>> snapshot_map_;
@@ -110,6 +113,7 @@ private:
   bool seek_finished_ = false;
   std::set<MessageId> dirty_ids_;
   std::unordered_map<MessageId, MessageState> master_state_;
+  std::unordered_map<MessageId, std::vector<size_t>> time_index_map_;
   std::unordered_map<MessageId, std::vector<uint8_t>> masks_;
 };
 
