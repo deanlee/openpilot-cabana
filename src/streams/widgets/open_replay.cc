@@ -9,7 +9,7 @@
 #include <QPushButton>
 
 #include "streams/replaystream.h"
-#include "routes_dialog.h"
+#include "route_browser.h"
 #include "settings.h"
 
 OpenReplayWidget::OpenReplayWidget(QWidget *parent) : AbstractStreamWidget(parent) {
@@ -38,9 +38,9 @@ OpenReplayWidget::OpenReplayWidget(QWidget *parent) : AbstractStreamWidget(paren
     }
   });
   connect(browse_remote_btn, &QPushButton::clicked, [this]() {
-    RoutesDialog route_dlg(this);
-    if (route_dlg.exec()) {
-      route_edit->setText(route_dlg.route());
+    RouteBrowserDialog dlg(this);
+    if (dlg.exec()) {
+      route_edit->setText(dlg.route());
     }
   });
 }

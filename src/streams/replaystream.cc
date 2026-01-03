@@ -5,7 +5,6 @@
 #include "common/timing.h"
 #include "common/util.h"
 #include "settings.h"
-#include "widgets/routes_dialog.h"
 
 ReplayStream::ReplayStream(QObject *parent) : AbstractStream(parent) {
   unsetenv("ZMQ");

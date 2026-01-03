@@ -1,4 +1,4 @@
-#include "routes_dialog.h"
+#include "route_browser.h"
 
 #include <QDateTime>
 #include <QDialogButtonBox>
@@ -31,8 +31,8 @@ class RouteListWidget : public QListWidget {
   QString empty_text_ = tr("No items");
 };
 
-// --- RoutesDialog Implementation ---
-RoutesDialog::RoutesDialog(QWidget* parent) : QDialog(parent) {
+// --- RouteBrowserDialog Implementation ---
+RouteBrowserDialog::RouteBrowserDialog(QWidget* parent) : QDialog(parent) {
   setWindowTitle(tr("Remote routes"));
   setMinimumWidth(400);
 
@@ -50,19 +50,19 @@ RoutesDialog::RoutesDialog(QWidget* parent) : QDialog(parent) {
   period_selector_->addItem(tr("Preserved"), -1);
 
   // Connect Watchers
-  connect(&device_watcher, &QFutureWatcher<QString>::finished, this, &RoutesDialog::parseDeviceList);
-  connect(&route_watcher, &QFutureWatcher<QString>::finished, this, &RoutesDialog::parseRouteList);
+  connect(&device_watcher, &QFutureWatcher<QString>::finished, this, &RouteBrowserDialog::parseDeviceList);
+  connect(&route_watcher, &QFutureWatcher<QString>::finished, this, &RouteBrowserDialog::parseRouteList);
 
   // UI Trigger connections
-  connect(device_list_, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &RoutesDialog::fetchRoutes);
-  connect(period_selector_, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &RoutesDialog::fetchRoutes);
+  connect(device_list_, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &RouteBrowserDialog::fetchRoutes);
+  connect(period_selector_, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &RouteBrowserDialog::fetchRoutes);
   connect(button_box, &QDialogButtonBox::accepted, this, &QDialog::accept);
   connect(button_box, &QDialogButtonBox::rejected, this, &QDialog::reject);
 
   fetchDeviceList();
 }
 
-void RoutesDialog::fetchDeviceList() {
+void RouteBrowserDialog::fetchDeviceList() {
   device_list_->clear();
   device_list_->addItem(tr("Loading devices..."));
 
@@ -75,7 +75,7 @@ void RoutesDialog::fetchDeviceList() {
   device_watcher.setFuture(future);
 }
 
-void RoutesDialog::parseDeviceList() {
+void RouteBrowserDialog::parseDeviceList() {
   QString json = device_watcher.result();
   device_list_->clear();
 
@@ -91,15 +91,13 @@ void RoutesDialog::parseDeviceList() {
   }
 }
 
-void RoutesDialog::fetchRoutes() {
+void RouteBrowserDialog::fetchRoutes() {
   if (device_list_->currentIndex() == -1 || device_list_->currentData().isNull()) return;
 
   route_list_->clear();
   route_list_->setEmptyText(tr("Loading..."));
 
-  QString url = QString("%1/v1/devices/%2")
-                    .arg(QString::fromStdString(CommaApi2::BASE_URL), device_list_->currentText());
-
+  QString url = QString::fromStdString(CommaApi2::BASE_URL) + "/v1/devices/" + device_list_->currentText();
   int period = period_selector_->currentData().toInt();
   if (period == -1) {
     url += "/routes/preserved";
@@ -118,7 +116,7 @@ void RoutesDialog::fetchRoutes() {
   route_watcher.setFuture(future);
 }
 
-void RoutesDialog::parseRouteList() {
+void RouteBrowserDialog::parseRouteList() {
   QString json = route_watcher.result();
   if (json.isEmpty()) {
     route_list_->setEmptyText(tr("No routes found or network error."));
@@ -146,7 +144,7 @@ void RoutesDialog::parseRouteList() {
   route_list_->setEmptyText(tr("No items"));
 }
 
-QString RoutesDialog::route() {
+QString RouteBrowserDialog::route() {
   auto item = route_list_->currentItem();
   return item ? item->data(Qt::UserRole).toString() : "";
 }

@@ -6,10 +6,10 @@
 
 class RouteListWidget;
 
-class RoutesDialog : public QDialog {
+class RouteBrowserDialog : public QDialog {
   Q_OBJECT
 public:
-  RoutesDialog(QWidget *parent);
+  RouteBrowserDialog(QWidget *parent);
   QString route();
 
 protected:
