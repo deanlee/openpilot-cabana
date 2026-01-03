@@ -11,6 +11,11 @@ static const int EVENT_NEXT_BUFFER_SIZE = 6 * 1024 * 1024;  // 6MB
 
 AbstractStream *can = nullptr;
 
+template <>
+uint64_t TimeIndex<const CanEvent*>::get_timestamp(const CanEvent* const& e) {
+  return e->mono_time;
+}
+
 AbstractStream::AbstractStream(QObject *parent) : QObject(parent) {
   assert(parent != nullptr);
   event_buffer_ = std::make_unique<MonotonicBuffer>(EVENT_NEXT_BUFFER_SIZE);
@@ -165,23 +170,27 @@ void AbstractStream::updateSnapshotsTo(double sec) {
   bool id_changed = false;
 
   for (const auto& [id, ev] : events_) {
-    auto it = std::upper_bound(ev.begin(), ev.end(), last_ts, CompareCanEvent());
+    auto [s_min, s_max] = time_index_map_[id].getBounds(ev.front()->mono_time, last_ts, ev.size());
+    auto it = std::upper_bound(ev.begin() + s_min, ev.begin() + s_max, last_ts, CompareCanEvent());
+
     if (it == ev.begin()) continue;
 
     auto& m = next_state[id];
-    auto prev_ev = *std::prev(it);
+    const CanEvent* prev_ev = *std::prev(it);
+
     double freq = 0;
-    // Keep suppressed bits.
+    // Keep suppressed bits efficiently
     if (auto old_it = master_state_.find(id); old_it != master_state_.end()) {
       freq = old_it->second.freq;
-      const auto& old_changes = old_it->second.byte_states;
-      m.byte_states.resize(old_changes.size());
-      for (size_t i = 0; i < old_changes.size(); ++i) {
-        m.byte_states[i].suppressed = old_changes[i].suppressed;
+      const auto& old_bytes = old_it->second.byte_states;
+      m.byte_states.resize(old_bytes.size());
+      for (size_t i = 0; i < old_bytes.size(); ++i) {
+        m.byte_states[i].suppressed = old_bytes[i].suppressed;
       }
     }
+
     m.update(id, prev_ev->dat, prev_ev->size, toSeconds(prev_ev->mono_time), getSpeed(), {}, freq);
-    m.count = std::distance(ev.begin(), it);
+    m.count = std::distance(ev.begin(), it); // Accurate global count
 
     auto& snap_ptr = snapshot_map_[id];
     if (!snap_ptr) {
@@ -192,6 +201,7 @@ void AbstractStream::updateSnapshotsTo(double sec) {
     }
   }
 
+  // Handle ID lifecycle (newly appeared or disappeared messages)
   if (!id_changed && next_state.size() != snapshot_map_.size()) {
     id_changed = true;
   }
@@ -233,34 +243,54 @@ const CanEvent *AbstractStream::newEvent(uint64_t mono_time, const cereal::CanDa
   return e;
 }
 
-void AbstractStream::mergeEvents(const std::vector<const CanEvent *> &events) {
+
+void AbstractStream::mergeEvents(const std::vector<const CanEvent*>& events) {
+  if (events.empty()) return;
+
+  // 1. Group events by ID
   static MessageEventsMap msg_events;
-  std::for_each(msg_events.begin(), msg_events.end(), [](auto &e) { e.second.clear(); });
+  msg_events.clear();
+  for (auto e : events) msg_events[{e->src, e->address}].push_back(e);
 
-  // Group events by message ID
-  for (auto e : events) {
-    msg_events[{e->src, e->address}].push_back(e);
-  }
+  // 2. Global list update (O(1) fast-path for live streams)
+  auto& all = all_events_;
+  bool is_global_append = all.empty() || events.front()->mono_time >= all.back()->mono_time;
+  auto g_pos = is_global_append ? all.end() : std::upper_bound(all.begin(), all.end(), events.front()->mono_time, CompareCanEvent());
+  all.insert(g_pos, events.begin(), events.end());
 
-  if (!events.empty()) {
-    for (const auto &[id, new_e] : msg_events) {
-      if (!new_e.empty()) {
-        auto &e = events_[id];
-        auto pos = std::upper_bound(e.cbegin(), e.cend(), new_e.front()->mono_time, CompareCanEvent());
-        e.insert(pos, new_e.cbegin(), new_e.cend());
-      }
-    }
-    auto pos = std::upper_bound(all_events_.cbegin(), all_events_.cend(), events.front()->mono_time, CompareCanEvent());
-    all_events_.insert(pos, events.cbegin(), events.cend());
-    emit eventsMerged(msg_events);
+  // 3. Per-ID list and Index update
+  for (auto& [id, new_e] : msg_events) {
+    auto& e = events_[id];
+    bool is_append = e.empty() || new_e.front()->mono_time >= e.back()->mono_time;
+
+    auto pos = is_append ? e.end() : std::upper_bound(e.begin(), e.end(), new_e.front()->mono_time, CompareCanEvent());
+    e.insert(pos, new_e.begin(), new_e.end());
+
+    if (e.size() > 1000) time_index_map_[id].sync(e, e.front()->mono_time, e.back()->mono_time, !is_append);
   }
+  emit eventsMerged(msg_events);
 }
 
-std::pair<CanEventIter, CanEventIter> AbstractStream::eventsInRange(const MessageId &id, std::optional<std::pair<double, double>> time_range) const {
-  const auto &events = can->events(id);
-  if (!time_range) return {events.begin(), events.end()};
+std::pair<CanEventIter, CanEventIter> AbstractStream::eventsInRange(const MessageId& id, std::optional<std::pair<double, double>> range) const {
+  const auto& evs = events(id);
+  if (evs.empty() || !range) return {evs.begin(), evs.end()};
 
-  auto first = std::lower_bound(events.begin(), events.end(), can->toMonoTime(time_range->first), CompareCanEvent());
-  auto last = std::upper_bound(first, events.end(), can->toMonoTime(time_range->second), CompareCanEvent());
+  auto &time_index = time_index_map_.at(id);
+
+  uint64_t t0 = toMonoTime(range->first), t1 = toMonoTime(range->second);
+  auto [s_min, s_max] = time_index.getBounds(evs.front()->mono_time, t0, evs.size());
+  auto first = std::lower_bound(evs.begin() + s_min, evs.begin() + s_max, t0, CompareCanEvent());
+
+  auto [e_min, e_max] = time_index.getBounds(evs.front()->mono_time, t1, evs.size());
+  auto last = std::upper_bound(std::max(first, evs.begin() + e_min), evs.begin() + e_max, t1, CompareCanEvent());
+
   return {first, last};
 }
+
+// std::pair<size_t, size_t> AbstractStream::getBounds(const MessageId& id, uint64_t ts) const {
+//   const auto& evs = events_.at(id);
+//   auto it = time_indices_.find(id);
+//   if (it == time_indices_.end()) return {0, evs.size()};
+
+//   return it->second.getBounds(evs.front()->mono_time, ts, evs.size());
+// }

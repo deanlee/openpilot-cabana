@@ -16,6 +16,7 @@
 #include "dbc/dbcmanager.h"
 #include "message_state.h"
 #include "replay/include/util.h"
+#include "utils/time_index.h"
 #include "utils/util.h"
 
 struct CanEvent {
@@ -103,6 +104,7 @@ private:
   void commitSnapshots();
   void updateSnapshotsTo(double sec);
   void updateMasks();
+  // std::pair<size_t, size_t> getBounds(const MessageId& id, uint64_t ts) const;
 
   MessageEventsMap events_;
   std::unordered_map<MessageId, std::unique_ptr<MessageState>> snapshot_map_;
@@ -114,6 +116,7 @@ private:
   bool seek_finished_ = false;
   std::set<MessageId> dirty_ids_;
   std::unordered_map<MessageId, MessageState> master_state_;
+  std::unordered_map<MessageId, TimeIndex<const CanEvent*>> time_index_map_;
   std::unordered_map<MessageId, std::vector<uint8_t>> masks_;
 };
 
