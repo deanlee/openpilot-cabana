@@ -27,8 +27,12 @@ struct CanEvent {
 };
 
 struct CompareCanEvent {
-  constexpr bool operator()(const CanEvent *const e, uint64_t ts) const { return e->mono_time < ts; }
-  constexpr bool operator()(uint64_t ts, const CanEvent *const e) const { return ts < e->mono_time; }
+  constexpr bool operator()(const CanEvent* e, uint64_t ts) const noexcept {
+    return e->mono_time < ts;
+  }
+  constexpr bool operator()(uint64_t ts, const CanEvent* e) const noexcept {
+    return ts < e->mono_time;
+  }
 };
 
 typedef std::unordered_map<MessageId, std::vector<const CanEvent *>> MessageEventsMap;
