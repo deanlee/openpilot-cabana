@@ -116,9 +116,8 @@ void MessageLogModel::fetchData(std::deque<Message>::iterator insert_pos, uint64
   if (!msgs.empty()) {
     if (isHexMode() && (min_time > 0 || messages.empty())) {
       const auto freq = can->snapshot(msg_id)->freq;
-      const std::vector<uint8_t> no_mask;
       for (auto &m : msgs) {
-        hex_colors.update(msg_id, m.data.data(), m.data.size(), m.mono_time / (double)1e9, can->getSpeed(), no_mask, freq);
+        hex_colors.update(msg_id, m.data.data(), m.data.size(), m.mono_time / (double)1e9, can->getSpeed(), freq);
         m.colors = hex_colors.colors;
       }
     }

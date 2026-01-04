@@ -85,7 +85,11 @@ void cabana::Msg::update() {
   if (transmitter.isEmpty()) {
     transmitter = DEFAULT_NODE_NAME;
   }
-  mask.assign(size, 0x00);
+
+  // Align to 8-byte boundaries
+  int aligned_size = ((size + 7) / 8) * 8;
+  mask.assign(aligned_size, 0x00);
+
   multiplexor = nullptr;
 
   // sort signals

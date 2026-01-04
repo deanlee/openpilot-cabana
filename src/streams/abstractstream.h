@@ -104,7 +104,7 @@ private:
   void commitSnapshots();
   void updateSnapshotsTo(double sec);
   void updateMasks();
-  // std::pair<size_t, size_t> getBounds(const MessageId& id, uint64_t ts) const;
+  void updateMessageMask(const MessageId& id, MessageState& state);
 
   MessageEventsMap events_;
   std::unordered_map<MessageId, std::unique_ptr<MessageState>> snapshot_map_;

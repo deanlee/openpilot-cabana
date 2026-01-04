@@ -1,5 +1,6 @@
 #include "streams/abstractstream.h"
 
+#include <cstring>
 #include <limits>
 #include <utility>
 
@@ -30,23 +31,16 @@ AbstractStream::AbstractStream(QObject *parent) : QObject(parent) {
 void AbstractStream::updateMasks() {
   std::lock_guard lk(mutex_);
   masks_.clear();
-  if (!settings.suppress_defined_signals)
-    return;
-
-  for (const auto s : sources) {
-    for (const auto &[address, m] : dbc()->getMessages(s)) {
-      masks_[{(uint8_t)s, address}] = m.mask;
-    }
-  }
-  // clear bit change counts
-  for (auto &[id, m] : master_state_) {
-    auto &mask = masks_[id];
-    const int size = std::min(mask.size(), m.byte_states.size());
-    for (int i = 0; i < size; ++i) {
-      for (int j = 0; j < 8; ++j) {
-        if (((mask[i] >> (7 - j)) & 1) != 0) m.bit_flips[i][j] = 0;
+  if (settings.suppress_defined_signals) {
+    for (const auto s : sources) {
+      for (const auto &[address, m] : dbc()->getMessages(s)) {
+        masks_[{(uint8_t)s, address}] = m.mask;
       }
     }
+  }
+
+  for (auto &[id, state] : master_state_) {
+    updateMessageMask(id, state);
   }
 }
 
@@ -58,23 +52,27 @@ void AbstractStream::suppressDefinedSignals(bool suppress) {
 size_t AbstractStream::suppressHighlighted() {
   std::lock_guard lk(mutex_);
   size_t cnt = 0;
-  for (auto &[_, m] : master_state_) {
-    for (auto &state : m.byte_states) {
-      const double dt = current_sec_ - state.last_ts;
-      if (dt < 2.0) {
-        state.suppressed = true;
+  for (auto &[id, m] : master_state_) {
+    bool mod = false;
+    for (auto &s : m.byte_states) {
+      if (!s.suppressed && (current_sec_ - s.last_ts < 2.0)) {
+        s.suppressed = mod = true;
       }
-      cnt += state.suppressed;
+      cnt += s.suppressed;
     }
-    for (auto &flip_counts : m.bit_flips) flip_counts.fill(0);
+    if (mod) updateMessageMask(id, m);
   }
   return cnt;
 }
 
 void AbstractStream::clearSuppressed() {
   std::lock_guard lk(mutex_);
-  for (auto &[_, m] : master_state_) {
-    std::for_each(m.byte_states.begin(), m.byte_states.end(), [](auto &c) { c.suppressed = false; });
+  for (auto &[id, m] : master_state_) {
+    for (auto &state : m.byte_states) {
+      state.suppressed = false;
+    }
+    // Refresh the mask (this will re-allow highlights for these bits)
+    updateMessageMask(id, m);
   }
 }
 
@@ -132,7 +130,12 @@ void AbstractStream::setTimeRange(const std::optional<std::pair<double, double>>
 
 void AbstractStream::processNewMessage(const MessageId &id, double sec, const uint8_t *data, uint8_t size) {
   std::lock_guard lk(mutex_);
-  master_state_[id].update(id, data, size, sec, getSpeed(), masks_[id]);
+  auto &state = master_state_[id];
+  if (state.dat.size() != (size_t)size) {
+    state.init(data, size, sec);
+    updateMessageMask(id, state);
+  }
+  state.update(id, data, size, sec, getSpeed());
   dirty_ids_.insert(id);
 }
 
@@ -178,10 +181,11 @@ void AbstractStream::updateSnapshotsTo(double sec) {
     auto& m = next_state[id];
     const CanEvent* prev_ev = *std::prev(it);
 
-    double freq = 0;
-    // Keep suppressed bits efficiently
+    // Carry over suppression, frequency, and mask state from previous snapshot for this message ID.
+    // This ensures byte suppression and mask settings persist across timeline seeks.
     if (auto old_it = master_state_.find(id); old_it != master_state_.end()) {
-      freq = old_it->second.freq;
+      m.freq = old_it->second.freq;
+      m.combined_mask = old_it->second.combined_mask;
       const auto& old_bytes = old_it->second.byte_states;
       m.byte_states.resize(old_bytes.size());
       for (size_t i = 0; i < old_bytes.size(); ++i) {
@@ -189,8 +193,8 @@ void AbstractStream::updateSnapshotsTo(double sec) {
       }
     }
 
-    m.update(id, prev_ev->dat, prev_ev->size, toSeconds(prev_ev->mono_time), getSpeed(), {}, freq);
-    m.count = std::distance(ev.begin(), it); // Accurate global count
+    m.update(id, prev_ev->dat, prev_ev->size, toSeconds(prev_ev->mono_time), getSpeed());
+    m.count = std::distance(ev.begin(), it);
 
     auto& snap_ptr = snapshot_map_[id];
     if (!snap_ptr) {
@@ -287,10 +291,38 @@ std::pair<CanEventIter, CanEventIter> AbstractStream::eventsInRange(const Messag
   return {first, last};
 }
 
-// std::pair<size_t, size_t> AbstractStream::getBounds(const MessageId& id, uint64_t ts) const {
-//   const auto& evs = events_.at(id);
-//   auto it = time_indices_.find(id);
-//   if (it == time_indices_.end()) return {0, evs.size()};
+void AbstractStream::updateMessageMask(const MessageId& id, MessageState& state) {
+  state.combined_mask.fill(0);
+  const size_t size = state.dat.size();
+  if (size == 0) return;
 
-//   return it->second.getBounds(evs.front()->mono_time, ts, evs.size());
-// }
+  const size_t num_blocks = (size + 7) / 8;
+  auto it = masks_.find(id);
+
+  for (size_t b = 0; b < num_blocks; ++b) {
+    uint64_t& m64 = state.combined_mask[b];
+
+    // 1. Sync DBC bits
+    if (it != masks_.end() && !it->second.empty()) {
+      const auto& dbc_mask = it->second;
+      size_t offset = b * 8;
+      if (offset < dbc_mask.size()) {
+        size_t len = std::min<size_t>(8, dbc_mask.size() - offset);
+        std::memcpy(&m64, dbc_mask.data() + offset, len);
+      }
+    }
+
+    // 2. Add Suppression and cleanup visual state
+    for (int i = 0; i < 8; ++i) {
+      int idx = (b * 8) + i;
+      if (idx >= size) break;
+      if (state.byte_states[idx].suppressed) m64 |= (0xFFULL << (i * 8));
+
+      // If byte is fully masked, kill UI state immediately
+      if (((m64 >> (i * 8)) & 0xFF) == 0xFF) {
+        state.colors[idx] = QColor(0, 0, 0, 0);
+        state.bit_flips[idx].fill(0);
+      }
+    }
+  }
+}
