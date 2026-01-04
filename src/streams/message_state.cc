@@ -9,29 +9,36 @@
 
 namespace {
 
-enum ColorType { GREYISH_BLUE, CYAN, RED };
+static constexpr int TOGGLE_DECAY = 40;
+static constexpr int TREND_INC = 40;
+static constexpr int JITTER_DECAY = 100;
+static constexpr int TREND_MAX = 255;
 
-QColor getThemeColor(ColorType c) {
-  constexpr int start_alpha = 128;
-  static const QColor theme_colors[] = {
-    [GREYISH_BLUE] = QColor(102, 86, 169, start_alpha / 2),
-    [CYAN] = QColor(0, 187, 255, start_alpha),
-    [RED] = QColor(255, 0, 0, start_alpha),
-  };
-  return (settings.theme == LIGHT_THEME) ? theme_colors[c] : theme_colors[c].lighter(135);
-}
+static constexpr int LIMIT_NOISY = 60;
+static constexpr int LIMIT_TOGGLE = 100;
+static constexpr int LIMIT_TREND = 160;
 
-inline QColor blend(const QColor &a, const QColor &b) {
-  return QColor((a.red() + b.red()) / 2, (a.green() + b.green()) / 2,
-                (a.blue() + b.blue()) / 2, (a.alpha() + b.alpha()) / 2);
+static constexpr double ALPHA_DECAY_SECONDS = 1.5;
+static constexpr double ENTROPY_THRESHOLD = 0.85;  // Above this, it's considered "Noisy"
+static constexpr int MIN_SAMPLES_FOR_ENTROPY = 16;
+
+// Calculates Shannon Entropy for a single bit based on the probability 'p'
+double calculateBitEntropy(uint32_t set_counts, uint32_t total_samples) {
+  if (total_samples < MIN_SAMPLES_FOR_ENTROPY) return 0.0;
+
+  double p = static_cast<double>(set_counts) / total_samples;
+  if (p <= 0.001 || p >= 0.999) return 0.0;
+
+  // Shannon Entropy: -p*log2(p) - (1-p)*log2(1-p)
+  return -(p * std::log2(p) + (1.0 - p) * std::log2(1.0 - p));
 }
 
 double calc_freq(const MessageId& msg_id, double current_ts) {
   auto [first, last] = can->eventsInRange(msg_id, std::make_pair(current_ts - 59.0, current_ts));
-  const int n = std::distance(first, last);
+  const auto n = std::distance(first, last);
   if (n <= 1) return 0.0;
 
-  double duration = ((*std::prev(last))->mono_time - (*first)->mono_time) / 1e9;
+  const double duration = ((*std::prev(last))->mono_time - (*first)->mono_time) / 1e9;
   return (duration > 1e-9) ? (n - 1) / duration : 0.0;
 }
 
@@ -42,6 +49,7 @@ void MessageState::update(const MessageId& msg_id, const uint8_t* new_data, int 
   ts = current_ts;
   count++;
 
+  // 1. Frequency Management
   if (manual_freq > 0) {
     freq = manual_freq;
   } else if (std::abs(current_ts - last_freq_ts) >= 1.0) {
@@ -49,34 +57,33 @@ void MessageState::update(const MessageId& msg_id, const uint8_t* new_data, int 
     last_freq_ts = current_ts;
   }
 
-  if (dat.size() != (size_t)size) {
+  // 2. Data Resizing
+  if (dat.size() != static_cast<size_t>(size)) {
     init(new_data, size, current_ts);
     return;
   }
 
-  // 3. Process changes in 8-byte blocks
+  // 3. Process changes in 8-byte blocks (using bitwise shifts for speed/safety)
   const int num_blocks = (size + 7) / 8;
-  const int fade_step = std::max(1, (int)(255.0 / (freq + 1.0) / (2.0 * playback_speed)));
-
   for (int b = 0; b < num_blocks; ++b) {
     uint64_t cur_64 = 0;
-    int bytes_in_block = std::min(8, size - (b * 8));
-    std::memcpy(&cur_64, new_data + (b * 8), bytes_in_block);
+    const int offset = b * 8;
+    const int bytes_in_block = std::min(8, size - offset);
+    std::memcpy(&cur_64, new_data + offset, bytes_in_block);
 
-    uint64_t diff_64 = (cur_64 ^ last_data_64[b]) & ~combined_mask[b];
+    const uint64_t diff_64 = (cur_64 ^ last_data_64[b]) & ~ignore_bit_mask[b];
 
-    const uint8_t* change_ptr = reinterpret_cast<const uint8_t*>(&diff_64);
-    const uint8_t* mask_ptr = reinterpret_cast<const uint8_t*>(&combined_mask[b]);
-    const uint8_t* old_ptr = reinterpret_cast<const uint8_t*>(&last_data_64[b]);
+    if (diff_64 != 0) {
+      for (int i = 0; i < bytes_in_block; ++i) {
+        const int idx = offset + i;
+        const uint8_t byte_diff = static_cast<uint8_t>((diff_64 >> (i * 8)) & 0xFF);
 
-    for (int i = 0; i < bytes_in_block; ++i) {
-      int idx = (b * 8) + i;
-      if (change_ptr[i]) {
-        handleByteChange(idx, old_ptr[i], new_data[idx], change_ptr[i], current_ts);
-      } else if (int alpha = colors[idx].alpha(); alpha > 0) {
-        colors[idx].setAlpha(mask_ptr[i] == 0xFF ? 0 : std::max(0, alpha - fade_step));
+        if (byte_diff) {
+          const uint8_t old_v = static_cast<uint8_t>((last_data_64[b] >> (i * 8)) & 0xFF);
+          analyzeByteMutation(idx, old_v, new_data[idx], byte_diff, current_ts);
+        }
+        dat[idx] = new_data[idx];
       }
-      dat[idx] = new_data[idx];
     }
     last_data_64[b] = cur_64;
   }
@@ -84,35 +91,135 @@ void MessageState::update(const MessageId& msg_id, const uint8_t* new_data, int 
 
 void MessageState::init(const uint8_t* new_data, int size, double current_ts) {
   dat.assign(new_data, new_data + size);
-  colors.assign(size, QColor(0, 0, 0, 0));
   byte_states.assign(size, {current_ts, 0, 0, false});
   bit_flips.assign(size, {0});
+  bit_high_counts.assign(size, {0});
+  detected_patterns.assign(size, DataPattern::None);
   last_data_64.fill(0);
-  std::memcpy(last_data_64.data(), new_data, size);
+  const int copy_size = std::min(size, (int)(last_data_64.size() * 8));
+  std::memcpy(last_data_64.data(), new_data, copy_size);
 }
 
-void MessageState::handleByteChange(int i, uint8_t old_val, uint8_t new_val, uint8_t diff, double current_ts) {
-  auto& state = byte_states[i];
-  const int delta = (int)new_val - (int)old_val;
+void MessageState::analyzeByteMutation(int i, uint8_t old_v, uint8_t new_v, uint8_t diff, double current_ts) {
+  auto& s = byte_states[i];
+  const int delta = static_cast<int>(new_v) - static_cast<int>(old_v);
 
-  bool same_dir = (delta > 0) == (state.last_delta > 0);
-  state.trend = std::clamp(state.trend + (same_dir ? 1 : -4), 0, 16);
-
-  const double elapsed = current_ts - state.last_ts;
-
-  // Use the theme colors based on delta
-  if ((elapsed * freq > 10.0) || state.trend > 8) {
-    colors[i] = getThemeColor(delta > 0 ? CYAN : RED);
-  } else {
-    // Rapid changes get "blended" into the noise color
-    colors[i] = blend(colors[i], getThemeColor(GREYISH_BLUE));
-  }
-
-  // Fast bit counting
+  // 1. Bit-level Analytics
   for (int bit = 0; bit < 8; ++bit) {
+    if ((new_v >> bit) & 1) bit_high_counts[i][7 - bit]++;
     if ((diff >> bit) & 1) bit_flips[i][7 - bit]++;
   }
 
-  state.last_ts = current_ts;
-  state.last_delta = delta;
+  // 2. Entropy Analysis (Shannon Entropy)
+  double total_entropy = 0.0;
+  for (int bit = 0; bit < 8; ++bit) {
+    total_entropy += calculateBitEntropy(bit_high_counts[i][bit], count);
+  }
+  const double avg_entropy = total_entropy / 8.0;
+
+  // 3. Behavior & Trend Detection
+  const bool is_toggle = (delta == -s.last_delta) && (delta != 0);
+  const bool same_direction = (delta > 0) == (s.last_delta > 0);
+
+  if (is_toggle) {
+    s.trend_weight = std::max(0, s.trend_weight - TOGGLE_DECAY);
+  } else if (delta != 0 && same_direction) {
+    s.trend_weight = std::min(TREND_MAX, s.trend_weight + TREND_INC);
+  } else {
+    s.trend_weight = std::max(0, s.trend_weight - JITTER_DECAY);
+  }
+
+  // 4. Classification Hierarchy
+  if (avg_entropy > ENTROPY_THRESHOLD) {
+    detected_patterns[i] = DataPattern::RandomlyNoisy;
+  } else if (is_toggle && s.trend_weight < LIMIT_TOGGLE) {
+    detected_patterns[i] = DataPattern::Toggle;
+  } else if (s.trend_weight > LIMIT_TREND) {
+    detected_patterns[i] = (delta > 0) ? DataPattern::Increasing : DataPattern::Decreasing;
+  } else if (s.trend_weight > LIMIT_NOISY) {
+    detected_patterns[i] = DataPattern::RandomlyNoisy;
+  } else {
+    detected_patterns[i] = DataPattern::None;
+  }
+
+  s.last_delta = delta;
+  s.last_change_ts = current_ts;
+}
+
+QColor MessageState::getPatternColor(int idx, double current_ts) const {
+  if (idx >= byte_states.size()) return QColor(0, 0, 0, 0);
+
+  return colorFromDataPattern(detected_patterns[idx], current_ts, byte_states[idx].last_change_ts);
+}
+
+const std::vector<QColor> &MessageState::getAllPatternColors(double current_can_sec) const {
+  if (colors_.size() != byte_states.size()) {
+    colors_.resize(byte_states.size());
+  }
+  for (size_t i = 0; i < byte_states.size(); ++i) {
+    colors_[i] = colorFromDataPattern(detected_patterns[i], current_can_sec, byte_states[i].last_change_ts);
+  }
+  return colors_;
+}
+
+QColor colorFromDataPattern(DataPattern pattern, double current_ts, double last_ts) {
+  const double elapsed = current_ts - last_ts;
+  const double decay = 1.0 - (elapsed / ALPHA_DECAY_SECONDS);
+
+  if (decay <= 0) return Qt::transparent;
+
+  struct ThemeColors { QColor light, dark; };
+  static const ThemeColors palette[] = {
+    {{100, 100, 100}, {180, 180, 180}}, // Static/None (Index 0)
+    {{0, 120, 215},   {0, 180, 255}},   // Increasing
+    {{200, 0, 0},     {255, 60, 60}},    // Decreasing
+    {{190, 140, 0},   {255, 230, 0}},    // Toggle
+    {{120, 60, 200},  {170, 100, 255}}   // RandomlyNoisy
+  };
+
+  const int index = std::clamp(static_cast<int>(pattern), 0, 4);
+  const bool is_light = (settings.theme == LIGHT_THEME);
+
+  QColor color = is_light ? palette[index].light : palette[index].dark;
+  color.setAlpha(static_cast<int>(255 * decay));
+
+  return color;
+}
+
+QColor calculateBitHeatColor(uint32_t flips, uint32_t max_flips, bool is_in_signal, bool is_light, QColor sig_color) {
+  if (flips == 0) {
+    return is_in_signal ? QColor(128, 128, 128, is_light ? 40 : 25) : Qt::transparent;
+  }
+
+  const float log_max = std::log2(std::max<uint32_t>(max_flips, 1) + 1);
+  const float intensity = std::clamp(static_cast<float>(std::log2(flips + 1) / log_max), 0.0f, 1.0f);
+
+  QColor base;
+  if (is_in_signal) {
+    base = sig_color;
+  } else {
+    // Standard Heatmap: Blue -> Red
+    base = QColor::fromHsv(static_cast<int>((1.0f - intensity) * 240.0f), 220, 200);
+  }
+
+  if (is_light) {
+    base.setAlpha(static_cast<int>(100 + (155 * intensity)));
+    return base;
+  }
+
+  // DARK THEME VISIBILITY LOGIC
+  int s, v, a;
+  if (is_in_signal) {
+    // For signals: slightly desaturate and darken as intensity increases
+    s = std::clamp(base.saturation() - 20, 0, 255);
+    v = std::clamp(160 - static_cast<int>(40 * intensity), 0, 255);  // Keep it dark
+    a = static_cast<int>(140 + (115 * intensity));
+  } else {
+    // For heatmap: follow standard dark pattern
+    s = static_cast<int>(150 + (50 * intensity));
+    v = static_cast<int>(180 - (40 * intensity));
+    a = static_cast<int>(140 + (115 * intensity));
+  }
+
+  return QColor::fromHsv(base.hue(), s, v, a);
 }

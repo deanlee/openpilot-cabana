@@ -55,10 +55,10 @@ size_t AbstractStream::suppressHighlighted() {
   for (auto &[id, m] : master_state_) {
     bool mod = false;
     for (auto &s : m.byte_states) {
-      if (!s.suppressed && (current_sec_ - s.last_ts < 2.0)) {
-        s.suppressed = mod = true;
+      if (!s.is_suppressed && (current_sec_ - s.last_change_ts < 2.0)) {
+        s.is_suppressed = mod = true;
       }
-      cnt += s.suppressed;
+      cnt += s.is_suppressed;
     }
     if (mod) updateMessageMask(id, m);
   }
@@ -69,7 +69,7 @@ void AbstractStream::clearSuppressed() {
   std::lock_guard lk(mutex_);
   for (auto &[id, m] : master_state_) {
     for (auto &state : m.byte_states) {
-      state.suppressed = false;
+      state.is_suppressed = false;
     }
     // Refresh the mask (this will re-allow highlights for these bits)
     updateMessageMask(id, m);
@@ -185,11 +185,11 @@ void AbstractStream::updateSnapshotsTo(double sec) {
     // This ensures byte suppression and mask settings persist across timeline seeks.
     if (auto old_it = master_state_.find(id); old_it != master_state_.end()) {
       m.freq = old_it->second.freq;
-      m.combined_mask = old_it->second.combined_mask;
+      m.ignore_bit_mask = old_it->second.ignore_bit_mask;
       const auto& old_bytes = old_it->second.byte_states;
       m.byte_states.resize(old_bytes.size());
       for (size_t i = 0; i < old_bytes.size(); ++i) {
-        m.byte_states[i].suppressed = old_bytes[i].suppressed;
+        m.byte_states[i].is_suppressed = old_bytes[i].is_suppressed;
       }
     }
 
@@ -292,7 +292,7 @@ std::pair<CanEventIter, CanEventIter> AbstractStream::eventsInRange(const Messag
 }
 
 void AbstractStream::updateMessageMask(const MessageId& id, MessageState& state) {
-  state.combined_mask.fill(0);
+  state.ignore_bit_mask.fill(0);
   const size_t size = state.dat.size();
   if (size == 0) return;
 
@@ -300,28 +300,28 @@ void AbstractStream::updateMessageMask(const MessageId& id, MessageState& state)
   auto it = masks_.find(id);
 
   for (size_t b = 0; b < num_blocks; ++b) {
-    uint64_t& m64 = state.combined_mask[b];
+    uint64_t& m64 = state.ignore_bit_mask[b];
 
-    // 1. Sync DBC bits
+    // 1. Apply DBC Bitmask
     if (it != masks_.end() && !it->second.empty()) {
       const auto& dbc_mask = it->second;
-      size_t offset = b * 8;
-      if (offset < dbc_mask.size()) {
-        size_t len = std::min<size_t>(8, dbc_mask.size() - offset);
-        std::memcpy(&m64, dbc_mask.data() + offset, len);
+      size_t byte_offset = b * 8;
+      if (byte_offset < dbc_mask.size()) {
+        size_t len = std::min<size_t>(8, dbc_mask.size() - byte_offset);
+        std::memcpy(&m64, dbc_mask.data() + byte_offset, len);
       }
     }
 
-    // 2. Add Suppression and cleanup visual state
+    // 2. Apply Manual Bit/Byte Suppression
     for (int i = 0; i < 8; ++i) {
-      int idx = (b * 8) + i;
-      if (idx >= size) break;
-      if (state.byte_states[idx].suppressed) m64 |= (0xFFULL << (i * 8));
+      int byte_idx = (b * 8) + i;
+      if (byte_idx >= size) break;
+      if (state.byte_states[byte_idx].is_suppressed) m64 |= (0xFFULL << (i * 8));
 
       // If byte is fully masked, kill UI state immediately
       if (((m64 >> (i * 8)) & 0xFF) == 0xFF) {
-        state.colors[idx] = QColor(0, 0, 0, 0);
-        state.bit_flips[idx].fill(0);
+        state.bit_flips[byte_idx].fill(0);
+        state.bit_high_counts[byte_idx].fill(0);
       }
     }
   }

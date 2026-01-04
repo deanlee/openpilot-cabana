@@ -5,6 +5,8 @@
 #include <QDebug>
 
 #include "streams/abstractstream.h"
+#include "streams/message_state.h"
+#include "settings.h"
 
 void MessageBytesModel::refresh() {
   beginResetModel();
@@ -51,9 +53,9 @@ void MessageBytesModel::updateItem(int row, int col, uint8_t val, const QColor &
 }
 
 void MessageBytesModel::updateState() {
-  const auto *last_msg = can->snapshot(msg_id);
-  const auto &binary = last_msg->dat;
-  // Handle size changes in binary data
+  const auto* last_msg = can->snapshot(msg_id);
+  const auto& binary = last_msg->dat;
+
   if (binary.size() > row_count) {
     beginInsertRows({}, row_count, binary.size() - 1);
     row_count = binary.size();
@@ -61,39 +63,37 @@ void MessageBytesModel::updateState() {
     endInsertRows();
   }
 
-  auto &bit_flips = heatmap_live_mode ? last_msg->bit_flips : getBitFlipChanges(binary.size());
-  // Find the maximum bit flip count across the message
-  uint32_t max_bit_flip_count = 1;  // Default to 1 to avoid division by zero
-  for (const auto &row : bit_flips) {
+  auto& bit_flips = heatmap_live_mode ? last_msg->bit_flips : getBitFlipChanges(binary.size());
+
+  // Find max flips for relative scaling
+  uint32_t max_bit_flip_count = 1;
+  for (const auto& row : bit_flips) {
     for (uint32_t count : row) {
       max_bit_flip_count = std::max(max_bit_flip_count, count);
     }
   }
 
-  const double max_alpha = 255.0;
-  const double min_alpha_with_signal = 25.0;  // Base alpha for small flip counts
-  const double min_alpha_no_signal = 10.0;    // Base alpha for small flip counts for no signal bits
-  const double log_factor = 1.0 + 0.2;        // Factor for logarithmic scaling
-  const double log_scaler = max_alpha / log2(log_factor * max_bit_flip_count);
+  const double current_sec = can->currentSec();
+  const bool is_light_theme = (settings.theme == LIGHT_THEME);
 
   for (size_t i = 0; i < binary.size(); ++i) {
     for (int j = 0; j < 8; ++j) {
-      auto &item = items[i * column_count + j];
+      auto& item = items[i * column_count + j];
       int bit_val = (binary[i] >> (7 - j)) & 1;
 
-      double alpha = item.sigs.empty() ? 0 : min_alpha_with_signal;
-      uint32_t flip_count = bit_flips[i][j];
-      if (flip_count > 0) {
-        double normalized_alpha = log2(1.0 + flip_count * log_factor) * log_scaler;
-        double min_alpha = item.sigs.empty() ? min_alpha_no_signal : min_alpha_with_signal;
-        alpha = std::clamp(normalized_alpha, min_alpha, max_alpha);
-      }
+      // Calculate color based on heat
+      QColor bit_color = calculateBitHeatColor(
+          bit_flips[i][j],
+          max_bit_flip_count,
+          !item.sigs.empty(),
+          is_light_theme,
+          item.sigs.empty() ? QColor() : item.sigs.back()->color);
 
-      auto color = item.bg_color;
-      color.setAlpha(alpha);
-      updateItem(i, j, bit_val, color);
+      updateItem(i, j, bit_val, bit_color);
     }
-    updateItem(i, 8, binary[i], last_msg->colors[i]);
+
+    // The 9th column (index 8) remains the Byte Value with the Trend Color
+    updateItem(i, 8, binary[i], last_msg->getPatternColor(i, current_sec));
   }
 }
 
