@@ -6,6 +6,11 @@
 #include "dbc/dbcmanager.h"
 #include "message_bytes.h"
 
+static const QStringList SIGNAL_PROPERTY_LABELS = {
+    "Name", "Size", "Receiver Nodes", "Little Endian", "Signed", "Offset", "Factor", 
+    "Type", "Multiplex Value", "Extra Info", "Unit", "Comment", "Min", "Max", "Value Table"
+};
+
 QString signalTypeToString(cabana::Signal::Type type) {
   if (type == cabana::Signal::Type::Multiplexor) return "Multiplexor Signal";
   else if (type == cabana::Signal::Type::Multiplexed) return "Multiplexed Signal";
@@ -22,17 +27,8 @@ SignalTreeModel::SignalTreeModel(QObject *parent) : root(new Item), QAbstractIte
 }
 
 void SignalTreeModel::insertItem(SignalTreeModel::Item *root_item, int pos, const cabana::Signal *sig) {
-  Item *parent_item = new Item{.sig = sig, .parent = root_item, .title = sig->name, .type = Item::Sig};
-  root_item->children.insert(pos, parent_item);
-  QString titles[]{"Name", "Size", "Receiver Nodes", "Little Endian", "Signed", "Offset", "Factor", "Type",
-                   "Multiplex Value", "Extra Info", "Unit", "Comment", "Minimum Value", "Maximum Value", "Value Table"};
-  for (int i = 0; i < std::size(titles); ++i) {
-    auto item = new Item{.sig = sig, .parent = parent_item, .title = titles[i], .type = (Item::Type)(i + Item::Name)};
-    parent_item->children.push_back(item);
-    if (item->type == Item::ExtraInfo) {
-      parent_item = item;
-    }
-  }
+  Item *sig_item = new Item{.sig = sig, .parent = root_item, .title = sig->name, .type = Item::Sig};
+  root_item->children.insert(pos, sig_item);
 }
 
 void SignalTreeModel::setMessage(const MessageId &id) {
@@ -50,7 +46,9 @@ void SignalTreeModel::refresh() {
   beginResetModel();
   root.reset(new SignalTreeModel::Item);
   if (auto msg = dbc()->msg(msg_id)) {
-    for (auto s : msg->getSignals()) {
+    auto sigs = msg->getSignals();
+    root->children.reserve(sigs.size());  // Pre-allocate memory
+    for (auto s : sigs) {
       if (filter_str.isEmpty() || s->name.contains(filter_str, Qt::CaseInsensitive)) {
         insertItem(root.get(), root->children.size(), s);
       }
@@ -65,9 +63,34 @@ SignalTreeModel::Item *SignalTreeModel::getItem(const QModelIndex &index) const 
 }
 
 int SignalTreeModel::rowCount(const QModelIndex &parent) const {
-  if (parent.isValid() && parent.column() > 0) return 0;
+  if (parent.column() > 0) return 0;
+  Item *item = getItem(parent);
+  if (item->children.isEmpty() && hasChildren(parent)) lazyLoadItem(item);
+  return item->children.size();
+}
 
-  return getItem(parent)->children.size();
+bool SignalTreeModel::hasChildren(const QModelIndex &parent) const {
+  if (!parent.isValid()) return true;
+  Item *item = getItem(parent);
+  return item->type == Item::Sig || item->type == Item::ExtraInfo;
+}
+
+void SignalTreeModel::lazyLoadItem(Item* item) const {
+  if (!item || !item->children.isEmpty()) return;
+
+  auto create_children = [&](const QList<Item::Type>& types) {
+    for (auto t : types) {
+      QString label = SIGNAL_PROPERTY_LABELS[t - Item::Name];
+      item->children.push_back(new Item{.type = t, .parent = item, .sig = item->sig, .title = label});
+    }
+  };
+
+  if (item->type == Item::Sig) {
+    create_children({Item::Name, Item::Size, Item::Node, Item::Endian, Item::Signed,
+                     Item::Offset, Item::Factor, Item::SignalType, Item::MultiplexValue, Item::ExtraInfo});
+  } else if (item->type == Item::ExtraInfo) {
+    create_children({Item::Unit, Item::Comment, Item::Min, Item::Max, Item::Desc});
+  }
 }
 
 Qt::ItemFlags SignalTreeModel::flags(const QModelIndex &index) const {

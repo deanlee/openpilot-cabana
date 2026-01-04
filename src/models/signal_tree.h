@@ -40,7 +40,9 @@ public:
   int signalRow(const cabana::Signal *sig) const;
 
 private:
+  bool hasChildren(const QModelIndex &parent) const override;
   void insertItem(SignalTreeModel::Item *root_item, int pos, const cabana::Signal *sig);
+  void lazyLoadItem(Item *item) const;
   void handleSignalAdded(MessageId id, const cabana::Signal *sig);
   void handleSignalUpdated(const cabana::Signal *sig);
   void handleSignalRemoved(const cabana::Signal *sig);
