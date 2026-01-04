@@ -5,8 +5,11 @@
 #include "widgets/messageswidget.h"
 #include "settings.h"
 
-inline QString toHexString(int value) { 
-  return QString("0x%1").arg(QString::number(value, 16).toUpper(), 2, '0'); 
+static const QString NA = QStringLiteral("N/A");
+static const QString DASH = QStringLiteral("--");
+
+inline QString toHexString(int value) {
+  return "0x" + QString::number(value, 16).toUpper().rightJustified(2, '0');
 }
 
 QVariant MessageTableModel::headerData(int section, Qt::Orientation orientation, int role) const {
@@ -31,17 +34,16 @@ QVariant MessageTableModel::data(const QModelIndex &index, int role) const {
     if (freq > 0) {
       return freq >= 0.95 ? QString::number(std::nearbyint(freq)) : QString::number(freq, 'f', 2);
     } else {
-      return QStringLiteral("--");
+      return DASH;
     }
   };
 
-  const static QString NA = QStringLiteral("N/A");
   const auto &item = items_[index.row()];
   if (role == Qt::DisplayRole) {
     switch (index.column()) {
       case Column::NAME: return item.name;
       case Column::SOURCE: return item.id.source != INVALID_SOURCE ? QString::number(item.id.source) : NA;
-      case Column::ADDRESS: return toHexString(item.id.address);
+      case Column::ADDRESS: return item.address_hex;
       case Column::NODE: return item.node;
       case Column::FREQ: return item.id.source != INVALID_SOURCE ? getFreq(item.data->freq) : NA;
       case Column::COUNT: return item.id.source != INVALID_SOURCE ? QString::number(item.data->count) : NA;
@@ -133,7 +135,7 @@ bool MessageTableModel::match(const MessageTableModel::Item &item) {
         match = parseRange(txt, item.id.source);
         break;
       case Column::ADDRESS:
-        match = toHexString(item.id.address).contains(txt, Qt::CaseInsensitive);
+        match = item.address_hex.contains(txt, Qt::CaseInsensitive);
         match = match || parseRange(txt, item.id.address, 16);
         break;
       case Column::NODE:
@@ -175,6 +177,7 @@ bool MessageTableModel::filterAndSort() {
           .name = msg ? msg->name : UNTITLED,
           .node = msg ? msg->transmitter : QString(),
           .data = can->snapshot(id),
+          .address_hex = toHexString(id.address),
       };
       if (match(item))
         items.emplace_back(item);
