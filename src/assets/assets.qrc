@@ -2,6 +2,7 @@
 <qresource>
   <file>cabana-icon.png</file>
   <file>binary.svg</file>
+  <file>chart-area.svg</file>
   <file>chart-line.svg</file>
   <file>chevron-left.svg</file>
   <file>chevron-right.svg</file>

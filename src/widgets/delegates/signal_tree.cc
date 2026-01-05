@@ -261,7 +261,7 @@ void SignalTreeDelegate::drawButtons(QPainter* p, const QStyleOptionViewItem& op
   };
 
   drawBtn(0, "circle-minus", false);
-  drawBtn(1, "chart-line", chart_opened);
+  drawBtn(1, chart_opened ? "chart-area" : "chart-line", chart_opened);
 }
 
 bool SignalTreeDelegate::helpEvent(QHelpEvent* event, QAbstractItemView* view, const QStyleOptionViewItem& option, const QModelIndex& index) {
@@ -298,7 +298,7 @@ bool SignalTreeDelegate::editorEvent(QEvent* event, QAbstractItemModel* model, c
     if (hoverIndex != index || hoverButton != btn) {
       hoverIndex = index;
       hoverButton = btn;
-      const_cast<QWidget*>(option.widget)->update();
+      qobject_cast<QAbstractItemView*>(const_cast<QWidget*>(option.widget))->viewport()->update();
     }
     return false;
   }
