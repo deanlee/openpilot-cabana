@@ -160,10 +160,11 @@ const MessageState *AbstractStream::snapshot(const MessageId &id) const {
 
 void AbstractStream::updateActiveStates() {
   double now = current_sec_;
+  const double fps_margin = 1.0 / std::max(1, settings.fps);
   for (auto& [id, m] : snapshot_map_) { // Assuming a map or container of MessageStates
     if (m->ts > 0) {
       double elapsed = now - m->ts;
-      double threshold = (m->freq < 0.1) ? 1.5 : (5.0 / m->freq) + (1.0 / settings.fps);
+      double threshold = (m->freq < 0.1) ? 1.5 : (5.0 / m->freq) + fps_margin;
       m->is_active = (elapsed >= 0 && elapsed < threshold);
     } else {
       m->is_active = false;
