@@ -41,7 +41,7 @@ SignalView::SignalView(ChartsWidget *charts, QWidget *parent) : charts(charts), 
   hl->addWidget(collapse_btn);
 
   // tree view
-  tree = new TreeView(this);
+  tree = new SignalTreeView(this);
   tree->setModel(model = new SignalTreeModel(this));
   tree->setItemDelegate(delegate = new SignalTreeDelegate(this));
   tree->setFrameShape(QFrame::NoFrame);
@@ -70,7 +70,7 @@ SignalView::SignalView(ChartsWidget *charts, QWidget *parent) : charts(charts), 
   connect(filter_edit, &QLineEdit::textEdited, model, &SignalTreeModel::setFilter);
   connect(sparkline_range_slider, &QSlider::valueChanged, this, &SignalView::setSparklineRange);
   connect(collapse_btn, &QPushButton::clicked, tree, &QTreeView::collapseAll);
-    connect(tree, &QTreeView::viewportEntered, [this]() { emit highlight(nullptr); });
+  connect(tree, &QTreeView::viewportEntered, [this]() { emit highlight(nullptr); });
   connect(tree, &QTreeView::entered, [this](const QModelIndex &index) { emit highlight(model->getItem(index)->sig); });
   connect(model, &QAbstractItemModel::modelReset, this, &SignalView::rowsChanged);
   connect(model, &QAbstractItemModel::rowsRemoved, this, &SignalView::rowsChanged);
