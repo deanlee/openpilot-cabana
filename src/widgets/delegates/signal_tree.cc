@@ -102,7 +102,7 @@ void SignalTreeDelegate::paint(QPainter* painter, const QStyleOptionViewItem& op
     painter->setFont(option.font);
     painter->drawText(rect, option.displayAlignment, text);
   } else if (index.column() == 1) {
-    const int btn_space = 60;
+    const int btn_space = getButtonsWidth();
 
     // Create a working rect that EXCLUDES the button area
     QRect contentRect = rect;
@@ -132,8 +132,7 @@ void SignalTreeDelegate::paint(QPainter* painter, const QStyleOptionViewItem& op
         painter->drawText(textRect, Qt::AlignLeft | Qt::AlignBottom, min);
 
         value_adjust = std::max(QFontMetrics(minmax_font).horizontalAdvance(min),
-                                QFontMetrics(minmax_font).horizontalAdvance(max)) +
-                       10;
+                                QFontMetrics(minmax_font).horizontalAdvance(max)) + 10;
       } else if (!item->sparkline.isEmpty() && item->sig->type == cabana::Signal::Type::Multiplexed) {
         painter->setFont(label_font);
         QString freq = QString("%1 hz").arg(item->sparkline.freq(), 0, 'g', 2);

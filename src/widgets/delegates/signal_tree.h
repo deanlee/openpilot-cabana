@@ -21,7 +21,10 @@ public:
   void drawButtons(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index, SignalTreeModel::Item *item) const;
   bool helpEvent(QHelpEvent *event, QAbstractItemView *view, const QStyleOptionViewItem &option, const QModelIndex &index) override;
   void clearHoverState();
-  int getButtonsWidth() const { return BTN_WIDTH * 2 + BTN_SPACING; }
+  int getButtonsWidth() const {
+    // 2 buttons + spacing + 5px right margin (matching your getButtonRect logic)
+    return (2 * BTN_WIDTH) + BTN_SPACING + 5;
+  }
 
   QValidator *name_validator, *double_validator, *node_validator;
   QFont label_font, minmax_font;
