@@ -52,7 +52,7 @@ SignalView::SignalView(ChartsWidget *charts, QWidget *parent) : charts(charts), 
   tree->header()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
   tree->header()->setStretchLastSection(true);
   tree->setMinimumHeight(300);
-  // tree->viewport()->setMouseTracking(true);
+  tree->viewport()->setMouseTracking(true);
   tree->viewport()->setAttribute(Qt::WA_AlwaysShowToolTips, true);
   tree->setToolTipDuration(1000);
 
