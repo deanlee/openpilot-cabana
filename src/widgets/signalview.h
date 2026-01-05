@@ -6,6 +6,7 @@
 
 #include <QLabel>
 #include <QLineEdit>
+#include <QMouseEvent>
 #include <QSlider>
 #include <QTreeView>
 
@@ -23,7 +24,6 @@ public:
   void signalHovered(const cabana::Signal *sig);
   void updateChartState();
   void selectSignal(const cabana::Signal *sig, bool expand = false);
-  void rowClicked(const QModelIndex &index);
   SignalTreeModel *model = nullptr;
 
 signals:
@@ -41,6 +41,7 @@ private:
   std::pair<QModelIndex, QModelIndex> visibleSignalRange();
 
   struct TreeView : public QTreeView {
+  public:
     TreeView(QWidget *parent) : QTreeView(parent) {}
     void rowsInserted(const QModelIndex &parent, int start, int end) override {
       ((SignalView *)parentWidget())->rowsChanged();
@@ -53,9 +54,24 @@ private:
     }
     void leaveEvent(QEvent *event) override {
       emit static_cast<SignalView *>(parentWidget())->highlight(nullptr);
+      if (auto d = (SignalTreeDelegate*)(itemDelegate())) {
+        d->clearHoverState();
+        viewport()->update();
+      }
       QTreeView::leaveEvent(event);
     }
+    void mouseMoveEvent(QMouseEvent* event) {
+      QTreeView::mouseMoveEvent(event);
+      QModelIndex idx = indexAt(event->pos());
+      if (!idx.isValid()) {
+        if (auto d = (SignalTreeDelegate*)(itemDelegate())) {
+          d->clearHoverState();
+          viewport()->update();
+        }
+      }
+    }
   };
+
   int max_value_width = 0;
   int value_column_width = 0;
   TreeView *tree;
@@ -65,4 +81,6 @@ private:
   ChartsWidget *charts;
   QLabel *signal_count_lb;
   SignalTreeDelegate *delegate;
+
+  friend class SignalTreeDelegate;
 };

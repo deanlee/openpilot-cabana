@@ -52,6 +52,9 @@ SignalView::SignalView(ChartsWidget *charts, QWidget *parent) : charts(charts), 
   tree->header()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
   tree->header()->setStretchLastSection(true);
   tree->setMinimumHeight(300);
+  // tree->viewport()->setMouseTracking(true);
+  tree->viewport()->setAttribute(Qt::WA_AlwaysShowToolTips, true);
+  tree->setToolTipDuration(1000);
 
   // Use a distinctive background for the whole row containing a QSpinBox or QLineEdit
   QString nodeBgColor = palette().color(QPalette::AlternateBase).name(QColor::HexArgb);
@@ -67,8 +70,7 @@ SignalView::SignalView(ChartsWidget *charts, QWidget *parent) : charts(charts), 
   connect(filter_edit, &QLineEdit::textEdited, model, &SignalTreeModel::setFilter);
   connect(sparkline_range_slider, &QSlider::valueChanged, this, &SignalView::setSparklineRange);
   connect(collapse_btn, &QPushButton::clicked, tree, &QTreeView::collapseAll);
-  connect(tree, &QAbstractItemView::clicked, this, &SignalView::rowClicked);
-  connect(tree, &QTreeView::viewportEntered, [this]() { emit highlight(nullptr); });
+    connect(tree, &QTreeView::viewportEntered, [this]() { emit highlight(nullptr); });
   connect(tree, &QTreeView::entered, [this](const QModelIndex &index) { emit highlight(model->getItem(index)->sig); });
   connect(model, &QAbstractItemModel::modelReset, this, &SignalView::rowsChanged);
   connect(model, &QAbstractItemModel::rowsRemoved, this, &SignalView::rowsChanged);
@@ -97,41 +99,8 @@ void SignalView::setMessage(const MessageId &id) {
 }
 
 void SignalView::rowsChanged() {
-  for (int i = 0; i < model->rowCount(); ++i) {
-    auto index = model->index(i, 1);
-    if (!tree->indexWidget(index)) {
-      QWidget *w = new QWidget(this);
-      QHBoxLayout *h = new QHBoxLayout(w);
-      int v_margin = style()->pixelMetric(QStyle::PM_FocusFrameVMargin);
-      int h_margin = style()->pixelMetric(QStyle::PM_FocusFrameHMargin);
-      h->setContentsMargins(0, v_margin, -h_margin, v_margin);
-      h->setSpacing(style()->pixelMetric(QStyle::PM_ToolBarItemSpacing));
-
-      auto remove_btn = new ToolButton("x", tr("Remove signal"));
-      auto plot_btn = new ToolButton("graph-up", "");
-      plot_btn->setCheckable(true);
-      h->addWidget(plot_btn);
-      h->addWidget(remove_btn);
-
-      tree->setIndexWidget(index, w);
-      auto sig = model->getItem(index)->sig;
-      connect(remove_btn, &QToolButton::clicked, [=]() { UndoStack::push(new RemoveSigCommand(model->msg_id, sig)); });
-      connect(plot_btn, &QToolButton::clicked, [=](bool checked) {
-        emit showChart(model->msg_id, sig, checked, QGuiApplication::keyboardModifiers() & Qt::ShiftModifier);
-      });
-    }
-  }
   updateToolBar();
-  updateChartState();
   updateState();
-}
-
-void SignalView::rowClicked(const QModelIndex &index) {
-  auto item = model->getItem(index);
-  if (item->type == SignalTreeModel::Item::Sig || item->type == SignalTreeModel::Item::ExtraInfo) {
-    auto expand_index = model->index(index.row(), 0, index.parent());
-    tree->setExpanded(expand_index, !tree->isExpanded(expand_index));
-  }
 }
 
 void SignalView::selectSignal(const cabana::Signal *sig, bool expand) {
@@ -146,15 +115,14 @@ void SignalView::selectSignal(const cabana::Signal *sig, bool expand) {
 }
 
 void SignalView::updateChartState() {
-  int i = 0;
-  for (auto item : model->root->children) {
-    bool chart_opened = charts->hasSignal(model->msg_id, item->sig);
-    auto buttons = tree->indexWidget(model->index(i, 1))->findChildren<QToolButton *>();
-    if (buttons.size() > 0) {
-      buttons[0]->setChecked(chart_opened);
-      buttons[0]->setToolTip(chart_opened ? tr("Close Plot") : tr("Show Plot\nSHIFT click to add to previous opened plot"));
-    }
-    ++i;
+  if (model && model->rowCount() > 0) {
+    // This triggers a repaint of the Value column (1) for all rows
+    emit model->dataChanged(model->index(0, 1),
+                            model->index(model->rowCount() - 1, 1),
+                            {Qt::DisplayRole});
+
+    // Also ensure the viewport physically refreshes
+    tree->viewport()->update();
   }
 }
 
@@ -226,11 +194,11 @@ void SignalView::updateState(const std::set<MessageId> *msgs) {
   auto [first_visible, last_visible] = visibleSignalRange();
   if (first_visible.isValid() && last_visible.isValid()) {
     const static int min_max_width = QFontMetrics(delegate->minmax_font).horizontalAdvance("-000.00") + 5;
-    int available_width = value_column_width - delegate->button_size.width();
+    const int btn_column_width = delegate->getButtonsWidth();
+    int available_width = value_column_width - btn_column_width;
     int value_width = std::min<int>(max_value_width + min_max_width, available_width / 2);
-    QSize size(available_width - value_width,
-               delegate->button_size.height() - style()->pixelMetric(QStyle::PM_FocusFrameVMargin) * 2);
-
+    int h = fontMetrics().height();
+    QSize size(std::max(10, available_width - value_width), h);
     auto [first, last] = can->eventsInRange(model->msg_id, std::make_pair(last_msg->ts -settings.sparkline_range, last_msg->ts));
     QFutureSynchronizer<void> synchronizer;
     for (int i = first_visible.row(); i <= last_visible.row(); ++i) {

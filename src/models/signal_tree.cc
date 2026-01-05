@@ -98,8 +98,11 @@ Qt::ItemFlags SignalTreeModel::flags(const QModelIndex &index) const {
 
   auto item = getItem(index);
   Qt::ItemFlags flags = Qt::ItemIsSelectable | Qt::ItemIsEnabled;
-  if (index.column() == 1  && item->children.empty()) {
+  if (index.column() == 1 && item->children.empty()) {
     flags |= (item->type == Item::Endian || item->type == Item::Signed) ? Qt::ItemIsUserCheckable : Qt::ItemIsEditable;
+  }
+  if (item->type == Item::Sig || item->type == Item::ExtraInfo) {
+    flags &= ~Qt::ItemIsEditable;
   }
   if (item->type == Item::MultiplexValue && item->sig->type != cabana::Signal::Type::Multiplexed) {
     flags &= ~Qt::ItemIsEnabled;
