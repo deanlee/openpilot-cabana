@@ -18,7 +18,7 @@ public:
   QSet<const cabana::Signal*> getOverlappingSignals() const;
   void updateState() { model->updateState(); }
   void paintEvent(QPaintEvent *event) override {
-    is_message_active = can->isMessageActive(model->msg_id);
+    is_message_active = can->snapshot(model->msg_id)->is_active;
     QTableView::paintEvent(event);
   }
   QSize minimumSizeHint() const override;

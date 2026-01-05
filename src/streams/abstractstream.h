@@ -66,7 +66,6 @@ public:
   inline double toSeconds(uint64_t mono_time) const { return std::max(0.0, (mono_time - beginMonoTime()) / 1e9); }
 
   inline const std::unordered_map<MessageId, std::unique_ptr<MessageState>> &snapshots() const { return snapshot_map_; }
-  bool isMessageActive(const MessageId &id) const;
   inline const MessageEventsMap &eventsMap() const { return events_; }
   inline const std::vector<const CanEvent *> &allEvents() const { return all_events_; }
   const MessageState* snapshot(const MessageId& id) const;
@@ -105,6 +104,7 @@ private:
   void updateSnapshotsTo(double sec);
   void updateMasks();
   void updateMessageMask(const MessageId& id, MessageState& state);
+  void updateActiveStates();
 
   MessageEventsMap events_;
   std::unordered_map<MessageId, std::unique_ptr<MessageState>> snapshot_map_;

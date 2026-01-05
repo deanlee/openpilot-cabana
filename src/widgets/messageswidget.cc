@@ -166,17 +166,7 @@ void MessagesWidget::setMultiLineBytes(bool multi) {
 // MessageView
 
 void MessageView::drawRow(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const {
-   const auto &item = ((MessageTableModel*)model())->items_[index.row()];
-  if (!can->isMessageActive(item.id)) {
-    QStyleOptionViewItem custom_option = option;
-    custom_option.palette.setBrush(QPalette::Text, custom_option.palette.color(QPalette::Disabled, QPalette::Text));
-    auto color = QApplication::palette().color(QPalette::HighlightedText);
-    color.setAlpha(100);
-    custom_option.palette.setBrush(QPalette::HighlightedText, color);
-    QTreeView::drawRow(painter, custom_option, index);
-  } else {
-    QTreeView::drawRow(painter, option, index);
-  }
+  QTreeView::drawRow(painter, option, index);
 
   QPen oldPen = painter->pen();
   const int gridHint = style()->styleHint(QStyle::SH_Table_GridLineColor, &option, this);

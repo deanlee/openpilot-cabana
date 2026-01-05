@@ -108,6 +108,13 @@ void AbstractStream::commitSnapshots() {
     if (sources.insert(id.source).second) structure_changed = true;
   }
 
+  static double last_activity_update = 0;
+  double now = millis_since_boot();
+  if (now - last_activity_update > 1000) {
+    updateActiveStates();
+    last_activity_update = now;
+  }
+
   if (time_range_ && (current_sec_ < time_range_->first || current_sec_ >= time_range_->second)) {
     seekTo(time_range_->first);
     return;
@@ -151,17 +158,17 @@ const MessageState *AbstractStream::snapshot(const MessageId &id) const {
   return it != snapshot_map_.end() ? it->second.get() : &empty_data;
 }
 
-bool AbstractStream::isMessageActive(const MessageId& id) const {
-  const auto* m = snapshot(id);
-  if (!m || m->ts <= 0) return false;
-
-  double elapsed = current_sec_ - m->ts;
-  if (elapsed < 0) return true;  // Handling seek/jitter
-
-  // If freq is low/zero, 1.5s timeout.
-  // If freq is high, wait for 5 missed packets + 1 UI frame margin.
-  double threshold = (m->freq < 0.1) ? 1.5 : (5.0 / m->freq) + (1.0 / settings.fps);
-  return elapsed < threshold;
+void AbstractStream::updateActiveStates() {
+  double now = current_sec_;
+  for (auto& [id, m] : snapshot_map_) { // Assuming a map or container of MessageStates
+    if (m->ts > 0) {
+      double elapsed = now - m->ts;
+      double threshold = (m->freq < 0.1) ? 1.5 : (5.0 / m->freq) + (1.0 / settings.fps);
+      m->is_active = (elapsed >= 0 && elapsed < threshold);
+    } else {
+      m->is_active = false;
+    }
+  }
 }
 
 void AbstractStream::updateSnapshotsTo(double sec) {

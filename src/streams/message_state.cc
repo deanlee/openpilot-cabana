@@ -46,6 +46,7 @@ double calc_freq(const MessageId& msg_id, double current_ts) {
 
 void MessageState::update(const MessageId& msg_id, const uint8_t* new_data, int size,
                           double current_ts, double playback_speed, double manual_freq) {
+  is_active = true;
   ts = current_ts;
   count++;
 

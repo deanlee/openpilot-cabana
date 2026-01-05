@@ -1,5 +1,6 @@
 #include "message_table.h"
 
+#include <QApplication>
 #include <cmath>
 
 #include "widgets/messageswidget.h"
@@ -58,6 +59,10 @@ QVariant MessageTableModel::data(const QModelIndex &index, int role) const {
     auto tooltip = item.name;
     if (msg && !msg->comment.isEmpty()) tooltip += "<br /><span style=\"color:gray;\">" + msg->comment + "</span>";
     return tooltip;
+  } else if (role == Qt::ForegroundRole) {
+    if (!item.data->is_active) {
+      return QApplication::palette().color(QPalette::Disabled, QPalette::Text);
+    }
   }
   return {};
 }
@@ -170,13 +175,14 @@ bool MessageTableModel::filterAndSort() {
   std::vector<Item> items;
   items.reserve(all_messages.size());
   for (const auto &id : all_messages) {
-    if (show_inactive_messages || can->isMessageActive(id)) {
+    auto *data = can->snapshot(id);
+    if (show_inactive_messages || (data && data->is_active)) {
       auto msg = dbc()->msg(id);
       Item item = {
           .id = id,
           .name = msg ? msg->name : UNTITLED,
           .node = msg ? msg->transmitter : QString(),
-          .data = can->snapshot(id),
+          .data = data,
           .address_hex = toHexString(id.address),
       };
       if (match(item))
