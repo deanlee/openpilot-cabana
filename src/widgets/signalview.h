@@ -1,19 +1,18 @@
 #pragma once
 
-#include <memory>
-#include <set>
-#include <utility>
-
 #include <QLabel>
 #include <QLineEdit>
 #include <QMouseEvent>
 #include <QSlider>
-#include <QTreeView>
+#include <memory>
+#include <set>
+#include <utility>
 
 #include "chart/chartswidget.h"
 #include "chart/sparkline.h"
 #include "delegates/signal_tree.h"
 #include "models/signal_tree.h"
+#include "signal_tree_view.h"
 
 class SignalView : public QFrame {
   Q_OBJECT
@@ -40,41 +39,9 @@ private:
   void updateState(const std::set<MessageId> *msgs = nullptr);
   std::pair<QModelIndex, QModelIndex> visibleSignalRange();
 
-  struct TreeView : public QTreeView {
-  public:
-    TreeView(QWidget *parent) : QTreeView(parent) {}
-    void rowsInserted(const QModelIndex &parent, int start, int end) override {
-      ((SignalView *)parentWidget())->rowsChanged();
-      // update widget geometries in QTreeView::rowsInserted
-      QTreeView::rowsInserted(parent, start, end);
-    }
-    void dataChanged(const QModelIndex &topLeft, const QModelIndex &bottomRight, const QVector<int> &roles = QVector<int>()) override {
-      // Bypass the slow call to QTreeView::dataChanged.
-      QAbstractItemView::dataChanged(topLeft, bottomRight, roles);
-    }
-    void leaveEvent(QEvent *event) override {
-      emit static_cast<SignalView *>(parentWidget())->highlight(nullptr);
-      if (auto d = (SignalTreeDelegate*)(itemDelegate())) {
-        d->clearHoverState();
-        viewport()->update();
-      }
-      QTreeView::leaveEvent(event);
-    }
-    void mouseMoveEvent(QMouseEvent* event) {
-      QTreeView::mouseMoveEvent(event);
-      QModelIndex idx = indexAt(event->pos());
-      if (!idx.isValid()) {
-        if (auto d = (SignalTreeDelegate*)(itemDelegate())) {
-          d->clearHoverState();
-          viewport()->update();
-        }
-      }
-    }
-  };
-
   int max_value_width = 0;
   int value_column_width = 0;
-  TreeView *tree;
+  SignalTreeView *tree;
   QLabel *sparkline_label;
   QSlider *sparkline_range_slider;
   QLineEdit *filter_edit;
@@ -83,4 +50,5 @@ private:
   SignalTreeDelegate *delegate;
 
   friend class SignalTreeDelegate;
+  friend class SignalTreeView;
 };
