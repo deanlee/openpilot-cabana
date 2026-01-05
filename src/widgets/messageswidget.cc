@@ -30,6 +30,7 @@ MessagesWidget::MessagesWidget(QWidget *parent) : menu(new QMenu(this)), QWidget
   view->setItemsExpandable(false);
   view->setIndentation(0);
   view->setRootIsDecorated(false);
+  view->setAlternatingRowColors(true);
 
   // Must be called before setting any header parameters to avoid overriding
   restoreHeaderState(settings.message_header_state);
@@ -164,22 +165,6 @@ void MessagesWidget::setMultiLineBytes(bool multi) {
 }
 
 // MessageView
-
-void MessageView::drawRow(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const {
-  QTreeView::drawRow(painter, option, index);
-
-  QPen oldPen = painter->pen();
-  static QColor gridColor = QColor::fromRgba(static_cast<QRgb>(style()->styleHint(QStyle::SH_Table_GridLineColor, &option, this)));
-  painter->setPen(gridColor);
-  // Draw bottom border for the row
-  painter->drawLine(option.rect.bottomLeft(), option.rect.bottomRight());
-  // Draw vertical borders for each column
-  for (int i = 0; i < header()->count(); ++i) {
-    int sectionX = header()->sectionViewportPosition(i);
-    painter->drawLine(sectionX, option.rect.top(), sectionX, option.rect.bottom());
-  }
-  painter->setPen(oldPen);
-}
 
 void MessageView::dataChanged(const QModelIndex &topLeft, const QModelIndex &bottomRight, const QVector<int> &roles) {
   // Bypass the slow call to QTreeView::dataChanged.
