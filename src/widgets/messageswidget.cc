@@ -169,8 +169,8 @@ void MessageView::drawRow(QPainter *painter, const QStyleOptionViewItem &option,
   QTreeView::drawRow(painter, option, index);
 
   QPen oldPen = painter->pen();
-  const int gridHint = style()->styleHint(QStyle::SH_Table_GridLineColor, &option, this);
-  painter->setPen(QColor::fromRgba(static_cast<QRgb>(gridHint)));
+  static QColor gridColor = QColor::fromRgba(static_cast<QRgb>(style()->styleHint(QStyle::SH_Table_GridLineColor, &option, this)));
+  painter->setPen(gridColor);
   // Draw bottom border for the row
   painter->drawLine(option.rect.bottomLeft(), option.rect.bottomRight());
   // Draw vertical borders for each column
