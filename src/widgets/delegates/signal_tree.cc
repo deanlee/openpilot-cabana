@@ -260,8 +260,8 @@ void SignalTreeDelegate::drawButtons(QPainter* p, const QStyleOptionViewItem& op
     p->drawPixmap(rect.adjusted(3, 3, -3, -3), pix);
   };
 
-  drawBtn(0, "chart-line", chart_opened);
-  drawBtn(1, "circle-minus", false);
+  drawBtn(0, "circle-minus", false);
+  drawBtn(1, "chart-line", chart_opened);
 }
 
 bool SignalTreeDelegate::helpEvent(QHelpEvent* event, QAbstractItemView* view, const QStyleOptionViewItem& option, const QModelIndex& index) {
@@ -271,7 +271,7 @@ bool SignalTreeDelegate::helpEvent(QHelpEvent* event, QAbstractItemView* view, c
   if (btnIdx != -1) {
     SignalView* sigView = qobject_cast<SignalView*>(view->parentWidget()); 
     if (sigView) {
-      if (btnIdx == 0) { // Plot Button
+      if (btnIdx == 1) { // Plot Button
         auto model = static_cast<const SignalTreeModel*>(index.model());
         bool opened = sigView->charts->hasSignal(model->msg_id, item->sig);
         QToolTip::showText(event->globalPos(), opened ? tr("Close Plot") : tr("Show Plot\nSHIFT click to add to previous opened plot"), view);
@@ -311,7 +311,7 @@ bool SignalTreeDelegate::editorEvent(QEvent* event, QAbstractItemModel* model, c
       // It's a button click on a Signal item
       SignalView* view = static_cast<SignalView*>(parent());
       MessageId msg_id = static_cast<SignalTreeModel*>(model)->msg_id;
-      if (btn == 0) {
+      if (btn == 1) {
         bool opened = view->charts->hasSignal(msg_id, item->sig);
         emit view->showChart(msg_id, item->sig, !opened, e->modifiers() & Qt::ShiftModifier);
       } else {
