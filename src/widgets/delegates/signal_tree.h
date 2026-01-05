@@ -1,25 +1,8 @@
 #pragma once
-#include <QDialog>
 #include <QPainter>
 #include <QStyledItemDelegate>
-#include <QTableWidget>
 
 #include "dbc/dbc.h"
-
-class ValueDescriptionDlg : public QDialog {
-public:
-  ValueDescriptionDlg(const ValueDescription &descriptions, QWidget *parent);
-  ValueDescription val_desc;
-
-private:
-  struct Delegate : public QStyledItemDelegate {
-    Delegate(QWidget *parent) : QStyledItemDelegate(parent) {}
-    QWidget *createEditor(QWidget *parent, const QStyleOptionViewItem &option, const QModelIndex &index) const override;
-  };
-
-  void save();
-  QTableWidget *table;
-};
 
 class SignalTreeDelegate : public QStyledItemDelegate {
 public:
