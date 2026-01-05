@@ -1,8 +1,10 @@
 #pragma once
 
+#include <optional>
 #include <vector>
 
 #include <QByteArray>
+#include <QColor>
 #include <QDoubleValidator>
 #include <QPainter>
 #include <QRegExpValidator>
@@ -24,7 +26,7 @@ public:
 
 namespace utils {
 
-QPixmap icon(const QString &id, QSize size = QSize(24, 24));
+QPixmap icon(const QString &id, QSize size = QSize(24, 24), std::optional<QColor> color = std::nullopt);
 bool isDarkTheme();
 void setTheme(int theme);
 QString formatSeconds(double sec, bool include_milliseconds = false, bool absolute_time = false);

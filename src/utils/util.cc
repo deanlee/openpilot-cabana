@@ -42,14 +42,9 @@ bool isDarkTheme() {
   return windowColor.lightness() < 128;
 }
 
-QPixmap icon(const QString& id, QSize size) {
-  bool dark_theme = isDarkTheme();
-
-  QString key = QString("lucide_%1_%2x%3_%4")
-                    .arg(id)
-                    .arg(size.width())
-                    .arg(size.height())
-                    .arg(dark_theme ? "d" : "l");
+QPixmap icon(const QString& id, QSize size, std::optional<QColor> color) {
+  QColor icon_color = color.value_or(isDarkTheme() ? QColor("#bbbbbb") : QColor("#333333"));
+  QString key = QString("lucide_%1_%2_%3").arg(id).arg(size.width()).arg(icon_color.rgba(), 0, 16);
 
   QPixmap pm;
   if (!QPixmapCache::find(key, &pm)) {
@@ -67,8 +62,7 @@ QPixmap icon(const QString& id, QSize size) {
     renderer.render(&p);
 
     p.setCompositionMode(QPainter::CompositionMode_SourceIn);
-    QColor iconColor = dark_theme ? QColor("#bbbbbb") : QColor("#333333");
-    p.fillRect(pm.rect(), iconColor);
+    p.fillRect(pm.rect(), icon_color);
     p.end();
 
     QPixmapCache::insert(key, pm);

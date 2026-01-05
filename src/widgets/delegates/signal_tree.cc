@@ -253,7 +253,8 @@ void SignalTreeDelegate::drawButtons(QPainter* p, const QStyleOptionViewItem& op
     QSize logicalSize(BTN_WIDTH - 6, BTN_WIDTH - 6);
     QSize physicalSize = logicalSize * dpr;
 
-    QPixmap pix = utils::icon(iconName, physicalSize);
+    QColor icon_color = active ? opt.palette.color(QPalette::HighlightedText) : opt.palette.color(QPalette::Text);
+    QPixmap pix = utils::icon(iconName, physicalSize, icon_color);
     pix.setDevicePixelRatio(dpr);
     p->setRenderHint(QPainter::SmoothPixmapTransform);
     p->setRenderHint(QPainter::Antialiasing);
