@@ -79,11 +79,16 @@ QWidget *MessagesWidget::createToolBar() {
   QHBoxLayout *layout = new QHBoxLayout(toolbar);
   layout->setContentsMargins(0, 9, 0, 0);
   layout->addWidget(suppress_add = new QPushButton("Suppress Highlighted"));
+  suppress_add->setToolTip(tr("Mute activity for selected bits.\n"
+                            "This hides color changes in the highlighted area to focus on other transitions."));
   layout->addWidget(suppress_clear = new QPushButton());
-  suppress_clear->setToolTip(tr("Clear suppressed"));
+  suppress_clear->setToolTip(tr("Clear all suppressed bits.\n"
+                            "Restores activity highlighting for all previously muted bits."));
   layout->addStretch(1);
   QCheckBox *suppress_defined_signals = new QCheckBox(tr("Suppress Signals"), this);
-  suppress_defined_signals->setToolTip(tr("Suppress defined signals"));
+  suppress_defined_signals->setToolTip(tr("Mute activity for all bits already assigned to signals.\n"
+                                        "Helps isolate unknown bit transitions in the message."));
+
   suppress_defined_signals->setChecked(settings.suppress_defined_signals);
   layout->addWidget(suppress_defined_signals);
 
