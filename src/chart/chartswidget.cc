@@ -28,8 +28,8 @@ ChartsWidget::ChartsWidget(QWidget *parent) : QFrame(parent) {
   int icon_size = style()->pixelMetric(QStyle::PM_SmallIconSize);
   toolbar->setIconSize({icon_size, icon_size});
 
-  auto new_plot_btn = new ToolButton("file-plus", tr("New Chart"));
-  auto new_tab_btn = new ToolButton("window-stack", tr("New Tab"));
+  auto new_plot_btn = new ToolButton("plus", tr("New Chart"));
+  auto new_tab_btn = new ToolButton("layer-plus", tr("New Tab"));
   toolbar->addWidget(new_plot_btn);
   toolbar->addWidget(new_tab_btn);
   toolbar->addWidget(title_label = new QLabel());
@@ -74,13 +74,13 @@ ChartsWidget::ChartsWidget(QWidget *parent) : QFrame(parent) {
   // zoom controls
   zoom_undo_stack = new QUndoStack(this);
   toolbar->addAction(undo_zoom_action = zoom_undo_stack->createUndoAction(this));
-  undo_zoom_action->setIcon(utils::icon("arrow-counterclockwise"));
+  undo_zoom_action->setIcon(utils::icon("undo-2"));
   toolbar->addAction(redo_zoom_action = zoom_undo_stack->createRedoAction(this));
-  redo_zoom_action->setIcon(utils::icon("arrow-clockwise"));
-  reset_zoom_action = toolbar->addWidget(reset_zoom_btn = new ToolButton("zoom-out", tr("Reset Zoom")));
+  redo_zoom_action->setIcon(utils::icon("redo-2"));
+  reset_zoom_action = toolbar->addWidget(reset_zoom_btn = new ToolButton("refresh-ccw", tr("Reset Zoom")));
   reset_zoom_btn->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
 
-  toolbar->addWidget(remove_all_btn = new ToolButton("x-square", tr("Remove all charts")));
+  toolbar->addWidget(remove_all_btn = new ToolButton("eraser", tr("Remove all charts")));
   toolbar->addWidget(dock_btn = new ToolButton(""));
   main_layout->addWidget(toolbar);
 
@@ -232,7 +232,7 @@ void ChartsWidget::setMaxChartRange(int value) {
 
 void ChartsWidget::setIsDocked(bool docked) {
   is_docked = docked;
-  dock_btn->setIcon(is_docked ? "arrow-up-right-square" : "arrow-down-left-square");
+  dock_btn->setIcon(is_docked ? "external-link" : "dock");
   dock_btn->setToolTip(is_docked ? tr("Float the charts window") : tr("Dock the charts window"));
 }
 
@@ -253,8 +253,8 @@ void ChartsWidget::updateToolBar() {
 
 void ChartsWidget::settingChanged() {
   if (std::exchange(current_theme, settings.theme) != current_theme) {
-    undo_zoom_action->setIcon(utils::icon("arrow-counterclockwise"));
-    redo_zoom_action->setIcon(utils::icon("arrow-clockwise"));
+    undo_zoom_action->setIcon(utils::icon("undo-2"));
+    redo_zoom_action->setIcon(utils::icon("redo-2"));
     auto theme = utils::isDarkTheme() ? QChart::QChart::ChartThemeDark : QChart::ChartThemeLight;
     for (auto c : charts) {
       c->setTheme(theme);

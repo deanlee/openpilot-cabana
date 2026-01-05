@@ -24,7 +24,7 @@ public:
 
 namespace utils {
 
-QPixmap icon(const QString &id);
+QPixmap icon(const QString &id, QSize size = QSize(24, 24));
 bool isDarkTheme();
 void setTheme(int theme);
 QString formatSeconds(double sec, bool include_milliseconds = false, bool absolute_time = false);
@@ -39,4 +39,3 @@ inline QString toHex(const std::vector<uint8_t> &dat, char separator = '\0') {
 }
 
 void initApp(int argc, char *argv[], bool disable_hidpi = true);
-QPixmap bootstrapPixmap(const QString &id);

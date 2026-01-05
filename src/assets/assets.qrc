@@ -1,6 +1,36 @@
 <!DOCTYPE RCC><RCC version="1.0">
 <qresource>
-  <file alias="bootstrap-icons.svg">bootstrap-icons.svg</file>
   <file>cabana-icon.png</file>
+  <file>binary.svg</file>
+  <file>chart-line.svg</file>
+  <file>chevron-left.svg</file>
+  <file>chevron-right.svg</file>
+  <file>circle-minus.svg</file>
+  <file>dock.svg</file>
+  <file>ellipsis.svg</file>
+  <file>eraser.svg</file>
+  <file>external-link.svg</file>
+  <file>file-spreadsheet.svg</file>
+  <file>fold-vertical.svg</file>
+  <file>grip-horizontal.svg</file>
+  <file>info.svg</file>
+  <file>layer-plus.svg</file>
+  <file>menu.svg</file>
+  <file>minus.svg</file>
+  <file>pause.svg</file>
+  <file>play.svg</file>
+  <file>plus.svg</file>
+  <file>redo-2.svg</file>
+  <file>refresh-ccw.svg</file>
+  <file>repeat.svg</file>
+  <file>repeat-1.svg</file>
+  <file>scroll-text.svg</file>
+  <file>square-pen.svg</file>
+  <file>step-back.svg</file>
+  <file>step-forward.svg</file>
+  <file>trash-2.svg</file>
+  <file>triangle-alert.svg</file>
+  <file>undo-2.svg</file>
+  <file>x.svg</file>
 </qresource>
 </RCC>

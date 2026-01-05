@@ -43,6 +43,8 @@ int main(int argc, char* argv[]) {
   QApplication app(argc, argv);
   app.setApplicationDisplayName("Cabana");
   app.setWindowIcon(QIcon(":cabana-icon.png"));
+  app.setAttribute(Qt::AA_EnableHighDpiScaling);
+  app.setAttribute(Qt::AA_UseHighDpiPixmaps);
 
   SystemSignalHandler signal_handler;
   utils::setTheme(settings.theme);

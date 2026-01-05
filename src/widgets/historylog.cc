@@ -52,7 +52,7 @@ LogsWidget::LogsWidget(QWidget *parent) : QFrame(parent) {
   filter_layout->addWidget(value_edit = new QLineEdit(this));
   h->addWidget(filters_widget);
   h->addStretch(0);
-  export_btn = new ToolButton("filetype-csv", tr("Export to CSV file..."));
+  export_btn = new ToolButton("file-spreadsheet", tr("Export to CSV file..."));
   h->addWidget(export_btn, 0, Qt::AlignRight);
 
   display_type_cb->addItems({"Signal", "Hex"});

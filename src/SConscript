@@ -12,7 +12,7 @@ qt_env['QT_MOCFROMHDIR'] = os.path.join(build_dir, 'moc')
 qt_env['QT_MOCFROMCXXDIR'] = os.path.join(build_dir, 'moc')
 
 qt_env["CPPPATH"] += ["#"]
-qt_modules = ["Widgets", "Gui", "Core", "Concurrent", "DBus", "Xml"]
+qt_modules = ["Widgets", "Gui", "Core", "Concurrent", "DBus", "Xml", "Svg"]
 
 qt_libs = []
 if arch == "Darwin":
@@ -55,6 +55,7 @@ qt_flags = [
   "-DQT_WIDGETS_LIB",
   "-DQT_GUI_LIB",
   "-DQT_CORE_LIB",
+  "-DQT_SVG_LIB",
   "-DQT_MESSAGELOGCONTEXT",
 ]
 qt_env['CXXFLAGS'] += qt_flags
@@ -85,7 +86,9 @@ cabana_libs = [cereal, messaging, visionipc, replay_lib, 'avutil', 'avcodec', 'a
 assets = "#build/assets/assets.cc"
 assets_src = "assets/assets.qrc"
 cabana_env.Command(assets, assets_src, f"rcc $SOURCES -o $TARGET")
-cabana_env.Depends(assets, Glob('assets/*', exclude=[assets, assets_src, "assets/assets.o"]))
+cabana_env.Depends(assets, [assets_src] + Glob('assets/*.svg'))
+# cabana_env.Depends(assets, Glob('assets/*', exclude=[assets, assets_src, "assets/assets.o"]))
+
 src_files = Glob('#src/*.cc') + Glob('#src/*/*.cc') + Glob('#src/*/*/*.cc')
 src_file_strings = ['#build/' + str(f) for f in src_files if f != 'main.cc']
 

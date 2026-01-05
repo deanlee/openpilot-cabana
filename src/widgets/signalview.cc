@@ -36,7 +36,7 @@ SignalView::SignalView(ChartsWidget *charts, QWidget *parent) : charts(charts), 
   sparkline_range_slider->setValue(settings.sparkline_range);
   sparkline_range_slider->setToolTip(tr("Sparkline time range"));
 
-  auto collapse_btn = new ToolButton("dash-square", tr("Collapse All"));
+  auto collapse_btn = new ToolButton("fold-vertical", tr("Collapse All"));
   collapse_btn->setIconSize({12, 12});
   hl->addWidget(collapse_btn);
 

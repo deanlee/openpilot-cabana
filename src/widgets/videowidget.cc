@@ -82,12 +82,12 @@ void VideoWidget::createPlaybackController() {
   int icon_size = style()->pixelMetric(QStyle::PM_SmallIconSize);
   toolbar->setIconSize({icon_size, icon_size});
 
-  toolbar->addAction(utils::icon("rewind"), tr("Seek backward"), []() { can->seekTo(can->currentSec() - 1); });
+  toolbar->addAction(utils::icon("step-back"), tr("Seek backward"), []() { can->seekTo(can->currentSec() - 1); });
   play_toggle_action = toolbar->addAction(utils::icon("play"), tr("Play"), []() { can->pause(!can->isPaused()); });
-  toolbar->addAction(utils::icon("fast-forward"), tr("Seek forward"), []() { can->seekTo(can->currentSec() + 1); });
+  toolbar->addAction(utils::icon("step-forward"), tr("Seek forward"), []() { can->seekTo(can->currentSec() + 1); });
 
   if (can->liveStreaming()) {
-    skip_to_end_action = toolbar->addAction(utils::icon("skip-end"), tr("Skip to the end"), this, [this]() {
+    skip_to_end_action = toolbar->addAction(utils::icon("skip-forward"), tr("Skip to the end"), this, [this]() {
       // set speed to 1.0
       speed_btn->menu()->actions()[7]->setChecked(true);
       can->pause(false);
@@ -109,7 +109,7 @@ void VideoWidget::createPlaybackController() {
     toolbar->addAction(utils::icon("repeat"), tr("Loop playback"), this, &VideoWidget::loopPlaybackClicked);
     createSpeedDropdown(toolbar);
     toolbar->addSeparator();
-    toolbar->addAction(utils::icon("info-circle"), tr("View route details"), this, &VideoWidget::showRouteInfo);
+    toolbar->addAction(utils::icon("info"), tr("View route details"), this, &VideoWidget::showRouteInfo);
   } else {
     createSpeedDropdown(toolbar);
   }

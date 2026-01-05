@@ -249,14 +249,19 @@ void SignalTreeDelegate::drawButtons(QPainter* p, const QStyleOptionViewItem& op
       p->restore();
     }
 
-    // Paint Icon: Shift to Selected mode for active (White icon on Blue bg)
-    QIcon icon = utils::icon(iconName);
-    QIcon::Mode mode = active ? QIcon::Selected : (hovered ? QIcon::Active : QIcon::Normal);
-    icon.paint(p, rect, Qt::AlignCenter, mode);
+    double dpr = p->device()->devicePixelRatioF();
+    QSize logicalSize(BTN_WIDTH - 6, BTN_WIDTH - 6);
+    QSize physicalSize = logicalSize * dpr;
+
+    QPixmap pix = utils::icon(iconName, physicalSize);
+    pix.setDevicePixelRatio(dpr);
+    p->setRenderHint(QPainter::SmoothPixmapTransform);
+    p->setRenderHint(QPainter::Antialiasing);
+    p->drawPixmap(rect.adjusted(3, 3, -3, -3), pix);
   };
 
-  drawBtn(0, "graph-up", chart_opened);
-  drawBtn(1, "x", false);
+  drawBtn(0, "chart-line", chart_opened);
+  drawBtn(1, "circle-minus", false);
 }
 
 bool SignalTreeDelegate::helpEvent(QHelpEvent* event, QAbstractItemView* view, const QStyleOptionViewItem& option, const QModelIndex& index) {

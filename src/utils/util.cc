@@ -17,6 +17,7 @@
 #include <QWidget>
 #include "common/util.h"
 #include "settings.h"
+#include <QtSvg/QSvgRenderer>
 
 // NameValidator
 
@@ -41,18 +42,35 @@ bool isDarkTheme() {
   return windowColor.lightness() < 128;
 }
 
-QPixmap icon(const QString &id) {
+QPixmap icon(const QString& id, QSize size) {
   bool dark_theme = isDarkTheme();
 
+  QString key = QString("lucide_%1_%2x%3_%4")
+                    .arg(id)
+                    .arg(size.width())
+                    .arg(size.height())
+                    .arg(dark_theme ? "d" : "l");
+
   QPixmap pm;
-  QString key = "bootstrap_" % id % (dark_theme ? "1" : "0");
   if (!QPixmapCache::find(key, &pm)) {
-    pm = bootstrapPixmap(id);
-    if (dark_theme) {
-      QPainter p(&pm);
-      p.setCompositionMode(QPainter::CompositionMode_SourceIn);
-      p.fillRect(pm.rect(), QColor("#bbbbbb"));
+    QString path = QString(":/%1.svg").arg(id);
+    QSvgRenderer renderer(path);
+
+    if (!renderer.isValid()) {
+      return QPixmap();
     }
+
+    pm = QPixmap(size);
+    pm.fill(Qt::transparent);
+
+    QPainter p(&pm);
+    renderer.render(&p);
+
+    p.setCompositionMode(QPainter::CompositionMode_SourceIn);
+    QColor iconColor = dark_theme ? QColor("#bbbbbb") : QColor("#333333");
+    p.fillRect(pm.rect(), iconColor);
+    p.end();
+
     QPixmapCache::insert(key, pm);
   }
   return pm;
@@ -146,38 +164,4 @@ void initApp(int argc, char *argv[], bool disable_hidpi) {
   QDir::setCurrent(app_dir);
 
   setSurfaceFormat();
-}
-
-static QHash<QString, QByteArray> load_bootstrap_icons() {
-  QHash<QString, QByteArray> icons;
-
-  QFile f(":/bootstrap-icons.svg");
-  if (f.open(QIODevice::ReadOnly | QIODevice::Text)) {
-    QDomDocument xml;
-    xml.setContent(&f);
-    QDomNode n = xml.documentElement().firstChild();
-    while (!n.isNull()) {
-      QDomElement e = n.toElement();
-      if (!e.isNull() && e.hasAttribute("id")) {
-        QString svg_str;
-        QTextStream stream(&svg_str);
-        n.save(stream, 0);
-        svg_str.replace("<symbol", "<svg");
-        svg_str.replace("</symbol>", "</svg>");
-        icons[e.attribute("id")] = svg_str.toUtf8();
-      }
-      n = n.nextSibling();
-    }
-  }
-  return icons;
-}
-
-QPixmap bootstrapPixmap(const QString &id) {
-  static QHash<QString, QByteArray> icons = load_bootstrap_icons();
-
-  QPixmap pixmap;
-  if (auto it = icons.find(id); it != icons.end()) {
-    pixmap.loadFromData(it.value(), "svg");
-  }
-  return pixmap;
 }

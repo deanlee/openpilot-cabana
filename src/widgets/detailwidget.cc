@@ -44,8 +44,8 @@ DetailWidget::DetailWidget(ChartsWidget *charts, QWidget *parent) : charts(chart
   tab_widget = new QTabWidget(this);
   tab_widget->setStyleSheet("QTabWidget::pane {border: none; margin-bottom: -2px;}");
   tab_widget->setTabPosition(QTabWidget::South);
-  tab_widget->addTab(splitter, utils::icon("file-earmark-ruled"), "&Msg");
-  tab_widget->addTab(history_log = new LogsWidget(this), utils::icon("stopwatch"), "&Logs");
+  tab_widget->addTab(splitter, utils::icon("binary"), "&Msg");
+  tab_widget->addTab(history_log = new LogsWidget(this), utils::icon("scroll-text"), "&Logs");
   main_layout->addWidget(tab_widget);
 
   connect(binary_view, &BinaryView::signalHovered, signal_view, &SignalView::signalHovered);
@@ -90,8 +90,8 @@ void DetailWidget::createToolBar() {
 
   // Edit and remove buttons
   toolbar->addSeparator();
-  toolbar->addAction(utils::icon("pencil"), tr("Edit Message"), this, &DetailWidget::editMsg);
-  action_remove_msg = toolbar->addAction(utils::icon("x-lg"), tr("Remove Message"), this, &DetailWidget::removeMsg);
+  toolbar->addAction(utils::icon("square-pen"), tr("Edit Message"), this, &DetailWidget::editMsg);
+  action_remove_msg = toolbar->addAction(utils::icon("trash-2"), tr("Remove Message"), this, &DetailWidget::removeMsg);
 
   layout()->addWidget(toolbar);
 
@@ -187,7 +187,7 @@ void DetailWidget::refresh() {
 
   if (!warnings.isEmpty()) {
     warning_label->setText(warnings.join('\n'));
-    warning_icon->setPixmap(utils::icon(msg ? "exclamation-triangle" : "info-circle"));
+    warning_icon->setPixmap(utils::icon(msg ? "triangle-alert" : "info"));
   }
   warning_widget->setVisible(!warnings.isEmpty());
 }

@@ -87,7 +87,7 @@ QWidget *MessagesWidget::createToolBar() {
   suppress_defined_signals->setChecked(settings.suppress_defined_signals);
   layout->addWidget(suppress_defined_signals);
 
-  auto view_button = new ToolButton("three-dots", tr("View..."));
+  auto view_button = new ToolButton("ellipsis", tr("View..."));
   view_button->setMenu(menu);
   view_button->setPopupMode(QToolButton::InstantPopup);
   view_button->setStyleSheet("QToolButton::menu-indicator { image: none; }");

@@ -84,7 +84,7 @@ void ChartView::createToolButtons() {
   menu->addAction(tr("Manage Signals"), this, &ChartView::manageSignals);
   split_chart_act = menu->addAction(tr("Split Chart"), [this]() { charts_widget->splitChart(this); });
 
-  QToolButton *manage_btn = new ToolButton("list", "");
+  QToolButton *manage_btn = new ToolButton("menu", "");
   manage_btn->setMenu(menu);
   manage_btn->setPopupMode(QToolButton::InstantPopup);
   manage_btn->setStyleSheet("QToolButton::menu-indicator { image: none; }");

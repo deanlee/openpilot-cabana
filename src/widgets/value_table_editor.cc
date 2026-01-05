@@ -12,7 +12,7 @@
 ValueTableEditor::ValueTableEditor(const ValueDescription& descriptions, QWidget* parent) : QDialog(parent) {
   QHBoxLayout* toolbar_layout = new QHBoxLayout();
   QPushButton* add = new QPushButton(utils::icon("plus"), "");
-  QPushButton* remove = new QPushButton(utils::icon("dash"), "");
+  QPushButton* remove = new QPushButton(utils::icon("minus"), "");
   remove->setEnabled(false);
   toolbar_layout->addWidget(add);
   toolbar_layout->addWidget(remove);
