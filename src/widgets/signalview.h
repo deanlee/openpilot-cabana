@@ -37,6 +37,7 @@ private:
   void handleSignalAdded(MessageId id, const cabana::Signal *sig);
   void handleSignalUpdated(const cabana::Signal *sig);
   void updateState(const std::set<MessageId> *msgs = nullptr);
+  void updateColumnWidths();
   std::pair<QModelIndex, QModelIndex> visibleSignalRange();
 
   int max_value_width = 0;
