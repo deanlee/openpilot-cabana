@@ -56,10 +56,10 @@ void Sparkline::updateDataPoints(const cabana::Signal* sig, CanEventIter first, 
 void Sparkline::updateRenderPoints(const QColor& color, int time_range, QSize size) {
   if (history_.empty() || size.isEmpty()) return;
 
-  qreal dpr = qApp->devicePixelRatio();
-  QSize pix_size = size * dpr;
-  if (pixmap.size() != pix_size) {
-    pixmap = QPixmap(pix_size);
+  // 1. Setup Surface
+  const qreal dpr = qApp->devicePixelRatio();
+  if (pixmap.size() != size * dpr) {
+    pixmap = QPixmap(size * dpr);
     pixmap.setDevicePixelRatio(dpr);
   }
   pixmap.fill(Qt::transparent);
@@ -67,63 +67,63 @@ void Sparkline::updateRenderPoints(const QColor& color, int time_range, QSize si
   const int width = size.width();
   const int height = size.height();
   const uint64_t range_ns = (uint64_t)time_range * 1000000000ULL;
-
-  // Align window: Right edge is the latest data point
   const uint64_t window_end_ts = current_window_max_ts_;
   const uint64_t window_start_ts = (window_end_ts > range_ns) ? (window_end_ts - range_ns) : 0;
 
-  cols_.assign(width, {std::numeric_limits<double>::max(), std::numeric_limits<double>::lowest(), false});
+  // 2. Vertical Scaling Pass
   min_val = std::numeric_limits<double>::max();
   max_val = std::numeric_limits<double>::lowest();
-
   for (const auto& p : history_) {
     if (p.mono_time < window_start_ts) continue;
-
-    // Calculate X based on the user-set time range
-    double time_from_end = (double)(window_end_ts - p.mono_time);
-    double ratio = 1.0 - (time_from_end / (double)range_ns);
-
-    int x = (int)(ratio * (width - 1));
-    if (x < 0 || x >= width) continue;
-
-    auto& col = cols_[x];
-    col.min_val = std::min(col.min_val, p.value);
-    col.max_val = std::max(col.max_val, p.value);
-    col.has_data = true;
-
     min_val = std::min(min_val, p.value);
     max_val = std::max(max_val, p.value);
   }
 
-  // 3. Render Point Generation
+  const double y_range = std::max(max_val - min_val, 1e-6);
+  const float margin = 2.0f;
+  const float bottom_y = (float)height - margin;
+  const float y_scale = ((float)height - (2.0f * margin)) / (float)y_range;
+  const double x_scale = (double)(width - 1) / (double)range_ns;
+
+  // 3. The "Smooth Envelope" Algorithm
   render_pts_.clear();
   render_pts_.reserve(width * 2);
 
-  const int margin = 2;
-  const float bottom_y = (float)(height - margin);
-  const double draw_area = (double)(height - 2 * margin);
-  const double y_range = max_val - min_val;
+  float last_pixel_x = -1.0f;
+  double bucket_min = std::numeric_limits<double>::max();
+  double bucket_max = std::numeric_limits<double>::lowest();
 
-  if (y_range < 1e-6) {
-    float mid_y = height / 2.0f;
-    for (int x = 0; x < width; ++x) {
-      if (cols_[x].has_data) render_pts_.emplace_back(x, mid_y);
-    }
-  } else {
-    // Pre-calculate inversion to use multiplication instead of division in the loop
-    const double scale = draw_area / y_range;
-    for (int x = 0; x < width; ++x) {
-      const auto& col = cols_[x];
-      if (!col.has_data) continue;
+  for (const auto& p : history_) {
+    if (p.mono_time < window_start_ts) continue;
 
-      float py_min = bottom_y - (float)((col.min_val - min_val) * scale);
-      float py_max = bottom_y - (float)((col.max_val - min_val) * scale);
+    // Precise sub-pixel X
+    double dist_from_right = (double)(window_end_ts - p.mono_time) * x_scale;
+    float x = (float)(width - 1) - (float)dist_from_right;
 
-      render_pts_.emplace_back(x, py_min);
-      if (std::abs(py_min - py_max) > 0.5f) {
-        render_pts_.emplace_back(x, py_max);
+    // If we are still within the same "pixel column" (1.0 width)
+    if (std::abs(x - last_pixel_x) < 1.0f && last_pixel_x >= 0) {
+      bucket_min = std::min(bucket_min, p.value);
+      bucket_max = std::max(bucket_max, p.value);
+    } else {
+      // Before moving to a new pixel, flush the previous bucket's min/max
+      if (last_pixel_x >= 0) {
+        float py_min = bottom_y - (float)((bucket_min - min_val) * y_scale);
+        float py_max = bottom_y - (float)((bucket_max - min_val) * y_scale);
+
+        render_pts_.emplace_back(last_pixel_x, py_min);
+        if (std::abs(py_min - py_max) > 0.5f) {
+          render_pts_.emplace_back(last_pixel_x, py_max);
+        }
       }
+      // Reset for new pixel column
+      last_pixel_x = x;
+      bucket_min = bucket_max = p.value;
     }
+  }
+
+  // Flush last point
+  if (last_pixel_x >= 0) {
+    render_pts_.emplace_back(last_pixel_x, bottom_y - (float)((bucket_min - min_val) * y_scale));
   }
 }
 
