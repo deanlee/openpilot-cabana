@@ -45,8 +45,8 @@ SignalView::SignalView(ChartsWidget *charts, QWidget *parent) : charts(charts), 
   tree->setModel(model = new SignalTreeModel(this));
   tree->setItemDelegate(delegate = new SignalTreeDelegate(this));
   tree->setMinimumHeight(300);
-  tree->header()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
-  tree->header()->setStretchLastSection(true);
+  tree->header()->setSectionResizeMode(0, QHeaderView::Fixed);
+  tree->header()->setSectionResizeMode(1, QHeaderView::Stretch);
 
   // Use a distinctive background for the whole row containing a QSpinBox or QLineEdit
   QString nodeBgColor = palette().color(QPalette::AlternateBase).name(QColor::HexArgb);
@@ -206,6 +206,14 @@ void SignalView::updateState(const std::set<MessageId> *msgs) {
 }
 
 void SignalView::resizeEvent(QResizeEvent* event) {
-  updateState();
   QFrame::resizeEvent(event);
+
+  // Get the width of the visible area
+  int totalWidth = tree->viewport()->width();
+  if (totalWidth <= 0) return;
+
+  // Set the 1:2 Ratio
+  int nameWidth = totalWidth / 3;
+  tree->header()->resizeSection(0, nameWidth);
+  updateState();
 }

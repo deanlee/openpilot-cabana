@@ -25,25 +25,9 @@ SignalTreeDelegate::SignalTreeDelegate(QObject* parent) : QStyledItemDelegate(pa
 }
 
 QSize SignalTreeDelegate::sizeHint(const QStyleOptionViewItem& option, const QModelIndex& index) const {
-  auto item = (SignalTreeModel::Item*)index.internalPointer();
-  int height = 0;
-  if (item && item->type == SignalTreeModel::Item::Sig) {
-    height = option.widget->style()->pixelMetric(QStyle::PM_ToolBarIconSize) + 4;
-  } else {
-    height = signalRowHeight();
-  }
-
-  int width = option.widget->size().width() / 2;
-  if (index.column() == 0) {
-    int spacing = option.widget->style()->pixelMetric(QStyle::PM_TreeViewIndentation) + color_label_width + 8;
-    auto text = index.data(Qt::DisplayRole).toString();
-    if (item->type == SignalTreeModel::Item::Sig && item->sig->type != cabana::Signal::Type::Normal) {
-      text += item->sig->type == cabana::Signal::Type::Multiplexor ? QString(" M ") : QString(" m%1 ").arg(item->sig->multiplex_value);
-      spacing += (option.widget->style()->pixelMetric(QStyle::PM_FocusFrameHMargin) + 1) * 2;
-    }
-    width = std::min<int>(option.widget->size().width() / 3.0, option.fontMetrics.horizontalAdvance(text) + spacing);
-  }
-  return {width, height};
+  // Use toolbar icon size + padding for row height; width determined by header
+  int height = option.widget->style()->pixelMetric(QStyle::PM_ToolBarIconSize) + 6;
+  return QSize(-1, height);
 }
 
 void SignalTreeDelegate::updateEditorGeometry(QWidget* editor, const QStyleOptionViewItem& option, const QModelIndex& index) const {

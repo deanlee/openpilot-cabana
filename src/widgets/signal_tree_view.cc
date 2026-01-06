@@ -6,6 +6,7 @@ SignalTreeView::SignalTreeView(QWidget* parent) : QTreeView(parent) {
   setHeaderHidden(true);
   setMouseTracking(true);
   setExpandsOnDoubleClick(true);
+  setUniformRowHeights(true);
   setEditTriggers(QAbstractItemView::AllEditTriggers);
   viewport()->setMouseTracking(true);
   viewport()->setAttribute(Qt::WA_AlwaysShowToolTips, true);
