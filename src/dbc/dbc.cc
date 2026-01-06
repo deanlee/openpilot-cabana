@@ -140,14 +140,25 @@ void cabana::Signal::update() {
     receiver_name = DEFAULT_NODE_NAME;
   }
 
-  float h = 19 * (float)lsb / 64.0;
-  h = std::fmod(h, 1.0);
-  size_t hash = qHash(name);
-  float s = 0.25 + 0.25 * (float)(hash & 0xff) / 255.0;
-  float v = 0.75 + 0.25 * (float)((hash >> 8) & 0xff) / 255.0;
+// uint64_t seed = qHash(name);
+size_t hash = qHash(name);
+  
+  // 2. Use Golden Ratio to spread Hues evenly
+  // 0.6180339... ensures that even sequential names get very different colors
+  const float golden_ratio = 0.618033988749895f;
+  
+  // We use (hash % 1000 / 1000.0) to get a clean float between 0 and 1
+  float h = std::fmod((float)(hash % 1000) / 1000.0f + golden_ratio, 1.0f);
 
-  color = QColor::fromHsvF(h, s, v);
-  precision = std::max(num_decimals(factor), num_decimals(offset));
+  // 3. Modern "Pro-UI" Saturation and Value
+  // We keep S and V in a tight range so all signals have the same "weight"
+  // Saturation: 0.50 - 0.65 (Clean, not neon)
+  // Value: 0.85 - 0.95 (Bright enough for dark mode readability)
+  float s = 0.50f + std::fmod(hash * 0.1f, 0.15f);
+  float v = 0.85f + std::fmod(hash * 0.01f, 0.10f);
+
+  this->color = QColor::fromHsvF(h, s, v);
+  this->precision = std::max(num_decimals(factor), num_decimals(offset));
 }
 
 QString cabana::Signal::formatValue(double value, bool with_unit) const {
