@@ -45,15 +45,8 @@ SignalView::SignalView(ChartsWidget *charts, QWidget *parent) : charts(charts), 
   tree->setModel(model = new SignalTreeModel(this));
   tree->setItemDelegate(delegate = new SignalTreeDelegate(this));
   tree->setMinimumHeight(300);
-  // // tree->header()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
-  // // tree->header()->setStretchLastSection(true);
-  // tree->header()->setSectionResizeMode(0, QHeaderView::Stretch);
-  // tree->header()->setSectionResizeMode(1, QHeaderView::Stretch);
-
-  // // Set stretch factors: Column 1 (Sparkline) gets twice the space of Column 0 (Name)
-  // tree->header()->setStretchLastSection(false);
-  // tree->setColumnStretch(0, 1);
-  // tree->setColumnStretch(1, 2);
+  tree->header()->setSectionResizeMode(0, QHeaderView::Fixed);
+  tree->header()->setSectionResizeMode(1, QHeaderView::Stretch);
 
   // Use a distinctive background for the whole row containing a QSpinBox or QLineEdit
   QString nodeBgColor = palette().color(QPalette::AlternateBase).name(QColor::HexArgb);
@@ -221,13 +214,6 @@ void SignalView::resizeEvent(QResizeEvent* event) {
 
   // Set the 1:2 Ratio
   int nameWidth = totalWidth / 3;
-  // int contentWidth = totalWidth - nameWidth;
-
-  // We temporarily disable stretch mode to set manual sizes, 
-  // or just use resizeSection if the mode is Interactive.
-  tree->header()->setSectionResizeMode(0, QHeaderView::Fixed);
-  tree->header()->setSectionResizeMode(1, QHeaderView::Stretch);
-  
   tree->header()->resizeSection(0, nameWidth);
   updateState();
 }
