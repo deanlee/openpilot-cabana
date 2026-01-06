@@ -44,17 +44,9 @@ SignalView::SignalView(ChartsWidget *charts, QWidget *parent) : charts(charts), 
   tree = new SignalTreeView(this);
   tree->setModel(model = new SignalTreeModel(this));
   tree->setItemDelegate(delegate = new SignalTreeDelegate(this));
-  tree->setFrameShape(QFrame::NoFrame);
-  tree->setHeaderHidden(true);
-  tree->setMouseTracking(true);
-  tree->setExpandsOnDoubleClick(false);
-  tree->setEditTriggers(QAbstractItemView::AllEditTriggers);
+  tree->setMinimumHeight(300);
   tree->header()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
   tree->header()->setStretchLastSection(true);
-  tree->setMinimumHeight(300);
-  tree->viewport()->setMouseTracking(true);
-  tree->viewport()->setAttribute(Qt::WA_AlwaysShowToolTips, true);
-  tree->setToolTipDuration(1000);
 
   // Use a distinctive background for the whole row containing a QSpinBox or QLineEdit
   QString nodeBgColor = palette().color(QPalette::AlternateBase).name(QColor::HexArgb);

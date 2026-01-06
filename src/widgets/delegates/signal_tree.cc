@@ -319,14 +319,6 @@ bool SignalTreeDelegate::editorEvent(QEvent* event, QAbstractItemModel* model, c
         UndoStack::push(new RemoveSigCommand(msg_id, item->sig));
       }
       return true;  // Mark event handled so 'clicked()' isn't fired
-    } else {
-      // It's a click anywhere else: text, child items, or extra info
-      auto tree = qobject_cast<QTreeView*>(const_cast<QWidget*>(option.widget));
-      if (tree && (item->type == SignalTreeModel::Item::Sig || item->type == SignalTreeModel::Item::ExtraInfo)) {
-        auto expand_idx = index.siblingAtColumn(0);
-        tree->setExpanded(expand_idx, !tree->isExpanded(expand_idx));
-        return true;
-      }
     }
   }
 
