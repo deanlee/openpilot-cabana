@@ -30,7 +30,7 @@ QSize SignalTreeDelegate::sizeHint(const QStyleOptionViewItem& option, const QMo
   if (item && item->type == SignalTreeModel::Item::Sig) {
     height = option.widget->style()->pixelMetric(QStyle::PM_ToolBarIconSize) + 4;
   } else {
-    height = QStyledItemDelegate::sizeHint(option, index).height();
+    height = signalRowHeight();
   }
 
   int width = option.widget->size().width() / 2;
@@ -112,7 +112,7 @@ void SignalTreeDelegate::paint(QPainter* painter, const QStyleOptionViewItem& op
       QSize sparkline_size = item->sparkline.pixmap.size() / item->sparkline.pixmap.devicePixelRatio();
 
       // Draw sparkline inside the content area
-      painter->drawPixmap(QRect(contentRect.topLeft(), sparkline_size), item->sparkline.pixmap);
+      painter->drawPixmap(contentRect.topLeft(), item->sparkline.pixmap);
 
       // Adjust for min-max/freq text
       painter->setPen(option.palette.color(option.state & QStyle::State_Selected ? QPalette::HighlightedText : QPalette::Text));

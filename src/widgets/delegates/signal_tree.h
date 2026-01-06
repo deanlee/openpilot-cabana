@@ -9,6 +9,7 @@ class SignalTreeDelegate : public QStyledItemDelegate {
 public:
 
   const int BTN_WIDTH = 24;
+  const int BTN_HEIGHT = 24;
   const int BTN_SPACING = 4;
 
   SignalTreeDelegate(QObject *parent);
@@ -21,7 +22,10 @@ public:
   void drawButtons(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index, SignalTreeModel::Item *item) const;
   bool helpEvent(QHelpEvent *event, QAbstractItemView *view, const QStyleOptionViewItem &option, const QModelIndex &index) override;
   void clearHoverState();
-  int getButtonsWidth() const {
+  inline int signalRowHeight() const {
+    return BTN_WIDTH + 4;
+  }
+  inline int getButtonsWidth() const {
     // 2 buttons + spacing + 5px right margin (matching your getButtonRect logic)
     return (2 * BTN_WIDTH) + BTN_SPACING + 5;
   }

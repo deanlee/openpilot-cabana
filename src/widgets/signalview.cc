@@ -197,8 +197,7 @@ void SignalView::updateState(const std::set<MessageId> *msgs) {
     const int btn_column_width = delegate->getButtonsWidth();
     int available_width = value_column_width - btn_column_width;
     int value_width = std::min<int>(max_value_width + min_max_width, available_width / 2);
-    int h = fontMetrics().height();
-    QSize size(std::max(10, available_width - value_width), h);
+    QSize size(std::max(10, available_width - value_width), delegate->BTN_HEIGHT);
     auto [first, last] = can->eventsInRange(model->msg_id, std::make_pair(last_msg->ts -settings.sparkline_range, last_msg->ts));
     QFutureSynchronizer<void> synchronizer;
     for (int i = first_visible.row(); i <= last_visible.row(); ++i) {
