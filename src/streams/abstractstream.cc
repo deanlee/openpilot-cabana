@@ -301,36 +301,18 @@ std::pair<CanEventIter, CanEventIter> AbstractStream::eventsInRange(const Messag
 
 void AbstractStream::updateMessageMask(const MessageId& id, MessageState& state) {
   state.ignore_bit_mask.fill(0);
-  const size_t size = state.dat.size();
-  if (size == 0) return;
+  if (state.dat.empty()) return;
 
-  const size_t num_blocks = (size + 7) / 8;
-  auto it = masks_.find(id);
+  const auto& dbc_mask = masks_[id];
+  for (size_t i = 0; i < state.dat.size(); ++i) {
+    uint8_t m = (i < dbc_mask.size()) ? dbc_mask[i] : 0;
+    if (state.byte_states[i].is_suppressed) m = 0xFF;
 
-  for (size_t b = 0; b < num_blocks; ++b) {
-    uint64_t& m64 = state.ignore_bit_mask[b];
+    state.ignore_bit_mask[i / 8] |= ((uint64_t)m << ((i % 8) * 8));
 
-    // 1. Apply DBC Bitmask
-    if (it != masks_.end() && !it->second.empty()) {
-      const auto& dbc_mask = it->second;
-      size_t byte_offset = b * 8;
-      if (byte_offset < dbc_mask.size()) {
-        size_t len = std::min<size_t>(8, dbc_mask.size() - byte_offset);
-        std::memcpy(&m64, dbc_mask.data() + byte_offset, len);
-      }
-    }
-
-    // 2. Apply Manual Bit/Byte Suppression
-    for (int i = 0; i < 8; ++i) {
-      int byte_idx = (b * 8) + i;
-      if (byte_idx >= size) break;
-      if (state.byte_states[byte_idx].is_suppressed) m64 |= (0xFFULL << (i * 8));
-
-      // If byte is fully masked, kill UI state immediately
-      if (((m64 >> (i * 8)) & 0xFF) == 0xFF) {
-        state.bit_flips[byte_idx].fill(0);
-        state.bit_high_counts[byte_idx].fill(0);
-      }
+    if (m == 0xFF) {
+      state.bit_flips[i].fill(0);
+      state.bit_high_counts[i].fill(0);
     }
   }
 }
