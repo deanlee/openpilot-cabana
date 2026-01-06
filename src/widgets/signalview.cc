@@ -71,12 +71,6 @@ SignalView::SignalView(ChartsWidget *charts, QWidget *parent) : charts(charts), 
   connect(tree->verticalScrollBar(), &QScrollBar::valueChanged, [this]() { updateState(); });
   connect(tree->verticalScrollBar(), &QScrollBar::rangeChanged, [this]() { updateState(); });
   connect(can, &AbstractStream::snapshotsUpdated, this, &SignalView::updateState);
-  connect(tree->header(), &QHeaderView::sectionResized, [this](int logicalIndex, int oldSize, int newSize) {
-    if (logicalIndex == 1) {
-      value_column_width = newSize;
-      updateState();
-    }
-  });
 
   setWhatsThis(tr(R"(
     <b>Signal view</b><br />
@@ -139,7 +133,7 @@ void SignalView::setSparklineRange(int value) {
   updateToolBar();
   // Clear history to prevent scaling artifacts when range changes drastically
   for (auto item : model->root->children) {
-    item->sparkline.history_.clear();
+    item->sparkline.clearHistory();
   }
   updateState();
 }
@@ -219,5 +213,6 @@ void SignalView::resizeEvent(QResizeEvent* event) {
   // Set the 1:2 Ratio
   int nameWidth = totalWidth / 3;
   tree->header()->resizeSection(0, nameWidth);
+  value_column_width = totalWidth - nameWidth;
   updateState();
 }

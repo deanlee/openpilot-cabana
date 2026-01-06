@@ -18,6 +18,7 @@ class Sparkline {
   inline double freq() const { return freq_; }
   bool isEmpty() const { return pixmap.isNull(); }
   void setHighlight(bool highlight);
+  void clearHistory() { history_.clear(); }
 
   QPixmap pixmap;
   double min_val = 0;
