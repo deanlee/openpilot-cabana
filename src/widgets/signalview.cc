@@ -64,6 +64,7 @@ SignalView::SignalView(ChartsWidget *charts, QWidget *parent) : charts(charts), 
   connect(collapse_btn, &QPushButton::clicked, tree, &QTreeView::collapseAll);
   connect(tree, &QTreeView::viewportEntered, [this]() { emit highlight(nullptr); });
   connect(tree, &QTreeView::entered, [this](const QModelIndex &index) { emit highlight(model->getItem(index)->sig); });
+  connect(tree, &QTreeView::expanded, this, &SignalView::updateColumnWidths);
   connect(model, &QAbstractItemModel::modelReset, this, &SignalView::rowsChanged);
   connect(model, &QAbstractItemModel::rowsRemoved, this, &SignalView::rowsChanged);
   connect(dbc(), &DBCManager::signalAdded, this, &SignalView::handleSignalAdded);
@@ -86,7 +87,7 @@ void SignalView::setMessage(const MessageId &id) {
 
 void SignalView::rowsChanged() {
   updateToolBar();
-  updateState();
+  updateColumnWidths();
 }
 
 void SignalView::selectSignal(const cabana::Signal *sig, bool expand) {
@@ -173,46 +174,61 @@ void SignalView::updateState(const std::set<MessageId> *msgs) {
   const auto *last_msg = can->snapshot(model->msg_id);
   if (model->rowCount() == 0 || (msgs && !msgs->count(model->msg_id)) || last_msg->dat.size() == 0) return;
 
-  for (auto item : model->root->children) {
+  auto [first_visible, last_visible] = visibleSignalRange();
+  if (!first_visible.isValid() || !last_visible.isValid()) return;
+
+  const int btn_width = delegate->getButtonsWidth();
+  const int value_width = delegate->kValueWidth;
+  const int spark_w = std::max(10, value_column_width - btn_width - value_width - (delegate->kPadding * 2));
+  const QSize spark_size(spark_w, delegate->kBtnSize);
+
+  // Prepare data window for sparklines
+  auto [first, last] = can->eventsInRange(
+      model->msg_id,
+      std::make_pair(last_msg->ts - settings.sparkline_range, last_msg->ts));
+
+  // Update items in the visible range
+  QFutureSynchronizer<void> synchronizer;
+  for (int i = first_visible.row(); i <= last_visible.row(); ++i) {
+    auto item = model->getItem(model->index(i, 1));
     double value = 0;
     if (item->sig->getValue(last_msg->dat.data(), last_msg->dat.size(), &value)) {
       item->sig_val = item->sig->formatValue(value);
-      max_value_width = std::max(max_value_width, fontMetrics().horizontalAdvance(item->sig_val));
     }
+    synchronizer.addFuture(QtConcurrent::run(
+        &item->sparkline, &Sparkline::update, item->sig, first, last, settings.sparkline_range, spark_size));
+  }
+  synchronizer.waitForFinished();
+
+  emit model->dataChanged(model->index(first_visible.row(), 1), model->index(last_visible.row(), 1), {Qt::DisplayRole});
+}
+
+void SignalView::updateColumnWidths() {
+  auto* m = dbc()->msg(model->msg_id);
+  if (!m) return;
+
+  int max_content_w = 0;
+  int indentation = tree->indentation();
+
+  for (const auto *sig : m->getSignals()) {
+    int w = delegate->nameColumnWidth(sig);
+    if (sig->type == cabana::Signal::Type::Multiplexed) {
+      w += indentation;
+    }
+
+    max_content_w = std::max(max_content_w, w);
   }
 
-  auto [first_visible, last_visible] = visibleSignalRange();
-  if (first_visible.isValid() && last_visible.isValid()) {
-    const static int min_max_width = QFontMetrics(delegate->minmax_font).horizontalAdvance("-000.00") + 5;
-    const int btn_column_width = delegate->getButtonsWidth();
-    int available_width = value_column_width - btn_column_width;
-    int value_width = std::min<int>(max_value_width + min_max_width, available_width / 2);
-    QSize size(std::max(10, available_width - value_width), delegate->BTN_HEIGHT);
-    auto [first, last] = can->eventsInRange(model->msg_id, std::make_pair(last_msg->ts -settings.sparkline_range, last_msg->ts));
-    QFutureSynchronizer<void> synchronizer;
-    for (int i = first_visible.row(); i <= last_visible.row(); ++i) {
-      auto item = model->getItem(model->index(i, 1));
-      synchronizer.addFuture(QtConcurrent::run(
-          &item->sparkline, &Sparkline::update, item->sig, first, last, settings.sparkline_range, size));
-    }
-    synchronizer.waitForFinished();
-  }
+  int maxAllowedWidth = std::max(150, this->width() / 3);
+  int finalWidth = std::clamp(max_content_w, 150, maxAllowedWidth);
 
-  for (int i = 0; i < model->rowCount(); ++i) {
-    emit model->dataChanged(model->index(i, 1), model->index(i, 1), {Qt::DisplayRole});
-  }
+  tree->setColumnWidth(0, finalWidth);
+  value_column_width = tree->viewport()->width() - finalWidth;
+
+  updateState();
 }
 
 void SignalView::resizeEvent(QResizeEvent* event) {
   QFrame::resizeEvent(event);
-
-  // Get the width of the visible area
-  int totalWidth = tree->viewport()->width();
-  if (totalWidth <= 0) return;
-
-  // Set the 1:2 Ratio
-  int nameWidth = totalWidth / 3;
-  tree->header()->resizeSection(0, nameWidth);
-  value_column_width = totalWidth - nameWidth;
-  updateState();
+  updateColumnWidths();
 }

@@ -1,5 +1,6 @@
 #include "signal_tree.h"
 
+#include <QApplication>
 #include <QComboBox>
 #include <QCompleter>
 #include <QEvent>
@@ -26,7 +27,7 @@ SignalTreeDelegate::SignalTreeDelegate(QObject* parent) : QStyledItemDelegate(pa
 
 QSize SignalTreeDelegate::sizeHint(const QStyleOptionViewItem& option, const QModelIndex& index) const {
   // Use toolbar icon size + padding for row height; width determined by header
-  int height = option.widget->style()->pixelMetric(QStyle::PM_ToolBarIconSize) + 6;
+  int height = option.widget->style()->pixelMetric(QStyle::PM_ToolBarIconSize) + kPadding;
   return QSize(-1, height);
 }
 
@@ -43,102 +44,142 @@ void SignalTreeDelegate::updateEditorGeometry(QWidget* editor, const QStyleOptio
 }
 
 void SignalTreeDelegate::paint(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const {
-  const int h_margin = option.widget->style()->pixelMetric(QStyle::PM_FocusFrameHMargin) + 1;
-  const int v_margin = option.widget->style()->pixelMetric(QStyle::PM_FocusFrameVMargin);
   auto item = static_cast<SignalTreeModel::Item*>(index.internalPointer());
 
-  QRect rect = option.rect.adjusted(h_margin, v_margin, -h_margin, -v_margin);
-  painter->setRenderHint(QPainter::Antialiasing);
+  // Selection background
   if (option.state & QStyle::State_Selected) {
-    painter->fillRect(option.rect, option.palette.brush(QPalette::Normal, QPalette::Highlight));
+    painter->fillRect(option.rect, option.palette.highlight());
+  } else if (option.state & QStyle::State_MouseOver || item->highlight) {
+    painter->fillRect(option.rect, option.palette.color(QPalette::AlternateBase));
   }
 
+  QRect rect = option.rect.adjusted(kPadding, 0, -kPadding, 0);
+
   if (index.column() == 0) {
+    drawNameColumn(painter, rect, option, item, index);
+  } else {
     if (item->type == SignalTreeModel::Item::Sig) {
-      // color label
-      QPainterPath path;
-      QRect icon_rect{rect.x(), rect.y(), color_label_width, rect.height()};
-      path.addRoundedRect(icon_rect, 3, 3);
-      painter->setPen(item->highlight ? Qt::white : Qt::black);
-      painter->setFont(label_font);
-      painter->fillPath(path, item->sig->color.darker(item->highlight ? 125 : 0));
-      painter->drawText(icon_rect, Qt::AlignCenter, QString::number(item->row() + 1));
-
-      rect.setLeft(icon_rect.right() + h_margin * 2);
-      // multiplexer indicator
-      if (item->sig->type != cabana::Signal::Type::Normal) {
-        QString indicator = item->sig->type == cabana::Signal::Type::Multiplexor ? QString(" M ") : QString(" m%1 ").arg(item->sig->multiplex_value);
-        QRect indicator_rect{rect.x(), rect.y(), option.fontMetrics.horizontalAdvance(indicator), rect.height()};
-        painter->setBrush(Qt::gray);
-        painter->setPen(Qt::NoPen);
-        painter->drawRoundedRect(indicator_rect, 3, 3);
-        painter->setPen(Qt::white);
-        painter->drawText(indicator_rect, Qt::AlignCenter, indicator);
-        rect.setLeft(indicator_rect.right() + h_margin * 2);
-      }
-    } else {
-      rect.setLeft(option.widget->style()->pixelMetric(QStyle::PM_TreeViewIndentation) + color_label_width + h_margin * 3);
-    }
-
-    // name
-    auto text = option.fontMetrics.elidedText(index.data(Qt::DisplayRole).toString(), Qt::ElideRight, rect.width());
-    painter->setPen(option.palette.color(option.state & QStyle::State_Selected ? QPalette::HighlightedText : QPalette::Text));
-    painter->setFont(option.font);
-    painter->drawText(rect, option.displayAlignment, text);
-  } else if (index.column() == 1) {
-    const int btn_space = getButtonsWidth();
-
-    // Create a working rect that EXCLUDES the button area
-    QRect contentRect = rect;
-    contentRect.setRight(rect.right() - btn_space);
-
-    if (!item->sparkline.pixmap.isNull()) {
-      QSize sparkline_size = item->sparkline.pixmap.size() / item->sparkline.pixmap.devicePixelRatio();
-
-      // Draw sparkline inside the content area
-      item->sparkline.setHighlight(option.state & QStyle::State_Selected);
-      painter->drawPixmap(contentRect.topLeft(), item->sparkline.pixmap);
-
-      // Adjust for min-max/freq text
-      painter->setPen(option.palette.color(option.state & QStyle::State_Selected ? QPalette::HighlightedText : QPalette::Text));
-
-      int value_adjust = 10;
-      QRect textRect = contentRect;
-      textRect.adjust(sparkline_size.width() + 1, 0, 0, 0);
-
-      if (!item->sparkline.isEmpty() && (item->highlight || option.state & QStyle::State_Selected)) {
-        painter->drawLine(textRect.topLeft(), textRect.bottomLeft());
-        textRect.adjust(5, -v_margin, 0, v_margin);
-        painter->setFont(minmax_font);
-
-        QString min = QString::number(item->sparkline.min_val);
-        QString max = QString::number(item->sparkline.max_val);
-        painter->drawText(textRect, Qt::AlignLeft | Qt::AlignTop, max);
-        painter->drawText(textRect, Qt::AlignLeft | Qt::AlignBottom, min);
-
-        value_adjust = std::max(QFontMetrics(minmax_font).horizontalAdvance(min),
-                                QFontMetrics(minmax_font).horizontalAdvance(max)) + 10;
-      } else if (!item->sparkline.isEmpty() && item->sig->type == cabana::Signal::Type::Multiplexed) {
-        painter->setFont(label_font);
-        QString freq = QString("%1 hz").arg(item->sparkline.freq(), 0, 'g', 2);
-        painter->drawText(textRect.adjusted(5, 0, 0, 0), Qt::AlignLeft | Qt::AlignVCenter, freq);
-        value_adjust = QFontMetrics(label_font).horizontalAdvance(freq) + 15;
-      }
-
-      // Draw Signal Value text
-      painter->setFont(option.font);
-      // This rect is now bounded by the sparkline on the left and the buttons on the right
-      textRect.adjust(value_adjust, 0, 0, 0);
-      auto text = option.fontMetrics.elidedText(index.data(Qt::DisplayRole).toString(), Qt::ElideRight, textRect.width());
-      painter->drawText(textRect, Qt::AlignRight | Qt::AlignVCenter, text);
-
-      // Draw Buttons (uses the original rect to stay pinned to the absolute right)
-      if (item->type == SignalTreeModel::Item::Sig) {
-        drawButtons(painter, option, index, item);
-      }
+      drawDataColumn(painter, rect, option, item, index);
     } else {
       QStyledItemDelegate::paint(painter, option, index);
     }
+  }
+}
+
+void SignalTreeDelegate::drawNameColumn(QPainter* p, QRect r, const QStyleOptionViewItem& opt,
+                                        SignalTreeModel::Item* item, const QModelIndex& idx) const {
+  if (item->type == SignalTreeModel::Item::Sig) {
+    // 1. Color Label / Row Number
+    QRect iconRect(r.left(), r.top() + (r.height() - kBtnSize) / 2, kColorLabelW, kBtnSize);
+    p->setPen(Qt::NoPen);
+    p->setBrush(item->sig->color);
+    p->drawRoundedRect(iconRect, 3, 3);  // Fixed: Direct drawing instead of roundedPath
+
+    p->setFont(label_font);
+    p->setPen(Qt::white);
+    p->drawText(iconRect, Qt::AlignCenter, QString::number(item->row() + 1));
+
+    r.setLeft(iconRect.right() + kPadding);
+
+    // 2. Multiplexer Indicator (Badge)
+    if (item->sig->type != cabana::Signal::Type::Normal) {
+      QString m_text = (item->sig->type == cabana::Signal::Type::Multiplexor)
+                           ? "M"
+                           : QString("m%1").arg(item->sig->multiplex_value);
+
+      int m_width = opt.fontMetrics.horizontalAdvance(m_text) + 8;
+      QRect m_rect(r.left(), iconRect.top(), m_width, kBtnSize);
+
+      p->setPen(Qt::NoPen);
+      p->setBrush(opt.palette.dark());
+      p->drawRoundedRect(m_rect, 2, 2);
+
+      p->setPen(Qt::white);
+      p->setFont(label_font);
+      p->drawText(m_rect, Qt::AlignCenter, m_text);
+
+      r.setLeft(m_rect.right() + kPadding);
+    }
+  }
+
+  // 3. Signal Name / Property Label
+  p->setFont(opt.font);
+  p->setPen(opt.palette.color((opt.state & QStyle::State_Selected) ? QPalette::HighlightedText : QPalette::Text));
+
+  QString text = idx.data(Qt::DisplayRole).toString();
+  QString elidedText = opt.fontMetrics.elidedText(text, Qt::ElideRight, r.width());
+
+  p->drawText(r, Qt::AlignVCenter | Qt::AlignLeft, elidedText);
+}
+
+void SignalTreeDelegate::drawDataColumn(QPainter* p, QRect r, const QStyleOptionViewItem& opt, SignalTreeModel::Item* item, const QModelIndex& idx) const {
+  const bool selected = opt.state & QStyle::State_Selected;
+  const bool hovered = (hoverIndex == idx);
+  const bool show_details = (selected || hovered) && !item->sparkline.isEmpty();
+  const QColor text_color = opt.palette.color(selected ? QPalette::HighlightedText : QPalette::Text);
+
+  // 1. Sparkline (Fixed width from pixmap)
+  int sparkW = 0;
+  if (!item->sparkline.pixmap.isNull()) {
+    sparkW = item->sparkline.pixmap.width() / item->sparkline.pixmap.devicePixelRatio();
+    int y_off = (r.height() - (item->sparkline.pixmap.height() / item->sparkline.pixmap.devicePixelRatio())) / 2;
+    item->sparkline.setHighlight(selected);
+    p->drawPixmap(r.left(), r.top() + y_off, item->sparkline.pixmap);
+  }
+
+  // 2. Anchor Point
+  int lineX = r.left() + sparkW;
+
+  // 3. Right-side: Buttons
+  int btnAreaW = getButtonsWidth();
+  QRect btnRect = r;
+  btnRect.setLeft(r.right() - btnAreaW);
+
+  // 4. Calculate actual Min/Max Width (only if gate is open)
+  int detailsSpace = 0;
+  QString maxStr, minStr;
+  if (show_details) {
+    p->setFont(minmax_font);
+    maxStr = QString::number(item->sparkline.max_val, 'f', 1);
+    minStr = QString::number(item->sparkline.min_val, 'f', 1);
+    detailsSpace = std::max(p->fontMetrics().horizontalAdvance(maxStr),
+                            p->fontMetrics().horizontalAdvance(minStr)) +
+                   (kPadding * 2);
+  }
+
+  // 5. Signal Value: Calculate remaining flexible space
+  QRect valRect = r;
+  valRect.setRight(btnRect.left() - kPadding);
+  valRect.setLeft(lineX + (show_details ? detailsSpace : kPadding));
+
+  // --- Rendering ---
+
+  // Draw Details if Gate is open
+  if (show_details) {
+    // Vertical Line
+    p->setPen(selected ? opt.palette.color(QPalette::HighlightedText) : opt.palette.color(QPalette::Mid));
+    p->drawLine(lineX, r.top() + 2, lineX, r.bottom() - 2);
+
+    // Min/Max Text
+    p->setFont(minmax_font);
+    p->setPen(selected ? text_color : opt.palette.color(QPalette::PlaceholderText));
+    // Text starts kPadding pixels after the line
+    QRect minMaxRect(lineX + kPadding, r.top(), detailsSpace - kPadding, r.height());
+    p->drawText(minMaxRect, Qt::AlignTop | Qt::AlignLeft, maxStr);
+    p->drawText(minMaxRect, Qt::AlignBottom | Qt::AlignLeft, minStr);
+  }
+
+  // Draw Signal Value (Elides automatically if valRect is squished)
+  p->setFont(opt.font);
+  p->setPen(text_color);
+  if (valRect.width() > 10) {
+    QString elidedVal = opt.fontMetrics.elidedText(item->sig_val, Qt::ElideRight, valRect.width());
+    p->drawText(valRect, Qt::AlignRight | Qt::AlignVCenter, elidedVal);
+  }
+
+  // Draw Buttons
+  if (item->type == SignalTreeModel::Item::Sig) {
+    drawButtons(p, opt, item, idx);
   }
 }
 
@@ -204,66 +245,84 @@ int SignalTreeDelegate::buttonAt(const QPoint& pos, const QRect& rect) const {
   return -1;
 }
 
-QRect SignalTreeDelegate::getButtonRect(const QRect& columnRect, int buttonIndex) const {
-  int x = columnRect.right() - ((buttonIndex + 1) * BTN_WIDTH) - (buttonIndex * BTN_SPACING) - 5;
-  int y = columnRect.top() + (columnRect.height() - BTN_WIDTH) / 2;
-  return QRect(x, y, BTN_WIDTH, BTN_WIDTH);
+QRect SignalTreeDelegate::getButtonRect(const QRect& colRect, int btnIdx) const {
+  // btnIdx 0: Remove (far right), btnIdx 1: Plot (left of remove)
+  int x = colRect.right() - kPadding - kBtnSize - (btnIdx * (kBtnSize + kBtnSpacing));
+  int y = colRect.top() + (colRect.height() - kBtnSize) / 2;
+  return QRect(x, y, kBtnSize, kBtnSize);
 }
 
-void SignalTreeDelegate::drawButtons(QPainter* p, const QStyleOptionViewItem& opt, const QModelIndex& idx, SignalTreeModel::Item* item) const {
+void SignalTreeDelegate::drawButtons(QPainter* p, const QStyleOptionViewItem& opt, SignalTreeModel::Item* item, const QModelIndex& idx) const {
   auto model = static_cast<const SignalTreeModel*>(idx.model());
-  bool chart_opened = static_cast<SignalView*>(parent())->charts->hasSignal(model->msg_id, item->sig);
+  SignalView* view = qobject_cast<SignalView*>(parent());
+  if (!view || !view->charts) return;
+
+  bool chart_opened = view->charts->hasSignal(model->msg_id, item->sig);
 
   auto drawBtn = [&](int btnIdx, const QString& iconName, bool active) {
     QRect rect = getButtonRect(opt.rect, btnIdx);
     bool hovered = (hoverIndex == idx && hoverButton == btnIdx);
 
     if (hovered || active) {
-      p->save();
-      p->setRenderHint(QPainter::Antialiasing);
-
-      // Background: Highlight if active, very light overlay if hovered
+      // Background: Highlight if active, light overlay if hovered
       QColor bg = active ? opt.palette.color(QPalette::Highlight) : opt.palette.color(QPalette::Button);
+      p->setOpacity(active ? 1.0 : 0.4);
       p->setBrush(bg);
-
-      // Border: Use a darker shade to create the "raised" or "defined" look
       p->setPen(opt.palette.color(active ? QPalette::Highlight : QPalette::Mid));
-
-      p->setOpacity(active ? 1.0 : 0.5);
-      p->drawRoundedRect(rect.adjusted(1, 1, -1, -1), 3, 3);
-      p->restore();
+      p->drawRoundedRect(rect.adjusted(1, 1, -1, -1), 4, 4);
     }
 
+    // Icon rendering logic
     double dpr = p->device()->devicePixelRatioF();
-    QSize logicalSize(BTN_WIDTH - 6, BTN_WIDTH - 6);
-    QSize physicalSize = logicalSize * dpr;
+    // Padding inside the button for the icon
+    int iconPadding = 4;
+    QSize iconSize = QSize(kBtnSize - (iconPadding * 2), kBtnSize - (iconPadding * 2));
 
-    QColor icon_color = (active || (opt.state & QStyle::State_Selected)) ? opt.palette.color(QPalette::HighlightedText) : opt.palette.color(QPalette::Text);
-    QPixmap pix = utils::icon(iconName, physicalSize, icon_color);
+    QColor icon_color = (active || (opt.state & QStyle::State_Selected))
+                            ? opt.palette.color(QPalette::HighlightedText)
+                            : opt.palette.color(QPalette::Text);
+
+    QPixmap pix = utils::icon(iconName, iconSize * dpr, icon_color);
     pix.setDevicePixelRatio(dpr);
-    p->setRenderHint(QPainter::SmoothPixmapTransform);
-    p->setRenderHint(QPainter::Antialiasing);
-    p->drawPixmap(rect.adjusted(3, 3, -3, -3), pix);
+
+    p->setOpacity(1.0);  // Reset opacity for the icon
+    p->drawPixmap(rect.left() + iconPadding, rect.top() + iconPadding, pix);
   };
 
+  // 0: Remove, 1: Plot
   drawBtn(0, "circle-minus", false);
   drawBtn(1, chart_opened ? "chart-area" : "chart-line", chart_opened);
 }
 
 bool SignalTreeDelegate::helpEvent(QHelpEvent* event, QAbstractItemView* view, const QStyleOptionViewItem& option, const QModelIndex& index) {
+  if (index.column() == 0) {
+   return QStyledItemDelegate::helpEvent(event, view, option, index);
+  }
+
   auto item = static_cast<SignalTreeModel::Item*>(index.internalPointer());
   int btnIdx = (index.column() == 1 && item->type == SignalTreeModel::Item::Sig) ? buttonAt(event->pos(), option.rect) : -1;
 
   if (btnIdx != -1) {
-    SignalView* sigView = qobject_cast<SignalView*>(view->parentWidget()); 
+    SignalView* sigView = qobject_cast<SignalView*>(view->parentWidget());
     if (sigView) {
-      if (btnIdx == 1) { // Plot Button
+      if (btnIdx == 1) {  // Plot Button
         auto model = static_cast<const SignalTreeModel*>(index.model());
         bool opened = sigView->charts->hasSignal(model->msg_id, item->sig);
         QToolTip::showText(event->globalPos(), opened ? tr("Close Plot") : tr("Show Plot\nSHIFT click to add to previous opened plot"), view);
-      } else { // Remove Button
+      } else {  // Remove Button
         QToolTip::showText(event->globalPos(), tr("Remove Signal"), view);
       }
+      return true;
+    }
+  } else {
+    QRect value_rect = option.rect;
+    value_rect.setLeft(option.rect.left() + (item->sparkline.pixmap.isNull() ? 0 : item->sparkline.pixmap.width() / item->sparkline.pixmap.devicePixelRatio()));
+    value_rect.setRight(option.rect.right() - getButtonsWidth());
+    if (value_rect.contains(event->pos()) && !item->sparkline.isEmpty()) {
+      QString tooltip = item->sig_val + "\n\n" +
+                        tr("Min: %1\nMax: %2").arg(QString::number(item->sparkline.min_val, 'f', 3),
+                                                 QString::number(item->sparkline.max_val, 'f', 3));
+      QToolTip::showText(event->globalPos(), tooltip, view);
       return true;
     }
   }
@@ -313,4 +372,25 @@ bool SignalTreeDelegate::editorEvent(QEvent* event, QAbstractItemModel* model, c
 void SignalTreeDelegate::clearHoverState() {
   hoverIndex = QModelIndex();
   hoverButton = -1;
+}
+
+int SignalTreeDelegate::nameColumnWidth(const cabana::Signal* sig) const {
+  // Use the default font for the name text, and label_font for badges
+  QFontMetrics nameFm(QApplication::font());
+  QFontMetrics badgeFm(label_font);
+
+  int width = kPadding;
+
+  width += kColorLabelW + kPadding;
+
+  if (sig->type != cabana::Signal::Type::Normal) {
+    QString m_text = (sig->type == cabana::Signal::Type::Multiplexor) ? "M" : "m00";
+    width += badgeFm.horizontalAdvance(m_text) + 8 + kPadding;
+  }
+
+  width += nameFm.horizontalAdvance(sig->name);
+
+  width += kPadding * 2;
+
+  return width;
 }

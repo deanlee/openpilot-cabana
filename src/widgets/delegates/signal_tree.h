@@ -8,9 +8,12 @@
 class SignalTreeDelegate : public QStyledItemDelegate {
 public:
 
-  const int BTN_WIDTH = 22;
-  const int BTN_HEIGHT = 22;
-  const int BTN_SPACING = 4;
+  // Layout Constants
+  const int kBtnSize = 22;
+  const int kBtnSpacing = 4;
+  const int kPadding = 6;
+  const int kColorLabelW = 18;
+  const int kValueWidth = 65;
 
   SignalTreeDelegate(QObject *parent);
   void paint(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const override;
@@ -19,18 +22,18 @@ public:
   void updateEditorGeometry(QWidget *editor, const QStyleOptionViewItem &option, const QModelIndex &index) const override;
   void setModelData(QWidget *editor, QAbstractItemModel *model, const QModelIndex &index) const override;
   bool editorEvent(QEvent *event, QAbstractItemModel *model, const QStyleOptionViewItem &option, const QModelIndex &index) override;
-  void drawButtons(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index, SignalTreeModel::Item *item) const;
   bool helpEvent(QHelpEvent *event, QAbstractItemView *view, const QStyleOptionViewItem &option, const QModelIndex &index) override;
   void clearHoverState();
-  inline int signalRowHeight() const {
-    return BTN_WIDTH + 4;
-  }
+  int nameColumnWidth(const cabana::Signal* sig) const;
+  inline int signalRowHeight() const { return kBtnSize + 4; }
   inline int getButtonsWidth() const {
-    // 2 buttons + spacing + 5px right margin (matching your getButtonRect logic)
-    return (2 * BTN_WIDTH) + BTN_SPACING + 5;
+    // Calculate total space taken by buttons area on the right
+    return (2 * kBtnSize) + kBtnSpacing + kPadding;
   }
 
-  QValidator *name_validator, *double_validator, *node_validator;
+  QValidator *name_validator = nullptr;
+  QValidator *double_validator = nullptr;
+  QValidator *node_validator = nullptr;
   QFont label_font, minmax_font;
   const int color_label_width = 18;
   mutable QSize button_size;
@@ -40,4 +43,7 @@ public:
 private:
   QRect getButtonRect(const QRect &columnRect, int buttonIndex) const;
   int buttonAt(const QPoint& pos, const QRect& rect) const;
+  void drawNameColumn(QPainter* p, QRect r, const QStyleOptionViewItem& opt, SignalTreeModel::Item* item, const QModelIndex& idx) const;
+  void drawDataColumn(QPainter* p, QRect r, const QStyleOptionViewItem& opt, SignalTreeModel::Item* item, const QModelIndex& idx) const;
+  void drawButtons(QPainter *painter, const QStyleOptionViewItem &option, SignalTreeModel::Item *item, const QModelIndex &idx) const;
 };
