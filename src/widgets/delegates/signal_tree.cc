@@ -112,6 +112,7 @@ void SignalTreeDelegate::paint(QPainter* painter, const QStyleOptionViewItem& op
       QSize sparkline_size = item->sparkline.pixmap.size() / item->sparkline.pixmap.devicePixelRatio();
 
       // Draw sparkline inside the content area
+      item->sparkline.setHighlight(option.state & QStyle::State_Selected);
       painter->drawPixmap(contentRect.topLeft(), item->sparkline.pixmap);
 
       // Adjust for min-max/freq text
