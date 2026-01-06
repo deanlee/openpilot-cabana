@@ -8,8 +8,8 @@
 class SignalTreeDelegate : public QStyledItemDelegate {
 public:
 
-  const int BTN_WIDTH = 24;
-  const int BTN_HEIGHT = 24;
+  const int BTN_WIDTH = 22;
+  const int BTN_HEIGHT = 22;
   const int BTN_SPACING = 4;
 
   SignalTreeDelegate(QObject *parent);
