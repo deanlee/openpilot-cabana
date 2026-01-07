@@ -1,4 +1,4 @@
-#include "cameraview.h"
+#include "camera_view.h"
 
 #ifdef __APPLE__
 #include <OpenGL/gl3.h>
@@ -47,17 +47,17 @@ const char frame_fragment_shader[] =
 
 } // namespace
 
-CameraWidget::CameraWidget(std::string stream_name, VisionStreamType type, QWidget* parent) :
+CameraView::CameraView(std::string stream_name, VisionStreamType type, QWidget* parent) :
                           stream_name(stream_name), active_stream_type(type), requested_stream_type(type), QOpenGLWidget(parent) {
   setAttribute(Qt::WA_OpaquePaintEvent);
   qRegisterMetaType<std::set<VisionStreamType>>("availableStreams");
-  connect(this, &CameraWidget::vipcThreadConnected, this, &CameraWidget::vipcConnected, Qt::BlockingQueuedConnection);
-  connect(this, &CameraWidget::vipcThreadFrameReceived, this, &CameraWidget::vipcFrameReceived, Qt::QueuedConnection);
-  connect(this, &CameraWidget::vipcAvailableStreamsUpdated, this, &CameraWidget::availableStreamsUpdated, Qt::QueuedConnection);
-  connect(QApplication::instance(), &QCoreApplication::aboutToQuit, this, &CameraWidget::stopVipcThread);
+  connect(this, &CameraView::vipcThreadConnected, this, &CameraView::vipcConnected, Qt::BlockingQueuedConnection);
+  connect(this, &CameraView::vipcThreadFrameReceived, this, &CameraView::vipcFrameReceived, Qt::QueuedConnection);
+  connect(this, &CameraView::vipcAvailableStreamsUpdated, this, &CameraView::availableStreamsUpdated, Qt::QueuedConnection);
+  connect(QApplication::instance(), &QCoreApplication::aboutToQuit, this, &CameraView::stopVipcThread);
 }
 
-CameraWidget::~CameraWidget() {
+CameraView::~CameraView() {
   makeCurrent();
   stopVipcThread();
   if (isValid()) {
@@ -70,7 +70,7 @@ CameraWidget::~CameraWidget() {
   doneCurrent();
 }
 
-void CameraWidget::initializeGL() {
+void CameraView::initializeGL() {
   initializeOpenGLFunctions();
 
   shader_program_ = std::make_unique<QOpenGLShaderProgram>(context());
@@ -115,7 +115,7 @@ void CameraWidget::initializeGL() {
   shader_program_->release();
 }
 
-void CameraWidget::showEvent(QShowEvent *event) {
+void CameraView::showEvent(QShowEvent *event) {
   if (!vipc_thread) {
     clearFrames();
     vipc_thread = new QThread();
@@ -125,7 +125,7 @@ void CameraWidget::showEvent(QShowEvent *event) {
   }
 }
 
-void CameraWidget::stopVipcThread() {
+void CameraView::stopVipcThread() {
   makeCurrent();
   if (vipc_thread) {
     vipc_thread->requestInterruption();
@@ -135,11 +135,11 @@ void CameraWidget::stopVipcThread() {
   }
 }
 
-void CameraWidget::availableStreamsUpdated(std::set<VisionStreamType> streams) {
+void CameraView::availableStreamsUpdated(std::set<VisionStreamType> streams) {
   available_streams = streams;
 }
 
-void CameraWidget::paintGL() {
+void CameraView::paintGL() {
   glClearColor(bg.redF(), bg.greenF(), bg.blueF(), bg.alphaF());
   glClear(GL_STENCIL_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 
@@ -186,7 +186,7 @@ void CameraWidget::paintGL() {
   shader_program_->release();
 }
 
-void CameraWidget::vipcConnected(VisionIpcClient *vipc_client) {
+void CameraView::vipcConnected(VisionIpcClient *vipc_client) {
   makeCurrent();
   stream_width = vipc_client->buffers[0].width;
   stream_height = vipc_client->buffers[0].height;
@@ -209,11 +209,11 @@ void CameraWidget::vipcConnected(VisionIpcClient *vipc_client) {
   assert(glGetError() == GL_NO_ERROR);
 }
 
-void CameraWidget::vipcFrameReceived() {
+void CameraView::vipcFrameReceived() {
   update();
 }
 
-void CameraWidget::vipcThread() {
+void CameraView::vipcThread() {
   VisionStreamType cur_stream = requested_stream_type;
   std::unique_ptr<VisionIpcClient> vipc_client;
   VisionIpcBufExtra frame_meta = {};
@@ -254,7 +254,7 @@ void CameraWidget::vipcThread() {
   }
 }
 
-void CameraWidget::clearFrames() {
+void CameraView::clearFrames() {
   std::lock_guard lk(frame_lock);
   current_frame_ = nullptr;
   available_streams.clear();
