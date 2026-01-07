@@ -28,7 +28,7 @@ BinaryView::BinaryView(QWidget *parent) : QTableView(parent) {
   setMouseTracking(true);
   setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 
-  connect(dbc(), &DBCManager::DBCFileChanged, this, &BinaryView::refresh);
+  connect(GetDBC(), &dbc::Manager::DBCFileChanged, this, &BinaryView::refresh);
   connect(UndoStack::instance(), &QUndoStack::indexChanged, this, &BinaryView::refresh);
 
   addShortcuts();
@@ -67,7 +67,7 @@ void BinaryView::addShortcuts() {
   QShortcut *shortcut_endian = new QShortcut(QKeySequence(Qt::Key_E), this);
   connect(shortcut_endian, &QShortcut::activated, [=]{
     if (hovered_sig != nullptr) {
-      cabana::Signal s = *hovered_sig;
+      dbc::Signal s = *hovered_sig;
       s.is_little_endian = !s.is_little_endian;
       emit editSignal(hovered_sig, s);
     }
@@ -77,7 +77,7 @@ void BinaryView::addShortcuts() {
   QShortcut *shortcut_sign = new QShortcut(QKeySequence(Qt::Key_S), this);
   connect(shortcut_sign, &QShortcut::activated, [=]{
     if (hovered_sig != nullptr) {
-      cabana::Signal s = *hovered_sig;
+      dbc::Signal s = *hovered_sig;
       s.is_signed = !s.is_signed;
       emit editSignal(hovered_sig, s);
     }
@@ -101,7 +101,7 @@ QSize BinaryView::minimumSizeHint() const {
           CELL_HEIGHT * std::min(model->rowCount(), 10) + 2};
 }
 
-void BinaryView::highlight(const cabana::Signal *sig) {
+void BinaryView::highlight(const dbc::Signal *sig) {
   if (sig != hovered_sig) {
     for (int i = 0; i < model->items.size(); ++i) {
       auto &item_sigs = model->items[i].sigs;
@@ -151,7 +151,7 @@ void BinaryView::mousePressEvent(QMouseEvent *event) {
 void BinaryView::highlightPosition(const QPoint &pos) {
   if (auto index = indexAt(viewport()->mapFromGlobal(pos)); index.isValid()) {
     auto item = (MessageBytesModel::Item *)index.internalPointer();
-    const cabana::Signal *sig = item->sigs.isEmpty() ? nullptr : item->sigs.back();
+    const dbc::Signal *sig = item->sigs.isEmpty() ? nullptr : item->sigs.back();
     highlight(sig);
   }
 }
@@ -167,7 +167,7 @@ void BinaryView::mouseReleaseEvent(QMouseEvent *event) {
   auto release_index = indexAt(event->pos());
   if (release_index.isValid() && anchor_index.isValid()) {
     if (selectionModel()->hasSelection()) {
-      auto sig = resize_sig ? *resize_sig : cabana::Signal{};
+      auto sig = resize_sig ? *resize_sig : dbc::Signal{};
       std::tie(sig.start_bit, sig.size, sig.is_little_endian) = getSelection(release_index);
       resize_sig ? emit editSignal(resize_sig, sig)
                  : UndoStack::push(new AddSigCommand(model->msg_id, sig));
@@ -202,12 +202,12 @@ void BinaryView::refresh() {
   highlightPosition(QCursor::pos());
 }
 
-QSet<const cabana::Signal *> BinaryView::getOverlappingSignals() const {
-  QSet<const cabana::Signal *> overlapping;
+QSet<const dbc::Signal *> BinaryView::getOverlappingSignals() const {
+  QSet<const dbc::Signal *> overlapping;
   for (const auto &item : model->items) {
     if (item.sigs.size() > 1) {
       for (auto s : item.sigs) {
-        if (s->type == cabana::Signal::Type::Normal) overlapping += s;
+        if (s->type == dbc::Signal::Type::Normal) overlapping += s;
       }
     }
   }

@@ -41,6 +41,6 @@ public:
   double filter_value = 0;
   std::function<bool(double, double)> filter_cmp = nullptr;
   std::deque<Message> messages;
-  std::vector<cabana::Signal *> sigs;
+  std::vector<dbc::Signal *> sigs;
   bool hex_mode = false;
 };

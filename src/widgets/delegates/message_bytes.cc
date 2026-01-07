@@ -20,7 +20,7 @@ MessageBytesDelegate::MessageBytesDelegate(QObject *parent) : QStyledItemDelegat
   }
 }
 
-bool MessageBytesDelegate::hasSignal(const QModelIndex &index, int dx, int dy, const cabana::Signal *sig) const {
+bool MessageBytesDelegate::hasSignal(const QModelIndex &index, int dx, int dy, const dbc::Signal *sig) const {
   if (!index.isValid()) return false;
   auto model = (const MessageBytesModel*)(index.model());
   int idx = (index.row() + dy) * model->columnCount() + index.column() + dx;
@@ -74,7 +74,7 @@ void MessageBytesDelegate::paint(QPainter *painter, const QStyleOptionViewItem &
 
 // Draw border on edge of signal
 void MessageBytesDelegate::drawSignalCell(QPainter *painter, const QStyleOptionViewItem &option,
-                                        const QModelIndex &index, const cabana::Signal *sig) const {
+                                        const QModelIndex &index, const dbc::Signal *sig) const {
   bool draw_left = !hasSignal(index, -1, 0, sig);
   bool draw_top = !hasSignal(index, 0, -1, sig);
   bool draw_right = !hasSignal(index, 1, 0, sig);

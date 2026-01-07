@@ -31,7 +31,7 @@ void MessageLogModel::setMessage(const MessageId &message_id) {
 void MessageLogModel::reset() {
   beginResetModel();
   sigs.clear();
-  if (auto dbc_msg = dbc()->msg(msg_id)) {
+  if (auto dbc_msg = GetDBC()->msg(msg_id)) {
     sigs = dbc_msg->getSignals();
   }
   messages.clear();

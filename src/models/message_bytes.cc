@@ -12,7 +12,7 @@ void MessageBytesModel::refresh() {
   beginResetModel();
   bit_flip_tracker = {};
   items.clear();
-  if (auto dbc_msg = dbc()->msg(msg_id)) {
+  if (auto dbc_msg = GetDBC()->msg(msg_id)) {
     row_count = dbc_msg->size;
     items.resize(row_count * column_count);
     for (auto sig : dbc_msg->getSignals()) {
@@ -145,7 +145,7 @@ QVariant MessageBytesModel::data(const QModelIndex &index, int role) const {
   return role == Qt::ToolTipRole && item && !item->sigs.empty() ? signalToolTip(item->sigs.back()) : QVariant();
 }
 
-QString signalToolTip(const cabana::Signal *sig) {
+QString signalToolTip(const dbc::Signal *sig) {
   return QObject::tr(R"(
     %1<br /><span font-size:small">
     Start Bit: %2 Size: %3<br />

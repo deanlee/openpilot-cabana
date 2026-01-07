@@ -10,22 +10,24 @@
 typedef std::set<int> SourceSet;
 const SourceSet SOURCE_ALL = {-1};
 const int INVALID_SOURCE = 0xff;
-inline bool operator<(const std::shared_ptr<DBCFile> &l, const std::shared_ptr<DBCFile> &r) { return l.get() < r.get(); }
+inline bool operator<(const std::shared_ptr<dbc::File> &l, const std::shared_ptr<dbc::File> &r) { return l.get() < r.get(); }
 
-class DBCManager : public QObject {
+namespace dbc {
+
+class Manager : public QObject {
   Q_OBJECT
 
 public:
-  DBCManager(QObject *parent) : QObject(parent) {}
-  ~DBCManager() {}
+  Manager(QObject *parent) : QObject(parent) {}
+  ~Manager() {}
   bool open(const SourceSet &sources, const QString &dbc_file_name, QString *error = nullptr);
   bool open(const SourceSet &sources, const QString &name, const QString &content, QString *error = nullptr);
   void close(const SourceSet &sources);
-  void close(DBCFile *dbc_file);
+  void close(File *dbc_file);
   void closeAll();
 
-  void addSignal(const MessageId &id, const cabana::Signal &sig);
-  void updateSignal(const MessageId &id, const QString &sig_name, const cabana::Signal &sig);
+  void addSignal(const MessageId &id, const dbc::Signal &sig);
+  void updateSignal(const MessageId &id, const QString &sig_name, const dbc::Signal &sig);
   void removeSignal(const MessageId &id, const QString &sig_name);
 
   void updateMsg(const MessageId &id, const QString &name, uint32_t size, const QString &node, const QString &comment);
@@ -34,36 +36,38 @@ public:
   QString newMsgName(const MessageId &id);
   QString newSignalName(const MessageId &id);
 
-  const std::map<uint32_t, cabana::Msg> &getMessages(uint8_t source);
-  cabana::Msg *msg(const MessageId &id);
-  cabana::Msg* msg(uint8_t source, const QString &name);
+  const std::map<uint32_t, dbc::Msg> &getMessages(uint8_t source);
+  dbc::Msg *msg(const MessageId &id);
+  dbc::Msg* msg(uint8_t source, const QString &name);
 
   QStringList signalNames();
   inline int dbcCount() { return allDBCFiles().size(); }
   int nonEmptyDBCCount();
 
-  const SourceSet sources(const DBCFile *dbc_file) const;
-  DBCFile *findDBCFile(const uint8_t source);
-  inline DBCFile *findDBCFile(const MessageId &id) { return findDBCFile(id.source); }
-  std::set<DBCFile *> allDBCFiles();
+  const SourceSet sources(const File *dbc_file) const;
+  File *findDBCFile(const uint8_t source);
+  inline File *findDBCFile(const MessageId &id) { return findDBCFile(id.source); }
+  std::set<File *> allDBCFiles();
 
 signals:
-  void signalAdded(MessageId id, const cabana::Signal *sig);
-  void signalRemoved(const cabana::Signal *sig);
-  void signalUpdated(const cabana::Signal *sig);
+  void signalAdded(MessageId id, const dbc::Signal *sig);
+  void signalRemoved(const dbc::Signal *sig);
+  void signalUpdated(const dbc::Signal *sig);
   void msgUpdated(MessageId id);
   void msgRemoved(MessageId id);
   void DBCFileChanged();
   void maskUpdated();
 
 private:
-  std::map<int, std::shared_ptr<DBCFile>> dbc_files;
+  std::map<int, std::shared_ptr<File>> dbc_files;
 };
 
-DBCManager *dbc();
+} // namespace dbc
+
+dbc::Manager *GetDBC();
 
 QString toString(const SourceSet &ss);
 inline QString msgName(const MessageId &id) {
-  auto msg = dbc()->msg(id);
+  auto msg = GetDBC()->msg(id);
   return msg ? msg->name : UNTITLED;
 }

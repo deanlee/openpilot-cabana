@@ -45,7 +45,7 @@ SignalSelector::SignalSelector(QString title, QWidget *parent) : QDialog(parent)
   main_layout->addWidget(buttonBox, 3, 2);
 
   for (const auto &[id, _] : can->snapshots()) {
-    if (auto m = dbc()->msg(id)) {
+    if (auto m = GetDBC()->msg(id)) {
       msgs_combo->addItem(QString("%1 (%2)").arg(m->name).arg(id.toString()), QVariant::fromValue(id));
     }
   }
@@ -82,7 +82,7 @@ void SignalSelector::updateAvailableList(int index) {
   available_list->clear();
   MessageId msg_id = msgs_combo->itemData(index).value<MessageId>();
   auto selected_items = seletedItems();
-  for (auto s : dbc()->msg(msg_id)->getSignals()) {
+  for (auto s : GetDBC()->msg(msg_id)->getSignals()) {
     bool is_selected = std::any_of(selected_items.begin(), selected_items.end(),
                                    [sig = s, &msg_id](auto it) { return it->msg_id == msg_id && it->sig == sig; });
     if (!is_selected) {
@@ -91,7 +91,7 @@ void SignalSelector::updateAvailableList(int index) {
   }
 }
 
-void SignalSelector::addItemToList(QListWidget *parent, const MessageId id, const cabana::Signal *sig, bool show_msg_name) {
+void SignalSelector::addItemToList(QListWidget *parent, const MessageId id, const dbc::Signal *sig, bool show_msg_name) {
   QString text = QString("<span style=\"color:%0;\">■ </span> %1").arg(sig->color.name(), sig->name);
   if (show_msg_name) text += QString(" <font color=\"gray\">%0 %1</font>").arg(msgName(id), id.toString());
 

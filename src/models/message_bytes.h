@@ -38,7 +38,7 @@ class MessageBytesModel : public QAbstractTableModel {
     bool is_msb = false;
     bool is_lsb = false;
     uint8_t val;
-    QList<const cabana::Signal*> sigs;
+    QList<const dbc::Signal*> sigs;
     bool valid = false;
   };
   std::vector<Item> items;
@@ -48,4 +48,4 @@ class MessageBytesModel : public QAbstractTableModel {
   const int column_count = 9;
 };
 
-QString signalToolTip(const cabana::Signal *sig);
+QString signalToolTip(const dbc::Signal *sig);

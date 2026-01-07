@@ -21,7 +21,7 @@ public:
   struct SearchSignal {
     MessageId id = {};
     uint64_t mono_time = 0;
-    cabana::Signal sig = {};
+    dbc::Signal sig = {};
     double value = 0.;
     QStringList values;
   };

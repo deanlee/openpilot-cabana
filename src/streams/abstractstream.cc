@@ -24,8 +24,8 @@ AbstractStream::AbstractStream(QObject *parent) : QObject(parent) {
   connect(this, &AbstractStream::privateUpdateLastMsgsSignal, this, &AbstractStream::commitSnapshots, Qt::QueuedConnection);
   connect(this, &AbstractStream::seekedTo, this, &AbstractStream::updateSnapshotsTo);
   connect(this, &AbstractStream::seeking, this, [this](double sec) { current_sec_ = sec; });
-  connect(dbc(), &DBCManager::DBCFileChanged, this, &AbstractStream::updateMasks);
-  connect(dbc(), &DBCManager::maskUpdated, this, &AbstractStream::updateMasks);
+  connect(GetDBC(), &dbc::Manager::DBCFileChanged, this, &AbstractStream::updateMasks);
+  connect(GetDBC(), &dbc::Manager::maskUpdated, this, &AbstractStream::updateMasks);
 }
 
 void AbstractStream::updateMasks() {
@@ -33,7 +33,7 @@ void AbstractStream::updateMasks() {
   masks_.clear();
   if (settings.suppress_defined_signals) {
     for (const auto s : sources) {
-      for (const auto &[address, m] : dbc()->getMessages(s)) {
+      for (const auto &[address, m] : GetDBC()->getMessages(s)) {
         masks_[{(uint8_t)s, address}] = m.mask;
       }
     }

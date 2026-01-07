@@ -9,8 +9,6 @@
 #include "commands.h"
 #include "mainwin.h"
 
-// DetailWidget
-
 DetailWidget::DetailWidget(ChartsWidget *charts, QWidget *parent) : charts(charts), QWidget(parent) {
   QVBoxLayout *main_layout = new QVBoxLayout(this);
   main_layout->setContentsMargins(0, 0, 0, 0);
@@ -49,14 +47,14 @@ DetailWidget::DetailWidget(ChartsWidget *charts, QWidget *parent) : charts(chart
   main_layout->addWidget(tab_widget);
 
   connect(binary_view, &BinaryView::signalHovered, signal_view, &SignalView::signalHovered);
-  connect(binary_view, &BinaryView::signalClicked, [this](const cabana::Signal *s) { signal_view->selectSignal(s, true); });
+  connect(binary_view, &BinaryView::signalClicked, [this](const dbc::Signal *s) { signal_view->selectSignal(s, true); });
   connect(binary_view, &BinaryView::editSignal, signal_view->model, &SignalTreeModel::saveSignal);
   connect(binary_view, &BinaryView::showChart, charts, &ChartsWidget::showChart);
   connect(signal_view, &SignalView::showChart, charts, &ChartsWidget::showChart);
   connect(signal_view, &SignalView::highlight, binary_view, &BinaryView::highlight);
   connect(tab_widget, &QTabWidget::currentChanged, [this]() { updateState(); });
   connect(can, &AbstractStream::snapshotsUpdated, this, &DetailWidget::updateState);
-  connect(dbc(), &DBCManager::DBCFileChanged, this, &DetailWidget::refresh);
+  connect(GetDBC(), &dbc::Manager::DBCFileChanged, this, &DetailWidget::refresh);
   connect(UndoStack::instance(), &QUndoStack::indexChanged, this, &DetailWidget::refresh);
   connect(tabbar, &QTabBar::customContextMenuRequested, this, &DetailWidget::showTabBarContextMenu);
   connect(tabbar, &QTabBar::currentChanged, [this](int index) {
@@ -157,19 +155,19 @@ void DetailWidget::restoreTabs(const QString active_msg_id, const QStringList& m
   tabbar->blockSignals(true);
   for (const auto& str_id : msg_ids) {
     MessageId id = MessageId::fromString(str_id);
-    if (dbc()->msg(id) != nullptr)
+    if (GetDBC()->msg(id) != nullptr)
       findOrAddTab(id);
   }
   tabbar->blockSignals(false);
 
   auto active_id = MessageId::fromString(active_msg_id);
-  if (dbc()->msg(active_id) != nullptr)
+  if (GetDBC()->msg(active_id) != nullptr)
     setMessage(active_id);
 }
 
 void DetailWidget::refresh() {
   QStringList warnings;
-  auto msg = dbc()->msg(msg_id);
+  auto msg = GetDBC()->msg(msg_id);
   auto *can_msg = can->snapshot(msg_id);
   if (msg) {
     if (msg_id.source == INVALID_SOURCE) {
@@ -204,7 +202,7 @@ void DetailWidget::updateState(const std::set<MessageId> *msgs) {
 }
 
 void DetailWidget::editMsg() {
-  auto msg = dbc()->msg(msg_id);
+  auto msg = GetDBC()->msg(msg_id);
   int size = msg ? msg->size : can->snapshot(msg_id)->dat.size();
   EditMessageDialog dlg(msg_id, msgName(msg_id), size, this);
   if (dlg.exec()) {
@@ -238,7 +236,7 @@ EditMessageDialog::EditMessageDialog(const MessageId &msg_id, const QString &tit
   form_layout->addRow(tr("Comment"), comment_edit = new QTextEdit(this));
   form_layout->addRow(btn_box = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel));
 
-  if (auto msg = dbc()->msg(msg_id)) {
+  if (auto msg = GetDBC()->msg(msg_id)) {
     node->setText(msg->transmitter);
     comment_edit->setText(msg->comment);
   }
@@ -253,7 +251,7 @@ void EditMessageDialog::validateName(const QString &text) {
   bool valid = text.compare(UNTITLED, Qt::CaseInsensitive) != 0;
   error_label->setVisible(false);
   if (!text.isEmpty() && valid && text != original_name) {
-    valid = dbc()->msg(msg_id.source, text) == nullptr;
+    valid = GetDBC()->msg(msg_id.source, text) == nullptr;
     if (!valid) {
       error_label->setText(tr("Name already exists"));
       error_label->setVisible(true);

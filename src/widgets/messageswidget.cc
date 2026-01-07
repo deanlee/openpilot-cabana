@@ -44,7 +44,7 @@ MessagesWidget::MessagesWidget(QWidget *parent) : menu(new QMenu(this)), QWidget
   connect(header, &MessageViewHeader::customContextMenuRequested, this, &MessagesWidget::headerContextMenuEvent);
   connect(view->horizontalScrollBar(), &QScrollBar::valueChanged, header, &MessageViewHeader::updateHeaderPositions);
   connect(can, &AbstractStream::snapshotsUpdated, model, &MessageTableModel::onSnapshotsUpdated);
-  connect(dbc(), &DBCManager::DBCFileChanged, model, &MessageTableModel::dbcModified);
+  connect(GetDBC(), &dbc::Manager::DBCFileChanged, model, &MessageTableModel::dbcModified);
   connect(UndoStack::instance(), &QUndoStack::indexChanged, model, &MessageTableModel::dbcModified);
   connect(model, &MessageTableModel::modelReset, [this]() {
     if (current_msg_id) {
@@ -111,7 +111,7 @@ void MessagesWidget::updateTitle() {
   auto stats = std::accumulate(
       model->items_.begin(), model->items_.end(), std::pair<size_t, size_t>(),
       [](const auto &pair, const auto &item) {
-        auto m = dbc()->msg(item.id);
+        auto m = GetDBC()->msg(item.id);
         return m ? std::make_pair(pair.first + 1, pair.second + m->sigs.size()) : pair;
       });
   emit titleChanged(tr("%1 Messages (%2 DBC Messages, %3 Signals)")

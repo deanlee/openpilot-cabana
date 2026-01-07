@@ -14,8 +14,8 @@ class BinaryView : public QTableView {
 public:
   BinaryView(QWidget *parent = nullptr);
   void setMessage(const MessageId &message_id);
-  void highlight(const cabana::Signal *sig);
-  QSet<const cabana::Signal*> getOverlappingSignals() const;
+  void highlight(const dbc::Signal *sig);
+  QSet<const dbc::Signal*> getOverlappingSignals() const;
   void updateState() { model->updateState(); }
   void paintEvent(QPaintEvent *event) override {
     is_message_active = can->snapshot(model->msg_id)->is_active;
@@ -25,10 +25,10 @@ public:
   void setHeatmapLiveMode(bool live) { model->heatmap_live_mode = live; updateState(); }
 
 signals:
-  void signalClicked(const cabana::Signal *sig);
-  void signalHovered(const cabana::Signal *sig);
-  void editSignal(const cabana::Signal *origin_s, cabana::Signal &s);
-  void showChart(const MessageId &id, const cabana::Signal *sig, bool show, bool merge);
+  void signalClicked(const dbc::Signal *sig);
+  void signalHovered(const dbc::Signal *sig);
+  void editSignal(const dbc::Signal *origin_s, dbc::Signal &s);
+  void showChart(const MessageId &id, const dbc::Signal *sig, bool show, bool merge);
 
 private:
   void addShortcuts();
@@ -45,7 +45,7 @@ private:
   MessageBytesModel *model;
   MessageBytesDelegate *delegate;
   bool is_message_active = false;
-  const cabana::Signal *resize_sig = nullptr;
-  const cabana::Signal *hovered_sig = nullptr;
+  const dbc::Signal *resize_sig = nullptr;
+  const dbc::Signal *hovered_sig = nullptr;
   friend class MessageBytesDelegate;
 };

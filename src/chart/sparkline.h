@@ -14,7 +14,7 @@ class Sparkline {
     uint64_t mono_time;
     double value;
   };
-  void update(const cabana::Signal* sig, CanEventIter first, CanEventIter last, int time_range, QSize size);
+  void update(const dbc::Signal* sig, CanEventIter first, CanEventIter last, int time_range, QSize size);
   inline double freq() const { return freq_; }
   bool isEmpty() const { return pixmap.isNull(); }
   void setHighlight(bool highlight);
@@ -31,7 +31,7 @@ class Sparkline {
     bool has_data = false;
   };
 
-  void updateDataPoints(const cabana::Signal* sig, CanEventIter first, CanEventIter last);
+  void updateDataPoints(const dbc::Signal* sig, CanEventIter first, CanEventIter last);
   void updateRenderPoints(const QColor& color, int time_range, QSize size);
   void render();
 
@@ -44,5 +44,5 @@ class Sparkline {
   std::vector<Column> cols_;
   double freq_ = 0;
   bool is_highlighted_ = false;
-  const cabana::Signal* signal_ = nullptr;
+  const dbc::Signal* signal_ = nullptr;
 };
