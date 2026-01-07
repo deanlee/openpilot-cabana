@@ -6,7 +6,7 @@
 #include <optional>
 #include <vector>
 
-#include "dbc/dbcmanager.h"
+#include "dbc/dbc_manager.h"
 
 const int VERTICAL_HEADER_WIDTH = 30;
 

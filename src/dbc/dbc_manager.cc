@@ -1,4 +1,4 @@
-#include "dbc/dbcmanager.h"
+#include "dbc/dbc_manager.h"
 
 #include <QSet>
 #include <algorithm>

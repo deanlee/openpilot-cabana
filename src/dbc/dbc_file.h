@@ -3,7 +3,7 @@
 #include <map>
 #include <QTextStream>
 
-#include "dbc/dbc.h"
+#include "dbc/dbc_message.h"
 
 class DBCFile {
 public:

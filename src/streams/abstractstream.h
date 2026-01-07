@@ -13,7 +13,7 @@
 #include <vector>
 
 #include "cereal/messaging/messaging.h"
-#include "dbc/dbcmanager.h"
+#include "dbc/dbc_manager.h"
 #include "message_state.h"
 #include "replay/include/util.h"
 #include "utils/time_index.h"

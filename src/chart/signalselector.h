@@ -4,7 +4,7 @@
 #include <QDialog>
 #include <QListWidget>
 
-#include "dbc/dbcmanager.h"
+#include "dbc/dbc_manager.h"
 
 class SignalSelector : public QDialog {
 public:

@@ -4,7 +4,7 @@
 #include <memory>
 
 #include "chart/sparkline.h"
-#include "dbc/dbc.h"
+#include "dbc/dbc_message.h"
 
 class SignalTreeModel : public QAbstractItemModel {
   Q_OBJECT

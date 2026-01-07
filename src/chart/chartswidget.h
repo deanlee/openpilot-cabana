@@ -12,7 +12,7 @@
 
 #include "chart/signalselector.h"
 #include "common_widgets.h"
-#include "dbc/dbcmanager.h"
+#include "dbc/dbc_manager.h"
 #include "streams/abstractstream.h"
 
 const int CHART_MIN_WIDTH = 300;

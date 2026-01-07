@@ -2,7 +2,7 @@
 #include <QPainter>
 #include <QStyledItemDelegate>
 
-#include "dbc/dbc.h"
+#include "dbc/dbc_message.h"
 #include "models/signal_tree.h"
 
 class SignalTreeDelegate : public QStyledItemDelegate {

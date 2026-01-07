@@ -1,7 +1,7 @@
 #pragma once
 #include <QDialog>
 #include <QTableWidget>
-#include "dbc/dbc.h"
+#include "dbc/dbc_message.h"
 #include <QStyledItemDelegate>
 
 class ValueTableEditor : public QDialog {

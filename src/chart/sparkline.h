@@ -5,7 +5,7 @@
 #include <deque>
 #include <vector>
 
-#include "dbc/dbc.h"
+#include "dbc/dbc_message.h"
 #include "streams/abstractstream.h"
 
 class Sparkline {

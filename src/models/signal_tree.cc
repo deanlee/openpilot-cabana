@@ -3,7 +3,7 @@
 #include <QMessageBox>
 
 #include "commands.h"
-#include "dbc/dbcmanager.h"
+#include "dbc/dbc_manager.h"
 #include "message_bytes.h"
 
 static const QStringList SIGNAL_PROPERTY_LABELS = {

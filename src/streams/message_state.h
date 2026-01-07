@@ -5,7 +5,7 @@
 #include <array>
 #include <vector>
 
-#include "dbc/dbc.h"
+#include "dbc/dbc_message.h"
 
 enum class DataPattern : uint8_t {
   None = 0,

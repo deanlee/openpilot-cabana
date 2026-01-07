@@ -10,7 +10,7 @@
 #include <QPushButton>
 #include <QRadioButton>
 
-#include "dbc/dbcmanager.h"
+#include "dbc/dbc_manager.h"
 #include "streams/abstractstream.h"
 
 FindSimilarBitsDlg::FindSimilarBitsDlg(QWidget *parent) : QDialog(parent, Qt::WindowFlags() | Qt::Window) {

@@ -2,7 +2,7 @@
 
 #include <functional>
 
-#include "dbc/dbcmanager.h"
+#include "dbc/dbc_manager.h"
 #include "delegates/message_table.h"
 #include "streams/abstractstream.h"
 

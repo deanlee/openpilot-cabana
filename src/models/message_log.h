@@ -4,7 +4,7 @@
 #include <deque>
 #include <vector>
 
-#include "dbc/dbcmanager.h"
+#include "dbc/dbc_manager.h"
 #include "streams/message_state.h"
 
 class MessageLogModel : public QAbstractTableModel {

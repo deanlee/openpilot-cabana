@@ -10,7 +10,7 @@
 #include <set>
 
 #include "chart/chartswidget.h"
-#include "dbc/dbcmanager.h"
+#include "dbc/dbc_manager.h"
 #include "tools/findsimilarbits.h"
 #include "widgets/detailwidget.h"
 #include "widgets/messageswidget.h"

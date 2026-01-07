@@ -3,7 +3,7 @@
 #include <QStaticText>
 #include <QStyledItemDelegate>
 
-#include "dbc/dbc.h"
+#include "dbc/dbc_message.h"
 
 class MessageBytesDelegate : public QStyledItemDelegate {
 public:

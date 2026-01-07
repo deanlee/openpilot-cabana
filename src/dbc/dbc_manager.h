@@ -5,7 +5,7 @@
 #include <map>
 #include <set>
 
-#include "dbc/dbcfile.h"
+#include "dbc/dbc_file.h"
 
 typedef std::set<int> SourceSet;
 const SourceSet SOURCE_ALL = {-1};

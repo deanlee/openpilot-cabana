@@ -5,7 +5,7 @@
 #include <QVariant>
 #include <vector>
 
-#include "dbc/dbcmanager.h"
+#include "dbc/dbc_manager.h"
 #include "streams/abstractstream.h"
 
 class MessageTableModel : public QAbstractTableModel {
