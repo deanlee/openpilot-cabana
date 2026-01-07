@@ -32,7 +32,7 @@ class Sparkline {
   };
 
   void updateDataPoints(const dbc::Signal* sig, CanEventIter first, CanEventIter last);
-  void updateRenderPoints(const QColor& color, int time_range, QSize size);
+  void updateRenderPoints(int time_range, QSize size);
   void render();
 
   std::vector<QPointF> render_points_;

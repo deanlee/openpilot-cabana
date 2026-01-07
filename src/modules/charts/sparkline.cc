@@ -15,8 +15,10 @@ void Sparkline::update(const dbc::Signal* sig, CanEventIter first, CanEventIter 
     return;
   }
   updateDataPoints(sig, first, last);
-  updateRenderPoints(sig->color, time_range, size);
-  render();
+  if (!history_.empty()) {
+    updateRenderPoints(time_range, size);
+    render();
+  }
 }
 
 void Sparkline::updateDataPoints(const dbc::Signal* sig, CanEventIter first, CanEventIter last) {
@@ -34,12 +36,10 @@ void Sparkline::updateDataPoints(const dbc::Signal* sig, CanEventIter first, Can
     last_processed_mono_time_ = 0;
   }
 
-  // Incremental update of history
+  // Incremental update
   double val = 0.0;
   for (auto it = first; it != last; ++it) {
     uint64_t ts = (*it)->mono_time;
-
-    // Skip messages already calculated
     if (ts <= last_processed_mono_time_) continue;
 
     if (sig->getValue((*it)->dat, (*it)->size, &val)) {
@@ -48,15 +48,14 @@ void Sparkline::updateDataPoints(const dbc::Signal* sig, CanEventIter first, Can
     last_processed_mono_time_ = ts;
   }
 
+  // Purge data older than the window
   while (!history_.empty() && history_.front().mono_time < first_ts) {
     history_.pop_front();
   }
 }
-
-void Sparkline::updateRenderPoints(const QColor& color, int time_range, QSize size) {
+void Sparkline::updateRenderPoints(int time_range, QSize size) {
   if (history_.empty() || size.isEmpty()) return;
 
-  // 1. Setup Surface
   const qreal dpr = qApp->devicePixelRatio();
   if (pixmap.size() != size * dpr) {
     pixmap = QPixmap(size * dpr);
@@ -67,10 +66,11 @@ void Sparkline::updateRenderPoints(const QColor& color, int time_range, QSize si
   const int width = size.width();
   const int height = size.height();
   const uint64_t range_ns = (uint64_t)time_range * 1000000000ULL;
-  const uint64_t window_end_ts = current_window_max_ts_;
+
+  const uint64_t ns_per_pixel = std::max<uint64_t>(1, range_ns / width);
+  const uint64_t window_end_ts = (current_window_max_ts_ / ns_per_pixel) * ns_per_pixel;
   const uint64_t window_start_ts = (window_end_ts > range_ns) ? (window_end_ts - range_ns) : 0;
 
-  // 2. Vertical Scaling Pass
   min_val = std::numeric_limits<double>::max();
   max_val = std::numeric_limits<double>::lowest();
   for (const auto& p : history_) {
@@ -80,67 +80,91 @@ void Sparkline::updateRenderPoints(const QColor& color, int time_range, QSize si
   }
 
   const double y_range = std::max(max_val - min_val, 1e-6);
-  const float margin = 2.0f;
-  const float bottom_y = (float)height - margin;
+  const float margin = 1.0f;
   const float y_scale = ((float)height - (2.0f * margin)) / (float)y_range;
-  const double x_scale = (double)(width - 1) / (double)range_ns;
 
-  // 3. The "Smooth Envelope" Algorithm
   render_pts_.clear();
-  render_pts_.reserve(width * 2);
+  render_pts_.reserve(width * 4);
 
-  float last_pixel_x = -1.0f;
-  double bucket_min = std::numeric_limits<double>::max();
-  double bucket_max = std::numeric_limits<double>::lowest();
+  auto toY = [&](double v) {
+    return (float)height - margin - (float)((v - min_val) * y_scale);
+  };
 
-  for (const auto& p : history_) {
-    if (p.mono_time < window_start_ts) continue;
+  int current_x = -1;
+  double b_entry, b_exit, b_min, b_max;
+  uint64_t b_min_ts, b_max_ts;
 
-    // Precise sub-pixel X
-    double dist_from_right = (double)(window_end_ts - p.mono_time) * x_scale;
-    float x = (float)(width - 1) - (float)dist_from_right;
+  auto flush_bucket = [&](int x) {
+    if (x == -1) return;
 
-    // If we are still within the same "pixel column" (1.0 width)
-    if (std::abs(x - last_pixel_x) < 1.0f && last_pixel_x >= 0) {
-      bucket_min = std::min(bucket_min, p.value);
-      bucket_max = std::max(bucket_max, p.value);
-    } else {
-      // Before moving to a new pixel, flush the previous bucket's min/max
-      if (last_pixel_x >= 0) {
-        float py_min = bottom_y - (float)((bucket_min - min_val) * y_scale);
-        float py_max = bottom_y - (float)((bucket_max - min_val) * y_scale);
+    bool is_flat = qFuzzyCompare(b_min, b_max);
 
-        render_pts_.emplace_back(last_pixel_x, py_min);
-        if (std::abs(py_min - py_max) > 0.5f) {
-          render_pts_.emplace_back(last_pixel_x, py_max);
+    if (is_flat) {
+      if (render_pts_.empty()) {
+        render_pts_.emplace_back(x, b_min);
+      } else {
+        bool value_changed = !qFuzzyCompare(render_pts_.back().y(), b_min);
+        if (value_changed) {
+          // Add a step corner to keep lines rectilinear, then start the new flat segment
+          render_pts_.emplace_back(x, render_pts_.back().y());
+          render_pts_.emplace_back(x, b_min);
+        } else {
+          // Optimization: If we already have 2+ points at this Y, just move the end-cap
+          if (render_pts_.size() >= 2 && qFuzzyCompare(render_pts_[render_pts_.size() - 2].y(), b_min)) {
+            render_pts_.back().setX(x);
+          } else {
+            // Second point of a new flat segment
+            render_pts_.emplace_back(x, b_min);
+          }
         }
       }
-      // Reset for new pixel column
-      last_pixel_x = x;
-      bucket_min = bucket_max = p.value;
+    } else {
+      // M4 Noisy Bucket
+      render_pts_.emplace_back(x, b_entry);
+      if (b_min_ts < b_max_ts) {
+        render_pts_.emplace_back(x, b_min);
+        render_pts_.emplace_back(x, b_max);
+      } else {
+        render_pts_.emplace_back(x, b_max);
+        render_pts_.emplace_back(x, b_min);
+      }
+      render_pts_.emplace_back(x, b_exit);
+    }
+  };
+
+  for (const auto& p : history_) {
+    if (p.mono_time < window_start_ts || p.mono_time > window_end_ts) continue;
+
+    int x = (width - 1) - static_cast<int>((window_end_ts - p.mono_time) / ns_per_pixel);
+    x = std::clamp(x, 0, width - 1);
+
+    if (x != current_x) {
+      flush_bucket(current_x);
+      current_x = x;
+      b_entry = b_exit = b_min = b_max = toY(p.value);
+      b_min_ts = b_max_ts = p.mono_time;
+    } else {
+      double y = toY(p.value);
+      b_exit = y;
+      if (y > b_min) {
+        b_min = y;
+        b_min_ts = p.mono_time;
+      }
+      if (y < b_max) {
+        b_max = y;
+        b_max_ts = p.mono_time;
+      }
     }
   }
-
-  // Flush last point
-  if (last_pixel_x >= 0) {
-    render_pts_.emplace_back(last_pixel_x, bottom_y - (float)((bucket_min - min_val) * y_scale));
-  }
+  flush_bucket(current_x);
 }
 
 void Sparkline::render() {
   if (render_pts_.empty()) return;
 
   QPainter painter(&pixmap);
-
-  float x_min = render_pts_.front().x();
-  float x_max = render_pts_.back().x();
-  float data_x_span = std::max(x_max - x_min, 1.0f);
-
-  float points_per_pixel = (float)render_pts_.size() / data_x_span;
-
-  // If we have more than 1.5 points per pixel, disable AA to keep the
-  // line sharp and prevent the "blurry ghosting" effect of high-freq data.
-  painter.setRenderHint(QPainter::Antialiasing, points_per_pixel < 1.5f);
+  // Grid-snapped points look best with Aliasing OFF (sharp 1px vertical lines)
+  painter.setRenderHint(QPainter::Antialiasing, false);
 
   QColor color = is_highlighted_ ? qApp->palette().color(QPalette::HighlightedText) : signal_->color;
 
@@ -149,18 +173,9 @@ void Sparkline::render() {
     painter.drawPolyline(render_pts_.data(), (int)render_pts_.size());
   }
 
-  // We only draw dots if the points are "Sparse" (e.g., more than 4 pixels apart on average)
-  // AND if the total number of points isn't so high it kills performance.
-  bool is_sparse = points_per_pixel < 0.25f;  // Less than 1 point every 4 pixels
-
-  if (is_sparse && render_pts_.size() < 100) {
-    painter.setPen(QPen(color, 3, Qt::SolidLine, Qt::RoundCap));
-    painter.drawPoints(render_pts_.data(), (int)render_pts_.size());
-  } else {
-    // Always draw a distinct "head" (the latest value)
-    painter.setPen(QPen(color, 3, Qt::SolidLine, Qt::RoundCap));
-    painter.drawPoint(render_pts_.back());
-  }
+  // Draw the "head" (current value) dot
+  painter.setPen(QPen(color, 3, Qt::SolidLine, Qt::RoundCap));
+  painter.drawPoint(render_pts_.back());
 }
 
 void Sparkline::setHighlight(bool highlight) {
