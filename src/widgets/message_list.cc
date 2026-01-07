@@ -46,21 +46,13 @@ MessageList::MessageList(QWidget *parent) : menu(new QMenu(this)), QWidget(paren
   connect(can, &AbstractStream::snapshotsUpdated, model, &MessageTableModel::onSnapshotsUpdated);
   connect(GetDBC(), &dbc::Manager::DBCFileChanged, model, &MessageTableModel::dbcModified);
   connect(UndoStack::instance(), &QUndoStack::indexChanged, model, &MessageTableModel::dbcModified);
+  connect(view->selectionModel(), &QItemSelectionModel::currentChanged, this, &MessageList::handleSelectionChanged);
   connect(model, &MessageTableModel::modelReset, [this]() {
     if (current_msg_id) {
       selectMessage(*current_msg_id);
     }
     view->updateBytesSectionSize();
     updateTitle();
-  });
-  connect(view->selectionModel(), &QItemSelectionModel::currentChanged, [=](const QModelIndex &current, const QModelIndex &previous) {
-    if (current.isValid() && current.row() < model->items_.size()) {
-      const auto &id = model->items_[current.row()].id;
-      if (!current_msg_id || id != *current_msg_id) {
-        current_msg_id = id;
-        emit msgSelectionChanged(*current_msg_id);
-      }
-    }
   });
 
   setWhatsThis(tr(R"(
@@ -116,6 +108,16 @@ void MessageList::updateTitle() {
       });
   emit titleChanged(tr("%1 Messages (%2 DBC Messages, %3 Signals)")
                       .arg(model->items_.size()).arg(stats.first).arg(stats.second));
+}
+
+void MessageList::handleSelectionChanged(const QModelIndex &current) {
+  if (current.isValid() && current.row() < model->items_.size()) {
+    const auto &id = model->items_[current.row()].id;
+    if (!current_msg_id || id != *current_msg_id) {
+      current_msg_id = id;
+      emit msgSelectionChanged(*current_msg_id);
+    }
+  }
 }
 
 void MessageList::selectMessage(const MessageId &msg_id) {

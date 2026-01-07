@@ -58,6 +58,7 @@ protected:
   void menuAboutToShow();
   void setMultiLineBytes(bool multi);
   void updateTitle();
+  void handleSelectionChanged(const QModelIndex &current);
 
   MessageTable *view;
   MessageHeader *header;
