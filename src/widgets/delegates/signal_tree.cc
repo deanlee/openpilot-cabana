@@ -315,10 +315,11 @@ bool SignalTreeDelegate::helpEvent(QHelpEvent* event, QAbstractItemView* view, c
       return true;
     }
   } else {
+    int right_edge = option.rect.right() - getButtonsWidth();
     QRect value_rect = option.rect;
-    value_rect.setLeft(option.rect.left() + (item->sparkline.pixmap.isNull() ? 0 : item->sparkline.pixmap.width() / item->sparkline.pixmap.devicePixelRatio()));
-    value_rect.setRight(option.rect.right() - getButtonsWidth());
-    if (value_rect.contains(event->pos()) && !item->sparkline.isEmpty()) {
+    value_rect.setLeft(right_edge - kValueWidth);
+    value_rect.setRight(right_edge);
+    if (value_rect.contains(event->pos()) && item && !item->sig_val.isEmpty()) {
       QString tooltip = item->sig_val + "\n\n" +
                         tr("Min: %1\nMax: %2").arg(QString::number(item->sparkline.min_val, 'f', 3),
                                                  QString::number(item->sparkline.max_val, 'f', 3));
