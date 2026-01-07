@@ -12,10 +12,10 @@
 #include "delegates/message_table.h"
 #include "models/message_table.h"
 
-class MessageView : public QTreeView {
+class MessageTable : public QTreeView {
   Q_OBJECT
 public:
-  MessageView(QWidget *parent) : QTreeView(parent) {}
+  MessageTable(QWidget *parent) : QTreeView(parent) {}
   void updateBytesSectionSize();
 
 protected:
@@ -24,11 +24,11 @@ protected:
   void wheelEvent(QWheelEvent *event) override;
 };
 
-class MessageViewHeader : public QHeaderView {
+class MessageHeader : public QHeaderView {
   // https://stackoverflow.com/a/44346317
   Q_OBJECT
 public:
-  MessageViewHeader(QWidget *parent);
+  MessageHeader(QWidget *parent);
   void updateHeaderPositions();
   void updateGeometries() override;
   QSize sizeHint() const override;
@@ -38,11 +38,11 @@ public:
   QTimer filter_timer;
 };
 
-class MessagesWidget : public QWidget {
+class MessageList : public QWidget {
   Q_OBJECT
 
 public:
-  MessagesWidget(QWidget *parent);
+  MessageList(QWidget *parent);
   void selectMessage(const MessageId &message_id);
   QByteArray saveHeaderState() const { return view->header()->saveState(); }
   bool restoreHeaderState(const QByteArray &state) const { return view->header()->restoreState(state); }
@@ -59,8 +59,8 @@ protected:
   void setMultiLineBytes(bool multi);
   void updateTitle();
 
-  MessageView *view;
-  MessageViewHeader *header;
+  MessageTable *view;
+  MessageHeader *header;
   MessageTableDelegate *delegate;
   std::optional<MessageId> current_msg_id;
   MessageTableModel *model;

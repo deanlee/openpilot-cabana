@@ -1,4 +1,4 @@
-#include "signalview.h"
+#include "signal_editor.h"
 
 #include <QApplication>
 #include <QHBoxLayout>
@@ -12,7 +12,7 @@
 #include "commands.h"
 #include "settings.h"
 
-SignalView::SignalView(ChartsWidget *charts, QWidget *parent) : charts(charts), QFrame(parent) {
+SignalEditor::SignalEditor(ChartsWidget *charts, QWidget *parent) : charts(charts), QFrame(parent) {
   setFrameStyle(QFrame::StyledPanel | QFrame::Plain);
   // title bar
   QWidget *title_bar = new QWidget(this);
@@ -41,7 +41,7 @@ SignalView::SignalView(ChartsWidget *charts, QWidget *parent) : charts(charts), 
   hl->addWidget(collapse_btn);
 
   // tree view
-  tree = new SignalTreeView(this);
+  tree = new SignalTree(this);
   tree->setModel(model = new SignalTreeModel(this));
   tree->setItemDelegate(delegate = new SignalTreeDelegate(this));
   tree->setMinimumHeight(300);
@@ -60,18 +60,18 @@ SignalView::SignalView(ChartsWidget *charts, QWidget *parent) : charts(charts), 
   updateToolBar();
 
   connect(filter_edit, &QLineEdit::textEdited, model, &SignalTreeModel::setFilter);
-  connect(sparkline_range_slider, &QSlider::valueChanged, this, &SignalView::setSparklineRange);
+  connect(sparkline_range_slider, &QSlider::valueChanged, this, &SignalEditor::setSparklineRange);
   connect(collapse_btn, &QPushButton::clicked, tree, &QTreeView::collapseAll);
   connect(tree, &QTreeView::viewportEntered, [this]() { emit highlight(nullptr); });
   connect(tree, &QTreeView::entered, [this](const QModelIndex &index) { emit highlight(model->getItem(index)->sig); });
-  connect(tree, &QTreeView::expanded, this, &SignalView::updateColumnWidths);
-  connect(model, &QAbstractItemModel::modelReset, this, &SignalView::rowsChanged);
-  connect(model, &QAbstractItemModel::rowsRemoved, this, &SignalView::rowsChanged);
-  connect(GetDBC(), &dbc::Manager::signalAdded, this, &SignalView::handleSignalAdded);
-  connect(GetDBC(), &dbc::Manager::signalUpdated, this, &SignalView::handleSignalUpdated);
+  connect(tree, &QTreeView::expanded, this, &SignalEditor::updateColumnWidths);
+  connect(model, &QAbstractItemModel::modelReset, this, &SignalEditor::rowsChanged);
+  connect(model, &QAbstractItemModel::rowsRemoved, this, &SignalEditor::rowsChanged);
+  connect(GetDBC(), &dbc::Manager::signalAdded, this, &SignalEditor::handleSignalAdded);
+  connect(GetDBC(), &dbc::Manager::signalUpdated, this, &SignalEditor::handleSignalUpdated);
   connect(tree->verticalScrollBar(), &QScrollBar::valueChanged, [this]() { updateState(); });
   connect(tree->verticalScrollBar(), &QScrollBar::rangeChanged, [this]() { updateState(); });
-  connect(can, &AbstractStream::snapshotsUpdated, this, &SignalView::updateState);
+  connect(can, &AbstractStream::snapshotsUpdated, this, &SignalEditor::updateState);
 
   setWhatsThis(tr(R"(
     <b>Signal view</b><br />
@@ -79,18 +79,18 @@ SignalView::SignalView(ChartsWidget *charts, QWidget *parent) : charts(charts), 
   )"));
 }
 
-void SignalView::setMessage(const MessageId &id) {
+void SignalEditor::setMessage(const MessageId &id) {
   max_value_width = 0;
   filter_edit->clear();
   model->setMessage(id);
 }
 
-void SignalView::rowsChanged() {
+void SignalEditor::rowsChanged() {
   updateToolBar();
   updateColumnWidths();
 }
 
-void SignalView::selectSignal(const dbc::Signal *sig, bool expand) {
+void SignalEditor::selectSignal(const dbc::Signal *sig, bool expand) {
   if (int row = model->signalRow(sig); row != -1) {
     auto idx = model->index(row, 0);
     if (expand) {
@@ -101,7 +101,7 @@ void SignalView::selectSignal(const dbc::Signal *sig, bool expand) {
   }
 }
 
-void SignalView::updateChartState() {
+void SignalEditor::updateChartState() {
   if (model && model->rowCount() > 0) {
     // This triggers a repaint of the Value column (1) for all rows
     emit model->dataChanged(model->index(0, 1),
@@ -113,7 +113,7 @@ void SignalView::updateChartState() {
   }
 }
 
-void SignalView::signalHovered(const dbc::Signal *sig) {
+void SignalEditor::signalHovered(const dbc::Signal *sig) {
   auto &children = model->root->children;
   for (int i = 0; i < children.size(); ++i) {
     bool highlight = children[i]->sig == sig;
@@ -124,12 +124,12 @@ void SignalView::signalHovered(const dbc::Signal *sig) {
   }
 }
 
-void SignalView::updateToolBar() {
+void SignalEditor::updateToolBar() {
   signal_count_lb->setText(tr("Signals: %1").arg(model->rowCount()));
   sparkline_label->setText(utils::formatSeconds(settings.sparkline_range));
 }
 
-void SignalView::setSparklineRange(int value) {
+void SignalEditor::setSparklineRange(int value) {
   settings.sparkline_range = value;
   updateToolBar();
   // Clear history to prevent scaling artifacts when range changes drastically
@@ -139,18 +139,18 @@ void SignalView::setSparklineRange(int value) {
   updateState();
 }
 
-void SignalView::handleSignalAdded(MessageId id, const dbc::Signal *sig) {
+void SignalEditor::handleSignalAdded(MessageId id, const dbc::Signal *sig) {
   if (id.address == model->msg_id.address) {
     selectSignal(sig);
   }
 }
 
-void SignalView::handleSignalUpdated(const dbc::Signal *sig) {
+void SignalEditor::handleSignalUpdated(const dbc::Signal *sig) {
   if (int row = model->signalRow(sig); row != -1)
     updateState();
 }
 
-std::pair<QModelIndex, QModelIndex> SignalView::visibleSignalRange() {
+std::pair<QModelIndex, QModelIndex> SignalEditor::visibleSignalRange() {
   auto topLevelIndex = [](QModelIndex index) {
     while (index.isValid() && index.parent().isValid()) index = index.parent();
     return index;
@@ -170,7 +170,7 @@ std::pair<QModelIndex, QModelIndex> SignalView::visibleSignalRange() {
   return {first_visible, last_visible};
 }
 
-void SignalView::updateState(const std::set<MessageId> *msgs) {
+void SignalEditor::updateState(const std::set<MessageId> *msgs) {
   const auto *last_msg = can->snapshot(model->msg_id);
   if (model->rowCount() == 0 || (msgs && !msgs->count(model->msg_id)) || last_msg->dat.size() == 0) return;
 
@@ -203,7 +203,7 @@ void SignalView::updateState(const std::set<MessageId> *msgs) {
   emit model->dataChanged(model->index(first_visible.row(), 1), model->index(last_visible.row(), 1), {Qt::DisplayRole});
 }
 
-void SignalView::updateColumnWidths() {
+void SignalEditor::updateColumnWidths() {
   auto* m = GetDBC()->msg(model->msg_id);
   if (!m) return;
 
@@ -228,7 +228,7 @@ void SignalView::updateColumnWidths() {
   updateState();
 }
 
-void SignalView::resizeEvent(QResizeEvent* event) {
+void SignalEditor::resizeEvent(QResizeEvent* event) {
   QFrame::resizeEvent(event);
   updateColumnWidths();
 }

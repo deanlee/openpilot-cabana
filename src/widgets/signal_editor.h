@@ -12,13 +12,13 @@
 #include "chart/sparkline.h"
 #include "delegates/signal_tree.h"
 #include "models/signal_tree.h"
-#include "signal_tree_view.h"
+#include "signal_tree.h"
 
-class SignalView : public QFrame {
+class SignalEditor : public QFrame {
   Q_OBJECT
 
 public:
-  SignalView(ChartsWidget *charts, QWidget *parent);
+  SignalEditor(ChartsWidget *charts, QWidget *parent);
   void setMessage(const MessageId &id);
   void signalHovered(const dbc::Signal *sig);
   void updateChartState();
@@ -42,7 +42,7 @@ private:
 
   int max_value_width = 0;
   int value_column_width = 0;
-  SignalTreeView *tree;
+  SignalTree *tree;
   QLabel *sparkline_label;
   QSlider *sparkline_range_slider;
   QLineEdit *filter_edit;
@@ -51,5 +51,5 @@ private:
   SignalTreeDelegate *delegate;
 
   friend class SignalTreeDelegate;
-  friend class SignalTreeView;
+  friend class SignalTree;
 };

@@ -12,8 +12,8 @@
 #include "chart/chartswidget.h"
 #include "dbc/dbc_manager.h"
 #include "tools/findsimilarbits.h"
-#include "widgets/detailwidget.h"
-#include "widgets/messageswidget.h"
+#include "widgets/message_details.h"
+#include "widgets/message_list.h"
 #include "widgets/video/video_player.h"
 
 class MainWindow : public QMainWindow {
@@ -79,7 +79,7 @@ protected:
   VideoPlayer *video_widget = nullptr;
   QDockWidget *video_dock;
   QDockWidget *messages_dock;
-  MessagesWidget *messages_widget = nullptr;
+  MessageList *message_list = nullptr;
   CenterWidget *center_widget;
   QWidget *floating_window = nullptr;
   QVBoxLayout *charts_layout;

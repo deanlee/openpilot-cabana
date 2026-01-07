@@ -5,7 +5,7 @@
 #include <QPainter>
 
 #include "utils/util.h"
-#include "widgets/binaryview.h"
+#include "widgets/binary_view.h"
 
 MessageBytesDelegate::MessageBytesDelegate(QObject *parent) : QStyledItemDelegate(parent) {
   small_font.setPixelSize(8);

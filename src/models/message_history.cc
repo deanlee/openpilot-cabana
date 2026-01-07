@@ -1,4 +1,4 @@
-#include "message_log.h"
+#include "message_history.h"
 
 #include <functional>
 
@@ -6,7 +6,7 @@
 #include "delegates/message_table.h"
 #include "streams/abstractstream.h"
 
-QVariant MessageLogModel::data(const QModelIndex &index, int role) const {
+QVariant MessageHistoryModel::data(const QModelIndex &index, int role) const {
   const auto &m = messages[index.row()];
   const int col = index.column();
   if (role == Qt::DisplayRole) {
@@ -23,12 +23,12 @@ QVariant MessageLogModel::data(const QModelIndex &index, int role) const {
   return {};
 }
 
-void MessageLogModel::setMessage(const MessageId &message_id) {
+void MessageHistoryModel::setMessage(const MessageId &message_id) {
   msg_id = message_id;
   reset();
 }
 
-void MessageLogModel::reset() {
+void MessageHistoryModel::reset() {
   beginResetModel();
   sigs.clear();
   if (auto dbc_msg = GetDBC()->msg(msg_id)) {
@@ -40,7 +40,7 @@ void MessageLogModel::reset() {
   setFilter(0, "", nullptr);
 }
 
-QVariant MessageLogModel::headerData(int section, Qt::Orientation orientation, int role) const {
+QVariant MessageHistoryModel::headerData(int section, Qt::Orientation orientation, int role) const {
   if (orientation == Qt::Horizontal) {
     if (role == Qt::DisplayRole || role == Qt::ToolTipRole) {
       if (section == 0) return "Time";
@@ -59,19 +59,19 @@ QVariant MessageLogModel::headerData(int section, Qt::Orientation orientation, i
   return {};
 }
 
-void MessageLogModel::setHexMode(bool hex) {
+void MessageHistoryModel::setHexMode(bool hex) {
   hex_mode = hex;
   reset();
 }
 
-void MessageLogModel::setFilter(int sig_idx, const QString &value, std::function<bool(double, double)> cmp) {
+void MessageHistoryModel::setFilter(int sig_idx, const QString &value, std::function<bool(double, double)> cmp) {
   filter_sig_idx = sig_idx;
   filter_value = value.toDouble();
   filter_cmp = value.isEmpty() ? nullptr : cmp;
   updateState(true);
 }
 
-void MessageLogModel::updateState(bool clear) {
+void MessageHistoryModel::updateState(bool clear) {
   if (clear && !messages.empty()) {
     beginRemoveRows({}, 0, messages.size() - 1);
     messages.clear();
@@ -81,23 +81,23 @@ void MessageLogModel::updateState(bool clear) {
   fetchData(messages.begin(), current_time, messages.empty() ? 0 : messages.front().mono_time);
 }
 
-bool MessageLogModel::canFetchMore(const QModelIndex &parent) const {
+bool MessageHistoryModel::canFetchMore(const QModelIndex &parent) const {
   const auto &events = can->events(msg_id);
   return !events.empty() && !messages.empty() && messages.back().mono_time > events.front()->mono_time;
 }
 
-void MessageLogModel::fetchMore(const QModelIndex &parent) {
+void MessageHistoryModel::fetchMore(const QModelIndex &parent) {
   if (!messages.empty())
     fetchData(messages.end(), messages.back().mono_time, 0);
 }
 
-void MessageLogModel::fetchData(std::deque<Message>::iterator insert_pos, uint64_t from_time, uint64_t min_time) {
+void MessageHistoryModel::fetchData(std::deque<Message>::iterator insert_pos, uint64_t from_time, uint64_t min_time) {
   const auto &events = can->events(msg_id);
   auto first = std::upper_bound(events.rbegin(), events.rend(), from_time, [](uint64_t ts, auto e) {
     return ts > e->mono_time;
   });
 
-  std::vector<MessageLogModel::Message> msgs;
+  std::vector<MessageHistoryModel::Message> msgs;
   std::vector<double> values(sigs.size());
   msgs.reserve(batch_size);
   for (; first != events.rend() && (*first)->mono_time > min_time; ++first) {

@@ -1,40 +1,20 @@
 #pragma once
 
-#include <QDialogButtonBox>
 #include <QSplitter>
 #include <QTabWidget>
-#include <QTextEdit>
-#include <QSpinBox>
-
-
 #include <set>
 
-#include "binaryview.h"
-#include "common_widgets.h"
+#include "binary_view.h"
 #include "chart/chartswidget.h"
-#include "historylog.h"
-#include "signalview.h"
+#include "common.h"
+#include "message_history.h"
+#include "signal_editor.h"
 
-class EditMessageDialog : public QDialog {
-public:
-  EditMessageDialog(const MessageId &msg_id, const QString &title, int size, QWidget *parent);
-  void validateName(const QString &text);
-
-  MessageId msg_id;
-  QString original_name;
-  QDialogButtonBox *btn_box;
-  QLineEdit *name_edit;
-  QLineEdit *node;
-  QTextEdit *comment_edit;
-  QLabel *error_label;
-  QSpinBox *size_spin;
-};
-
-class DetailWidget : public QWidget {
+class MessageDetails : public QWidget {
   Q_OBJECT
 
 public:
-  DetailWidget(ChartsWidget *charts, QWidget *parent);
+  MessageDetails(ChartsWidget *charts, QWidget *parent);
   void setMessage(const MessageId &message_id);
   void refresh();
   std::pair<QString, QStringList> serializeMessageIds() const;
@@ -55,9 +35,9 @@ private:
   TabBar *tabbar;
   QTabWidget *tab_widget;
   QAction *action_remove_msg;
-  LogsWidget *history_log;
+  MessageHistory *message_history;
   BinaryView *binary_view;
-  SignalView *signal_view;
+  SignalEditor *signal_editor;
   ChartsWidget *charts;
   QSplitter *splitter;
 };
@@ -66,13 +46,13 @@ class CenterWidget : public QWidget {
   Q_OBJECT
 public:
   CenterWidget(QWidget *parent);
-  void setMessage(const MessageId &message_id) { ensureDetailWidget()->setMessage(message_id); }
-  DetailWidget* getDetailWidget() { return detail_widget; }
-  DetailWidget* ensureDetailWidget();
+  void setMessage(const MessageId &message_id) { ensureMessageDetails()->setMessage(message_id); }
+  MessageDetails* getMessageDetails() { return details; }
+  MessageDetails* ensureMessageDetails();
   void clear();
 
 private:
   QWidget *createWelcomeWidget();
-  DetailWidget *detail_widget = nullptr;
+  MessageDetails *details = nullptr;
   QWidget *welcome_widget = nullptr;
 };

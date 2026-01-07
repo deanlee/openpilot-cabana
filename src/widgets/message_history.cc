@@ -1,4 +1,4 @@
-#include "historylog.h"
+#include "message_history.h"
 
 #include <QFileDialog>
 #include <QPainter>
@@ -8,7 +8,7 @@
 #include "settings.h"
 #include "utils/export.h"
 
-QSize HeaderView::sectionSizeFromContents(int logicalIndex) const {
+QSize HistoryHeader::sectionSizeFromContents(int logicalIndex) const {
   static const QSize time_col_size = fontMetrics().size(Qt::TextSingleLine, "000000.000") + QSize(10, 6);
   if (logicalIndex == 0) {
     return time_col_size;
@@ -21,7 +21,7 @@ QSize HeaderView::sectionSizeFromContents(int logicalIndex) const {
   }
 }
 
-void HeaderView::paintSection(QPainter *painter, const QRect &rect, int logicalIndex) const {
+void HistoryHeader::paintSection(QPainter *painter, const QRect &rect, int logicalIndex) const {
   auto bg_role = model()->headerData(logicalIndex, Qt::Horizontal, Qt::BackgroundRole);
   if (bg_role.isValid()) {
     painter->fillRect(rect, bg_role.value<QBrush>());
@@ -31,9 +31,9 @@ void HeaderView::paintSection(QPainter *painter, const QRect &rect, int logicalI
   painter->drawText(rect.adjusted(5, 3, -5, -3), defaultAlignment(), text.replace(QChar('_'), ' '));
 }
 
-// LogsWidget
+// MessageHistory
 
-LogsWidget::LogsWidget(QWidget *parent) : QFrame(parent) {
+MessageHistory::MessageHistory(QWidget *parent) : QFrame(parent) {
   setFrameStyle(QFrame::StyledPanel | QFrame::Plain);
   QVBoxLayout *main_layout = new QVBoxLayout(this);
   main_layout->setContentsMargins(0, 0, 0, 0);
@@ -66,28 +66,28 @@ LogsWidget::LogsWidget(QWidget *parent) : QFrame(parent) {
   line->setFrameStyle(QFrame::HLine | QFrame::Sunken);
   main_layout->addWidget(line);
   main_layout->addWidget(logs = new QTableView(this));
-  logs->setModel(model = new MessageLogModel(this));
+  logs->setModel(model = new MessageHistoryModel(this));
   logs->setItemDelegate(delegate = new MessageTableDelegate(this));
-  logs->setHorizontalHeader(new HeaderView(Qt::Horizontal, this));
+  logs->setHorizontalHeader(new HistoryHeader(Qt::Horizontal, this));
   logs->horizontalHeader()->setDefaultAlignment(Qt::AlignRight | (Qt::Alignment)Qt::TextWordWrap);
   logs->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
   logs->verticalHeader()->setSectionResizeMode(QHeaderView::Fixed);
   logs->verticalHeader()->setDefaultSectionSize(delegate->sizeForBytes(8).height());
   logs->setFrameShape(QFrame::NoFrame);
 
-  connect(display_type_cb, qOverload<int>(&QComboBox::activated), model, &MessageLogModel::setHexMode);
+  connect(display_type_cb, qOverload<int>(&QComboBox::activated), model, &MessageHistoryModel::setHexMode);
   connect(signals_cb, SIGNAL(activated(int)), this, SLOT(filterChanged()));
   connect(comp_box, SIGNAL(activated(int)), this, SLOT(filterChanged()));
-  connect(value_edit, &QLineEdit::textEdited, this, &LogsWidget::filterChanged);
-  connect(export_btn, &QToolButton::clicked, this, &LogsWidget::exportToCSV);
-  connect(can, &AbstractStream::seekedTo, model, &MessageLogModel::reset);
-  connect(GetDBC(), &dbc::Manager::DBCFileChanged, model, &MessageLogModel::reset);
-  connect(UndoStack::instance(), &QUndoStack::indexChanged, model, &MessageLogModel::reset);
-  connect(model, &MessageLogModel::modelReset, this, &LogsWidget::modelReset);
-  connect(model, &MessageLogModel::rowsInserted, [this]() { export_btn->setEnabled(true); });
+  connect(value_edit, &QLineEdit::textEdited, this, &MessageHistory::filterChanged);
+  connect(export_btn, &QToolButton::clicked, this, &MessageHistory::exportToCSV);
+  connect(can, &AbstractStream::seekedTo, model, &MessageHistoryModel::reset);
+  connect(GetDBC(), &dbc::Manager::DBCFileChanged, model, &MessageHistoryModel::reset);
+  connect(UndoStack::instance(), &QUndoStack::indexChanged, model, &MessageHistoryModel::reset);
+  connect(model, &MessageHistoryModel::modelReset, this, &MessageHistory::modelReset);
+  connect(model, &MessageHistoryModel::rowsInserted, [this]() { export_btn->setEnabled(true); });
 }
 
-void LogsWidget::modelReset() {
+void MessageHistory::modelReset() {
   signals_cb->clear();
   for (auto s : model->sigs) {
     signals_cb->addItem(s->name);
@@ -98,7 +98,7 @@ void LogsWidget::modelReset() {
   filters_widget->setVisible(!model->sigs.empty());
 }
 
-void LogsWidget::filterChanged() {
+void MessageHistory::filterChanged() {
   if (value_edit->text().isEmpty() && !value_edit->isModified()) return;
 
   std::function<bool(double, double)> cmp = nullptr;
@@ -111,7 +111,7 @@ void LogsWidget::filterChanged() {
   model->setFilter(signals_cb->currentIndex(), value_edit->text(), cmp);
 }
 
-void LogsWidget::exportToCSV() {
+void MessageHistory::exportToCSV() {
   QString dir = QString("%1/%2_%3.csv").arg(settings.last_dir).arg(can->routeName()).arg(msgName(model->msg_id));
   QString fn = QFileDialog::getSaveFileName(this, QString("Export %1 to CSV file").arg(msgName(model->msg_id)),
                                             dir, tr("csv (*.csv)"));

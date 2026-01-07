@@ -3,7 +3,7 @@
 #include <QApplication>
 #include <cmath>
 
-#include "widgets/messageswidget.h"
+#include "widgets/message_list.h"
 #include "settings.h"
 
 static const QString NA = QStringLiteral("N/A");
@@ -208,7 +208,7 @@ void MessageTableModel::onSnapshotsUpdated(const std::set<MessageId> *ids, bool 
   }
 
   // Update viewport
-  MessagesWidget *widget = qobject_cast<MessagesWidget*>(parent());
+  MessageList *widget = qobject_cast<MessageList*>(parent());
   if (widget && widget->view) {
     widget->view->viewport()->update();
   }

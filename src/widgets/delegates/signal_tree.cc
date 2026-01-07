@@ -13,7 +13,7 @@
 #include "chart/chartswidget.h"
 #include "commands.h"
 #include "models/signal_tree.h"
-#include "widgets/signalview.h"
+#include "widgets/signal_editor.h"
 #include "widgets/value_table_editor.h"
 
 SignalTreeDelegate::SignalTreeDelegate(QObject* parent) : QStyledItemDelegate(parent) {
@@ -242,7 +242,7 @@ QRect SignalTreeDelegate::getButtonRect(const QRect& colRect, int btnIdx) const 
 
 void SignalTreeDelegate::drawButtons(QPainter* p, const QStyleOptionViewItem& opt, SignalTreeModel::Item* item, const QModelIndex& idx) const {
   auto model = static_cast<const SignalTreeModel*>(idx.model());
-  SignalView* view = qobject_cast<SignalView*>(parent());
+  SignalEditor* view = qobject_cast<SignalEditor*>(parent());
   if (!view || !view->charts) return;
 
   bool chart_opened = view->charts->hasSignal(model->msg_id, item->sig);
@@ -291,7 +291,7 @@ bool SignalTreeDelegate::helpEvent(QHelpEvent* event, QAbstractItemView* view, c
   int btnIdx = (index.column() == 1 && item->type == SignalTreeModel::Item::Sig) ? buttonAt(event->pos(), option.rect) : -1;
 
   if (btnIdx != -1) {
-    SignalView* sigView = qobject_cast<SignalView*>(view->parentWidget());
+    SignalEditor* sigView = qobject_cast<SignalEditor*>(view->parentWidget());
     if (sigView) {
       if (btnIdx == 1) {  // Plot Button
         auto model = static_cast<const SignalTreeModel*>(index.model());
@@ -343,7 +343,7 @@ bool SignalTreeDelegate::editorEvent(QEvent* event, QAbstractItemModel* model, c
 
     if (btn != -1) {
       // It's a button click on a Signal item
-      SignalView* view = static_cast<SignalView*>(parent());
+      SignalEditor* view = static_cast<SignalEditor*>(parent());
       MessageId msg_id = static_cast<SignalTreeModel*>(model)->msg_id;
       if (btn == 1) {
         bool opened = view->charts->hasSignal(msg_id, item->sig);

@@ -1,4 +1,4 @@
-#include "messageswidget.h"
+#include "message_list.h"
 
 #include <QApplication>
 #include <QCheckBox>
@@ -10,19 +10,19 @@
 #include <QVBoxLayout>
 
 #include "commands.h"
-#include "common_widgets.h"
+#include "common.h"
 #include "settings.h"
 
-MessagesWidget::MessagesWidget(QWidget *parent) : menu(new QMenu(this)), QWidget(parent) {
+MessageList::MessageList(QWidget *parent) : menu(new QMenu(this)), QWidget(parent) {
   QVBoxLayout *main_layout = new QVBoxLayout(this);
   main_layout->setContentsMargins(0, 0, 0, 0);
   // toolbar
   main_layout->addWidget(createToolBar());
   // message table
-  main_layout->addWidget(view = new MessageView(this));
+  main_layout->addWidget(view = new MessageTable(this));
   view->setItemDelegate(delegate = new MessageTableDelegate(view, settings.multiple_lines_hex));
   view->setModel(model = new MessageTableModel(this));
-  view->setHeader(header = new MessageViewHeader(this));
+  view->setHeader(header = new MessageHeader(this));
   view->setSortingEnabled(true);
   view->sortByColumn(MessageTableModel::Column::NAME, Qt::AscendingOrder);
   view->setAllColumnsShowFocus(true);
@@ -40,9 +40,9 @@ MessagesWidget::MessagesWidget(QWidget *parent) : menu(new QMenu(this)), QWidget
   header->setContextMenuPolicy(Qt::CustomContextMenu);
 
   // signals/slots
-  connect(menu, &QMenu::aboutToShow, this, &MessagesWidget::menuAboutToShow);
-  connect(header, &MessageViewHeader::customContextMenuRequested, this, &MessagesWidget::headerContextMenuEvent);
-  connect(view->horizontalScrollBar(), &QScrollBar::valueChanged, header, &MessageViewHeader::updateHeaderPositions);
+  connect(menu, &QMenu::aboutToShow, this, &MessageList::menuAboutToShow);
+  connect(header, &MessageHeader::customContextMenuRequested, this, &MessageList::headerContextMenuEvent);
+  connect(view->horizontalScrollBar(), &QScrollBar::valueChanged, header, &MessageHeader::updateHeaderPositions);
   connect(can, &AbstractStream::snapshotsUpdated, model, &MessageTableModel::onSnapshotsUpdated);
   connect(GetDBC(), &dbc::Manager::DBCFileChanged, model, &MessageTableModel::dbcModified);
   connect(UndoStack::instance(), &QUndoStack::indexChanged, model, &MessageTableModel::dbcModified);
@@ -75,7 +75,7 @@ MessagesWidget::MessagesWidget(QWidget *parent) : menu(new QMenu(this)), QWidget
   )"));
 }
 
-QWidget *MessagesWidget::createToolBar() {
+QWidget *MessageList::createToolBar() {
   QWidget *toolbar = new QWidget(this);
   QHBoxLayout *layout = new QHBoxLayout(toolbar);
   layout->setContentsMargins(0, 9, 0, 0);
@@ -99,15 +99,15 @@ QWidget *MessagesWidget::createToolBar() {
   view_button->setStyleSheet("QToolButton::menu-indicator { image: none; }");
   layout->addWidget(view_button);
 
-  connect(suppress_add, &QPushButton::clicked, this, &MessagesWidget::suppressHighlighted);
-  connect(suppress_clear, &QPushButton::clicked, this, &MessagesWidget::suppressHighlighted);
+  connect(suppress_add, &QPushButton::clicked, this, &MessageList::suppressHighlighted);
+  connect(suppress_clear, &QPushButton::clicked, this, &MessageList::suppressHighlighted);
   connect(suppress_defined_signals, &QCheckBox::stateChanged, can, &AbstractStream::suppressDefinedSignals);
 
   suppressHighlighted();
   return toolbar;
 }
 
-void MessagesWidget::updateTitle() {
+void MessageList::updateTitle() {
   auto stats = std::accumulate(
       model->items_.begin(), model->items_.end(), std::pair<size_t, size_t>(),
       [](const auto &pair, const auto &item) {
@@ -118,7 +118,7 @@ void MessagesWidget::updateTitle() {
                       .arg(model->items_.size()).arg(stats.first).arg(stats.second));
 }
 
-void MessagesWidget::selectMessage(const MessageId &msg_id) {
+void MessageList::selectMessage(const MessageId &msg_id) {
   auto it = std::find_if(model->items_.cbegin(), model->items_.cend(),
                          [&msg_id](auto &item) { return item.id == msg_id; });
   if (it != model->items_.cend()) {
@@ -126,17 +126,17 @@ void MessagesWidget::selectMessage(const MessageId &msg_id) {
   }
 }
 
-void MessagesWidget::suppressHighlighted() {
+void MessageList::suppressHighlighted() {
   int n = sender() == suppress_add ? can->suppressHighlighted() : (can->clearSuppressed(), 0);
   suppress_clear->setText(n > 0 ? tr("Clear (%1)").arg(n) : tr("Clear"));
   suppress_clear->setEnabled(n > 0);
 }
 
-void MessagesWidget::headerContextMenuEvent(const QPoint &pos) {
+void MessageList::headerContextMenuEvent(const QPoint &pos) {
   menu->exec(header->mapToGlobal(pos));
 }
 
-void MessagesWidget::menuAboutToShow() {
+void MessageList::menuAboutToShow() {
   menu->clear();
   for (int i = 0; i < header->count(); ++i) {
     int logical_index = header->logicalIndex(i);
@@ -148,7 +148,7 @@ void MessagesWidget::menuAboutToShow() {
     action->setEnabled(logical_index > 0);
   }
   menu->addSeparator();
-  auto action = menu->addAction(tr("Multi-Line bytes"), this, &MessagesWidget::setMultiLineBytes);
+  auto action = menu->addAction(tr("Multi-Line bytes"), this, &MessageList::setMultiLineBytes);
   action->setCheckable(true);
   action->setChecked(settings.multiple_lines_hex);
 
@@ -157,22 +157,22 @@ void MessagesWidget::menuAboutToShow() {
   action->setChecked(model->show_inactive_messages);
 }
 
-void MessagesWidget::setMultiLineBytes(bool multi) {
+void MessageList::setMultiLineBytes(bool multi) {
   settings.multiple_lines_hex = multi;
   delegate->setMultipleLines(multi);
   view->updateBytesSectionSize();
   view->doItemsLayout();
 }
 
-// MessageView
+// MessageTable
 
-void MessageView::dataChanged(const QModelIndex &topLeft, const QModelIndex &bottomRight, const QVector<int> &roles) {
+void MessageTable::dataChanged(const QModelIndex &topLeft, const QModelIndex &bottomRight, const QVector<int> &roles) {
   // Bypass the slow call to QTreeView::dataChanged.
-  // QTreeView::dataChanged will invalidate the height cache and that's what we don't need in MessageView.
+  // QTreeView::dataChanged will invalidate the height cache and that's what we don't need in MessageTable.
   QAbstractItemView::dataChanged(topLeft, bottomRight, roles);
 }
 
-void MessageView::updateBytesSectionSize() {
+void MessageTable::updateBytesSectionSize() {
   auto delegate = ((MessageTableDelegate *)itemDelegate());
   int max_bytes = 8;
   if (!delegate->multipleLines()) {
@@ -184,7 +184,7 @@ void MessageView::updateBytesSectionSize() {
   header()->resizeSection(MessageTableModel::Column::DATA, delegate->sizeForBytes(max_bytes).width());
 }
 
-void MessageView::wheelEvent(QWheelEvent *event) {
+void MessageTable::wheelEvent(QWheelEvent *event) {
   if (event->modifiers() == Qt::ShiftModifier) {
     QApplication::sendEvent(horizontalScrollBar(), event);
   } else {
@@ -192,17 +192,17 @@ void MessageView::wheelEvent(QWheelEvent *event) {
   }
 }
 
-// MessageViewHeader
+// MessageHeader
 
-MessageViewHeader::MessageViewHeader(QWidget *parent) : QHeaderView(Qt::Horizontal, parent) {
+MessageHeader::MessageHeader(QWidget *parent) : QHeaderView(Qt::Horizontal, parent) {
   filter_timer.setSingleShot(true);
   filter_timer.setInterval(300);
-  connect(&filter_timer, &QTimer::timeout, this, &MessageViewHeader::updateFilters);
-  connect(this, &QHeaderView::sectionResized, this, &MessageViewHeader::updateHeaderPositions);
-  connect(this, &QHeaderView::sectionMoved, this, &MessageViewHeader::updateHeaderPositions);
+  connect(&filter_timer, &QTimer::timeout, this, &MessageHeader::updateFilters);
+  connect(this, &QHeaderView::sectionResized, this, &MessageHeader::updateHeaderPositions);
+  connect(this, &QHeaderView::sectionMoved, this, &MessageHeader::updateHeaderPositions);
 }
 
-void MessageViewHeader::updateFilters() {
+void MessageHeader::updateFilters() {
   QMap<int, QString> filters;
   for (int i = 0; i < count(); i++) {
     if (editors[i] && !editors[i]->text().isEmpty()) {
@@ -212,7 +212,7 @@ void MessageViewHeader::updateFilters() {
   qobject_cast<MessageTableModel*>(model())->setFilterStrings(filters);
 }
 
-void MessageViewHeader::updateHeaderPositions() {
+void MessageHeader::updateHeaderPositions() {
   QSize sz = QHeaderView::sizeHint();
   for (int i = 0; i < count(); i++) {
     if (editors[i]) {
@@ -223,7 +223,7 @@ void MessageViewHeader::updateHeaderPositions() {
   }
 }
 
-void MessageViewHeader::updateGeometries() {
+void MessageHeader::updateGeometries() {
   for (int i = 0; i < count(); i++) {
     if (!editors[i]) {
       QString column_name = model()->headerData(i, Qt::Horizontal, Qt::DisplayRole).toString();
@@ -247,7 +247,7 @@ void MessageViewHeader::updateGeometries() {
   updateHeaderPositions();
 }
 
-QSize MessageViewHeader::sizeHint() const {
+QSize MessageHeader::sizeHint() const {
   QSize sz = QHeaderView::sizeHint();
   return editors[0] ? QSize(sz.width(), sz.height() + editors[0]->height() + 1) : sz;
 }

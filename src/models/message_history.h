@@ -7,11 +7,11 @@
 #include "dbc/dbc_manager.h"
 #include "streams/message_state.h"
 
-class MessageLogModel : public QAbstractTableModel {
+class MessageHistoryModel : public QAbstractTableModel {
   Q_OBJECT
 
 public:
-  MessageLogModel(QObject *parent) : QAbstractTableModel(parent) {}
+  MessageHistoryModel(QObject *parent) : QAbstractTableModel(parent) {}
   void setMessage(const MessageId &message_id);
   void updateState(bool clear = false);
   void setFilter(int sig_idx, const QString &value, std::function<bool(double, double)> cmp);

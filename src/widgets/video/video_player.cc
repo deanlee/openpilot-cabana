@@ -1,7 +1,5 @@
 #include "video_player.h"
 
-#include <algorithm>
-
 #include <QAction>
 #include <QActionGroup>
 #include <QMenu>
@@ -10,10 +8,11 @@
 #include <QToolBar>
 #include <QToolButton>
 #include <QVBoxLayout>
+#include <algorithm>
 
-#include "common_widgets.h"
-#include "tools/routeinfo.h"
 #include "settings.h"
+#include "tools/routeinfo.h"
+#include "widgets/common.h"
 
 static Replay *getReplay() {
   auto stream = qobject_cast<ReplayStream *>(can);

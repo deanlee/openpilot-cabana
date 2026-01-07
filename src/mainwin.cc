@@ -180,10 +180,10 @@ void MainWindow::createDockWindows() {
 }
 
 void MainWindow::createDockWidgets() {
-  messages_widget = new MessagesWidget(this);
-  messages_dock->setWidget(messages_widget);
-  connect(messages_widget, &MessagesWidget::titleChanged, messages_dock, &QDockWidget::setWindowTitle);
-  connect(messages_widget, &MessagesWidget::msgSelectionChanged, center_widget, &CenterWidget::setMessage);
+  message_list = new MessageList(this);
+  messages_dock->setWidget(message_list);
+  connect(message_list, &MessageList::titleChanged, messages_dock, &QDockWidget::setWindowTitle);
+  connect(message_list, &MessageList::msgSelectionChanged, center_widget, &CenterWidget::setMessage);
 
   // right panel
   charts_widget = new ChartsWidget(this);
@@ -336,7 +336,7 @@ void MainWindow::openStream(AbstractStream *stream, const QString &dbc_file) {
 
 void MainWindow::startStream(AbstractStream *stream, QString dbc_file) {
   center_widget->clear();
-  delete messages_widget;
+  delete message_list;
   delete video_splitter;
 
   can = stream;
@@ -582,8 +582,8 @@ void MainWindow::closeEvent(QCloseEvent *event) {
   if (can && !can->liveStreaming()) {
     settings.video_splitter_state = video_splitter->saveState();
   }
-  if (messages_widget) {
-    settings.message_header_state = messages_widget->saveHeaderState();
+  if (message_list) {
+    settings.message_header_state = message_list->saveHeaderState();
   }
 
   saveSessionState();
@@ -597,13 +597,13 @@ void MainWindow::setOption() {
 
 void MainWindow::findSimilarBits() {
   FindSimilarBitsDlg *dlg = new FindSimilarBitsDlg(this);
-  connect(dlg, &FindSimilarBitsDlg::openMessage, messages_widget, &MessagesWidget::selectMessage);
+  connect(dlg, &FindSimilarBitsDlg::openMessage, message_list, &MessageList::selectMessage);
   dlg->show();
 }
 
 void MainWindow::findSignal() {
   FindSignalDlg *dlg = new FindSignalDlg(this);
-  connect(dlg, &FindSignalDlg::openMessage, messages_widget, &MessagesWidget::selectMessage);
+  connect(dlg, &FindSignalDlg::openMessage, message_list, &MessageList::selectMessage);
   dlg->show();
 }
 
@@ -640,7 +640,7 @@ void MainWindow::saveSessionState() {
   for (auto &f : GetDBC()->allDBCFiles())
     if (!f->isEmpty()) { settings.recent_dbc_file = f->filename; break; }
 
-  if (auto *detail = center_widget->getDetailWidget()) {
+  if (auto *detail = center_widget->getMessageDetails()) {
     auto [active_id, ids] = detail->serializeMessageIds();
     settings.active_msg_id = active_id;
     settings.selected_msg_ids = ids;
@@ -658,7 +658,7 @@ void MainWindow::restoreSessionState() {
   if (dbc_file != settings.recent_dbc_file) return;
 
   if (!settings.selected_msg_ids.isEmpty())
-    center_widget->ensureDetailWidget()->restoreTabs(settings.active_msg_id, settings.selected_msg_ids);
+    center_widget->ensureMessageDetails()->restoreTabs(settings.active_msg_id, settings.selected_msg_ids);
 
   if (charts_widget != nullptr && !settings.active_charts.empty())
     charts_widget->restoreChartsFromIds(settings.active_charts);
@@ -676,9 +676,9 @@ void HelpOverlay::paintEvent(QPaintEvent *event) {
   QPainter painter(this);
   painter.fillRect(rect(), QColor(0, 0, 0, 50));
   auto parent = parentWidget();
-  drawHelpForWidget(painter, parent->findChild<MessagesWidget *>());
+  drawHelpForWidget(painter, parent->findChild<MessageList *>());
   drawHelpForWidget(painter, parent->findChild<BinaryView *>());
-  drawHelpForWidget(painter, parent->findChild<SignalView *>());
+  drawHelpForWidget(painter, parent->findChild<SignalEditor *>());
   drawHelpForWidget(painter, parent->findChild<ChartsWidget *>());
   drawHelpForWidget(painter, parent->findChild<VideoPlayer *>());
 }

@@ -1,4 +1,4 @@
-#include "common_widgets.h"
+#include "common.h"
 
 #include <QApplication>
 #include <QStyle>

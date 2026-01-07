@@ -1,4 +1,4 @@
-#include "binaryview.h"
+#include "binary_view.h"
 
 #include <QFontDatabase>
 #include <QHeaderView>

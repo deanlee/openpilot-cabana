@@ -11,7 +11,7 @@
 #include <utility>
 
 #include "chart/signalselector.h"
-#include "common_widgets.h"
+#include "widgets/common.h"
 #include "dbc/dbc_manager.h"
 #include "streams/abstractstream.h"
 

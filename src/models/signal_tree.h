@@ -52,7 +52,7 @@ private:
   MessageId msg_id;
   QString filter_str;
   std::unique_ptr<Item> root;
-  friend class SignalView;
+  friend class SignalEditor;
   friend class SignalTreeDelegate;
 };
 
