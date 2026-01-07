@@ -31,18 +31,6 @@ QSize SignalTreeDelegate::sizeHint(const QStyleOptionViewItem& option, const QMo
   return QSize(-1, height);
 }
 
-void SignalTreeDelegate::updateEditorGeometry(QWidget* editor, const QStyleOptionViewItem& option, const QModelIndex& index) const {
-  auto item = (SignalTreeModel::Item*)index.internalPointer();
-  if (editor && item->type == SignalTreeModel::Item::Sig && index.column() == 1) {
-    QRect geom = option.rect;
-    geom.setLeft(geom.right() - editor->sizeHint().width());
-    editor->setGeometry(geom);
-    button_size = geom.size();
-    return;
-  }
-  QStyledItemDelegate::updateEditorGeometry(editor, option, index);
-}
-
 void SignalTreeDelegate::paint(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const {
   auto item = static_cast<SignalTreeModel::Item*>(index.internalPointer());
 
