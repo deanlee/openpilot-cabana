@@ -13,13 +13,13 @@
 
 #include "msgq/visionipc/visionipc_client.h"
 
-class CameraWidget : public QOpenGLWidget, protected QOpenGLFunctions {
+class CameraView : public QOpenGLWidget, protected QOpenGLFunctions {
   Q_OBJECT
 
 public:
   using QOpenGLWidget::QOpenGLWidget;
-  explicit CameraWidget(std::string stream_name, VisionStreamType stream_type, QWidget* parent = nullptr);
-  ~CameraWidget();
+  explicit CameraView(std::string stream_name, VisionStreamType stream_type, QWidget* parent = nullptr);
+  ~CameraView();
   void setStreamType(VisionStreamType type) { requested_stream_type = type; }
   VisionStreamType getStreamType() { return active_stream_type; }
   void stopVipcThread();

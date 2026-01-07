@@ -194,7 +194,7 @@ void MainWindow::createDockWidgets() {
 
   // splitter between video and charts
   video_splitter = new QSplitter(Qt::Vertical, this);
-  video_widget = new VideoWidget(this);
+  video_widget = new VideoPlayer(this);
   video_splitter->addWidget(video_widget);
 
   video_splitter->addWidget(charts_container);
@@ -203,7 +203,7 @@ void MainWindow::createDockWidgets() {
   video_splitter->handle(1)->setEnabled(!can->liveStreaming());
   video_dock->setWidget(video_splitter);
   connect(charts_widget, &ChartsWidget::toggleChartsDocking, this, &MainWindow::toggleChartsDocking);
-  connect(charts_widget, &ChartsWidget::showTip, video_widget, &VideoWidget::showThumbnail);
+  connect(charts_widget, &ChartsWidget::showTip, video_widget, &VideoPlayer::showThumbnail);
 }
 
 void MainWindow::createStatusBar() {
@@ -680,7 +680,7 @@ void HelpOverlay::paintEvent(QPaintEvent *event) {
   drawHelpForWidget(painter, parent->findChild<BinaryView *>());
   drawHelpForWidget(painter, parent->findChild<SignalView *>());
   drawHelpForWidget(painter, parent->findChild<ChartsWidget *>());
-  drawHelpForWidget(painter, parent->findChild<VideoWidget *>());
+  drawHelpForWidget(painter, parent->findChild<VideoPlayer *>());
 }
 
 void HelpOverlay::drawHelpForWidget(QPainter &painter, QWidget *w) {

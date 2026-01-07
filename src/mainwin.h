@@ -14,7 +14,7 @@
 #include "tools/findsimilarbits.h"
 #include "widgets/detailwidget.h"
 #include "widgets/messageswidget.h"
-#include "widgets/videowidget.h"
+#include "widgets/video/video_player.h"
 
 class MainWindow : public QMainWindow {
   Q_OBJECT
@@ -76,7 +76,7 @@ protected:
   void saveSessionState();
   void restoreSessionState();
 
-  VideoWidget *video_widget = nullptr;
+  VideoPlayer *video_widget = nullptr;
   QDockWidget *video_dock;
   QDockWidget *messages_dock;
   MessagesWidget *messages_widget = nullptr;
