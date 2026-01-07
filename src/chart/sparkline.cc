@@ -6,7 +6,7 @@
 #include <algorithm>
 #include <limits>
 
-void Sparkline::update(const cabana::Signal* sig, CanEventIter first, CanEventIter last, int time_range, QSize size) {
+void Sparkline::update(const dbc::Signal* sig, CanEventIter first, CanEventIter last, int time_range, QSize size) {
   signal_ = sig;
   if (first == last || size.isEmpty()) {
     pixmap = QPixmap();
@@ -19,7 +19,7 @@ void Sparkline::update(const cabana::Signal* sig, CanEventIter first, CanEventIt
   render();
 }
 
-void Sparkline::updateDataPoints(const cabana::Signal* sig, CanEventIter first, CanEventIter last) {
+void Sparkline::updateDataPoints(const dbc::Signal* sig, CanEventIter first, CanEventIter last) {
   uint64_t first_ts = (*first)->mono_time;
   uint64_t last_ts = (*(last - 1))->mono_time;
   current_window_min_ts_ = first_ts;

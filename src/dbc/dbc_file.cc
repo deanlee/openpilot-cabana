@@ -4,7 +4,9 @@
 #include <QFileInfo>
 #include <QRegularExpression>
 
-DBCFile::DBCFile(const QString &dbc_file_name) {
+namespace dbc {
+
+File::File(const QString &dbc_file_name) {
   QFile file(dbc_file_name);
   if (file.open(QIODevice::ReadOnly)) {
     name_ = QFileInfo(dbc_file_name).baseName();
@@ -15,29 +17,29 @@ DBCFile::DBCFile(const QString &dbc_file_name) {
   }
 }
 
-DBCFile::DBCFile(const QString &name, const QString &content) : name_(name), filename("") {
+File::File(const QString &name, const QString &content) : name_(name), filename("") {
   parse(content);
 }
 
-bool DBCFile::save() {
+bool File::save() {
   assert(!filename.isEmpty());
   return writeContents(filename);
 }
 
-bool DBCFile::saveAs(const QString &new_filename) {
+bool File::saveAs(const QString &new_filename) {
   filename = new_filename;
   return save();
 }
 
-bool DBCFile::writeContents(const QString &fn) {
+bool File::writeContents(const QString &fn) {
   QFile file(fn);
   if (file.open(QIODevice::WriteOnly)) {
-    return file.write(generateDBC().toUtf8()) >= 0;
+    return file.write(generateGetDBC().toUtf8()) >= 0;
   }
   return false;
 }
 
-void DBCFile::updateMsg(const MessageId &id, const QString &name, uint32_t size, const QString &node, const QString &comment) {
+void File::updateMsg(const MessageId &id, const QString &name, uint32_t size, const QString &node, const QString &comment) {
   auto &m = msgs[id.address];
   m.address = id.address;
   m.name = name;
@@ -46,27 +48,27 @@ void DBCFile::updateMsg(const MessageId &id, const QString &name, uint32_t size,
   m.comment = comment;
 }
 
-cabana::Msg *DBCFile::msg(uint32_t address) {
+dbc::Msg *File::msg(uint32_t address) {
   auto it = msgs.find(address);
   return it != msgs.end() ? &it->second : nullptr;
 }
 
-cabana::Msg *DBCFile::msg(const QString &name) {
+dbc::Msg *File::msg(const QString &name) {
   auto it = std::find_if(msgs.begin(), msgs.end(), [&name](auto &m) { return m.second.name == name; });
   return it != msgs.end() ? &(it->second) : nullptr;
 }
 
-cabana::Signal *DBCFile::signal(uint32_t address, const QString &name) {
+dbc::Signal *File::signal(uint32_t address, const QString &name) {
   auto m = msg(address);
-  return m ? (cabana::Signal *)m->sig(name) : nullptr;
+  return m ? (dbc::Signal *)m->sig(name) : nullptr;
 }
 
-void DBCFile::parse(const QString &content) {
+void File::parse(const QString &content) {
   msgs.clear();
 
   int line_num = 0;
   QString line;
-  cabana::Msg *current_msg = nullptr;
+  dbc::Msg *current_msg = nullptr;
   int multiplexor_cnt = 0;
   bool seen_first = false;
   QTextStream stream((QString *)&content);
@@ -108,7 +110,7 @@ void DBCFile::parse(const QString &content) {
   }
 }
 
-cabana::Msg *DBCFile::parseBO(const QString &line) {
+dbc::Msg *File::parseBO(const QString &line) {
   static QRegularExpression bo_regexp(R"(^BO_ (?<address>\w+) (?<name>\w+) *: (?<size>\w+) (?<transmitter>\w+))");
 
   QRegularExpressionMatch match = bo_regexp.match(line);
@@ -120,7 +122,7 @@ cabana::Msg *DBCFile::parseBO(const QString &line) {
     throw std::runtime_error(QString("Duplicate message address: %1").arg(address).toStdString());
 
   // Create a new message object
-  cabana::Msg *msg = &msgs[address];
+  dbc::Msg *msg = &msgs[address];
   msg->address = address;
   msg->name = match.captured("name");
   msg->size = match.captured("size").toULong();
@@ -128,7 +130,7 @@ cabana::Msg *DBCFile::parseBO(const QString &line) {
   return msg;
 }
 
-void DBCFile::parseCM_BO(const QString &line, const QString &content, const QString &raw_line, const QTextStream &stream) {
+void File::parseCM_BO(const QString &line, const QString &content, const QString &raw_line, const QTextStream &stream) {
   static QRegularExpression msg_comment_regexp(R"(^CM_ BO_ *(?<address>\w+) *\"(?<comment>(?:[^"\\]|\\.)*)\"\s*;)");
 
   QString parse_line = line;
@@ -140,11 +142,11 @@ void DBCFile::parseCM_BO(const QString &line, const QString &content, const QStr
   if (!match.hasMatch())
     throw std::runtime_error("Invalid message comment format");
 
-  if (auto m = (cabana::Msg *)msg(match.captured("address").toUInt()))
+  if (auto m = (dbc::Msg *)msg(match.captured("address").toUInt()))
     m->comment = match.captured("comment").trimmed().replace("\\\"", "\"");
 }
 
-void DBCFile::parseSG(const QString &line, cabana::Msg *current_msg, int &multiplexor_cnt) {
+void File::parseSG(const QString &line, dbc::Msg *current_msg, int &multiplexor_cnt) {
   static QRegularExpression sg_regexp(R"(^SG_ (\w+) *: (\d+)\|(\d+)@(\d+)([\+|\-]) \(([0-9.+\-eE]+),([0-9.+\-eE]+)\) \[([0-9.+\-eE]+)\|([0-9.+\-eE]+)\] \"(.*)\" (.*))");
   static QRegularExpression sgm_regexp(R"(^SG_ (\w+) (\w+) *: (\d+)\|(\d+)@(\d+)([\+|\-]) \(([0-9.+\-eE]+),([0-9.+\-eE]+)\) \[([0-9.+\-eE]+)\|([0-9.+\-eE]+)\] \"(.*)\" (.*))");
 
@@ -164,7 +166,7 @@ void DBCFile::parseSG(const QString &line, cabana::Msg *current_msg, int &multip
   if (current_msg->sig(name) != nullptr)
     throw std::runtime_error("Duplicate signal name");
 
-  cabana::Signal s{};
+  dbc::Signal s{};
   if (offset == 1) {
     auto indicator = match.captured(2);
     if (indicator == "M") {
@@ -173,9 +175,9 @@ void DBCFile::parseSG(const QString &line, cabana::Msg *current_msg, int &multip
       if (multiplexor_cnt >= 2)
         throw std::runtime_error("Multiple multiplexor");
 
-      s.type = cabana::Signal::Type::Multiplexor;
+      s.type = dbc::Signal::Type::Multiplexor;
     } else {
-      s.type = cabana::Signal::Type::Multiplexed;
+      s.type = dbc::Signal::Type::Multiplexed;
       s.multiplex_value = indicator.mid(1).toInt();
     }
   }
@@ -190,10 +192,10 @@ void DBCFile::parseSG(const QString &line, cabana::Msg *current_msg, int &multip
   s.max = match.captured(9 + offset).toDouble();
   s.unit = match.captured(10 + offset);
   s.receiver_name = match.captured(11 + offset).trimmed();
-  current_msg->sigs.push_back(new cabana::Signal(s));
+  current_msg->sigs.push_back(new dbc::Signal(s));
 }
 
-void DBCFile::parseCM_SG(const QString &line, const QString &content, const QString &raw_line, const QTextStream &stream) {
+void File::parseCM_SG(const QString &line, const QString &content, const QString &raw_line, const QTextStream &stream) {
   static QRegularExpression sg_comment_regexp(R"(^CM_ SG_ *(\w+) *(\w+) *\"((?:[^"\\]|\\.)*)\"\s*;)");
 
   QString parse_line = line;
@@ -210,7 +212,7 @@ void DBCFile::parseCM_SG(const QString &line, const QString &content, const QStr
   }
 }
 
-void DBCFile::parseVAL(const QString &line) {
+void File::parseVAL(const QString &line) {
   static QRegularExpression val_regexp(R"(VAL_ (\w+) (\w+) (\s*[-+]?[0-9]+\s+\".+?\"[^;]*))");
 
   auto match = val_regexp.match(line);
@@ -229,7 +231,7 @@ void DBCFile::parseVAL(const QString &line) {
   }
 }
 
-QString DBCFile::generateDBC() {
+QString File::generateGetDBC() {
   QString dbc_string, comment, val_desc;
   for (const auto &[address, m] : msgs) {
     const QString transmitter = m.transmitter.isEmpty() ? DEFAULT_NODE_NAME : m.transmitter;
@@ -239,9 +241,9 @@ QString DBCFile::generateDBC() {
     }
     for (auto sig : m.getSignals()) {
       QString multiplexer_indicator;
-      if (sig->type == cabana::Signal::Type::Multiplexor) {
+      if (sig->type == dbc::Signal::Type::Multiplexor) {
         multiplexer_indicator = "M ";
-      } else if (sig->type == cabana::Signal::Type::Multiplexed) {
+      } else if (sig->type == dbc::Signal::Type::Multiplexed) {
         multiplexer_indicator = QString("m%1 ").arg(sig->multiplex_value);
       }
       dbc_string += QString(" SG_ %1 %2: %3|%4@%5%6 (%7,%8) [%9|%10] \"%11\" %12\n")
@@ -272,3 +274,5 @@ QString DBCFile::generateDBC() {
   }
   return header + dbc_string + comment + val_desc;
 }
+
+} // namespace dbc

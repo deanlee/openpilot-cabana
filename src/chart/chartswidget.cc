@@ -116,7 +116,7 @@ ChartsWidget::ChartsWidget(QWidget *parent) : QFrame(parent) {
   align_timer->setSingleShot(true);
   connect(align_timer, &QTimer::timeout, this, &ChartsWidget::alignCharts);
   connect(auto_scroll_timer, &QTimer::timeout, this, &ChartsWidget::doAutoScroll);
-  connect(dbc(), &DBCManager::DBCFileChanged, this, &ChartsWidget::removeAll);
+  connect(GetDBC(), &dbc::Manager::DBCFileChanged, this, &ChartsWidget::removeAll);
   connect(can, &AbstractStream::eventsMerged, this, &ChartsWidget::eventsMerged);
   connect(can, &AbstractStream::snapshotsUpdated, this, &ChartsWidget::updateState);
   connect(can, &AbstractStream::seeking, this, &ChartsWidget::updateState);
@@ -270,7 +270,7 @@ void ChartsWidget::settingChanged() {
   }
 }
 
-ChartView *ChartsWidget::findChart(const MessageId &id, const cabana::Signal *sig) {
+ChartView *ChartsWidget::findChart(const MessageId &id, const dbc::Signal *sig) {
   for (auto c : charts)
     if (c->hasSignal(id, sig)) return c;
   return nullptr;
@@ -290,7 +290,7 @@ ChartView *ChartsWidget::createChart(int pos) {
   return chart;
 }
 
-void ChartsWidget::showChart(const MessageId &id, const cabana::Signal *sig, bool show, bool merge) {
+void ChartsWidget::showChart(const MessageId &id, const dbc::Signal *sig, bool show, bool merge) {
   ChartView *chart = findChart(id, sig);
   if (show && !chart) {
     chart = merge && currentCharts().size() > 0 ? currentCharts().front() : createChart();
@@ -342,7 +342,7 @@ void ChartsWidget::restoreChartsFromIds(const QStringList& chart_ids) {
       const auto sig_parts = part.split('|');
       if (sig_parts.size() != 2) continue;
       MessageId msg_id = MessageId::fromString(sig_parts[0]);
-      if (auto* msg = dbc()->msg(msg_id))
+      if (auto* msg = GetDBC()->msg(msg_id))
         if (auto* sig = msg->sig(sig_parts[1]))
           showChart(msg_id, sig, true, index++ > 0);
     }

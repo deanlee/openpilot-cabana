@@ -22,7 +22,7 @@ void exportToCSV(const QString &file_name, std::optional<MessageId> msg_id) {
 
 void exportSignalsToCSV(const QString &file_name, const MessageId &msg_id) {
   QFile file(file_name);
-  if (auto msg = dbc()->msg(msg_id); msg && msg->sigs.size() && file.open(QIODevice::ReadWrite | QIODevice::Truncate)) {
+  if (auto msg = GetDBC()->msg(msg_id); msg && msg->sigs.size() && file.open(QIODevice::ReadWrite | QIODevice::Truncate)) {
     QTextStream stream(&file);
     stream << "time,addr,bus";
     for (auto s : msg->sigs)

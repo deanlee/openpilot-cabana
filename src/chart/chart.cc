@@ -53,10 +53,10 @@ ChartView::ChartView(const std::pair<double, double> &x_range, ChartsWidget *par
   connect(axis_y, &QAbstractAxis::titleTextChanged, this, &ChartView::resetChartCache);
   connect(window()->windowHandle(), &QWindow::screenChanged, this, &ChartView::resetChartCache);
 
-  connect(dbc(), &DBCManager::signalRemoved, this, &ChartView::signalRemoved);
-  connect(dbc(), &DBCManager::signalUpdated, this, &ChartView::signalUpdated);
-  connect(dbc(), &DBCManager::msgRemoved, this, &ChartView::msgRemoved);
-  connect(dbc(), &DBCManager::msgUpdated, this, &ChartView::msgUpdated);
+  connect(GetDBC(), &dbc::Manager::signalRemoved, this, &ChartView::signalRemoved);
+  connect(GetDBC(), &dbc::Manager::signalUpdated, this, &ChartView::signalUpdated);
+  connect(GetDBC(), &dbc::Manager::msgRemoved, this, &ChartView::msgRemoved);
+  connect(GetDBC(), &dbc::Manager::msgUpdated, this, &ChartView::msgUpdated);
 }
 
 void ChartView::createToolButtons() {
@@ -120,7 +120,7 @@ void ChartView::setTheme(QChart::ChartTheme theme) {
   }
 }
 
-void ChartView::addSignal(const MessageId &msg_id, const cabana::Signal *sig) {
+void ChartView::addSignal(const MessageId &msg_id, const dbc::Signal *sig) {
   if (hasSignal(msg_id, sig)) return;
 
   QXYSeries *series = createSeries(series_type, sig->color);
@@ -131,7 +131,7 @@ void ChartView::addSignal(const MessageId &msg_id, const cabana::Signal *sig) {
   emit charts_widget->seriesChanged();
 }
 
-bool ChartView::hasSignal(const MessageId &msg_id, const cabana::Signal *sig) const {
+bool ChartView::hasSignal(const MessageId &msg_id, const dbc::Signal *sig) const {
   return std::any_of(sigs.cbegin(), sigs.cend(), [&](auto &s) { return s.msg_id == msg_id && s.sig == sig; });
 }
 
@@ -155,7 +155,7 @@ void ChartView::removeIf(std::function<bool(const SigItem &s)> predicate) {
   }
 }
 
-void ChartView::signalUpdated(const cabana::Signal *sig) {
+void ChartView::signalUpdated(const dbc::Signal *sig) {
   auto it = std::find_if(sigs.begin(), sigs.end(), [sig](auto &s) { return s.sig == sig; });
   if (it != sigs.end()) {
     if (it->series->color() != sig->color) {
@@ -283,7 +283,7 @@ void ChartView::updateSeriesPoints() {
   }
 }
 
-void ChartView::appendCanEvents(const cabana::Signal *sig, const std::vector<const CanEvent *> &events,
+void ChartView::appendCanEvents(const dbc::Signal *sig, const std::vector<const CanEvent *> &events,
                                 std::vector<QPointF> &vals, std::vector<QPointF> &step_vals) {
   vals.reserve(vals.size() + events.capacity());
   step_vals.reserve(step_vals.size() + events.capacity() * 2);
@@ -300,7 +300,7 @@ void ChartView::appendCanEvents(const cabana::Signal *sig, const std::vector<con
   }
 }
 
-void ChartView::updateSeries(const cabana::Signal *sig, const MessageEventsMap *msg_new_events) {
+void ChartView::updateSeries(const dbc::Signal *sig, const MessageEventsMap *msg_new_events) {
   for (auto &s : sigs) {
     if (!sig || s.sig == sig) {
       if (!msg_new_events) {

@@ -10,7 +10,7 @@ constexpr int CAN_MAX_DATA_BYTES = 64;
 
 typedef std::vector<std::pair<double, QString>> ValueDescription;
 
-namespace cabana {
+namespace dbc {
 
 class Signal {
  public:
@@ -19,8 +19,8 @@ class Signal {
   void update();
   bool getValue(const uint8_t* data, size_t data_size, double* val) const;
   QString formatValue(double value, bool with_unit = true) const;
-  bool operator==(const cabana::Signal& other) const;
-  inline bool operator!=(const cabana::Signal& other) const { return !(*this == other); }
+  bool operator==(const dbc::Signal& other) const;
+  inline bool operator!=(const dbc::Signal& other) const { return !(*this == other); }
 
   enum class Type {
     Normal = 0,
@@ -50,7 +50,7 @@ class Signal {
 }  // namespace cabana
 
 // Helper functions
-double decodeSignal(const uint8_t* data, size_t data_size, const cabana::Signal& sig);
-void updateMsbLsb(cabana::Signal& s);
+double decodeSignal(const uint8_t* data, size_t data_size, const dbc::Signal& sig);
+void updateMsbLsb(dbc::Signal& s);
 inline int flipBitPos(int start_bit) { return 8 * (start_bit / 8) + 7 - start_bit % 8; }
 inline QString doubleToString(double value) { return QString::number(value, 'g', std::numeric_limits<double>::digits10); }

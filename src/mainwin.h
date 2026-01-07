@@ -48,10 +48,10 @@ protected:
   bool eventFilter(QObject *obj, QEvent *event) override;
   void remindSaveChanges();
   void closeFile(SourceSet s = SOURCE_ALL);
-  void closeFile(DBCFile *dbc_file);
-  void saveFile(DBCFile *dbc_file);
-  void saveFileAs(DBCFile *dbc_file);
-  void saveFileToClipboard(DBCFile *dbc_file);
+  void closeFile(dbc::File *dbc_file);
+  void saveFile(dbc::File *dbc_file);
+  void saveFileAs(dbc::File *dbc_file);
+  void saveFileToClipboard(dbc::File *dbc_file);
   void loadFingerprints();
   void loadFromClipboard(SourceSet s = SOURCE_ALL, bool close_all = true);
   void updateRecentFiles(const QString &fn);

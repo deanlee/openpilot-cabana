@@ -70,8 +70,8 @@ void SignalTreeDelegate::drawNameColumn(QPainter* p, QRect r, const QStyleOption
     r.setLeft(iconRect.right() + kPadding);
 
     // 2. Multiplexer Indicator (Badge)
-    if (item->sig->type != cabana::Signal::Type::Normal) {
-      QString m_text = (item->sig->type == cabana::Signal::Type::Multiplexor)
+    if (item->sig->type != dbc::Signal::Type::Normal) {
+      QString m_text = (item->sig->type == dbc::Signal::Type::Multiplexor)
                            ? "M"
                            : QString("m%1").arg(item->sig->multiplex_value);
 
@@ -186,7 +186,7 @@ QWidget* SignalTreeDelegate::createEditor(QWidget* parent, const QStyleOptionVie
       e->setValidator(double_validator);
 
     if (item->type == SignalTreeModel::Item::Name) {
-      QCompleter* completer = new QCompleter(dbc()->signalNames(), e);
+      QCompleter* completer = new QCompleter(GetDBC()->signalNames(), e);
       completer->setCaseSensitivity(Qt::CaseInsensitive);
       completer->setFilterMode(Qt::MatchContains);
       e->setCompleter(completer);
@@ -199,11 +199,11 @@ QWidget* SignalTreeDelegate::createEditor(QWidget* parent, const QStyleOptionVie
     return spin;
   } else if (item->type == SignalTreeModel::Item::SignalType) {
     QComboBox* c = new QComboBox(parent);
-    c->addItem(signalTypeToString(cabana::Signal::Type::Normal), (int)cabana::Signal::Type::Normal);
-    if (!dbc()->msg(((SignalTreeModel*)index.model())->msg_id)->multiplexor) {
-      c->addItem(signalTypeToString(cabana::Signal::Type::Multiplexor), (int)cabana::Signal::Type::Multiplexor);
-    } else if (item->sig->type != cabana::Signal::Type::Multiplexor) {
-      c->addItem(signalTypeToString(cabana::Signal::Type::Multiplexed), (int)cabana::Signal::Type::Multiplexed);
+    c->addItem(signalTypeToString(dbc::Signal::Type::Normal), (int)dbc::Signal::Type::Normal);
+    if (!GetDBC()->msg(((SignalTreeModel*)index.model())->msg_id)->multiplexor) {
+      c->addItem(signalTypeToString(dbc::Signal::Type::Multiplexor), (int)dbc::Signal::Type::Multiplexor);
+    } else if (item->sig->type != dbc::Signal::Type::Multiplexor) {
+      c->addItem(signalTypeToString(dbc::Signal::Type::Multiplexed), (int)dbc::Signal::Type::Multiplexed);
     }
     return c;
   } else if (item->type == SignalTreeModel::Item::Desc) {
@@ -363,7 +363,7 @@ void SignalTreeDelegate::clearHoverState() {
   hoverButton = -1;
 }
 
-int SignalTreeDelegate::nameColumnWidth(const cabana::Signal* sig) const {
+int SignalTreeDelegate::nameColumnWidth(const dbc::Signal* sig) const {
   // Use the default font for the name text, and label_font for badges
   QFontMetrics nameFm(QApplication::font());
   QFontMetrics badgeFm(label_font);
@@ -372,8 +372,8 @@ int SignalTreeDelegate::nameColumnWidth(const cabana::Signal* sig) const {
 
   width += kColorLabelW + kPadding;
 
-  if (sig->type != cabana::Signal::Type::Normal) {
-    QString m_text = (sig->type == cabana::Signal::Type::Multiplexor) ? "M" : "m00";
+  if (sig->type != dbc::Signal::Type::Normal) {
+    QString m_text = (sig->type == dbc::Signal::Type::Multiplexor) ? "M" : "m00";
     width += badgeFm.horizontalAdvance(m_text) + 8 + kPadding;
   }
 

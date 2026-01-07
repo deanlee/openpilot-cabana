@@ -67,8 +67,8 @@ SignalView::SignalView(ChartsWidget *charts, QWidget *parent) : charts(charts), 
   connect(tree, &QTreeView::expanded, this, &SignalView::updateColumnWidths);
   connect(model, &QAbstractItemModel::modelReset, this, &SignalView::rowsChanged);
   connect(model, &QAbstractItemModel::rowsRemoved, this, &SignalView::rowsChanged);
-  connect(dbc(), &DBCManager::signalAdded, this, &SignalView::handleSignalAdded);
-  connect(dbc(), &DBCManager::signalUpdated, this, &SignalView::handleSignalUpdated);
+  connect(GetDBC(), &dbc::Manager::signalAdded, this, &SignalView::handleSignalAdded);
+  connect(GetDBC(), &dbc::Manager::signalUpdated, this, &SignalView::handleSignalUpdated);
   connect(tree->verticalScrollBar(), &QScrollBar::valueChanged, [this]() { updateState(); });
   connect(tree->verticalScrollBar(), &QScrollBar::rangeChanged, [this]() { updateState(); });
   connect(can, &AbstractStream::snapshotsUpdated, this, &SignalView::updateState);
@@ -90,7 +90,7 @@ void SignalView::rowsChanged() {
   updateColumnWidths();
 }
 
-void SignalView::selectSignal(const cabana::Signal *sig, bool expand) {
+void SignalView::selectSignal(const dbc::Signal *sig, bool expand) {
   if (int row = model->signalRow(sig); row != -1) {
     auto idx = model->index(row, 0);
     if (expand) {
@@ -113,7 +113,7 @@ void SignalView::updateChartState() {
   }
 }
 
-void SignalView::signalHovered(const cabana::Signal *sig) {
+void SignalView::signalHovered(const dbc::Signal *sig) {
   auto &children = model->root->children;
   for (int i = 0; i < children.size(); ++i) {
     bool highlight = children[i]->sig == sig;
@@ -139,13 +139,13 @@ void SignalView::setSparklineRange(int value) {
   updateState();
 }
 
-void SignalView::handleSignalAdded(MessageId id, const cabana::Signal *sig) {
+void SignalView::handleSignalAdded(MessageId id, const dbc::Signal *sig) {
   if (id.address == model->msg_id.address) {
     selectSignal(sig);
   }
 }
 
-void SignalView::handleSignalUpdated(const cabana::Signal *sig) {
+void SignalView::handleSignalUpdated(const dbc::Signal *sig) {
   if (int row = model->signalRow(sig); row != -1)
     updateState();
 }
@@ -204,7 +204,7 @@ void SignalView::updateState(const std::set<MessageId> *msgs) {
 }
 
 void SignalView::updateColumnWidths() {
-  auto* m = dbc()->msg(model->msg_id);
+  auto* m = GetDBC()->msg(model->msg_id);
   if (!m) return;
 
   int max_content_w = 0;
@@ -212,7 +212,7 @@ void SignalView::updateColumnWidths() {
 
   for (const auto *sig : m->getSignals()) {
     int w = delegate->nameColumnWidth(sig);
-    if (sig->type == cabana::Signal::Type::Multiplexed) {
+    if (sig->type == dbc::Signal::Type::Multiplexed) {
       w += indentation;
     }
 

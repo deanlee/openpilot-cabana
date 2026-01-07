@@ -55,7 +55,7 @@ QVariant MessageTableModel::data(const QModelIndex &index, int role) const {
   } else if (role == BytesRole && index.column() == Column::DATA && item.id.source != INVALID_SOURCE) {
     return QVariant::fromValue((void*)(&item.data->dat));
   } else if (role == Qt::ToolTipRole && index.column() == Column::NAME) {
-    auto msg = dbc()->msg(item.id);
+    auto msg = GetDBC()->msg(item.id);
     auto tooltip = item.name;
     if (msg && !msg->comment.isEmpty()) tooltip += "<br /><span style=\"color:gray;\">" + msg->comment + "</span>";
     return tooltip;
@@ -79,7 +79,7 @@ void MessageTableModel::showInactivemessages(bool show) {
 
 void MessageTableModel::dbcModified() {
   dbc_messages_.clear();
-  for (const auto &[_, m] : dbc()->getMessages(-1)) {
+  for (const auto &[_, m] : GetDBC()->getMessages(-1)) {
     dbc_messages_.insert(MessageId{INVALID_SOURCE, m.address});
   }
   filterAndSort();
@@ -130,7 +130,7 @@ bool MessageTableModel::match(const MessageTableModel::Item &item) {
       case Column::NAME: {
         match = item.name.contains(txt, Qt::CaseInsensitive);
         if (!match) {
-          const auto m = dbc()->msg(item.id);
+          const auto m = GetDBC()->msg(item.id);
           match = m && std::any_of(m->sigs.cbegin(), m->sigs.cend(),
                                    [&txt](const auto &s) { return s->name.contains(txt, Qt::CaseInsensitive); });
         }
@@ -177,7 +177,7 @@ bool MessageTableModel::filterAndSort() {
   for (const auto &id : all_messages) {
     auto *data = can->snapshot(id);
     if (show_inactive_messages || (data && data->is_active)) {
-      auto msg = dbc()->msg(id);
+      auto msg = GetDBC()->msg(id);
       Item item = {
           .id = id,
           .name = msg ? msg->name : UNTITLED,

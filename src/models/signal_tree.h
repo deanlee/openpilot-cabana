@@ -18,7 +18,7 @@ public:
     Item *parent = nullptr;
     QList<Item *> children;
 
-    const cabana::Signal *sig = nullptr;
+    const dbc::Signal *sig = nullptr;
     QString title;
     bool highlight = false;
     QString sig_val = "-";
@@ -35,17 +35,17 @@ public:
   bool setData(const QModelIndex &index, const QVariant &value, int role = Qt::EditRole) override;
   void setMessage(const MessageId &id);
   void setFilter(const QString &txt);
-  bool saveSignal(const cabana::Signal *origin_s, cabana::Signal &s);
+  bool saveSignal(const dbc::Signal *origin_s, dbc::Signal &s);
   Item *getItem(const QModelIndex &index) const;
-  int signalRow(const cabana::Signal *sig) const;
+  int signalRow(const dbc::Signal *sig) const;
 
 private:
   bool hasChildren(const QModelIndex &parent) const override;
-  void insertItem(SignalTreeModel::Item *root_item, int pos, const cabana::Signal *sig);
+  void insertItem(SignalTreeModel::Item *root_item, int pos, const dbc::Signal *sig);
   void lazyLoadItem(Item *item) const;
-  void handleSignalAdded(MessageId id, const cabana::Signal *sig);
-  void handleSignalUpdated(const cabana::Signal *sig);
-  void handleSignalRemoved(const cabana::Signal *sig);
+  void handleSignalAdded(MessageId id, const dbc::Signal *sig);
+  void handleSignalUpdated(const dbc::Signal *sig);
+  void handleSignalRemoved(const dbc::Signal *sig);
   void handleMsgChanged(MessageId id);
   void refresh();
 
@@ -56,4 +56,4 @@ private:
   friend class SignalTreeDelegate;
 };
 
-QString signalTypeToString(cabana::Signal::Type type);
+QString signalTypeToString(dbc::Signal::Type type);

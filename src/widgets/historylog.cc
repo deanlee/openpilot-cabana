@@ -81,7 +81,7 @@ LogsWidget::LogsWidget(QWidget *parent) : QFrame(parent) {
   connect(value_edit, &QLineEdit::textEdited, this, &LogsWidget::filterChanged);
   connect(export_btn, &QToolButton::clicked, this, &LogsWidget::exportToCSV);
   connect(can, &AbstractStream::seekedTo, model, &MessageLogModel::reset);
-  connect(dbc(), &DBCManager::DBCFileChanged, model, &MessageLogModel::reset);
+  connect(GetDBC(), &dbc::Manager::DBCFileChanged, model, &MessageLogModel::reset);
   connect(UndoStack::instance(), &QUndoStack::indexChanged, model, &MessageLogModel::reset);
   connect(model, &MessageLogModel::modelReset, this, &LogsWidget::modelReset);
   connect(model, &MessageLogModel::rowsInserted, [this]() { export_btn->setEnabled(true); });

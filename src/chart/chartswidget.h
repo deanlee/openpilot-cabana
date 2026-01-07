@@ -41,8 +41,8 @@ class ChartsWidget : public QFrame {
 
 public:
   ChartsWidget(QWidget *parent = nullptr);
-  void showChart(const MessageId &id, const cabana::Signal *sig, bool show, bool merge);
-  inline bool hasSignal(const MessageId &id, const cabana::Signal *sig) { return findChart(id, sig) != nullptr; }
+  void showChart(const MessageId &id, const dbc::Signal *sig, bool show, bool merge);
+  inline bool hasSignal(const MessageId &id, const dbc::Signal *sig) { return findChart(id, sig) != nullptr; }
   QStringList serializeChartIds() const;
   void restoreChartsFromIds(const QStringList &chart_ids);
 
@@ -82,7 +82,7 @@ private:
   void newTab();
   void removeTab(int index);
   inline QList<ChartView *> &currentCharts() { return tab_charts[tabbar->tabData(tabbar->currentIndex()).toInt()]; }
-  ChartView *findChart(const MessageId &id, const cabana::Signal *sig);
+  ChartView *findChart(const MessageId &id, const dbc::Signal *sig);
 
   QLabel *title_label;
   QLabel *range_lb;

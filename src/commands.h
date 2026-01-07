@@ -29,41 +29,41 @@ public:
 
 private:
   const MessageId id;
-  cabana::Msg message;
+  dbc::Msg message;
 };
 
 class AddSigCommand : public QUndoCommand {
 public:
-  AddSigCommand(const MessageId &id, const cabana::Signal &sig, QUndoCommand *parent = nullptr);
+  AddSigCommand(const MessageId &id, const dbc::Signal &sig, QUndoCommand *parent = nullptr);
   void undo() override;
   void redo() override;
 
 private:
   const MessageId id;
   bool msg_created = false;
-  cabana::Signal signal = {};
+  dbc::Signal signal = {};
 };
 
 class RemoveSigCommand : public QUndoCommand {
 public:
-  RemoveSigCommand(const MessageId &id, const cabana::Signal *sig, QUndoCommand *parent = nullptr);
+  RemoveSigCommand(const MessageId &id, const dbc::Signal *sig, QUndoCommand *parent = nullptr);
   void undo() override;
   void redo() override;
 
 private:
   const MessageId id;
-  QList<cabana::Signal> sigs;
+  QList<dbc::Signal> sigs;
 };
 
 class EditSignalCommand : public QUndoCommand {
 public:
-  EditSignalCommand(const MessageId &id, const cabana::Signal *sig, const cabana::Signal &new_sig, QUndoCommand *parent = nullptr);
+  EditSignalCommand(const MessageId &id, const dbc::Signal *sig, const dbc::Signal &new_sig, QUndoCommand *parent = nullptr);
   void undo() override;
   void redo() override;
 
 private:
   const MessageId id;
-  QList<std::pair<cabana::Signal, cabana::Signal>> sigs; // QList<{old_sig, new_sig}>
+  QList<std::pair<dbc::Signal, dbc::Signal>> sigs; // QList<{old_sig, new_sig}>
 };
 
 namespace UndoStack {

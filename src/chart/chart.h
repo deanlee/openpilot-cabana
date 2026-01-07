@@ -31,9 +31,9 @@ class ChartView : public QChartView {
 
 public:
   ChartView(const std::pair<double, double> &x_range, ChartsWidget *parent = nullptr);
-  void addSignal(const MessageId &msg_id, const cabana::Signal *sig);
-  bool hasSignal(const MessageId &msg_id, const cabana::Signal *sig) const;
-  void updateSeries(const cabana::Signal *sig = nullptr, const MessageEventsMap *msg_new_events = nullptr);
+  void addSignal(const MessageId &msg_id, const dbc::Signal *sig);
+  bool hasSignal(const MessageId &msg_id, const dbc::Signal *sig) const;
+  void updateSeries(const dbc::Signal *sig = nullptr, const MessageEventsMap *msg_new_events = nullptr);
   void updatePlot(double cur, double min, double max);
   void setSeriesType(SeriesType type);
   void updatePlotArea(int left, bool force = false);
@@ -44,7 +44,7 @@ public:
 
   struct SigItem {
     MessageId msg_id;
-    const cabana::Signal *sig = nullptr;
+    const dbc::Signal *sig = nullptr;
     QXYSeries *series = nullptr;
     std::vector<QPointF> vals;
     std::vector<QPointF> step_vals;
@@ -58,15 +58,15 @@ signals:
   void axisYLabelWidthChanged(int w);
 
 private slots:
-  void signalUpdated(const cabana::Signal *sig);
+  void signalUpdated(const dbc::Signal *sig);
   void manageSignals();
   void handleMarkerClicked();
   void msgUpdated(MessageId id);
-  void msgRemoved(MessageId id) { removeIf([=](auto &s) { return s.msg_id.address == id.address && !dbc()->msg(id); }); }
-  void signalRemoved(const cabana::Signal *sig) { removeIf([=](auto &s) { return s.sig == sig; }); }
+  void msgRemoved(MessageId id) { removeIf([=](auto &s) { return s.msg_id.address == id.address && !GetDBC()->msg(id); }); }
+  void signalRemoved(const dbc::Signal *sig) { removeIf([=](auto &s) { return s.sig == sig; }); }
 
 private:
-  void appendCanEvents(const cabana::Signal *sig, const std::vector<const CanEvent *> &events,
+  void appendCanEvents(const dbc::Signal *sig, const std::vector<const CanEvent *> &events,
                        std::vector<QPointF> &vals, std::vector<QPointF> &step_vals);
   void createToolButtons();
   void addSeries(QXYSeries *series);

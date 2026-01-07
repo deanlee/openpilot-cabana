@@ -20,22 +20,22 @@ class SignalView : public QFrame {
 public:
   SignalView(ChartsWidget *charts, QWidget *parent);
   void setMessage(const MessageId &id);
-  void signalHovered(const cabana::Signal *sig);
+  void signalHovered(const dbc::Signal *sig);
   void updateChartState();
-  void selectSignal(const cabana::Signal *sig, bool expand = false);
+  void selectSignal(const dbc::Signal *sig, bool expand = false);
   SignalTreeModel *model = nullptr;
 
 signals:
-  void highlight(const cabana::Signal *sig);
-  void showChart(const MessageId &id, const cabana::Signal *sig, bool show, bool merge);
+  void highlight(const dbc::Signal *sig);
+  void showChart(const MessageId &id, const dbc::Signal *sig, bool show, bool merge);
 
 private:
   void rowsChanged();
   void resizeEvent(QResizeEvent* event) override;
   void updateToolBar();
   void setSparklineRange(int value);
-  void handleSignalAdded(MessageId id, const cabana::Signal *sig);
-  void handleSignalUpdated(const cabana::Signal *sig);
+  void handleSignalAdded(MessageId id, const dbc::Signal *sig);
+  void handleSignalUpdated(const dbc::Signal *sig);
   void updateState(const std::set<MessageId> *msgs = nullptr);
   void updateColumnWidths();
   std::pair<QModelIndex, QModelIndex> visibleSignalRange();

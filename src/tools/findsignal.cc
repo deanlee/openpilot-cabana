@@ -208,7 +208,7 @@ void FindSignalDlg::setInitialSignals() {
     if (!addr.isEmpty()) addresses.insert(addr.toULong(nullptr, 16));
   }
 
-  cabana::Signal sig{};
+  dbc::Signal sig{};
   sig.is_little_endian = litter_endian->isChecked();
   sig.is_signed = is_signed->isChecked();
   sig.factor = factor_edit->text().toDouble();

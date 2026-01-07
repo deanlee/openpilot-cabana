@@ -10,7 +10,7 @@ static int num_decimals(double num) {
   return dot_pos == -1 ? 0 : string.size() - dot_pos - 1;
 }
 
-void cabana::Signal::update() {
+void dbc::Signal::update() {
   updateMsbLsb(*this);
   if (receiver_name.isEmpty()) {
     receiver_name = DEFAULT_NODE_NAME;
@@ -26,7 +26,7 @@ void cabana::Signal::update() {
   precision = std::max(num_decimals(factor), num_decimals(offset));
 }
 
-QString cabana::Signal::formatValue(double value, bool with_unit) const {
+QString dbc::Signal::formatValue(double value, bool with_unit) const {
   // Show enum string
   int64_t raw_value = std::round((value - offset) / factor);
   for (const auto& [val, desc] : val_desc) {
@@ -42,7 +42,7 @@ QString cabana::Signal::formatValue(double value, bool with_unit) const {
   return val_str;
 }
 
-bool cabana::Signal::getValue(const uint8_t* data, size_t data_size, double* val) const {
+bool dbc::Signal::getValue(const uint8_t* data, size_t data_size, double* val) const {
   if (multiplexor && decodeSignal(data, data_size, *multiplexor) != multiplex_value) {
     return false;
   }
@@ -50,7 +50,7 @@ bool cabana::Signal::getValue(const uint8_t* data, size_t data_size, double* val
   return true;
 }
 
-bool cabana::Signal::operator==(const cabana::Signal& other) const {
+bool dbc::Signal::operator==(const dbc::Signal& other) const {
   return name == other.name && size == other.size &&
          start_bit == other.start_bit &&
          msb == other.msb && lsb == other.lsb &&
@@ -60,7 +60,7 @@ bool cabana::Signal::operator==(const cabana::Signal& other) const {
          multiplex_value == other.multiplex_value && type == other.type && receiver_name == other.receiver_name;
 }
 
-double decodeSignal(const uint8_t* data, size_t data_size, const cabana::Signal& sig) {
+double decodeSignal(const uint8_t* data, size_t data_size, const dbc::Signal& sig) {
   const int msb_byte = sig.msb / 8;
   if (msb_byte >= (int)data_size) return 0;
 
@@ -93,7 +93,7 @@ double decodeSignal(const uint8_t* data, size_t data_size, const cabana::Signal&
   return static_cast<int64_t>(val) * sig.factor + sig.offset;
 }
 
-void updateMsbLsb(cabana::Signal& s) {
+void updateMsbLsb(dbc::Signal& s) {
   if (s.is_little_endian) {
     s.lsb = s.start_bit;
     s.msb = s.start_bit + s.size - 1;

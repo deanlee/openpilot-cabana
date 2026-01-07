@@ -11,22 +11,22 @@ static const QStringList SIGNAL_PROPERTY_LABELS = {
     "Type", "Multiplex Value", "Extra Info", "Unit", "Comment", "Min", "Max", "Value Table"
 };
 
-QString signalTypeToString(cabana::Signal::Type type) {
-  if (type == cabana::Signal::Type::Multiplexor) return "Multiplexor Signal";
-  else if (type == cabana::Signal::Type::Multiplexed) return "Multiplexed Signal";
+QString signalTypeToString(dbc::Signal::Type type) {
+  if (type == dbc::Signal::Type::Multiplexor) return "Multiplexor Signal";
+  else if (type == dbc::Signal::Type::Multiplexed) return "Multiplexed Signal";
   else return "Normal Signal";
 }
 
 SignalTreeModel::SignalTreeModel(QObject *parent) : root(new Item), QAbstractItemModel(parent) {
-  connect(dbc(), &DBCManager::DBCFileChanged, this, &SignalTreeModel::refresh);
-  connect(dbc(), &DBCManager::msgUpdated, this, &SignalTreeModel::handleMsgChanged);
-  connect(dbc(), &DBCManager::msgRemoved, this, &SignalTreeModel::handleMsgChanged);
-  connect(dbc(), &DBCManager::signalAdded, this, &SignalTreeModel::handleSignalAdded);
-  connect(dbc(), &DBCManager::signalUpdated, this, &SignalTreeModel::handleSignalUpdated);
-  connect(dbc(), &DBCManager::signalRemoved, this, &SignalTreeModel::handleSignalRemoved);
+  connect(GetDBC(), &dbc::Manager::DBCFileChanged, this, &SignalTreeModel::refresh);
+  connect(GetDBC(), &dbc::Manager::msgUpdated, this, &SignalTreeModel::handleMsgChanged);
+  connect(GetDBC(), &dbc::Manager::msgRemoved, this, &SignalTreeModel::handleMsgChanged);
+  connect(GetDBC(), &dbc::Manager::signalAdded, this, &SignalTreeModel::handleSignalAdded);
+  connect(GetDBC(), &dbc::Manager::signalUpdated, this, &SignalTreeModel::handleSignalUpdated);
+  connect(GetDBC(), &dbc::Manager::signalRemoved, this, &SignalTreeModel::handleSignalRemoved);
 }
 
-void SignalTreeModel::insertItem(SignalTreeModel::Item *root_item, int pos, const cabana::Signal *sig) {
+void SignalTreeModel::insertItem(SignalTreeModel::Item *root_item, int pos, const dbc::Signal *sig) {
   Item *sig_item = new Item{.sig = sig, .parent = root_item, .title = sig->name, .type = Item::Sig};
   root_item->children.insert(pos, sig_item);
 }
@@ -45,7 +45,7 @@ void SignalTreeModel::setFilter(const QString &txt) {
 void SignalTreeModel::refresh() {
   beginResetModel();
   root.reset(new SignalTreeModel::Item);
-  if (auto msg = dbc()->msg(msg_id)) {
+  if (auto msg = GetDBC()->msg(msg_id)) {
     auto sigs = msg->getSignals();
     root->children.reserve(sigs.size());  // Pre-allocate memory
     for (auto s : sigs) {
@@ -104,13 +104,13 @@ Qt::ItemFlags SignalTreeModel::flags(const QModelIndex &index) const {
   if (item->type == Item::Sig || item->type == Item::ExtraInfo) {
     flags &= ~Qt::ItemIsEditable;
   }
-  if (item->type == Item::MultiplexValue && item->sig->type != cabana::Signal::Type::Multiplexed) {
+  if (item->type == Item::MultiplexValue && item->sig->type != dbc::Signal::Type::Multiplexed) {
     flags &= ~Qt::ItemIsEnabled;
   }
   return flags;
 }
 
-int SignalTreeModel::signalRow(const cabana::Signal *sig) const {
+int SignalTreeModel::signalRow(const dbc::Signal *sig) const {
   for (int i = 0; i < root->children.size(); ++i) {
     if (root->children[i]->sig == sig) return i;
   }
@@ -177,12 +177,12 @@ bool SignalTreeModel::setData(const QModelIndex &index, const QVariant &value, i
   if (role != Qt::EditRole && role != Qt::CheckStateRole) return false;
 
   Item *item = getItem(index);
-  cabana::Signal s = *item->sig;
+  dbc::Signal s = *item->sig;
   switch (item->type) {
     case Item::Name: s.name = value.toString(); break;
     case Item::Size: s.size = value.toInt(); break;
     case Item::Node: s.receiver_name = value.toString().trimmed(); break;
-    case Item::SignalType: s.type = (cabana::Signal::Type)value.toInt(); break;
+    case Item::SignalType: s.type = (dbc::Signal::Type)value.toInt(); break;
     case Item::MultiplexValue: s.multiplex_value = value.toInt(); break;
     case Item::Endian: s.is_little_endian = value.toBool(); break;
     case Item::Signed: s.is_signed = value.toBool(); break;
@@ -200,8 +200,8 @@ bool SignalTreeModel::setData(const QModelIndex &index, const QVariant &value, i
   return ret;
 }
 
-bool SignalTreeModel::saveSignal(const cabana::Signal *origin_s, cabana::Signal &s) {
-  auto msg = dbc()->msg(msg_id);
+bool SignalTreeModel::saveSignal(const dbc::Signal *origin_s, dbc::Signal &s) {
+  auto msg = GetDBC()->msg(msg_id);
   if (s.name != origin_s->name && msg->sig(s.name) != nullptr) {
     QString text = tr("There is already a signal with the same name '%1'").arg(s.name);
     QMessageBox::warning(nullptr, tr("Failed to save signal"), text);
@@ -221,10 +221,10 @@ void SignalTreeModel::handleMsgChanged(MessageId id) {
   }
 }
 
-void SignalTreeModel::handleSignalAdded(MessageId id, const cabana::Signal *sig) {
+void SignalTreeModel::handleSignalAdded(MessageId id, const dbc::Signal *sig) {
   if (id == msg_id) {
     if (filter_str.isEmpty()) {
-      int i = dbc()->msg(msg_id)->indexOf(sig);
+      int i = GetDBC()->msg(msg_id)->indexOf(sig);
       beginInsertRows({}, i, i);
       insertItem(root.get(), i, sig);
       endInsertRows();
@@ -234,13 +234,13 @@ void SignalTreeModel::handleSignalAdded(MessageId id, const cabana::Signal *sig)
   }
 }
 
-void SignalTreeModel::handleSignalUpdated(const cabana::Signal *sig) {
+void SignalTreeModel::handleSignalUpdated(const dbc::Signal *sig) {
   if (int row = signalRow(sig); row != -1) {
     emit dataChanged(index(row, 0), index(row, 1), {Qt::DisplayRole, Qt::EditRole, Qt::CheckStateRole});
 
     if (filter_str.isEmpty()) {
       // move row when the order changes.
-      int to = dbc()->msg(msg_id)->indexOf(sig);
+      int to = GetDBC()->msg(msg_id)->indexOf(sig);
       if (to != row) {
         beginMoveRows({}, row, row, {}, to > row ? to + 1 : to);
         root->children.move(row, to);
@@ -250,7 +250,7 @@ void SignalTreeModel::handleSignalUpdated(const cabana::Signal *sig) {
   }
 }
 
-void SignalTreeModel::handleSignalRemoved(const cabana::Signal *sig) {
+void SignalTreeModel::handleSignalRemoved(const dbc::Signal *sig) {
   if (int row = signalRow(sig); row != -1) {
     beginRemoveRows({}, row, row);
     delete root->children.takeAt(row);

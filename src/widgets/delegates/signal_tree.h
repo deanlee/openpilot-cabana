@@ -23,7 +23,7 @@ public:
   bool editorEvent(QEvent *event, QAbstractItemModel *model, const QStyleOptionViewItem &option, const QModelIndex &index) override;
   bool helpEvent(QHelpEvent *event, QAbstractItemView *view, const QStyleOptionViewItem &option, const QModelIndex &index) override;
   void clearHoverState();
-  int nameColumnWidth(const cabana::Signal* sig) const;
+  int nameColumnWidth(const dbc::Signal* sig) const;
   inline int signalRowHeight() const { return kBtnSize + 4; }
   inline int getButtonsWidth() const {
     // Calculate total space taken by buttons area on the right

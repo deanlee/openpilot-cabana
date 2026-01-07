@@ -50,32 +50,32 @@ struct std::hash<MessageId> {
   std::size_t operator()(const MessageId &k) const noexcept { return std::hash<uint64_t>{}(k.raw); }
 };
 
-namespace cabana {
+namespace dbc {
 
 class Msg {
 public:
   Msg() = default;
   Msg(const Msg &other) { *this = other; }
   ~Msg();
-  cabana::Signal *addSignal(const cabana::Signal &sig);
-  cabana::Signal *updateSignal(const QString &sig_name, const cabana::Signal &sig);
+  dbc::Signal *addSignal(const dbc::Signal &sig);
+  dbc::Signal *updateSignal(const QString &sig_name, const dbc::Signal &sig);
   void removeSignal(const QString &sig_name);
   Msg &operator=(const Msg &other);
-  int indexOf(const cabana::Signal *sig) const;
-  cabana::Signal *sig(const QString &sig_name) const;
+  int indexOf(const dbc::Signal *sig) const;
+  dbc::Signal *sig(const QString &sig_name) const;
   QString newSignalName();
   void update();
-  inline const std::vector<cabana::Signal *> &getSignals() const { return sigs; }
+  inline const std::vector<dbc::Signal *> &getSignals() const { return sigs; }
 
   uint32_t address;
   QString name;
   uint32_t size;
   QString comment;
   QString transmitter;
-  std::vector<cabana::Signal *> sigs;
+  std::vector<dbc::Signal *> sigs;
 
   std::vector<uint8_t> mask;
-  cabana::Signal *multiplexor = nullptr;
+  dbc::Signal *multiplexor = nullptr;
 };
 
 }  // namespace cabana
