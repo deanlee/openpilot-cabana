@@ -2,26 +2,12 @@
 
 #include <QMenu>
 #include <QPushButton>
-#include <QTimer>
-#include <QTreeView>
-#include <QWheelEvent>
 #include <optional>
 
 #include "message_delegate.h"
 #include "message_header.h"
 #include "message_model.h"
-
-class MessageTable : public QTreeView {
-  Q_OBJECT
-public:
-  MessageTable(QWidget *parent) : QTreeView(parent) {}
-  void updateBytesSectionSize();
-
-protected:
-  void drawBranches(QPainter *painter, const QRect &rect, const QModelIndex &index) const override {}
-  void dataChanged(const QModelIndex &topLeft, const QModelIndex &bottomRight, const QVector<int> &roles = QVector<int>()) override;
-  void wheelEvent(QWheelEvent *event) override;
-};
+#include "message_table.h"
 
 class MessageList : public QWidget {
   Q_OBJECT

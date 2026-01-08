@@ -1,14 +1,12 @@
 #include "message_list.h"
 
-#include <QApplication>
 #include <QCheckBox>
 #include <QHBoxLayout>
-#include <QPushButton>
 #include <QScrollBar>
 #include <QVBoxLayout>
 
-#include "core/commands/commands.h"
 #include "common.h"
+#include "core/commands/commands.h"
 #include "modules/settings/settings.h"
 
 MessageList::MessageList(QWidget *parent) : menu(new QMenu(this)), QWidget(parent) {
@@ -21,14 +19,6 @@ MessageList::MessageList(QWidget *parent) : menu(new QMenu(this)), QWidget(paren
   view->setItemDelegate(delegate = new MessageDelegate(view, settings.multiple_lines_hex));
   view->setModel(model = new MessageModel(this));
   view->setHeader(header = new MessageHeader(this));
-  view->setSortingEnabled(true);
-  view->sortByColumn(MessageModel::Column::NAME, Qt::AscendingOrder);
-  view->setAllColumnsShowFocus(true);
-  view->setEditTriggers(QAbstractItemView::NoEditTriggers);
-  view->setItemsExpandable(false);
-  view->setIndentation(0);
-  view->setRootIsDecorated(false);
-  view->setAlternatingRowColors(true);
 
   // Must be called before setting any header parameters to avoid overriding
   restoreHeaderState(settings.message_header_state);
@@ -49,7 +39,7 @@ MessageList::MessageList(QWidget *parent) : menu(new QMenu(this)), QWidget(paren
     if (current_msg_id) {
       selectMessage(*current_msg_id);
     }
-    view->updateBytesSectionSize();
+    view->updateLayout();
     updateTitle();
   });
 
@@ -159,35 +149,5 @@ void MessageList::menuAboutToShow() {
 
 void MessageList::setMultiLineBytes(bool multi) {
   settings.multiple_lines_hex = multi;
-  delegate->setMultipleLines(multi);
-  view->updateBytesSectionSize();
-  view->doItemsLayout();
-}
-
-// MessageTable
-
-void MessageTable::dataChanged(const QModelIndex &topLeft, const QModelIndex &bottomRight, const QVector<int> &roles) {
-  // Bypass the slow call to QTreeView::dataChanged.
-  // QTreeView::dataChanged will invalidate the height cache and that's what we don't need in MessageTable.
-  QAbstractItemView::dataChanged(topLeft, bottomRight, roles);
-}
-
-void MessageTable::updateBytesSectionSize() {
-  auto delegate = ((MessageDelegate *)itemDelegate());
-  int max_bytes = 8;
-  if (!delegate->multipleLines()) {
-    for (const auto &[_, m] : can->snapshots()) {
-      max_bytes = std::max<int>(max_bytes, m->dat.size());
-    }
-  }
-  setUniformRowHeights(!delegate->multipleLines());
-  header()->resizeSection(MessageModel::Column::DATA, delegate->sizeForBytes(max_bytes).width());
-}
-
-void MessageTable::wheelEvent(QWheelEvent *event) {
-  if (event->modifiers() == Qt::ShiftModifier) {
-    QApplication::sendEvent(horizontalScrollBar(), event);
-  } else {
-    QTreeView::wheelEvent(event);
-  }
+  view->updateLayout();
 }
