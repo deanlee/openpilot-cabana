@@ -9,12 +9,12 @@
 #include <QStatusBar>
 #include <set>
 
-#include "chart/chartswidget.h"
-#include "dbc/dbc_manager.h"
+#include "core/dbc/dbc_manager.h"
+#include "modules/charts/chartswidget.h"
+#include "modules/inspector/message_inspector.h"
+#include "modules/message_list/message_list.h"
+#include "modules/video/video_player.h"
 #include "tools/findsimilarbits.h"
-#include "widgets/message_details.h"
-#include "widgets/message_list.h"
-#include "widgets/video/video_player.h"
 
 class MainWindow : public QMainWindow {
   Q_OBJECT

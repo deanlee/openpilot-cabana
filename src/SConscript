@@ -84,12 +84,12 @@ cabana_libs = [cereal, messaging, visionipc, replay_lib, 'avutil', 'avcodec', 'a
 
 # build assets
 assets = "#build/assets/assets.cc"
-assets_src = "assets/assets.qrc"
+assets_src = "#/resources.qrc"
 cabana_env.Command(assets, assets_src, f"rcc $SOURCES -o $TARGET")
 cabana_env.Depends(assets, [assets_src] + Glob('assets/*.svg'))
 # cabana_env.Depends(assets, Glob('assets/*', exclude=[assets, assets_src, "assets/assets.o"]))
 
-src_files = Glob('#src/*.cc') + Glob('#src/*/*.cc') + Glob('#src/*/*/*.cc')
+src_files = Glob('#src/*.cc') + Glob('#src/*/*.cc') + Glob('#src/*/*/*.cc') + Glob('#src/*/*/*/*.cc')
 src_file_strings = ['#build/' + str(f) for f in src_files if f != 'main.cc']
 
 cabana_lib = cabana_env.Library(

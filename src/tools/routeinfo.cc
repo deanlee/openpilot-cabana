@@ -3,7 +3,7 @@
 #include <QScrollBar>
 #include <QTableWidget>
 #include <QVBoxLayout>
-#include "streams/replaystream.h"
+#include "core/streams/replaystream.h"
 
 RouteInfoDlg::RouteInfoDlg(QWidget *parent) : QDialog(parent) {
   auto *replay = qobject_cast<ReplayStream *>(can)->getReplay();

@@ -16,7 +16,7 @@
 #include <QtXml/QDomDocument>
 #include <QWidget>
 #include "common/util.h"
-#include "settings.h"
+#include "modules/settings/settings.h"
 #include <QtSvg/QSvgRenderer>
 
 // NameValidator
@@ -48,7 +48,7 @@ QPixmap icon(const QString& id, QSize size, std::optional<QColor> color) {
 
   QPixmap pm;
   if (!QPixmapCache::find(key, &pm)) {
-    QString path = QString(":/%1.svg").arg(id);
+    QString path = QString(":/assets/%1.svg").arg(id);
     QSvgRenderer renderer(path);
 
     if (!renderer.isValid()) {

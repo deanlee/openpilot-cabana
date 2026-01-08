@@ -1,9 +1,5 @@
 #include "mainwin.h"
 
-#include <algorithm>
-#include <iostream>
-#include <string>
-
 #include <QApplication>
 #include <QClipboard>
 #include <QDesktopWidget>
@@ -20,15 +16,17 @@
 #include <QUndoView>
 #include <QVBoxLayout>
 #include <QWidgetAction>
+#include <algorithm>
+#include <iostream>
+#include <string>
 
-#include "commands.h"
+#include "core/commands/commands.h"
+#include "core/streams/abstractstream.h"
+#include "modules/settings/settings_dialog.h"
+#include "modules/streams/stream_selector.h"
+#include "replay/include/http.h"
 #include "tools/findsignal.h"
 #include "utils/export.h"
-#include "replay/include/http.h"
-#include "streams/abstractstream.h"
-#include "streams/widgets/stream_selector.h"
-#include "widgets/settings_dialog.h"
-
 
 MainWindow::MainWindow(AbstractStream *stream, const QString &dbc_file) : QMainWindow() {
   loadFingerprints();

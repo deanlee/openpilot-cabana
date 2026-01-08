@@ -1,0 +1,37 @@
+<!DOCTYPE RCC><RCC version="1.0">
+<qresource>
+  <file>assets/cabana-icon.png</file>
+  <file>assets/binary.svg</file>
+  <file>assets/chart-area.svg</file>
+  <file>assets/chart-line.svg</file>
+  <file>assets/chevron-left.svg</file>
+  <file>assets/chevron-right.svg</file>
+  <file>assets/circle-minus.svg</file>
+  <file>assets/dock.svg</file>
+  <file>assets/ellipsis.svg</file>
+  <file>assets/eraser.svg</file>
+  <file>assets/external-link.svg</file>
+  <file>assets/file-spreadsheet.svg</file>
+  <file>assets/fold-vertical.svg</file>
+  <file>assets/grip-horizontal.svg</file>
+  <file>assets/info.svg</file>
+  <file>assets/layer-plus.svg</file>
+  <file>assets/menu.svg</file>
+  <file>assets/minus.svg</file>
+  <file>assets/pause.svg</file>
+  <file>assets/play.svg</file>
+  <file>assets/plus.svg</file>
+  <file>assets/redo-2.svg</file>
+  <file>assets/refresh-ccw.svg</file>
+  <file>assets/repeat.svg</file>
+  <file>assets/repeat-1.svg</file>
+  <file>assets/scroll-text.svg</file>
+  <file>assets/square-pen.svg</file>
+  <file>assets/step-back.svg</file>
+  <file>assets/step-forward.svg</file>
+  <file>assets/trash-2.svg</file>
+  <file>assets/triangle-alert.svg</file>
+  <file>assets/undo-2.svg</file>
+  <file>assets/x.svg</file>
+</qresource>
+</RCC>
