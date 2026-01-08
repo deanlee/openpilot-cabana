@@ -110,19 +110,53 @@ void BinaryModel::updateState() {
       int bit_val = (binary[i] >> (7 - j)) & 1;
 
       // Calculate color based on heat
-      QColor bit_color = calculateBitHeatColor(
-          bit_flips[i][j],
-          max_bit_flip_count,
-          !item.sigs.empty(),
-          is_light_theme,
-          item.sigs.empty() ? QColor() : item.sigs.back()->color);
-
+      QColor bit_color = calculateBitHeatColor(item, bit_flips[i][j], max_bit_flip_count, is_light_theme);
       updateItem(i, j, bit_val, bit_color);
     }
 
     // The 9th column (index 8) remains the Byte Value with the Trend Color
     updateItem(i, 8, binary[i], last_msg->getPatternColor(i, current_sec));
   }
+}
+
+QColor BinaryModel::calculateBitHeatColor(Item& item, uint32_t flips, uint32_t max_flips, bool is_light) {
+  const bool is_in_signal = !item.sigs.empty();
+
+  // 1. Static Case (No activity)
+  if (flips == 0) {
+    item.intensity = 0.0f;
+    if (!is_in_signal) return Qt::transparent;
+    return QColor(128, 128, 128, is_light ? 40 : 25);
+  }
+
+  // 2. Update Intensity Cache (Log Scale)
+  // Only recalculate log if the flip count actually changed
+  if (flips != item.last_flips) {
+    const float log_max = std::log2(static_cast<float>(max_flips) + 1.0f);
+    float target = std::clamp(std::log2(static_cast<float>(flips) + 1.0f) / log_max, 0.0f, 1.0f);
+
+    // Instant jump for new activity, or keep existing if higher
+    item.intensity = std::max(item.intensity, target);
+    item.last_flips = flips;
+  } else {
+    // FADE EFFECT: Gradually reduce intensity if no new flips occurred
+    item.intensity *= 0.95f;
+  }
+
+  if (item.intensity < 0.01f) return is_in_signal ? QColor(128, 128, 128, is_light ? 40 : 25) : Qt::transparent;
+
+  // 3. Optimized RGB Blending (Avoids HSV conversion)
+  QColor start = is_in_signal ? item.sigs.back()->color : (is_light ? Qt::white : Qt::black);
+  QColor hot = is_light ? Qt::red : QColor(255, 100, 100);  // Bright red highlight
+
+  auto lerp = [](int a, int b, float i) { return static_cast<int>(a + (b - a) * i); };
+
+  int r = lerp(start.red(), hot.red(), item.intensity);
+  int g = lerp(start.green(), hot.green(), item.intensity);
+  int b = lerp(start.blue(), hot.blue(), item.intensity);
+  int a = is_light ? lerp(100, 255, item.intensity) : lerp(140, 255, item.intensity);
+
+  return QColor(r, g, b, a);
 }
 
 const std::vector<std::array<uint32_t, 8>> &BinaryModel::getBitFlipChanges(size_t msg_size) {

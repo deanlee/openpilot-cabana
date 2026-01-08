@@ -41,6 +41,8 @@ class BinaryModel : public QAbstractTableModel {
     uint8_t val;
     QList<const dbc::Signal*> sigs;
     bool valid = false;
+    float intensity = 0.0f;
+    uint32_t last_flips = 0;
 
     struct Borders {
       uint8_t left : 1, right : 1, top : 1, bottom : 1;
@@ -52,6 +54,8 @@ class BinaryModel : public QAbstractTableModel {
   MessageId msg_id;
   int row_count = 0;
   const int column_count = 9;
+
+  QColor calculateBitHeatColor(Item &item, uint32_t flips, uint32_t max_flips, bool is_light);
 };
 
 QString signalToolTip(const dbc::Signal *sig);

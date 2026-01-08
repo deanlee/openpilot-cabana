@@ -51,4 +51,3 @@ class MessageState {
 };
 
 QColor colorFromDataPattern(DataPattern pattern, double current_ts, double last_ts);
-QColor calculateBitHeatColor(uint32_t flips, uint32_t max_flips, bool is_in_signal, bool is_light, QColor sig_color);
