@@ -6,6 +6,7 @@
 
 #include "core/dbc/dbc_manager.h"
 #include "utils/util.h"
+#include "widgets/validators.h"
 
 MessageEdit::MessageEdit(const MessageId& msg_id, const QString& title, int size, QWidget* parent)
     : original_name(title), msg_id(msg_id), QDialog(parent) {

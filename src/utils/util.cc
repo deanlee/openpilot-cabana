@@ -6,34 +6,18 @@
 #include <QColor>
 #include <QDateTime>
 #include <QDir>
+#include <QFileInfo>
 #include <QLocale>
 #include <QPalette>
 #include <QPixmapCache>
-#include <QSurfaceFormat>
-#include <QFileInfo>
 #include <QStyle>
+#include <QSurfaceFormat>
 #include <QTextStream>
-#include <QtXml/QDomDocument>
+#include <QtSvg/QSvgRenderer>
 #include <QWidget>
+
 #include "common/util.h"
 #include "modules/settings/settings.h"
-#include <QtSvg/QSvgRenderer>
-
-// NameValidator
-
-NameValidator::NameValidator(QObject *parent) : QRegExpValidator(QRegExp("^(\\w+)"), parent) {}
-
-QValidator::State NameValidator::validate(QString &input, int &pos) const {
-  input.replace(' ', '_');
-  return QRegExpValidator::validate(input, pos);
-}
-
-DoubleValidator::DoubleValidator(QObject *parent) : QDoubleValidator(parent) {
-  // Match locale of QString::toDouble() instead of system
-  QLocale locale(QLocale::C);
-  locale.setNumberOptions(QLocale::RejectGroupSeparator);
-  setLocale(locale);
-}
 
 namespace utils {
 

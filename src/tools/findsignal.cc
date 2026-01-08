@@ -4,9 +4,11 @@
 #include <QHBoxLayout>
 #include <QHeaderView>
 #include <QMenu>
-#include <QtConcurrent>
 #include <QTimer>
 #include <QVBoxLayout>
+#include <QtConcurrent>
+
+#include "widgets/validators.h"
 
 // FindSignalModel
 

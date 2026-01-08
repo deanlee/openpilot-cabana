@@ -7,6 +7,7 @@
 #include "core/commands/commands.h"
 #include "modules/settings/settings.h"
 #include "utils/export.h"
+#include "widgets/validators.h"
 
 QSize HistoryHeader::sectionSizeFromContents(int logicalIndex) const {
   static const QSize time_col_size = fontMetrics().size(Qt::TextSingleLine, "000000.000") + QSize(10, 6);
