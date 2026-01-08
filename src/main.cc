@@ -39,12 +39,13 @@ static AbstractStream* createStream(QCommandLineParser& p, QApplication* app) {
 int main(int argc, char* argv[]) {
   QCoreApplication::setApplicationName("Cabana");
   QCoreApplication::setAttribute(Qt::AA_ShareOpenGLContexts);
+  QCoreApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
+  QCoreApplication::setAttribute(Qt::AA_UseHighDpiPixmaps);
+
   initApp(argc, argv, false);
   QApplication app(argc, argv);
   app.setApplicationDisplayName("Cabana");
   app.setWindowIcon(QIcon(":/assets/cabana-icon.png"));
-  app.setAttribute(Qt::AA_EnableHighDpiScaling);
-  app.setAttribute(Qt::AA_UseHighDpiPixmaps);
 
   SystemSignalHandler signal_handler;
   utils::setTheme(settings.theme);
