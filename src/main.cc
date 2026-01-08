@@ -45,8 +45,8 @@ int main(int argc, char* argv[]) {
   initApp(argc, argv, false);
   QApplication app(argc, argv);
   app.setApplicationDisplayName("Cabana");
-  app.setWindowIcon(QIcon(":/assets/cabana-icon.png"));
-
+  QPixmap appIcon = utils::icon("binary", QSize(64, 64));
+  app.setWindowIcon(appIcon);
   SystemSignalHandler signal_handler;
   utils::setTheme(settings.theme);
 

@@ -1,6 +1,5 @@
 <!DOCTYPE RCC><RCC version="1.0">
 <qresource>
-  <file>assets/cabana-icon.png</file>
   <file>assets/binary.svg</file>
   <file>assets/chart-area.svg</file>
   <file>assets/chart-line.svg</file>
