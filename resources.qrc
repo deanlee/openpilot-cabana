@@ -1,5 +1,6 @@
 <!DOCTYPE RCC><RCC version="1.0">
 <qresource>
+  <file>assets/activity.svg</file>
   <file>assets/binary.svg</file>
   <file>assets/chart-area.svg</file>
   <file>assets/chart-line.svg</file>

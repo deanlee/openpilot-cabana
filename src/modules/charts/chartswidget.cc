@@ -96,7 +96,7 @@ ChartsWidget::ChartsWidget(QWidget *parent) : QFrame(parent) {
 
   // charts
   charts_container = new ChartsContainer(this);
-  charts_container->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
+  charts_container->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Expanding);
   charts_scroll = new QScrollArea(this);
   charts_scroll->viewport()->setBackgroundRole(QPalette::Base);
   charts_scroll->setFrameStyle(QFrame::NoFrame);
@@ -545,7 +545,7 @@ ChartsContainer::ChartsContainer(ChartsWidget *parent) : charts_widget(parent), 
   charts_layout = new QGridLayout();
   charts_layout->setSpacing(CHART_SPACING);
   charts_main_layout->addLayout(charts_layout);
-  charts_main_layout->addStretch(0);
+  charts_main_layout->addStretch(1);
 }
 
 void ChartsContainer::dragEnterEvent(QDragEnterEvent *event) {
@@ -575,6 +575,28 @@ void ChartsContainer::dropEvent(QDropEvent *event) {
 }
 
 void ChartsContainer::paintEvent(QPaintEvent *ev) {
+  if (charts_widget->currentCharts().isEmpty()) {
+    QPainter p(this);
+    p.setRenderHint(QPainter::Antialiasing);
+
+    QRect r = rect();
+    p.fillRect(rect(), palette().color(QPalette::Base));
+    QColor text_color = palette().color(QPalette::Disabled, QPalette::Text);
+
+    // Icon
+    QPixmap icon = utils::icon("activity", QSize(64, 64), text_color);
+    p.drawPixmap(r.center().x() - 32, r.center().y() - 80, icon);
+
+    // Text
+    p.setPen(text_color);
+    p.setFont(QFont("sans-serif", 12, QFont::Bold));
+    p.drawText(r.adjusted(0, 20, 0, 20), Qt::AlignCenter, tr("No Charts Open"));
+
+    p.setFont(QFont("sans-serif", 10));
+    p.drawText(r.adjusted(0, 60, 0, 60), Qt::AlignCenter, tr("Select a signal from the list or click [+] to start."));
+    return;
+  }
+
   if (!drop_indictor_pos.isNull() && !childAt(drop_indictor_pos)) {
     QRect r = geometry();
     r.setHeight(CHART_SPACING);
@@ -584,7 +606,9 @@ void ChartsContainer::paintEvent(QPaintEvent *ev) {
 
     QPainter p(this);
     p.fillRect(r, palette().highlight());
+    return;
   }
+  QWidget::paintEvent(ev);
 }
 
 ChartView *ChartsContainer::getDropAfter(const QPoint &pos) const {

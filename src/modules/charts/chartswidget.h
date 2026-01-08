@@ -45,6 +45,7 @@ public:
   inline bool hasSignal(const MessageId &id, const dbc::Signal *sig) { return findChart(id, sig) != nullptr; }
   QStringList serializeChartIds() const;
   void restoreChartsFromIds(const QStringList &chart_ids);
+ 
 
 public slots:
   void setColumnCount(int n);
