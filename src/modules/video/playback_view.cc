@@ -55,6 +55,18 @@ void PlaybackCameraView::paintGL() {
     p.setPen(QColor(200, 200, 200, static_cast<int>(255 * fade_animation->currentValue().toFloat())));
     p.setFont(QFont(font().family(), 16, QFont::Bold));
     p.drawText(rect(), Qt::AlignCenter, tr("PAUSED"));
+  } else if (!current_frame_) {
+   p.setRenderHint(QPainter::Antialiasing);
+    p.setRenderHint(QPainter::Antialiasing);
+    QColor gray(130, 130, 130);
+    int icon_size = 32;
+    QPixmap icon = utils::icon("video-off", QSize(icon_size, icon_size), gray);
+    int cx = rect().center().x();
+    int cy = rect().center().y();
+    p.drawPixmap(cx - (icon_size / 2), cy - 27, icon);
+    p.setPen(gray);
+    p.setFont(QFont("sans-serif", 9, QFont::DemiBold));
+    p.drawText(rect().adjusted(0, 25, 0, 25), Qt::AlignCenter, tr("No Video"));
   }
 }
 
