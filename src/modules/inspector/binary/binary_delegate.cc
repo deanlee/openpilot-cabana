@@ -20,13 +20,6 @@ MessageBytesDelegate::MessageBytesDelegate(QObject *parent) : QStyledItemDelegat
   }
 }
 
-bool MessageBytesDelegate::hasSignal(const QModelIndex &index, int dx, int dy, const dbc::Signal *sig) const {
-  if (!index.isValid()) return false;
-  auto model = (const BinaryModel*)(index.model());
-  int idx = (index.row() + dy) * model->columnCount() + index.column() + dx;
-  return (idx >=0 && idx < model->items.size()) ? model->items[idx].sigs.contains(sig) : false;
-}
-
 void MessageBytesDelegate::paint(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const {
   auto item = (const BinaryModel::Item *)index.internalPointer();
   BinaryView *bin_view = (BinaryView *)parent();
@@ -72,52 +65,48 @@ void MessageBytesDelegate::paint(QPainter *painter, const QStyleOptionViewItem &
   painter->restore();
 }
 
-// Draw border on edge of signal
-void MessageBytesDelegate::drawSignalCell(QPainter *painter, const QStyleOptionViewItem &option,
-                                        const QModelIndex &index, const dbc::Signal *sig) const {
-  bool draw_left = !hasSignal(index, -1, 0, sig);
-  bool draw_top = !hasSignal(index, 0, -1, sig);
-  bool draw_right = !hasSignal(index, 1, 0, sig);
-  bool draw_bottom = !hasSignal(index, 0, 1, sig);
+void MessageBytesDelegate::drawSignalCell(QPainter* painter, const QStyleOptionViewItem& option,
+                                          const QModelIndex& index, const dbc::Signal* sig) const {
+  auto item = static_cast<const BinaryModel::Item*>(index.internalPointer());
+  const auto& b = item->borders;
+  const int h_space = 3, v_space = 2;
 
-  const int spacing = 2;
-  QRect rc = option.rect.adjusted(draw_left * 3, draw_top * spacing, draw_right * -3, draw_bottom * -spacing);
+  QRect rc = option.rect.adjusted(b.left * h_space, b.top * v_space,
+                                  b.right * -h_space, b.bottom * -v_space);
+
+  // Corner Correction using cached diagonals
   QRegion subtract;
-  if (!draw_top) {
-    if (!draw_left && !hasSignal(index, -1, -1, sig)) {
-      subtract += QRect{rc.left(), rc.top(), 3, spacing};
-    } else if (!draw_right && !hasSignal(index, 1, -1, sig)) {
-      subtract += QRect{rc.right() - 2, rc.top(), 3, spacing};
-    }
+  if (!b.top) {
+    if (!b.left && b.top_left)
+      subtract += QRect{rc.left(), rc.top(), h_space, v_space};
+    else if (!b.right && b.top_right)
+      subtract += QRect{rc.right() - (h_space - 1), rc.top(), h_space, v_space};
   }
-  if (!draw_bottom) {
-    if (!draw_left && !hasSignal(index, -1, 1, sig)) {
-      subtract += QRect{rc.left(), rc.bottom() - (spacing - 1), 3, spacing};
-    } else if (!draw_right && !hasSignal(index, 1, 1, sig)) {
-      subtract += QRect{rc.right() - 2, rc.bottom() - (spacing - 1), 3, spacing};
-    }
+  if (!b.bottom) {
+    if (!b.left && b.bottom_left)
+      subtract += QRect{rc.left(), rc.bottom() - (v_space - 1), h_space, v_space};
+    else if (!b.right && b.bottom_right)
+      subtract += QRect{rc.right() - (h_space - 1), rc.bottom() - (v_space - 1), h_space, v_space};
   }
+
   painter->setClipRegion(QRegion(rc).subtracted(subtract));
 
-  auto item = (const BinaryModel::Item *)index.internalPointer();
-  QColor color = sig->color;
-  color.setAlpha(item->bg_color.alpha());
-  // Mixing the signal color with the Base background color to fade it
-  painter->fillRect(rc, option.palette.color(QPalette::Base));
-  painter->fillRect(rc, color);
+  // Fill and Borders
+  QColor fill = sig->color;
+  fill.setAlpha(item->bg_color.alpha());
+  painter->fillRect(rc, option.palette.base());
+  painter->fillRect(rc, fill);
 
-  // Draw edges
-  color = sig->color.darker(125);
+  auto color = sig->color.darker(125);
   painter->setPen(QPen(color, 1));
-  if (draw_left) painter->drawLine(rc.topLeft(), rc.bottomLeft());
-  if (draw_right) painter->drawLine(rc.topRight(), rc.bottomRight());
-  if (draw_bottom) painter->drawLine(rc.bottomLeft(), rc.bottomRight());
-  if (draw_top) painter->drawLine(rc.topLeft(), rc.topRight());
+  if (b.left) painter->drawLine(rc.topLeft(), rc.bottomLeft());
+  if (b.right) painter->drawLine(rc.topRight(), rc.bottomRight());
+  if (b.top) painter->drawLine(rc.topLeft(), rc.topRight());
+  if (b.bottom) painter->drawLine(rc.bottomLeft(), rc.bottomRight());
 
   if (!subtract.isEmpty()) {
-    // fill gaps inside corners.
     painter->setPen(QPen(color, 2, Qt::SolidLine, Qt::SquareCap, Qt::MiterJoin));
-    for (auto &r : subtract) {
+    for (auto& r : subtract) {
       painter->drawRect(r);
     }
   }

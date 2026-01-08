@@ -14,6 +14,7 @@ class BinaryModel : public QAbstractTableModel {
  public:
   BinaryModel(QObject* parent) : QAbstractTableModel(parent) {}
   void refresh();
+  void updateBorders();
   void updateState();
   void updateItem(int row, int col, uint8_t val, const QColor& color);
   QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const override;
@@ -40,6 +41,11 @@ class BinaryModel : public QAbstractTableModel {
     uint8_t val;
     QList<const dbc::Signal*> sigs;
     bool valid = false;
+
+    struct Borders {
+      uint8_t left : 1, right : 1, top : 1, bottom : 1;
+      uint8_t top_left : 1, top_right : 1, bottom_left : 1, bottom_right : 1;
+    } borders;
   };
   std::vector<Item> items;
   bool heatmap_live_mode = true;

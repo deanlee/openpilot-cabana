@@ -9,7 +9,6 @@ class MessageBytesDelegate : public QStyledItemDelegate {
 public:
   MessageBytesDelegate(QObject *parent);
   void paint(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const override;
-  bool hasSignal(const QModelIndex &index, int dx, int dy, const dbc::Signal *sig) const;
   void drawSignalCell(QPainter* painter, const QStyleOptionViewItem &option, const QModelIndex &index, const dbc::Signal *sig) const;
 
   QFont small_font, hex_font;
