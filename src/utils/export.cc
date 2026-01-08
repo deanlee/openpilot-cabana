@@ -3,7 +3,7 @@
 #include <QFile>
 #include <QTextStream>
 
-#include "streams/abstractstream.h"
+#include "core/streams/abstractstream.h"
 
 namespace utils {
 

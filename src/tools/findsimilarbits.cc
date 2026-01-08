@@ -10,8 +10,8 @@
 #include <QPushButton>
 #include <QRadioButton>
 
-#include "dbc/dbc_manager.h"
-#include "streams/abstractstream.h"
+#include "core/dbc/dbc_manager.h"
+#include "core/streams/abstractstream.h"
 
 FindSimilarBitsDlg::FindSimilarBitsDlg(QWidget *parent) : QDialog(parent, Qt::WindowFlags() | Qt::Window) {
   setWindowTitle(tr("Find similar bits"));

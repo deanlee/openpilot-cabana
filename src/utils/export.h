@@ -2,7 +2,7 @@
 
 #include <optional>
 
-#include "dbc/dbc_manager.h"
+#include "core/dbc/dbc_manager.h"
 
 namespace utils {
 void exportToCSV(const QString &file_name, std::optional<MessageId> msg_id = std::nullopt);

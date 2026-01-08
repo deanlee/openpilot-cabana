@@ -1,12 +1,12 @@
 #include <QApplication>
 #include <QCommandLineParser>
 
+#include "core/streams/devicestream.h"
+#include "core/streams/pandastream.h"
+#include "core/streams/replaystream.h"
+#include "core/streams/socketcanstream.h"
 #include "mainwin.h"
-#include "settings.h"
-#include "streams/devicestream.h"
-#include "streams/pandastream.h"
-#include "streams/replaystream.h"
-#include "streams/socketcanstream.h"
+#include "modules/settings/settings.h"
 #include "utils/system_signal_handler.h"
 
 static AbstractStream* createStream(QCommandLineParser& p, QApplication* app) {
@@ -42,7 +42,7 @@ int main(int argc, char* argv[]) {
   initApp(argc, argv, false);
   QApplication app(argc, argv);
   app.setApplicationDisplayName("Cabana");
-  app.setWindowIcon(QIcon(":cabana-icon.png"));
+  app.setWindowIcon(QIcon(":/assets/cabana-icon.png"));
   app.setAttribute(Qt::AA_EnableHighDpiScaling);
   app.setAttribute(Qt::AA_UseHighDpiPixmaps);
 

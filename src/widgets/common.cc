@@ -5,7 +5,7 @@
 #include <cmath>
 
 #include "utils/util.h"
-#include "settings.h"
+#include "modules/settings/settings.h"
 
 // ToolButton
 

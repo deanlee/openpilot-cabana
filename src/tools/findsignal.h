@@ -13,8 +13,8 @@
 #include <algorithm>
 #include <limits>
 
-#include "commands.h"
-#include "settings.h"
+#include "core/commands/commands.h"
+#include "modules/settings/settings.h"
 
 class FindSignalModel : public QAbstractTableModel {
 public:

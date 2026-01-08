@@ -6,7 +6,7 @@
 #include <QSpinBox>
 #include <QTableWidget>
 
-#include "dbc/dbc_manager.h"
+#include "core/dbc/dbc_manager.h"
 
 class FindSimilarBitsDlg : public QDialog {
   Q_OBJECT
