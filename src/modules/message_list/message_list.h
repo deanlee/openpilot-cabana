@@ -1,7 +1,5 @@
 #pragma once
 
-#include <QHeaderView>
-#include <QLineEdit>
 #include <QMenu>
 #include <QPushButton>
 #include <QTimer>
@@ -10,6 +8,7 @@
 #include <optional>
 
 #include "message_delegate.h"
+#include "message_header.h"
 #include "message_model.h"
 
 class MessageTable : public QTreeView {
@@ -22,20 +21,6 @@ protected:
   void drawBranches(QPainter *painter, const QRect &rect, const QModelIndex &index) const override {}
   void dataChanged(const QModelIndex &topLeft, const QModelIndex &bottomRight, const QVector<int> &roles = QVector<int>()) override;
   void wheelEvent(QWheelEvent *event) override;
-};
-
-class MessageHeader : public QHeaderView {
-  // https://stackoverflow.com/a/44346317
-  Q_OBJECT
-public:
-  MessageHeader(QWidget *parent);
-  void updateHeaderPositions();
-  void updateGeometries() override;
-  QSize sizeHint() const override;
-  void updateFilters();
-
-  QMap<int, QLineEdit *> editors;
-  QTimer filter_timer;
 };
 
 class MessageList : public QWidget {
