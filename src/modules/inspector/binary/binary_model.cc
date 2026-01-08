@@ -37,8 +37,36 @@ void BinaryModel::refresh() {
     row_count = can->snapshot(msg_id)->dat.size();
     items.resize(row_count * column_count);
   }
+  updateBorders();
   endResetModel();
   updateState();
+}
+
+void BinaryModel::updateBorders() {
+  for (int r = 0; r < row_count; ++r) {
+    for (int c = 0; c < column_count; ++c) {
+      auto &item = items[r * column_count + c];
+      if (item.sigs.isEmpty()) {
+        item.borders = {};
+        continue;
+      }
+
+      auto matches = [&](int nr, int nc) {
+        if (nr < 0 || nr >= row_count || nc < 0 || nc >= column_count) return false;
+        return items[nr * column_count + nc].sigs == item.sigs;
+      };
+
+      item.borders.left   = !matches(r, c - 1);
+      item.borders.right  = !matches(r, c + 1);
+      item.borders.top    = !matches(r - 1, c);
+      item.borders.bottom = !matches(r + 1, c);
+
+      item.borders.top_left     = !matches(r - 1, c - 1);
+      item.borders.top_right    = !matches(r - 1, c + 1);
+      item.borders.bottom_left  = !matches(r + 1, c - 1);
+      item.borders.bottom_right = !matches(r + 1, c + 1);
+    }
+  }
 }
 
 void BinaryModel::updateItem(int row, int col, uint8_t val, const QColor &color) {
