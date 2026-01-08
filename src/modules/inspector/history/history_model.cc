@@ -4,7 +4,7 @@
 
 #include "core/dbc/dbc_manager.h"
 #include "core/streams/abstractstream.h"
-#include "modules/message_list/message_table_delegate.h"
+#include "modules/message_list/message_delegate.h"
 
 QVariant MessageHistoryModel::data(const QModelIndex &index, int role) const {
   const auto &m = messages[index.row()];

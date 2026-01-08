@@ -7,10 +7,10 @@ enum {
   BytesRole = Qt::UserRole + 2
 };
 
-class MessageTableDelegate : public QStyledItemDelegate {
+class MessageDelegate : public QStyledItemDelegate {
   Q_OBJECT
 public:
-  MessageTableDelegate(QObject *parent, bool multiple_lines = false);
+  MessageDelegate(QObject *parent, bool multiple_lines = false);
   void paint(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const override;
   QSize sizeHint(const QStyleOptionViewItem &option, const QModelIndex &index) const override;
   bool multipleLines() const { return multiple_lines; }

@@ -8,7 +8,7 @@
 #include "core/dbc/dbc_manager.h"
 #include "core/streams/abstractstream.h"
 
-class MessageTableModel : public QAbstractTableModel {
+class MessageModel : public QAbstractTableModel {
 Q_OBJECT
 
 public:
@@ -22,7 +22,7 @@ public:
     DATA,
   };
 
-  MessageTableModel(QObject *parent) : QAbstractTableModel(parent) {}
+  MessageModel(QObject *parent) : QAbstractTableModel(parent) {}
   QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const override;
   int columnCount(const QModelIndex &parent = QModelIndex()) const override { return Column::DATA + 1; }
   QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const;
@@ -49,8 +49,8 @@ public:
   bool show_inactive_messages = true;
 
 private:
-  void sortItems(std::vector<MessageTableModel::Item> &items);
-  bool match(const MessageTableModel::Item &id);
+  void sortItems(std::vector<MessageModel::Item> &items);
+  bool match(const MessageModel::Item &id);
 
   QMap<int, QString> filters_;
   std::set<MessageId> dbc_messages_;

@@ -1,4 +1,4 @@
-#include "message_table.h"
+#include "message_model.h"
 
 #include <QApplication>
 #include <cmath>
@@ -13,7 +13,7 @@ inline QString toHexString(int value) {
   return "0x" + QString::number(value, 16).toUpper().rightJustified(2, '0');
 }
 
-QVariant MessageTableModel::headerData(int section, Qt::Orientation orientation, int role) const {
+QVariant MessageModel::headerData(int section, Qt::Orientation orientation, int role) const {
   if (orientation == Qt::Horizontal && role == Qt::DisplayRole) {
     switch (section) {
       case Column::NAME: return tr("Name");
@@ -28,7 +28,7 @@ QVariant MessageTableModel::headerData(int section, Qt::Orientation orientation,
   return {};
 }
 
-QVariant MessageTableModel::data(const QModelIndex &index, int role) const {
+QVariant MessageModel::data(const QModelIndex &index, int role) const {
   if (!index.isValid() || index.row() >= items_.size()) return {};
 
   auto getFreq = [](float freq) {
@@ -67,17 +67,17 @@ QVariant MessageTableModel::data(const QModelIndex &index, int role) const {
   return {};
 }
 
-void MessageTableModel::setFilterStrings(const QMap<int, QString> &filters) {
+void MessageModel::setFilterStrings(const QMap<int, QString> &filters) {
   filters_ = filters;
   filterAndSort();
 }
 
-void MessageTableModel::showInactivemessages(bool show) {
+void MessageModel::showInactivemessages(bool show) {
   show_inactive_messages = show;
   filterAndSort();
 }
 
-void MessageTableModel::dbcModified() {
+void MessageModel::dbcModified() {
   dbc_messages_.clear();
   for (const auto &[_, m] : GetDBC()->getMessages(-1)) {
     dbc_messages_.insert(MessageId{INVALID_SOURCE, m.address});
@@ -85,7 +85,7 @@ void MessageTableModel::dbcModified() {
   filterAndSort();
 }
 
-void MessageTableModel::sortItems(std::vector<MessageTableModel::Item> &items) {
+void MessageModel::sortItems(std::vector<MessageModel::Item> &items) {
   auto do_sort = [this, &items](auto compare) {
     if (sort_order == Qt::DescendingOrder)
       std::stable_sort(items.rbegin(), items.rend(), compare);
@@ -119,7 +119,7 @@ static bool parseRange(const QString &filter, uint32_t value, int base = 10) {
   return ok && value >= min && value <= max;
 }
 
-bool MessageTableModel::match(const MessageTableModel::Item &item) {
+bool MessageModel::match(const MessageModel::Item &item) {
   if (filters_.isEmpty())
     return true;
 
@@ -160,7 +160,7 @@ bool MessageTableModel::match(const MessageTableModel::Item &item) {
   return match;
 }
 
-bool MessageTableModel::filterAndSort() {
+bool MessageModel::filterAndSort() {
   // merge CAN and DBC messages
   std::vector<MessageId> all_messages;
   all_messages.reserve(can->snapshots().size() + dbc_messages_.size());
@@ -200,7 +200,7 @@ bool MessageTableModel::filterAndSort() {
   return false;
 }
 
-void MessageTableModel::onSnapshotsUpdated(const std::set<MessageId> *ids, bool needs_rebuild) {
+void MessageModel::onSnapshotsUpdated(const std::set<MessageId> *ids, bool needs_rebuild) {
   if (needs_rebuild || ((filters_.count(Column::FREQ) || filters_.count(Column::COUNT) || filters_.count(Column::DATA)) &&
                       ++sort_threshold_ == settings.fps)) {
     sort_threshold_ = 0;
@@ -214,7 +214,7 @@ void MessageTableModel::onSnapshotsUpdated(const std::set<MessageId> *ids, bool 
   }
 }
 
-void MessageTableModel::sort(int column, Qt::SortOrder order) {
+void MessageModel::sort(int column, Qt::SortOrder order) {
   if (column != Column::DATA) {
     sort_column = column;
     sort_order = order;

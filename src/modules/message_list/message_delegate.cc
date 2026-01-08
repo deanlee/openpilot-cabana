@@ -1,4 +1,4 @@
-#include "message_table_delegate.h"
+#include "message_delegate.h"
 
 #include <QApplication>
 #include <QFontDatabase>
@@ -7,7 +7,7 @@
 
 #include "utils/util.h"
 
-MessageTableDelegate::MessageTableDelegate(QObject *parent, bool multiple_lines)
+MessageDelegate::MessageDelegate(QObject *parent, bool multiple_lines)
     : font_metrics(QApplication::font()), multiple_lines(multiple_lines), QStyledItemDelegate(parent) {
   fixed_font = QFontDatabase::systemFont(QFontDatabase::FixedFont);
   byte_size = QFontMetrics(fixed_font).size(Qt::TextSingleLine, "00 ") + QSize(0, 2);
@@ -19,17 +19,17 @@ MessageTableDelegate::MessageTableDelegate(QObject *parent, bool multiple_lines)
   v_margin = QApplication::style()->pixelMetric(QStyle::PM_FocusFrameVMargin) + 1;
 }
 
-QSize MessageTableDelegate::sizeForBytes(int n) const {
+QSize MessageDelegate::sizeForBytes(int n) const {
   int rows = multiple_lines ? std::max(1, n / 8) : 1;
   return {(n / rows) * byte_size.width() + h_margin * 2, rows * byte_size.height() + v_margin * 2};
 }
 
-QSize MessageTableDelegate::sizeHint(const QStyleOptionViewItem &option, const QModelIndex &index) const {
+QSize MessageDelegate::sizeHint(const QStyleOptionViewItem &option, const QModelIndex &index) const {
   auto data = index.data(BytesRole);
   return sizeForBytes(data.isValid() ? static_cast<std::vector<uint8_t> *>(data.value<void *>())->size() : 0);
 }
 
-void MessageTableDelegate::paint(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const {
+void MessageDelegate::paint(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const {
   if (option.state & QStyle::State_Selected) {
     painter->fillRect(option.rect, option.palette.brush(QPalette::Normal, QPalette::Highlight));
   }

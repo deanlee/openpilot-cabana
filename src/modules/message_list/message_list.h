@@ -9,8 +9,8 @@
 #include <QWheelEvent>
 #include <optional>
 
-#include "message_table_delegate.h"
-#include "message_table.h"
+#include "message_delegate.h"
+#include "message_model.h"
 
 class MessageTable : public QTreeView {
   Q_OBJECT
@@ -62,11 +62,11 @@ protected:
 
   MessageTable *view;
   MessageHeader *header;
-  MessageTableDelegate *delegate;
+  MessageDelegate *delegate;
   std::optional<MessageId> current_msg_id;
-  MessageTableModel *model;
+  MessageModel *model;
   QPushButton *suppress_add;
   QPushButton *suppress_clear;
   QMenu *menu;
-  friend class MessageTableModel;
+  friend class MessageModel;
 };

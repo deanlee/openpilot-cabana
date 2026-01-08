@@ -68,7 +68,7 @@ MessageHistory::MessageHistory(QWidget *parent) : QFrame(parent) {
   main_layout->addWidget(line);
   main_layout->addWidget(logs = new QTableView(this));
   logs->setModel(model = new MessageHistoryModel(this));
-  logs->setItemDelegate(delegate = new MessageTableDelegate(this));
+  logs->setItemDelegate(delegate = new MessageDelegate(this));
   logs->setHorizontalHeader(new HistoryHeader(Qt::Horizontal, this));
   logs->horizontalHeader()->setDefaultAlignment(Qt::AlignRight | (Qt::Alignment)Qt::TextWordWrap);
   logs->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);

@@ -6,9 +6,9 @@
 #include <QTableView>
 
 #include "common.h"
-#include "modules/message_list/message_table_delegate.h"
-#include "history_model.h"
 #include "core/streams/abstractstream.h"
+#include "history_model.h"
+#include "modules/message_list/message_delegate.h"
 
 class HistoryHeader : public QHeaderView {
 public:
@@ -38,5 +38,5 @@ private:
   QLineEdit *value_edit;
   QWidget *filters_widget;
   ToolButton *export_btn;
-  MessageTableDelegate *delegate;
+  MessageDelegate *delegate;
 };

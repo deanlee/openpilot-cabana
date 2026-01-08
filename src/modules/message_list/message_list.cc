@@ -20,11 +20,11 @@ MessageList::MessageList(QWidget *parent) : menu(new QMenu(this)), QWidget(paren
   main_layout->addWidget(createToolBar());
   // message table
   main_layout->addWidget(view = new MessageTable(this));
-  view->setItemDelegate(delegate = new MessageTableDelegate(view, settings.multiple_lines_hex));
-  view->setModel(model = new MessageTableModel(this));
+  view->setItemDelegate(delegate = new MessageDelegate(view, settings.multiple_lines_hex));
+  view->setModel(model = new MessageModel(this));
   view->setHeader(header = new MessageHeader(this));
   view->setSortingEnabled(true);
-  view->sortByColumn(MessageTableModel::Column::NAME, Qt::AscendingOrder);
+  view->sortByColumn(MessageModel::Column::NAME, Qt::AscendingOrder);
   view->setAllColumnsShowFocus(true);
   view->setEditTriggers(QAbstractItemView::NoEditTriggers);
   view->setItemsExpandable(false);
@@ -35,7 +35,7 @@ MessageList::MessageList(QWidget *parent) : menu(new QMenu(this)), QWidget(paren
   // Must be called before setting any header parameters to avoid overriding
   restoreHeaderState(settings.message_header_state);
   header->setSectionsMovable(true);
-  header->setSectionResizeMode(MessageTableModel::Column::DATA, QHeaderView::Fixed);
+  header->setSectionResizeMode(MessageModel::Column::DATA, QHeaderView::Fixed);
   header->setStretchLastSection(true);
   header->setContextMenuPolicy(Qt::CustomContextMenu);
 
@@ -43,11 +43,11 @@ MessageList::MessageList(QWidget *parent) : menu(new QMenu(this)), QWidget(paren
   connect(menu, &QMenu::aboutToShow, this, &MessageList::menuAboutToShow);
   connect(header, &MessageHeader::customContextMenuRequested, this, &MessageList::headerContextMenuEvent);
   connect(view->horizontalScrollBar(), &QScrollBar::valueChanged, header, &MessageHeader::updateHeaderPositions);
-  connect(can, &AbstractStream::snapshotsUpdated, model, &MessageTableModel::onSnapshotsUpdated);
-  connect(GetDBC(), &dbc::Manager::DBCFileChanged, model, &MessageTableModel::dbcModified);
-  connect(UndoStack::instance(), &QUndoStack::indexChanged, model, &MessageTableModel::dbcModified);
+  connect(can, &AbstractStream::snapshotsUpdated, model, &MessageModel::onSnapshotsUpdated);
+  connect(GetDBC(), &dbc::Manager::DBCFileChanged, model, &MessageModel::dbcModified);
+  connect(UndoStack::instance(), &QUndoStack::indexChanged, model, &MessageModel::dbcModified);
   connect(view->selectionModel(), &QItemSelectionModel::currentChanged, this, &MessageList::handleSelectionChanged);
-  connect(model, &MessageTableModel::modelReset, [this]() {
+  connect(model, &MessageModel::modelReset, [this]() {
     if (current_msg_id) {
       selectMessage(*current_msg_id);
     }
@@ -154,7 +154,7 @@ void MessageList::menuAboutToShow() {
   action->setCheckable(true);
   action->setChecked(settings.multiple_lines_hex);
 
-  action = menu->addAction(tr("Show inactive Messages"), model, &MessageTableModel::showInactivemessages);
+  action = menu->addAction(tr("Show inactive Messages"), model, &MessageModel::showInactivemessages);
   action->setCheckable(true);
   action->setChecked(model->show_inactive_messages);
 }
@@ -175,7 +175,7 @@ void MessageTable::dataChanged(const QModelIndex &topLeft, const QModelIndex &bo
 }
 
 void MessageTable::updateBytesSectionSize() {
-  auto delegate = ((MessageTableDelegate *)itemDelegate());
+  auto delegate = ((MessageDelegate *)itemDelegate());
   int max_bytes = 8;
   if (!delegate->multipleLines()) {
     for (const auto &[_, m] : can->snapshots()) {
@@ -183,7 +183,7 @@ void MessageTable::updateBytesSectionSize() {
     }
   }
   setUniformRowHeights(!delegate->multipleLines());
-  header()->resizeSection(MessageTableModel::Column::DATA, delegate->sizeForBytes(max_bytes).width());
+  header()->resizeSection(MessageModel::Column::DATA, delegate->sizeForBytes(max_bytes).width());
 }
 
 void MessageTable::wheelEvent(QWheelEvent *event) {
@@ -211,7 +211,7 @@ void MessageHeader::updateFilters() {
       filters[i] = editors[i]->text();
     }
   }
-  qobject_cast<MessageTableModel*>(model())->setFilterStrings(filters);
+  qobject_cast<MessageModel*>(model())->setFilterStrings(filters);
 }
 
 void MessageHeader::updateHeaderPositions() {
