@@ -96,7 +96,7 @@ ChartsWidget::ChartsWidget(QWidget *parent) : QFrame(parent) {
 
   // charts
   charts_container = new ChartsContainer(this);
-  charts_container->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Expanding);
+  charts_container->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
   charts_scroll = new QScrollArea(this);
   charts_scroll->viewport()->setBackgroundRole(QPalette::Base);
   charts_scroll->setFrameStyle(QFrame::NoFrame);
@@ -387,6 +387,13 @@ void ChartsWidget::updateLayout(bool force) {
     }
     charts_container->setUpdatesEnabled(true);
   }
+
+  if (charts.isEmpty()) {
+    charts_container->setMinimumHeight(charts_scroll->viewport()->height());
+  } else {
+    charts_container->setMinimumHeight(0);
+  }
+  charts_container->update();
 }
 
 void ChartsWidget::startAutoScroll() {
@@ -469,6 +476,7 @@ void ChartsWidget::removeAll() {
     emit seriesChanged();
   }
   zoomReset();
+  updateLayout(true);
 }
 
 void ChartsWidget::alignCharts() {
