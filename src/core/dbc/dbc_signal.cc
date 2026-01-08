@@ -16,14 +16,21 @@ void dbc::Signal::update() {
     receiver_name = DEFAULT_NODE_NAME;
   }
 
-  float h = 19 * (float)lsb / 64.0;
-  h = std::fmod(h, 1.0);
-  size_t hash = qHash(name);
-  float s = 0.25 + 0.25 * (float)(hash & 0xff) / 255.0;
-  float v = 0.75 + 0.25 * (float)((hash >> 8) & 0xff) / 255.0;
+  // 1. Hue: Use Golden Ratio distribution or a larger prime multiplier
+  // to prevent similar Hues for adjacent signals.
+  // 360 degrees * ((lsb * golden_ratio) mod 1)
+  float h = std::fmod((float)lsb * 0.61803398875f, 1.0f);
 
-  color = QColor::fromHsvF(h, s, v);
-  precision = std::max(num_decimals(factor), num_decimals(offset));
+  // 2. Saturation: High enough to be "colorful" in charts,
+  // but low enough to allow text readability.
+  size_t hash = qHash(name);
+  float s = 0.4f + 0.2f * (float)(hash & 0xff) / 255.0f;  // Range: 0.4 - 0.6
+
+  // 3. Value (Brightness): Keep it high so black text always has contrast.
+  // For the Binary View, you can control the "heat" using Alpha later.
+  float v = 0.85f + 0.15f * (float)((hash >> 8) & 0xff) / 255.0f;  // Range: 0.85 - 1.0
+
+  color = QColor::fromHsvF(h, s, v);als(offset));
 }
 
 QString dbc::Signal::formatValue(double value, bool with_unit) const {
