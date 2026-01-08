@@ -15,6 +15,7 @@
 #include "signal_editor.h"
 #include "signal_tree_model.h"
 #include "value_table_editor.h"
+#include "widgets/validators.h"
 
 SignalTreeDelegate::SignalTreeDelegate(QObject* parent) : QStyledItemDelegate(parent) {
   name_validator = new NameValidator(this);

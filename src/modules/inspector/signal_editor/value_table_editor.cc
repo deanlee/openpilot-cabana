@@ -8,6 +8,7 @@
 #include <QTableWidgetItem>
 
 #include "utils/util.h"
+#include "widgets/validators.h"
 
 ValueTableEditor::ValueTableEditor(const ValueDescription& descriptions, QWidget* parent) : QDialog(parent) {
   QHBoxLayout* toolbar_layout = new QHBoxLayout();

@@ -5,24 +5,9 @@
 
 #include <QByteArray>
 #include <QColor>
-#include <QDoubleValidator>
 #include <QPainter>
-#include <QRegExpValidator>
 #include <QStaticText>
 #include <QStringBuilder>
-
-class NameValidator : public QRegExpValidator {
-  Q_OBJECT
-public:
-  NameValidator(QObject *parent=nullptr);
-  QValidator::State validate(QString &input, int &pos) const override;
-};
-
-class DoubleValidator : public QDoubleValidator {
-  Q_OBJECT
-public:
-  DoubleValidator(QObject *parent = nullptr);
-};
 
 namespace utils {
 
