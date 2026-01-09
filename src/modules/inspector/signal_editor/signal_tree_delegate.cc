@@ -11,7 +11,7 @@
 #include <QToolTip>
 
 #include "core/commands/commands.h"
-#include "modules/charts/chartswidget.h"
+#include "modules/charts/charts_panel.h"
 #include "signal_editor.h"
 #include "signal_tree_model.h"
 #include "value_table_editor.h"

@@ -18,7 +18,7 @@ void GuideOverlay::paintEvent(QPaintEvent* event) {
   drawHelpForWidget(painter, parent->findChild<MessageList*>());
   drawHelpForWidget(painter, parent->findChild<BinaryView*>());
   drawHelpForWidget(painter, parent->findChild<SignalEditor*>());
-  drawHelpForWidget(painter, parent->findChild<ChartsWidget*>());
+  drawHelpForWidget(painter, parent->findChild<ChartsPanel*>());
   drawHelpForWidget(painter, parent->findChild<VideoPlayer*>());
 }
 

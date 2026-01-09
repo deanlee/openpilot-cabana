@@ -183,7 +183,7 @@ void MainWindow::createDockWidgets() {
   connect(message_list, &MessageList::msgSelectionChanged, center_widget, &CenterWidget::setMessage);
 
   // right panel
-  charts_widget = new ChartsWidget(this);
+  charts_widget = new ChartsPanel(this);
   QWidget *charts_container = new QWidget(this);
   charts_layout = new QVBoxLayout(charts_container);
   charts_layout->setContentsMargins(0, 0, 0, 0);
@@ -199,8 +199,8 @@ void MainWindow::createDockWidgets() {
   video_splitter->restoreState(settings.video_splitter_state);
   video_splitter->handle(1)->setEnabled(!can->liveStreaming());
   video_dock->setWidget(video_splitter);
-  connect(charts_widget, &ChartsWidget::toggleChartsDocking, this, &MainWindow::toggleChartsDocking);
-  connect(charts_widget, &ChartsWidget::showTip, video_widget, &VideoPlayer::showThumbnail);
+  connect(charts_widget, &ChartsPanel::toggleChartsDocking, this, &MainWindow::toggleChartsDocking);
+  connect(charts_widget, &ChartsPanel::showTip, video_widget, &VideoPlayer::showThumbnail);
 }
 
 void MainWindow::createStatusBar() {

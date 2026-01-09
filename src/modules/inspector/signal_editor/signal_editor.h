@@ -8,7 +8,7 @@
 #include <set>
 #include <utility>
 
-#include "modules/charts/chartswidget.h"
+#include "modules/charts/charts_panel.h"
 #include "modules/charts/sparkline.h"
 #include "signal_tree.h"
 #include "signal_tree_delegate.h"
@@ -18,7 +18,7 @@ class SignalEditor : public QFrame {
   Q_OBJECT
 
 public:
-  SignalEditor(ChartsWidget *charts, QWidget *parent);
+  SignalEditor(ChartsPanel *charts, QWidget *parent);
   void setMessage(const MessageId &id);
   void signalHovered(const dbc::Signal *sig);
   void updateChartState();
@@ -45,7 +45,7 @@ private:
   QLabel *sparkline_label;
   QSlider *sparkline_range_slider;
   QLineEdit *filter_edit;
-  ChartsWidget *charts;
+  ChartsPanel *charts;
   QLabel *signal_count_lb;
   SignalTreeDelegate *delegate;
 

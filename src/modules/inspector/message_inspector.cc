@@ -8,7 +8,7 @@
 #include "mainwin.h"
 #include "message_edit.h"
 
-MessageDetails::MessageDetails(ChartsWidget *charts, QWidget *parent) : charts(charts), QWidget(parent) {
+MessageDetails::MessageDetails(ChartsPanel *charts, QWidget *parent) : charts(charts), QWidget(parent) {
   QVBoxLayout *main_layout = new QVBoxLayout(this);
   main_layout->setContentsMargins(0, 0, 0, 0);
 
@@ -48,8 +48,8 @@ MessageDetails::MessageDetails(ChartsWidget *charts, QWidget *parent) : charts(c
   connect(binary_view, &BinaryView::signalHovered, signal_editor, &SignalEditor::signalHovered);
   connect(binary_view, &BinaryView::signalClicked, [this](const dbc::Signal *s) { signal_editor->selectSignal(s, true); });
   connect(binary_view, &BinaryView::editSignal, signal_editor->model, &SignalTreeModel::saveSignal);
-  connect(binary_view, &BinaryView::showChart, charts, &ChartsWidget::showChart);
-  connect(signal_editor, &SignalEditor::showChart, charts, &ChartsWidget::showChart);
+  connect(binary_view, &BinaryView::showChart, charts, &ChartsPanel::showChart);
+  connect(signal_editor, &SignalEditor::showChart, charts, &ChartsPanel::showChart);
   connect(signal_editor, &SignalEditor::highlight, binary_view, &BinaryView::highlight);
   connect(tab_widget, &QTabWidget::currentChanged, [this]() { updateState(); });
   connect(can, &AbstractStream::snapshotsUpdated, this, &MessageDetails::updateState);
@@ -62,7 +62,7 @@ MessageDetails::MessageDetails(ChartsWidget *charts, QWidget *parent) : charts(c
     }
   });
   connect(tabbar, &QTabBar::tabCloseRequested, tabbar, &QTabBar::removeTab);
-  connect(charts, &ChartsWidget::seriesChanged, signal_editor, &SignalEditor::updateChartState);
+  connect(charts, &ChartsPanel::seriesChanged, signal_editor, &SignalEditor::updateChartState);
 }
 
 void MessageDetails::createToolBar() {

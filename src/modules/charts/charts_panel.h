@@ -19,11 +19,11 @@ const int CHART_MIN_WIDTH = 300;
 const QString CHART_MIME_TYPE = "application/x-cabanachartview";
 
 class ChartView;
-class ChartsWidget;
+class ChartsPanel;
 
 class ChartsContainer : public QWidget {
 public:
-  ChartsContainer(ChartsWidget *parent);
+  ChartsContainer(ChartsPanel *parent);
   void dragEnterEvent(QDragEnterEvent *event) override;
   void dropEvent(QDropEvent *event) override;
   void dragLeaveEvent(QDragLeaveEvent *event) override { drawDropIndicator({}); }
@@ -32,15 +32,15 @@ public:
   ChartView *getDropAfter(const QPoint &pos) const;
 
   QGridLayout *charts_layout;
-  ChartsWidget *charts_widget;
+  ChartsPanel *charts_widget;
   QPoint drop_indictor_pos;
 };
 
-class ChartsWidget : public QFrame {
+class ChartsPanel : public QFrame {
   Q_OBJECT
 
 public:
-  ChartsWidget(QWidget *parent = nullptr);
+  ChartsPanel(QWidget *parent = nullptr);
   void showChart(const MessageId &id, const dbc::Signal *sig, bool show, bool merge);
   inline bool hasSignal(const MessageId &id, const dbc::Signal *sig) { return findChart(id, sig) != nullptr; }
   QStringList serializeChartIds() const;
