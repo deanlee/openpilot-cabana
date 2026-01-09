@@ -6,6 +6,10 @@
 
 namespace dbc {
 
+Manager::Manager(QObject* parent) : QObject(parent) {
+  qRegisterMetaType<SourceSet>("SourceSet");
+}
+
 bool Manager::open(const SourceSet& sources, const QString& dbc_file_name, QString* error) {
   try {
     auto it = std::find_if(dbc_files.begin(), dbc_files.end(),

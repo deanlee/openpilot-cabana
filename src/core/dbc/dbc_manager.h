@@ -19,7 +19,7 @@ class Manager : public QObject {
   Q_OBJECT
 
 public:
-  Manager(QObject *parent) : QObject(parent) {}
+  Manager(QObject *parent);
   ~Manager() {}
   bool open(const SourceSet &sources, const QString &dbc_file_name, QString *error = nullptr);
   bool open(const SourceSet &sources, const QString &name, const QString &content, QString *error = nullptr);

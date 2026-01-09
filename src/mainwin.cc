@@ -22,6 +22,7 @@
 #include "core/streams/abstractstream.h"
 #include "modules/settings/settings_dialog.h"
 #include "modules/streams/stream_selector.h"
+#include "modules/system/system_relay.h"
 #include "replay/include/http.h"
 #include "tools/findsignal.h"
 #include "utils/export.h"
@@ -46,25 +47,16 @@ MainWindow::MainWindow(AbstractStream *stream, const QString &dbc_file) : QMainW
   restoreState(settings.window_state);
 
   // install handlers
-  static auto static_main_win = this;
-  qRegisterMetaType<uint64_t>("uint64_t");
-  qRegisterMetaType<SourceSet>("SourceSet");
-  installDownloadProgressHandler([](uint64_t cur, uint64_t total, bool success) {
-    emit static_main_win->updateProgressBar(cur, total, success);
-  });
-  qInstallMessageHandler([](QtMsgType type, const QMessageLogContext &context, const QString &msg) {
-    if (type == QtDebugMsg) return;
-    emit static_main_win->showMessage(msg, 2000);
-  });
-  installMessageHandler([](ReplyMsgType type, const std::string msg) { qInfo() << msg.c_str(); });
+  auto& relay = SystemRelay::instance();
+  connect(&relay, &SystemRelay::logMessage, statusBar(), &QStatusBar::showMessage);
+  connect(&relay, &SystemRelay::downloadProgress, this, &MainWindow::updateDownloadProgress);
+  relay.installGlobalHandlers();
 
   setStyleSheet(QString(R"(QMainWindow::separator {
     width: %1px; /* when vertical */
     height: %1px; /* when horizontal */
   })").arg(style()->pixelMetric(QStyle::PM_SplitterWidth)));
 
-  connect(this, &MainWindow::showMessage, statusBar(), &QStatusBar::showMessage);
-  connect(this, &MainWindow::updateProgressBar, this, &MainWindow::updateDownloadProgress);
   connect(GetDBC(), &dbc::Manager::DBCFileChanged, this, &MainWindow::DBCFileChanged);
   connect(UndoStack::instance(), &QUndoStack::cleanChanged, this, &MainWindow::undoStackCleanChanged);
   connect(&settings, &Settings::changed, this, &MainWindow::updateStatus);
@@ -369,7 +361,7 @@ void MainWindow::startStream(AbstractStream *stream, QString dbc_file) {
     wait_dlg->setFixedSize(400, wait_dlg->sizeHint().height());
     connect(wait_dlg, &QProgressDialog::canceled, this, &MainWindow::close);
     connect(can, &AbstractStream::eventsMerged, wait_dlg, &QProgressDialog::deleteLater);
-    connect(this, &MainWindow::updateProgressBar, wait_dlg, [=](uint64_t cur, uint64_t total, bool success) {
+    connect(&SystemRelay::instance(), &SystemRelay::downloadProgress, wait_dlg, [=](uint64_t cur, uint64_t total, bool success) {
       wait_dlg->setValue((int)((cur / (double)total) * 100));
     });
   }
@@ -566,9 +558,6 @@ void MainWindow::toggleChartsDocking() {
 
 void MainWindow::closeEvent(QCloseEvent *event) {
   remindSaveChanges();
-
-  installDownloadProgressHandler(nullptr);
-  qInstallMessageHandler(nullptr);
 
   if (floating_window)
     floating_window->deleteLater();

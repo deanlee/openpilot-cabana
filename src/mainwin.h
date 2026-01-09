@@ -39,10 +39,6 @@ public slots:
   void saveAs();
   void saveToClipboard();
 
-signals:
-  void showMessage(const QString &msg, int timeout);
-  void updateProgressBar(uint64_t cur, uint64_t total, bool success);
-
 protected:
   void startStream(AbstractStream *stream, QString dbc_file);
   bool eventFilter(QObject *obj, QEvent *event) override;
