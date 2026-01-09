@@ -99,15 +99,3 @@ protected:
   QString car_fingerprint;
   QByteArray default_state;
 };
-
-class HelpOverlay : public QWidget {
-  Q_OBJECT
-public:
-  HelpOverlay(MainWindow *parent);
-
-protected:
-  void drawHelpForWidget(QPainter &painter, QWidget *w);
-  void paintEvent(QPaintEvent *event) override;
-  void mouseReleaseEvent(QMouseEvent *event) override;
-  bool eventFilter(QObject *obj, QEvent *event) override;
-};

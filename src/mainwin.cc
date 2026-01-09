@@ -10,9 +10,7 @@
 #include <QMenuBar>
 #include <QMessageBox>
 #include <QProgressDialog>
-#include <QResizeEvent>
 #include <QShortcut>
-#include <QTextDocument>
 #include <QUndoView>
 #include <QVBoxLayout>
 #include <QWidgetAction>
@@ -27,6 +25,7 @@
 #include "replay/include/http.h"
 #include "tools/findsignal.h"
 #include "utils/export.h"
+#include "widgets/guide_overlay.h"
 
 MainWindow::MainWindow(AbstractStream *stream, const QString &dbc_file) : QMainWindow() {
   loadFingerprints();
@@ -606,13 +605,13 @@ void MainWindow::findSignal() {
 }
 
 void MainWindow::onlineHelp() {
-  if (auto help = findChild<HelpOverlay*>()) {
-    help->close();
+  if (auto guide = findChild<GuideOverlay*>()) {
+    guide->close();
   } else {
-    help = new HelpOverlay(this);
-    help->setGeometry(rect());
-    help->show();
-    help->raise();
+    guide = new GuideOverlay(this);
+    guide->setGeometry(rect());
+    guide->show();
+    guide->raise();
   }
 }
 
@@ -660,51 +659,4 @@ void MainWindow::restoreSessionState() {
 
   if (charts_widget != nullptr && !settings.active_charts.empty())
     charts_widget->restoreChartsFromIds(settings.active_charts);
-}
-
-// HelpOverlay
-HelpOverlay::HelpOverlay(MainWindow *parent) : QWidget(parent) {
-  setAttribute(Qt::WA_NoSystemBackground, true);
-  setAttribute(Qt::WA_TranslucentBackground, true);
-  setAttribute(Qt::WA_DeleteOnClose);
-  parent->installEventFilter(this);
-}
-
-void HelpOverlay::paintEvent(QPaintEvent *event) {
-  QPainter painter(this);
-  painter.fillRect(rect(), QColor(0, 0, 0, 50));
-  auto parent = parentWidget();
-  drawHelpForWidget(painter, parent->findChild<MessageList *>());
-  drawHelpForWidget(painter, parent->findChild<BinaryView *>());
-  drawHelpForWidget(painter, parent->findChild<SignalEditor *>());
-  drawHelpForWidget(painter, parent->findChild<ChartsWidget *>());
-  drawHelpForWidget(painter, parent->findChild<VideoPlayer *>());
-}
-
-void HelpOverlay::drawHelpForWidget(QPainter &painter, QWidget *w) {
-  if (w && w->isVisible() && !w->whatsThis().isEmpty()) {
-    QPoint pt = mapFromGlobal(w->mapToGlobal(w->rect().center()));
-    if (rect().contains(pt)) {
-      QTextDocument document;
-      document.setHtml(w->whatsThis());
-      QSize doc_size = document.size().toSize();
-      QPoint topleft = {pt.x() - doc_size.width() / 2, pt.y() - doc_size.height() / 2};
-      painter.translate(topleft);
-      painter.fillRect(QRect{{0, 0}, doc_size}, palette().toolTipBase());
-      document.drawContents(&painter);
-      painter.translate(-topleft);
-    }
-  }
-}
-
-bool HelpOverlay::eventFilter(QObject *obj, QEvent *event) {
-  if (obj == parentWidget() && event->type() == QEvent::Resize) {
-    QResizeEvent *resize_event = (QResizeEvent *)(event);
-    setGeometry(QRect{QPoint(0, 0), resize_event->size()});
-  }
-  return false;
-}
-
-void HelpOverlay::mouseReleaseEvent(QMouseEvent *event) {
-  close();
 }
