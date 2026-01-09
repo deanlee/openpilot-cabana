@@ -2,6 +2,7 @@
 
 #include <QApplication>
 #include <cmath>
+#include <unordered_set>
 
 #include "message_list.h"
 #include "modules/settings/settings.h"
@@ -161,39 +162,54 @@ bool MessageModel::match(const MessageModel::Item &item) {
 }
 
 bool MessageModel::filterAndSort() {
-  // merge CAN and DBC messages
-  std::vector<MessageId> all_messages;
-  all_messages.reserve(can->snapshots().size() + dbc_messages_.size());
-  auto dbc_msgs = dbc_messages_;
-  for (const auto &[id, m] : can->snapshots()) {
-    all_messages.push_back(id);
-    dbc_msgs.erase(MessageId{INVALID_SOURCE, id.address});
-  }
-  all_messages.insert(all_messages.end(), dbc_msgs.begin(), dbc_msgs.end());
+  const auto& snapshots = can->snapshots();
+  auto* dbc = GetDBC();
 
-  // filter and sort
-  std::vector<Item> items;
-  items.reserve(all_messages.size());
-  for (const auto &id : all_messages) {
-    auto *data = can->snapshot(id);
+  std::vector<Item> new_items;
+  new_items.reserve(snapshots.size() + dbc_messages_.size());
+
+  // Set to track addresses already handled by snapshots
+  std::unordered_set<uint32_t> snapshot_addrs;
+  snapshot_addrs.reserve(snapshots.size());
+
+  // Helper: Builds item, matches against filters, and moves to vector
+  auto processItem = [&](const MessageId& id, const MessageState* data) {
+    auto msg = dbc->msg(id);
+    Item item = {
+        .id = id,
+        .name = msg ? msg->name : UNTITLED,
+        .node = msg ? msg->transmitter : QString(),
+        .data = data,
+        .address_hex = toHexString(id.address),
+    };
+
+    if (match(item)) {
+      new_items.push_back(std::move(item));
+    }
+  };
+
+  // Process Live Snapshots
+  for (const auto& [id, data] : snapshots) {
+    snapshot_addrs.insert(id.address);
     if (show_inactive_messages || (data && data->is_active)) {
-      auto msg = GetDBC()->msg(id);
-      Item item = {
-          .id = id,
-          .name = msg ? msg->name : UNTITLED,
-          .node = msg ? msg->transmitter : QString(),
-          .data = data,
-          .address_hex = toHexString(id.address),
-      };
-      if (match(item))
-        items.emplace_back(item);
+      processItem(id, data.get());
     }
   }
-  sortItems(items);
 
-  if (items_ != items) {
+  // Process DBC placeholders (only if address not on live bus)
+  if (show_inactive_messages) {
+    for (const auto& id : dbc_messages_) {
+      if (snapshot_addrs.find(id.address) == snapshot_addrs.end()) {
+        processItem(id, can->snapshot(id));
+      }
+    }
+  }
+
+  sortItems(new_items);
+
+  if (items_ != new_items) {
     beginResetModel();
-    items_ = std::move(items);
+    items_ = std::move(new_items);
     endResetModel();
     return true;
   }
