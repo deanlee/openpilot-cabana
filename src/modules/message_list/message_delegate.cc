@@ -29,48 +29,46 @@ QSize MessageDelegate::sizeHint(const QStyleOptionViewItem &option, const QModel
   return sizeForBytes(data.isValid() ? static_cast<std::vector<uint8_t> *>(data.value<void *>())->size() : 0);
 }
 
-void MessageDelegate::paint(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const {
-  if (option.state & QStyle::State_Selected) {
-    painter->fillRect(option.rect, option.palette.brush(QPalette::Normal, QPalette::Highlight));
-  }
-
-  QRect item_rect = option.rect.adjusted(h_margin, v_margin, -h_margin, -v_margin);
-  QColor highlighted_color = option.palette.color(QPalette::HighlightedText);
-  auto text_color = index.data(Qt::ForegroundRole).value<QColor>();
-  bool inactive = text_color.isValid();
-  if (!inactive) {
-    text_color = option.palette.color(QPalette::Text);
-  }
+void MessageDelegate::paint(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const {
   auto data = index.data(BytesRole);
   if (!data.isValid()) {
-    painter->setFont(option.font);
-    painter->setPen(option.state & QStyle::State_Selected ? highlighted_color : text_color);
-    QString text = font_metrics.elidedText(index.data(Qt::DisplayRole).toString(), Qt::ElideRight, item_rect.width());
-    painter->drawText(item_rect, Qt::AlignLeft | Qt::AlignVCenter, text);
+    QStyledItemDelegate::paint(painter, option, index);
     return;
   }
 
-  // Paint hex column
-  const auto &bytes = *static_cast<std::vector<uint8_t> *>(data.value<void *>());
-  const auto &colors = *static_cast<std::vector<QColor> *>(index.data(ColorsRole).value<void *>());
+  QStyleOptionViewItem opt = option;
+  initStyleOption(&opt, index);
+  QApplication::style()->drawControl(QStyle::CE_ItemViewItem, &opt, painter);
 
+  painter->save();
   painter->setFont(fixed_font);
-  const QPen text_pen(option.state & QStyle::State_Selected ? highlighted_color : text_color);
+
+  const QRect item_rect = opt.rect.adjusted(h_margin, v_margin, -h_margin, -v_margin);
+  const auto& bytes = *static_cast<std::vector<uint8_t>*>(data.value<void*>());
+  const auto& colors = *static_cast<std::vector<QColor>*>(index.data(ColorsRole).value<void*>());
+
+  QColor base_text_color = (opt.state & QStyle::State_Selected)
+                               ? opt.palette.color(QPalette::HighlightedText)
+                               : opt.palette.color(QPalette::Text);
+
   const QPoint pt = item_rect.topLeft();
+
   for (int i = 0; i < bytes.size(); ++i) {
     int row = !multiple_lines ? 0 : i / 8;
-    int column = !multiple_lines ? i : i % 8;
-    QRect r({pt.x() + column * byte_size.width(), pt.y() + row * byte_size.height()}, byte_size);
+    int col = !multiple_lines ? i : i % 8;
+    QRect r({pt.x() + col * byte_size.width(), pt.y() + row * byte_size.height()}, byte_size);
 
-    if (!inactive && i < colors.size() && colors[i].alpha() > 0) {
-      if (option.state & QStyle::State_Selected) {
-        painter->setPen(option.palette.color(QPalette::Text));
-        painter->fillRect(r, option.palette.color(QPalette::Window));
-      }
+    // Byte-specific background (e.g., green/red change indicators)
+    if (i < colors.size() && colors[i].alpha() > 0) {
       painter->fillRect(r, colors[i]);
+      // Use standard text color for contrast against change-colors
+      painter->setPen(opt.palette.color(QPalette::Text));
     } else {
-      painter->setPen(text_pen);
+      painter->setPen(base_text_color);
     }
+
     utils::drawStaticText(painter, r, hex_text_table[bytes[i]]);
   }
+
+  painter->restore();
 }
