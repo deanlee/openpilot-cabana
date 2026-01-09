@@ -36,7 +36,7 @@ struct CompareCanEvent {
   }
 };
 
-typedef std::unordered_map<MessageId, std::vector<const CanEvent *>> MessageEventsMap;
+using MessageEventsMap = std::unordered_map<MessageId, std::vector<const CanEvent *>>;
 using CanEventIter = std::vector<const CanEvent *>::const_iterator;
 
 class AbstractStream : public QObject {

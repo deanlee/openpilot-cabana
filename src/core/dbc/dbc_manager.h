@@ -7,9 +7,10 @@
 
 #include "dbc_file.h"
 
-typedef std::set<int> SourceSet;
+using SourceSet = std::set<int>;
 const SourceSet SOURCE_ALL = {-1};
 const int INVALID_SOURCE = 0xff;
+
 inline bool operator<(const std::shared_ptr<dbc::File> &l, const std::shared_ptr<dbc::File> &r) { return l.get() < r.get(); }
 
 namespace dbc {
