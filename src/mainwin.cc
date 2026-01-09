@@ -573,6 +573,7 @@ void MainWindow::closeEvent(QCloseEvent *event) {
   }
 
   saveSessionState();
+  SystemRelay::instance().uninstallHandlers();
   QWidget::closeEvent(event);
 }
 

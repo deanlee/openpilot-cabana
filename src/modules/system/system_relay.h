@@ -7,6 +7,7 @@ class SystemRelay : public QObject {
  public:
   static SystemRelay& instance();
   void installGlobalHandlers();
+  void uninstallHandlers();
 
  signals:
   void downloadProgress(uint64_t cur, uint64_t total, bool success);

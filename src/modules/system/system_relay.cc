@@ -31,3 +31,11 @@ void SystemRelay::installGlobalHandlers() {
     qInfo() << msg.c_str();
   });
 }
+
+void SystemRelay::uninstallHandlers() {
+  qInstallMessageHandler(nullptr);
+
+  installDownloadProgressHandler(nullptr);
+
+  this->disconnect();
+}
