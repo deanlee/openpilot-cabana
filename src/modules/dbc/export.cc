@@ -1,13 +1,11 @@
-#include "utils/export.h"
+#include "export.h"
 
 #include <QFile>
 #include <QTextStream>
 
 #include "core/streams/abstractstream.h"
 
-namespace utils {
-
-void exportToCSV(const QString &file_name, std::optional<MessageId> msg_id) {
+void exportMessagesToCSV(const QString &file_name, std::optional<MessageId> msg_id) {
   QFile file(file_name);
   if (file.open(QIODevice::ReadWrite | QIODevice::Truncate)) {
     QTextStream stream(&file);
@@ -41,5 +39,3 @@ void exportSignalsToCSV(const QString &file_name, const MessageId &msg_id) {
     }
   }
 }
-
-}  // namespace utils

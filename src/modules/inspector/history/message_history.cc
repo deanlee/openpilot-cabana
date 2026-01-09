@@ -5,8 +5,8 @@
 #include <QVBoxLayout>
 
 #include "core/commands/commands.h"
+#include "modules/dbc/export.h"
 #include "modules/settings/settings.h"
-#include "utils/export.h"
 #include "widgets/validators.h"
 
 QSize HistoryHeader::sectionSizeFromContents(int logicalIndex) const {
@@ -117,7 +117,7 @@ void MessageHistory::exportToCSV() {
   QString fn = QFileDialog::getSaveFileName(this, QString("Export %1 to CSV file").arg(msgName(model->msg_id)),
                                             dir, tr("csv (*.csv)"));
   if (!fn.isEmpty()) {
-    model->isHexMode() ? utils::exportToCSV(fn, model->msg_id)
-                       : utils::exportSignalsToCSV(fn, model->msg_id);
+    model->isHexMode() ? exportMessagesToCSV(fn, model->msg_id)
+                       : exportSignalsToCSV(fn, model->msg_id);
   }
 }

@@ -1,7 +1,6 @@
 #pragma once
 
 #include <QDockWidget>
-#include <QJsonDocument>
 #include <QMainWindow>
 #include <QMenu>
 #include <QProgressBar>
@@ -16,6 +15,8 @@
 #include "modules/video/video_player.h"
 #include "tools/findsimilarbits.h"
 
+class DbcController;
+
 class MainWindow : public QMainWindow {
   Q_OBJECT
 
@@ -23,7 +24,6 @@ public:
   MainWindow(AbstractStream *stream, const QString &dbc_file);
   void toggleChartsDocking();
   void showStatusMessage(const QString &msg, int timeout = 0) { statusBar()->showMessage(msg, timeout); }
-  void loadFile(const QString &fn, SourceSet s = SOURCE_ALL);
   ChartsPanel *charts_widget = nullptr;
 
 public slots:
@@ -32,26 +32,10 @@ public slots:
   void closeStream();
   void exportToCSV();
 
-  void newFile(SourceSet s = SOURCE_ALL);
-  void openFile(SourceSet s = SOURCE_ALL);
-  void loadDBCFromOpendbc(const QString &name);
-  void save();
-  void saveAs();
-  void saveToClipboard();
-
 protected:
   void startStream(AbstractStream *stream, QString dbc_file);
   bool eventFilter(QObject *obj, QEvent *event) override;
   void remindSaveChanges();
-  void closeFile(SourceSet s = SOURCE_ALL);
-  void closeFile(dbc::File *dbc_file);
-  void saveFile(dbc::File *dbc_file);
-  void saveFileAs(dbc::File *dbc_file);
-  void saveFileToClipboard(dbc::File *dbc_file);
-  void loadFingerprints();
-  void loadFromClipboard(SourceSet s = SOURCE_ALL, bool close_all = true);
-  void updateRecentFiles(const QString &fn);
-  void updateRecentFileMenu();
   void createActions();
   void createDockWindows();
   void createStatusBar();
@@ -81,7 +65,6 @@ protected:
   QVBoxLayout *charts_layout;
   QProgressBar *progress_bar;
   QLabel *status_label;
-  QJsonDocument fingerprint_to_dbc;
   QSplitter *video_splitter = nullptr;
   enum { MAX_RECENT_FILES = 15 };
   QMenu *open_recent_menu = nullptr;
@@ -94,4 +77,5 @@ protected:
   QAction *copy_dbc_to_clipboard = nullptr;
   QString car_fingerprint;
   QByteArray default_state;
+  DbcController *dbc_ = nullptr;
 };

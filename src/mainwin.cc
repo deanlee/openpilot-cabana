@@ -1,14 +1,10 @@
 #include "mainwin.h"
 
 #include <QApplication>
-#include <QClipboard>
 #include <QDesktopWidget>
 #include <QFile>
 #include <QFileDialog>
-#include <QFileInfo>
-#include <QJsonObject>
 #include <QMenuBar>
-#include <QMessageBox>
 #include <QProgressDialog>
 #include <QShortcut>
 #include <QUndoView>
@@ -20,18 +16,21 @@
 
 #include "core/commands/commands.h"
 #include "core/streams/abstractstream.h"
+#include "modules/dbc/dbc_controller.h"
+#include "modules/dbc/export.h"
 #include "modules/settings/settings_dialog.h"
 #include "modules/streams/stream_selector.h"
 #include "modules/system/system_relay.h"
 #include "replay/include/http.h"
 #include "tools/findsignal.h"
-#include "utils/export.h"
 #include "widgets/guide_overlay.h"
 
 MainWindow::MainWindow(AbstractStream *stream, const QString &dbc_file) : QMainWindow() {
-  loadFingerprints();
   createDockWindows();
   setCentralWidget(center_widget = new CenterWidget(this));
+
+  dbc_ = new DbcController(this);
+
   createActions();
   createStatusBar();
   createShortcuts();
@@ -65,13 +64,6 @@ MainWindow::MainWindow(AbstractStream *stream, const QString &dbc_file) : QMainW
   show();
 }
 
-void MainWindow::loadFingerprints() {
-  QFile json_file(QApplication::applicationDirPath() + "/data/opendbc/car_fingerprint_to_dbc.json");
-  if (json_file.open(QIODevice::ReadOnly)) {
-    fingerprint_to_dbc = QJsonDocument::fromJson(json_file.readAll());
-  }
-}
-
 void MainWindow::createActions() {
   // File menu
   QMenu *file_menu = menuBar()->addMenu(tr("&File"));
@@ -82,35 +74,25 @@ void MainWindow::createActions() {
   export_to_csv_act->setEnabled(false);
   file_menu->addSeparator();
 
-  file_menu->addAction(tr("New DBC File"), [this]() { newFile(); }, QKeySequence::New);
-  file_menu->addAction(tr("Open DBC File..."), [this]() { openFile(); }, QKeySequence::Open);
+  file_menu->addAction(tr("New DBC File"), [this]() { dbc_->newFile(); }, QKeySequence::New);
+  file_menu->addAction(tr("Open DBC File..."), [this]() { dbc_->openFile(); }, QKeySequence::Open);
 
   manage_dbcs_menu = file_menu->addMenu(tr("Manage &DBC Files"));
   connect(manage_dbcs_menu, &QMenu::aboutToShow, this, &MainWindow::updateLoadSaveMenus);
 
   open_recent_menu = file_menu->addMenu(tr("Open &Recent"));
-  connect(open_recent_menu, &QMenu::aboutToShow, this, &MainWindow::updateRecentFileMenu);
+  connect(open_recent_menu, &QMenu::aboutToShow, this, [this]() { dbc_->populateRecentMenu(open_recent_menu); });
 
   file_menu->addSeparator();
   QMenu *load_opendbc_menu = file_menu->addMenu(tr("Load DBC from commaai/opendbc"));
-  QString local_opendbc_path = QDir::current().absoluteFilePath("data/opendbc");
-  QDir opendbc_dir(local_opendbc_path);
-  if (opendbc_dir.exists()) {
-    for (const auto& dbc_name : opendbc_dir.entryList({"*.dbc"}, QDir::Files, QDir::Name)) {
-      load_opendbc_menu->addAction(dbc_name, [this, dbc_name]() {
-        loadDBCFromOpendbc(dbc_name);
-      });
-    }
-  } else {
-    rWarning("opendbc folder not found at: %s", qPrintable(local_opendbc_path));
-  }
+  dbc_->populateOpendbcFiles(load_opendbc_menu);
 
-  file_menu->addAction(tr("Load DBC From Clipboard"), [=]() { loadFromClipboard(); });
+  file_menu->addAction(tr("Load DBC From Clipboard"), [=]() { dbc_->loadFromClipboard(); });
 
   file_menu->addSeparator();
-  save_dbc = file_menu->addAction(tr("Save DBC..."), this, &MainWindow::save, QKeySequence::Save);
-  save_dbc_as = file_menu->addAction(tr("Save DBC As..."), this, &MainWindow::saveAs, QKeySequence::SaveAs);
-  copy_dbc_to_clipboard = file_menu->addAction(tr("Copy DBC To Clipboard"), this, &MainWindow::saveToClipboard);
+  save_dbc = file_menu->addAction(tr("Save DBC..."), dbc_, &DbcController::save, QKeySequence::Save);
+  save_dbc_as = file_menu->addAction(tr("Save DBC As..."), dbc_, &DbcController::saveAs, QKeySequence::SaveAs);
+  copy_dbc_to_clipboard = file_menu->addAction(tr("Copy DBC To Clipboard"), dbc_, &DbcController::saveToClipboard);
 
   file_menu->addSeparator();
   file_menu->addAction(tr("Settings..."), this, &MainWindow::setOption, QKeySequence::Preferences);
@@ -261,56 +243,7 @@ void MainWindow::exportToCSV() {
   QString dir = QString("%1/%2.csv").arg(settings.last_dir).arg(can->routeName());
   QString fn = QFileDialog::getSaveFileName(this, "Export stream to CSV file", dir, tr("csv (*.csv)"));
   if (!fn.isEmpty()) {
-    utils::exportToCSV(fn);
-  }
-}
-
-void MainWindow::newFile(SourceSet s) {
-  closeFile(s);
-  GetDBC()->open(s, "", "");
-}
-
-void MainWindow::openFile(SourceSet s) {
-  remindSaveChanges();
-  QString fn = QFileDialog::getOpenFileName(this, tr("Open File"), settings.last_dir, "DBC (*.dbc)");
-  if (!fn.isEmpty()) {
-    loadFile(fn, s);
-  }
-}
-
-void MainWindow::loadFile(const QString &fn, SourceSet s) {
-  if (!fn.isEmpty()) {
-    closeFile(s);
-
-    QString error;
-    if (GetDBC()->open(s, fn, &error)) {
-      updateRecentFiles(fn);
-      statusBar()->showMessage(tr("DBC File %1 loaded").arg(fn), 2000);
-    } else {
-      QMessageBox msg_box(QMessageBox::Warning, tr("Failed to load DBC file"), tr("Failed to parse DBC file %1").arg(fn));
-      msg_box.setDetailedText(error);
-      msg_box.exec();
-    }
-  }
-}
-
-void MainWindow::loadDBCFromOpendbc(const QString &name) {
-  QString local_opendbc_path = QDir::current().absoluteFilePath("data/opendbc");
-  loadFile(QString("%1/%2").arg(local_opendbc_path, name));
-}
-
-void MainWindow::loadFromClipboard(SourceSet s, bool close_all) {
-  closeFile(s);
-
-  QString dbc_str = QGuiApplication::clipboard()->text();
-  QString error;
-  bool ret = GetDBC()->open(s, "", dbc_str, &error);
-  if (ret && GetDBC()->nonEmptyDBCCount() > 0) {
-    QMessageBox::information(this, tr("Load From Clipboard"), tr("DBC Successfully Loaded!"));
-  } else {
-    QMessageBox msg_box(QMessageBox::Warning, tr("Failed to load DBC from clipboard"), tr("Make sure that you paste the text with correct format."));
-    msg_box.setDetailedText(error);
-    msg_box.exec();
+    exportMessagesToCSV(fn);
   }
 }
 
@@ -332,7 +265,7 @@ void MainWindow::startStream(AbstractStream *stream, QString dbc_file) {
   can->setParent(this);  // take ownership
   can->start();
 
-  loadFile(dbc_file);
+  dbc_->loadFile(dbc_file);
   statusBar()->showMessage(tr("Stream [%1] started").arg(can->routeName()), 2000);
 
   bool has_stream = dynamic_cast<DummyStream *>(can) == nullptr;
@@ -348,7 +281,7 @@ void MainWindow::startStream(AbstractStream *stream, QString dbc_file) {
   }
   // Don't overwrite already loaded DBC
   if (!GetDBC()->nonEmptyDBCCount()) {
-    newFile();
+    dbc_->newFile();
   }
 
   connect(can, &AbstractStream::eventsMerged, this, &MainWindow::eventsMerged);
@@ -373,81 +306,10 @@ void MainWindow::eventsMerged() {
                                     .arg(can->routeName())
                                     .arg(car_fingerprint.isEmpty() ? tr("Unknown Car") : car_fingerprint));
     // Don't overwrite already loaded DBC
-    if (!GetDBC()->nonEmptyDBCCount() && fingerprint_to_dbc.object().contains(car_fingerprint)) {
-      QTimer::singleShot(0, this, [this]() { loadDBCFromOpendbc(fingerprint_to_dbc[car_fingerprint].toString() + ".dbc"); });
+    if (!GetDBC()->nonEmptyDBCCount()) {
+      QTimer::singleShot(0, this, [this]() { dbc_->loadFromFingerprint(car_fingerprint); });
     }
   }
-}
-
-void MainWindow::save() {
-  // Save all open DBC files
-  for (auto dbc_file : GetDBC()->allDBCFiles()) {
-    if (dbc_file->isEmpty()) continue;
-    saveFile(dbc_file);
-  }
-}
-
-void MainWindow::saveAs() {
-  // Save as all open DBC files. Should not be called with more than 1 file open
-  for (auto dbc_file : GetDBC()->allDBCFiles()) {
-    if (dbc_file->isEmpty()) continue;
-    saveFileAs(dbc_file);
-  }
-}
-
-void MainWindow::closeFile(SourceSet s) {
-  remindSaveChanges();
-  if (s == SOURCE_ALL) {
-    GetDBC()->closeAll();
-  } else {
-    GetDBC()->close(s);
-  }
-}
-
-void MainWindow::closeFile(dbc::File *dbc_file) {
-  assert(dbc_file != nullptr);
-  remindSaveChanges();
-  GetDBC()->close(dbc_file);
-  // Ensure we always have at least one file open
-  if (GetDBC()->dbcCount() == 0) {
-    newFile();
-  }
-}
-
-void MainWindow::saveFile(dbc::File *dbc_file) {
-  assert(dbc_file != nullptr);
-  if (!dbc_file->filename.isEmpty()) {
-    dbc_file->save();
-    UndoStack::instance()->setClean();
-    statusBar()->showMessage(tr("File saved"), 2000);
-  } else if (!dbc_file->isEmpty()) {
-    saveFileAs(dbc_file);
-  }
-}
-
-void MainWindow::saveFileAs(dbc::File *dbc_file) {
-  QString title = tr("Save File (bus: %1)").arg(toString(GetDBC()->sources(dbc_file)));
-  QString fn = QFileDialog::getSaveFileName(this, title, QDir::cleanPath(settings.last_dir + "/untitled.dbc"), tr("DBC (*.dbc)"));
-  if (!fn.isEmpty()) {
-    dbc_file->saveAs(fn);
-    UndoStack::instance()->setClean();
-    statusBar()->showMessage(tr("File saved as %1").arg(fn), 2000);
-    updateRecentFiles(fn);
-  }
-}
-
-void MainWindow::saveToClipboard() {
-  // Copy all open DBC files to clipboard. Should not be called with more than 1 file open
-  for (auto dbc_file : GetDBC()->allDBCFiles()) {
-    if (dbc_file->isEmpty()) continue;
-    saveFileToClipboard(dbc_file);
-  }
-}
-
-void MainWindow::saveFileToClipboard(dbc::File *dbc_file) {
-  assert(dbc_file != nullptr);
-  QGuiApplication::clipboard()->setText(dbc_file->generateGetDBC());
-  QMessageBox::information(this, tr("Copy To Clipboard"), tr("DBC Successfully copied!"));
 }
 
 void MainWindow::updateLoadSaveMenus() {
@@ -459,59 +321,25 @@ void MainWindow::updateLoadSaveMenus() {
     SourceSet ss = {source, uint8_t(source + 128), uint8_t(source + 192)};
 
     QMenu *bus_menu = new QMenu(this);
-    bus_menu->addAction(tr("New DBC File..."), [=]() { newFile(ss); });
-    bus_menu->addAction(tr("Open DBC File..."), [=]() { openFile(ss); });
-    bus_menu->addAction(tr("Load DBC From Clipboard..."), [=]() { loadFromClipboard(ss, false); });
+    bus_menu->addAction(tr("New DBC File..."), [=]() { dbc_->newFile(ss); });
+    bus_menu->addAction(tr("Open DBC File..."), [=]() { dbc_->openFile(ss); });
+    bus_menu->addAction(tr("Load DBC From Clipboard..."), [=]() { dbc_->loadFromClipboard(ss, false); });
 
     // Show sub-menu for each dbc for this source.
     auto dbc_file = GetDBC()->findDBCFile(source);
     if (dbc_file) {
       bus_menu->addSeparator();
       bus_menu->addAction(dbc_file->name() + " (" + toString(GetDBC()->sources(dbc_file)) + ")")->setEnabled(false);
-      bus_menu->addAction(tr("Save..."), [=]() { saveFile(dbc_file); });
-      bus_menu->addAction(tr("Save As..."), [=]() { saveFileAs(dbc_file); });
-      bus_menu->addAction(tr("Copy to Clipboard..."), [=]() { saveFileToClipboard(dbc_file); });
-      bus_menu->addAction(tr("Remove from this bus..."), [=]() { closeFile(ss); });
-      bus_menu->addAction(tr("Remove from all buses..."), [=]() { closeFile(dbc_file); });
+      bus_menu->addAction(tr("Save..."), [=]() { dbc_->saveFile(dbc_file); });
+      bus_menu->addAction(tr("Save As..."), [=]() { dbc_->saveFileAs(dbc_file); });
+      bus_menu->addAction(tr("Copy to Clipboard..."), [=]() { dbc_->saveFileToClipboard(dbc_file); });
+      bus_menu->addAction(tr("Remove from this bus..."), [=]() { dbc_->closeFile(ss); });
+      bus_menu->addAction(tr("Remove from all buses..."), [=]() { dbc_->closeFile(dbc_file); });
     }
     bus_menu->setTitle(tr("Bus %1 (%2)").arg(source).arg(dbc_file ? dbc_file->name() : "No DBCs loaded"));
 
     manage_dbcs_menu->addMenu(bus_menu);
   }
-}
-
-void MainWindow::updateRecentFiles(const QString &fn) {
-  settings.recent_files.removeAll(fn);
-  settings.recent_files.prepend(fn);
-  while (settings.recent_files.size() > MAX_RECENT_FILES) {
-    settings.recent_files.removeLast();
-  }
-  settings.last_dir = QFileInfo(fn).absolutePath();
-}
-
-void MainWindow::updateRecentFileMenu() {
-  open_recent_menu->clear();
-
-  int num_recent_files = std::min<int>(settings.recent_files.size(), MAX_RECENT_FILES);
-  if (!num_recent_files) {
-    open_recent_menu->addAction(tr("No Recent Files"))->setEnabled(false);
-    return;
-  }
-
-  for (int i = 0; i < num_recent_files; ++i) {
-    QString text = tr("&%1 %2").arg(i + 1).arg(QFileInfo(settings.recent_files[i]).fileName());
-    open_recent_menu->addAction(text, this, [this, file = settings.recent_files[i]]() { loadFile(file); });
-  }
-}
-
-void MainWindow::remindSaveChanges() {
-  while (!UndoStack::instance()->isClean()) {
-    QString text = tr("You have unsaved changes. Press ok to save them, cancel to discard.");
-    int ret = QMessageBox::question(this, tr("Unsaved Changes"), text, QMessageBox::Ok | QMessageBox::Cancel);
-    if (ret != QMessageBox::Ok) break;
-    save();
-  }
-  UndoStack::instance()->clear();
 }
 
 void MainWindow::updateDownloadProgress(uint64_t cur, uint64_t total, bool success) {
@@ -557,7 +385,7 @@ void MainWindow::toggleChartsDocking() {
 }
 
 void MainWindow::closeEvent(QCloseEvent *event) {
-  remindSaveChanges();
+  dbc_->remindSaveChanges();
 
   if (floating_window)
     floating_window->deleteLater();
