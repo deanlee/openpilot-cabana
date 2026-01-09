@@ -37,7 +37,7 @@ void dbc::Signal::update() {
 QString dbc::Signal::formatValue(double value, bool with_unit) const {
   // Show enum string
   int64_t raw_value = std::round((value - offset) / factor);
-  for (const auto& [val, desc] : val_desc) {
+  for (const auto& [val, desc] : value_table) {
     if (std::abs(raw_value - val) < 1e-6) {
       return desc;
     }
@@ -64,7 +64,7 @@ bool dbc::Signal::operator==(const dbc::Signal& other) const {
          msb == other.msb && lsb == other.lsb &&
          is_signed == other.is_signed && is_little_endian == other.is_little_endian &&
          factor == other.factor && offset == other.offset &&
-         min == other.min && max == other.max && comment == other.comment && unit == other.unit && val_desc == other.val_desc &&
+         min == other.min && max == other.max && comment == other.comment && unit == other.unit && value_table == other.value_table &&
          multiplex_value == other.multiplex_value && type == other.type && receiver_name == other.receiver_name;
 }
 

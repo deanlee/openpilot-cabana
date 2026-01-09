@@ -7,8 +7,8 @@
 
 class ValueTableEditor : public QDialog {
  public:
-  ValueTableEditor(const ValueDescription& descriptions, QWidget* parent);
-  ValueDescription val_desc;
+  ValueTableEditor(const ValueTable& descriptions, QWidget* parent);
+  ValueTable value_table;
 
  private:
   struct Delegate : public QStyledItemDelegate {

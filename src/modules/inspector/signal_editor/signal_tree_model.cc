@@ -154,11 +154,11 @@ QVariant SignalTreeModel::data(const QModelIndex &index, int role) const {
           case Item::Min: return doubleToString(item->sig->min);
           case Item::Max: return doubleToString(item->sig->max);
           case Item::Desc: {
-            QStringList val_desc;
-            for (auto &[val, desc] : item->sig->val_desc) {
-              val_desc << QString("%1 \"%2\"").arg(val).arg(desc);
+            QStringList value_table;
+            for (auto &[val, desc] : item->sig->value_table) {
+              value_table << QString("%1 \"%2\"").arg(val).arg(desc);
             }
-            return val_desc.join(" ");
+            return value_table.join(" ");
           }
           default: break;
         }
@@ -192,7 +192,7 @@ bool SignalTreeModel::setData(const QModelIndex &index, const QVariant &value, i
     case Item::Comment: s.comment = value.toString(); break;
     case Item::Min: s.min = value.toDouble(); break;
     case Item::Max: s.max = value.toDouble(); break;
-    case Item::Desc: s.val_desc = value.value<ValueDescription>(); break;
+    case Item::Desc: s.value_table = value.value<ValueTable>(); break;
     default: return false;
   }
   bool ret = saveSignal(item->sig, s);

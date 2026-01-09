@@ -8,7 +8,7 @@
 const QString DEFAULT_NODE_NAME = "XXX";
 constexpr int CAN_MAX_DATA_BYTES = 64;
 
-typedef std::vector<std::pair<double, QString>> ValueDescription;
+using ValueTable = std::vector<std::pair<double, QString>>;
 
 namespace dbc {
 
@@ -39,7 +39,7 @@ class Signal {
   QString unit;
   QString comment;
   QString receiver_name;
-  ValueDescription val_desc;
+  ValueTable value_table;
   int precision = 0;
   QColor color;
 

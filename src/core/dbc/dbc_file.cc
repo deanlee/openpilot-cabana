@@ -225,14 +225,14 @@ void File::parseVAL(const QString &line) {
       auto val = desc_list[i].trimmed();
       if (!val.isEmpty() && (i + 1) < desc_list.size()) {
         auto desc = desc_list[i + 1].trimmed();
-        s->val_desc.push_back({val.toDouble(), desc});
+        s->value_table.push_back({val.toDouble(), desc});
       }
     }
   }
 }
 
 QString File::generateGetDBC() {
-  QString dbc_string, comment, val_desc;
+  QString dbc_string, comment, value_table;
   for (const auto &[address, m] : msgs) {
     const QString transmitter = m.transmitter.isEmpty() ? DEFAULT_NODE_NAME : m.transmitter;
     dbc_string += QString("BO_ %1 %2: %3 %4\n").arg(address).arg(m.name).arg(m.size).arg(transmitter);
@@ -262,17 +262,17 @@ QString File::generateGetDBC() {
       if (!sig->comment.isEmpty()) {
         comment += QString("CM_ SG_ %1 %2 \"%3\";\n").arg(address).arg(sig->name).arg(QString(sig->comment).replace("\"", "\\\""));
       }
-      if (!sig->val_desc.empty()) {
+      if (!sig->value_table.empty()) {
         QStringList text;
-        for (auto &[val, desc] : sig->val_desc) {
+        for (auto &[val, desc] : sig->value_table) {
           text << QString("%1 \"%2\"").arg(val).arg(desc);
         }
-        val_desc += QString("VAL_ %1 %2 %3;\n").arg(address).arg(sig->name).arg(text.join(" "));
+        value_table += QString("VAL_ %1 %2 %3;\n").arg(address).arg(sig->name).arg(text.join(" "));
       }
     }
     dbc_string += "\n";
   }
-  return header + dbc_string + comment + val_desc;
+  return header + dbc_string + comment + value_table;
 }
 
 } // namespace dbc

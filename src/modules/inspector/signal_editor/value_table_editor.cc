@@ -10,7 +10,7 @@
 #include "utils/util.h"
 #include "widgets/validators.h"
 
-ValueTableEditor::ValueTableEditor(const ValueDescription& descriptions, QWidget* parent) : QDialog(parent) {
+ValueTableEditor::ValueTableEditor(const ValueTable& descriptions, QWidget* parent) : QDialog(parent) {
   QHBoxLayout* toolbar_layout = new QHBoxLayout();
   QPushButton* add = new QPushButton(utils::icon("plus"), "");
   QPushButton* remove = new QPushButton(utils::icon("minus"), "");
@@ -60,7 +60,7 @@ void ValueTableEditor::save() {
     QString val = table->item(i, 0)->text().trimmed();
     QString desc = table->item(i, 1)->text().trimmed();
     if (!val.isEmpty() && !desc.isEmpty()) {
-      val_desc.push_back({val.toDouble(), desc});
+      value_table.push_back({val.toDouble(), desc});
     }
   }
   QDialog::accept();

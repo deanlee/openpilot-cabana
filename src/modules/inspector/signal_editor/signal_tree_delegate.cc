@@ -208,10 +208,10 @@ QWidget* SignalTreeDelegate::createEditor(QWidget* parent, const QStyleOptionVie
     }
     return c;
   } else if (item->type == SignalTreeModel::Item::Desc) {
-    ValueTableEditor dlg(item->sig->val_desc, parent);
+    ValueTableEditor dlg(item->sig->value_table, parent);
     dlg.setWindowTitle(item->sig->name);
     if (dlg.exec()) {
-      ((QAbstractItemModel*)index.model())->setData(index, QVariant::fromValue(dlg.val_desc));
+      ((QAbstractItemModel*)index.model())->setData(index, QVariant::fromValue(dlg.value_table));
     }
     return nullptr;
   }
