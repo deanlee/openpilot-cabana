@@ -3,9 +3,7 @@
 #include <QResizeEvent>
 #include <QTextDocument>
 
-#include "mainwin.h"
-
-GuideOverlay::GuideOverlay(MainWindow* parent) : QWidget(parent) {
+GuideOverlay::GuideOverlay(QWidget* parent) : QWidget(parent) {
   setAttribute(Qt::WA_NoSystemBackground, true);
   setAttribute(Qt::WA_TranslucentBackground, true);
   setAttribute(Qt::WA_DeleteOnClose);

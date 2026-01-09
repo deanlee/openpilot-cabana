@@ -3,12 +3,10 @@
 #include <QWidget>
 #include <QPainter>
 
-class MainWindow;
-
 class GuideOverlay : public QWidget {
   Q_OBJECT
 public:
-  GuideOverlay(MainWindow *parent);
+  GuideOverlay(QWidget *parent);
 
 protected:
   void drawHelpForWidget(QPainter &painter, QWidget *w);
