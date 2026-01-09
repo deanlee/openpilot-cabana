@@ -18,7 +18,7 @@
 #include <QScreen>
 #include <QWindow>
 
-#include "chartswidget.h"
+#include "charts_panel.h"
 #include "modules/settings/settings.h"
 
 // ChartAxisElement's padding is 4 (https://codebrowser.dev/qt5/qtcharts/src/charts/axis/chartaxiselement_p.h.html)
@@ -28,7 +28,7 @@ const double MIN_ZOOM_SECONDS = 0.01; // 10ms
 const float EPSILON = 0.000001;
 static inline bool xLessThan(const QPointF &p, float x) { return p.x() < (x - EPSILON); }
 
-ChartView::ChartView(const std::pair<double, double> &x_range, ChartsWidget *parent)
+ChartView::ChartView(const std::pair<double, double> &x_range, ChartsPanel *parent)
     : charts_widget(parent), QChartView(parent) {
   series_type = (SeriesType)settings.chart_series_type;
   chart()->setBackgroundVisible(false);

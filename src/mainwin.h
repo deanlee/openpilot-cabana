@@ -10,7 +10,7 @@
 #include <set>
 
 #include "core/dbc/dbc_manager.h"
-#include "modules/charts/chartswidget.h"
+#include "modules/charts/charts_panel.h"
 #include "modules/inspector/message_inspector.h"
 #include "modules/message_list/message_list.h"
 #include "modules/video/video_player.h"
@@ -24,7 +24,7 @@ public:
   void toggleChartsDocking();
   void showStatusMessage(const QString &msg, int timeout = 0) { statusBar()->showMessage(msg, timeout); }
   void loadFile(const QString &fn, SourceSet s = SOURCE_ALL);
-  ChartsWidget *charts_widget = nullptr;
+  ChartsPanel *charts_widget = nullptr;
 
 public slots:
   void selectAndOpenStream();

@@ -25,12 +25,12 @@ enum class SeriesType {
   Scatter
 };
 
-class ChartsWidget;
+class ChartsPanel;
 class ChartView : public QChartView {
   Q_OBJECT
 
 public:
-  ChartView(const std::pair<double, double> &x_range, ChartsWidget *parent = nullptr);
+  ChartView(const std::pair<double, double> &x_range, ChartsPanel *parent = nullptr);
   void addSignal(const MessageId &msg_id, const dbc::Signal *sig);
   bool hasSignal(const MessageId &msg_id, const dbc::Signal *sig) const;
   void updateSeries(const dbc::Signal *sig = nullptr, const MessageEventsMap *msg_new_events = nullptr);
@@ -119,6 +119,6 @@ private:
   bool can_drop = false;
   double tooltip_x = -1;
   QFont signal_value_font;
-  ChartsWidget *charts_widget;
-  friend class ChartsWidget;
+  ChartsPanel *charts_widget;
+  friend class ChartsPanel;
 };

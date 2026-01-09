@@ -5,7 +5,7 @@
 #include <set>
 
 #include "common.h"
-#include "modules/charts/chartswidget.h"
+#include "modules/charts/charts_panel.h"
 #include "modules/inspector/binary/binary_view.h"
 #include "modules/inspector/history/message_history.h"
 #include "modules/inspector/signal_editor/signal_editor.h"
@@ -14,7 +14,7 @@ class MessageDetails : public QWidget {
   Q_OBJECT
 
 public:
-  MessageDetails(ChartsWidget *charts, QWidget *parent);
+  MessageDetails(ChartsPanel *charts, QWidget *parent);
   void setMessage(const MessageId &message_id);
   void refresh();
   std::pair<QString, QStringList> serializeMessageIds() const;
@@ -38,7 +38,7 @@ private:
   MessageHistory *message_history;
   BinaryView *binary_view;
   SignalEditor *signal_editor;
-  ChartsWidget *charts;
+  ChartsPanel *charts;
   QSplitter *splitter;
 };
 

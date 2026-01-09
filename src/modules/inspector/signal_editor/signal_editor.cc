@@ -12,7 +12,7 @@
 #include "core/commands/commands.h"
 #include "modules/settings/settings.h"
 
-SignalEditor::SignalEditor(ChartsWidget *charts, QWidget *parent) : charts(charts), QFrame(parent) {
+SignalEditor::SignalEditor(ChartsPanel *charts, QWidget *parent) : charts(charts), QFrame(parent) {
   setFrameStyle(QFrame::StyledPanel | QFrame::Plain);
   // title bar
   QWidget *title_bar = new QWidget(this);
