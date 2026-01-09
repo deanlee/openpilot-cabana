@@ -80,7 +80,6 @@ SignalEditor::SignalEditor(ChartsWidget *charts, QWidget *parent) : charts(chart
 }
 
 void SignalEditor::setMessage(const MessageId &id) {
-  max_value_width = 0;
   filter_edit->clear();
   model->setMessage(id);
 }
