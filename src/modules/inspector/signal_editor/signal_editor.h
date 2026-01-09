@@ -40,7 +40,6 @@ private:
   void updateColumnWidths();
   std::pair<QModelIndex, QModelIndex> visibleSignalRange();
 
-  int max_value_width = 0;
   int value_column_width = 0;
   SignalTree *tree;
   QLabel *sparkline_label;
