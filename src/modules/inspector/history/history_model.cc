@@ -118,7 +118,8 @@ void MessageHistoryModel::fetchData(std::deque<Message>::iterator insert_pos, ui
       const auto freq = can->snapshot(msg_id)->freq;
       for (auto &m : msgs) {
         hex_colors.update(msg_id, m.data.data(), m.data.size(), m.mono_time / (double)1e9, can->getSpeed(), freq);
-        m.colors = hex_colors.getAllPatternColors(m.mono_time / (double)1e9);
+        hex_colors.updateAllPatternColors(m.mono_time / (double)1e9);
+        m.colors = hex_colors.colors;
       }
     }
     int pos = std::distance(messages.begin(), insert_pos);

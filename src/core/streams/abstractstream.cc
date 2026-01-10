@@ -96,7 +96,7 @@ void AbstractStream::commitSnapshots() {
 
   for (auto& [id, data] : snapshots) {
     current_sec_ = std::max(current_sec_, data.ts);
-
+    data.updateAllPatternColors(current_sec_);
     auto& target = snapshot_map_[id];
     if (target) {
       *target = std::move(data);

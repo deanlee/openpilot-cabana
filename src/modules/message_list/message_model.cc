@@ -52,7 +52,7 @@ QVariant MessageModel::data(const QModelIndex &index, int role) const {
       case Column::DATA: return item.id.source != INVALID_SOURCE ? "" : NA;
     }
   } else if (role == ColorsRole) {
-    return QVariant::fromValue((void*)(&item.data->getAllPatternColors(can->currentSec())));
+    return QVariant::fromValue((void*)(&(item.data->colors)));
   } else if (role == BytesRole && index.column() == Column::DATA && item.id.source != INVALID_SOURCE) {
     return QVariant::fromValue((void*)(&item.data->dat));
   } else if (role == Qt::ToolTipRole && index.column() == Column::NAME) {

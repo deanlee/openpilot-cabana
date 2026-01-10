@@ -153,14 +153,13 @@ QColor MessageState::getPatternColor(int idx, double current_ts) const {
   return colorFromDataPattern(detected_patterns[idx], current_ts, byte_states[idx].last_change_ts);
 }
 
-const std::vector<QColor> &MessageState::getAllPatternColors(double current_can_sec) const {
-  if (colors_.size() != byte_states.size()) {
-    colors_.resize(byte_states.size());
+void MessageState::updateAllPatternColors(double current_can_sec) {
+  if (colors.size() != byte_states.size()) {
+    colors.resize(byte_states.size());
   }
   for (size_t i = 0; i < byte_states.size(); ++i) {
-    colors_[i] = colorFromDataPattern(detected_patterns[i], current_can_sec, byte_states[i].last_change_ts);
+    colors[i] = colorFromDataPattern(detected_patterns[i], current_can_sec, byte_states[i].last_change_ts);
   }
-  return colors_;
 }
 
 QColor colorFromDataPattern(DataPattern pattern, double current_ts, double last_ts) {

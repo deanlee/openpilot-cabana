@@ -28,7 +28,7 @@ class MessageState {
   void update(const MessageId& msg_id, const uint8_t* new_data, int size,
               double current_ts, double playback_speed, double manual_freq = 0);
   QColor getPatternColor(int idx, double current_ts) const;
-  const std::vector<QColor>& getAllPatternColors(double current_ts) const;
+  void updateAllPatternColors(double current_ts);
 
   double ts = 0.0;     // Latest message timestamp
   double freq = 0.0;   // Message frequency (Hz)
@@ -40,6 +40,7 @@ class MessageState {
 
   std::vector<uint8_t> dat;                        // Raw payload
   std::vector<ByteState> byte_states;              // Per-byte activity tracking
+  mutable std::vector<QColor> colors;
   std::vector<std::array<uint32_t, 8>> bit_flips;  // Cumulative bit toggle counts
   std::vector<std::array<uint32_t, 8>> bit_high_counts;
   std::vector<DataPattern> detected_patterns;
@@ -47,7 +48,6 @@ class MessageState {
  private:
   void analyzeByteMutation(int i, uint8_t old_val, uint8_t new_val, uint8_t diff, double current_ts);
   double last_freq_ts = 0;
-  mutable std::vector<QColor> colors_;
 };
 
 QColor colorFromDataPattern(DataPattern pattern, double current_ts, double last_ts);
