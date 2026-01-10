@@ -26,4 +26,5 @@ class MessageHeader : public QHeaderView {
   QMap<int, QPointer<QLineEdit>> editors;
   QTimer filter_timer;
   int cached_editor_height = 0;
+  bool is_updating = false;
 };

@@ -51,8 +51,12 @@ void MessageHeader::updateFilters() {
 }
 
 void MessageHeader::updateGeometries() {
+  if (is_updating) return;
+
+  is_updating = true;
   if (!model() || count() <= 0) {
     QHeaderView::updateGeometries();
+    is_updating = false;
     return;
   }
 
@@ -81,6 +85,7 @@ void MessageHeader::updateGeometries() {
 
   QHeaderView::updateGeometries();
   updateHeaderPositions();
+  is_updating = false;
 }
 
 void MessageHeader::updateHeaderPositions() {
