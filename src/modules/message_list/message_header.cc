@@ -32,6 +32,11 @@ void MessageHeader::updateHeaderPositions() {
 }
 
 void MessageHeader::updateGeometries() {
+  if (!model() || count() <= 0) {
+    QHeaderView::updateGeometries();
+    return;
+  }
+
   for (int i = 0; i < count(); i++) {
     if (!editors[i]) {
       QString column_name = model()->headerData(i, Qt::Horizontal, Qt::DisplayRole).toString();
@@ -49,11 +54,16 @@ void MessageHeader::updateGeometries() {
       });
     }
   }
-  setViewportMargins(0, 0, 0, editors[0] ? editors[0]->sizeHint().height() : 0);
+
+  int required_margin = editors[0] ? editors[0]->sizeHint().height() : 0;
+  if (viewportMargins().bottom() != required_margin) {
+    setViewportMargins(0, 0, 0, required_margin);
+  }
 
   QHeaderView::updateGeometries();
   updateHeaderPositions();
 }
+
 
 QSize MessageHeader::sizeHint() const {
   QSize sz = QHeaderView::sizeHint();
