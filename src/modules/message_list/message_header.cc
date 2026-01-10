@@ -39,7 +39,7 @@ void MessageHeader::updateGeometries() {
       editors[i]->setClearButtonEnabled(true);
       editors[i]->setPlaceholderText(tr("Filter %1").arg(column_name));
 
-      connect(editors[i], &QLineEdit::textChanged, [this](const QString& text) {
+      connect(editors[i], &QLineEdit::textChanged, this, [this](const QString& text) {
         if (text.isEmpty()) {
           filter_timer.stop();
           updateFilters();  // Instant clear
