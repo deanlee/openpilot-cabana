@@ -46,7 +46,8 @@ void Slider::paintEvent(QPaintEvent* ev) {
   };
 
   if (auto replay = getReplay()) {
-    for (const auto& entry : *replay->getTimeline()) {
+    const auto timeline = *replay->getTimeline();
+    for (const auto& entry : timeline) {
       fillRange(entry.start_time, entry.end_time, timeline_colors[(int)entry.type]);
     }
 
