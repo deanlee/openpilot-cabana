@@ -10,20 +10,26 @@ MessageHeader::MessageHeader(QWidget* parent) : QHeaderView(Qt::Horizontal, pare
   connect(this, &QHeaderView::sectionMoved, this, &MessageHeader::updateHeaderPositions);
 }
 
+MessageHeader::~MessageHeader() {
+  filter_timer.stop();
+  editors.clear();
+}
+
 void MessageHeader::updateFilters() {
   QMap<int, QString> filters;
   for (int i = 0; i < count(); i++) {
-    if (editors[i] && !editors[i]->text().isEmpty()) {
+    if (editors.value(i) && !editors[i]->text().isEmpty()) {
       filters[i] = editors[i]->text();
     }
   }
-  qobject_cast<MessageModel*>(model())->setFilterStrings(filters);
+  auto m = qobject_cast<MessageModel*>(model());
+  if (m) m->setFilterStrings(filters);
 }
 
 void MessageHeader::updateHeaderPositions() {
   QSize sz = QHeaderView::sizeHint();
   for (int i = 0; i < count(); i++) {
-    if (editors[i]) {
+    if (editors.value(i)) {
       int h = editors[i]->sizeHint().height();
       editors[i]->setGeometry(sectionViewportPosition(i), sz.height(), sectionSize(i), h);
       editors[i]->setHidden(isSectionHidden(i));
@@ -38,13 +44,13 @@ void MessageHeader::updateGeometries() {
   }
 
   for (int i = 0; i < count(); i++) {
-    if (!editors[i]) {
+    if (!editors.value(i)) {
       QString column_name = model()->headerData(i, Qt::Horizontal, Qt::DisplayRole).toString();
-      editors[i] = new QLineEdit(this);
-      editors[i]->setClearButtonEnabled(true);
-      editors[i]->setPlaceholderText(tr("Filter %1").arg(column_name));
+      QLineEdit* edit = new QLineEdit(this);
+      edit->setClearButtonEnabled(true);
+      edit->setPlaceholderText(tr("Filter %1").arg(column_name));
 
-      connect(editors[i], &QLineEdit::textChanged, this, [this](const QString& text) {
+      connect(edit, &QLineEdit::textChanged, this, [this](const QString& text) {
         if (text.isEmpty()) {
           filter_timer.stop();
           updateFilters();  // Instant clear
@@ -52,10 +58,11 @@ void MessageHeader::updateGeometries() {
           filter_timer.start();  // Debounced search
         }
       });
+      editors[i] = edit;
     }
   }
 
-  int required_margin = editors[0] ? editors[0]->sizeHint().height() : 0;
+  int required_margin = editors.value(0) ? editors.value(0)->sizeHint().height() : 0;
   if (viewportMargins().bottom() != required_margin) {
     setViewportMargins(0, 0, 0, required_margin);
   }
@@ -64,8 +71,14 @@ void MessageHeader::updateGeometries() {
   updateHeaderPositions();
 }
 
-
 QSize MessageHeader::sizeHint() const {
   QSize sz = QHeaderView::sizeHint();
-  return editors[0] ? QSize(sz.width(), sz.height() + editors[0]->height() + 1) : sz;
+
+  auto first_editor = editors.value(0);
+  if (first_editor) {
+    int editor_h = first_editor->sizeHint().height();
+    sz.setHeight(sz.height() + editor_h + 1);
+  }
+
+  return sz;
 }
