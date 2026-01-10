@@ -73,6 +73,9 @@ int main(int argc, char* argv[]) {
   parser.process(app);
 
   AbstractStream* stream = createStream(parser, &app);
-  MainWindow w(stream, parser.value("dbc"));
-  return app.exec();
+  {
+    MainWindow w(stream, parser.value("dbc"));
+    app.exec();
+  }
+  return 0;
 }

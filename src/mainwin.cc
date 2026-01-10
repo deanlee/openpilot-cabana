@@ -27,8 +27,9 @@
 #include "widgets/guide_overlay.h"
 
 MainWindow::MainWindow(AbstractStream *stream, const QString &dbc_file) : QMainWindow() {
+  center_widget = new CenterWidget(this);
   createDockWindows();
-  setCentralWidget(center_widget = new CenterWidget(this));
+  setCentralWidget(center_widget);
 
   dbc_ = new DbcController(this);
 
@@ -147,6 +148,11 @@ void MainWindow::createDockWindows() {
   messages_dock->setFeatures(QDockWidget::DockWidgetMovable | QDockWidget::DockWidgetFloatable | QDockWidget::DockWidgetClosable);
   addDockWidget(Qt::LeftDockWidgetArea, messages_dock);
 
+  message_list = new MessageList(this);
+  messages_dock->setWidget(message_list);
+  connect(message_list, &MessageList::titleChanged, messages_dock, &QDockWidget::setWindowTitle);
+  connect(message_list, &MessageList::msgSelectionChanged, center_widget, &CenterWidget::setMessage);
+
   video_dock = new QDockWidget("", this);
   video_dock->setObjectName(tr("VideoPanel"));
   video_dock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
@@ -155,11 +161,6 @@ void MainWindow::createDockWindows() {
 }
 
 void MainWindow::createDockWidgets() {
-  message_list = new MessageList(this);
-  messages_dock->setWidget(message_list);
-  connect(message_list, &MessageList::titleChanged, messages_dock, &QDockWidget::setWindowTitle);
-  connect(message_list, &MessageList::msgSelectionChanged, center_widget, &CenterWidget::setMessage);
-
   // right panel
   charts_widget = new ChartsPanel(this);
   QWidget *charts_container = new QWidget(this);
@@ -253,7 +254,6 @@ void MainWindow::openStream(AbstractStream *stream, const QString &dbc_file) {
   StreamManager::instance().setStream(stream, dbc_file);
 
   center_widget->clear();
-  delete message_list;
   delete video_splitter;
 
   dbc_->loadFile(dbc_file);
@@ -389,9 +389,7 @@ void MainWindow::closeEvent(QCloseEvent *event) {
   if (!StreamManager::instance().isLiveStream()) {
     settings.video_splitter_state = video_splitter->saveState();
   }
-  if (message_list) {
-    settings.message_header_state = message_list->saveHeaderState();
-  }
+  settings.message_header_state = message_list->saveHeaderState();
 
   saveSessionState();
   SystemRelay::instance().uninstallHandlers();

@@ -2,6 +2,8 @@
 
 #include <QCheckBox>
 #include <QHBoxLayout>
+#include <QMenu>
+#include <QPushButton>
 #include <QScrollBar>
 #include <QVBoxLayout>
 
@@ -33,6 +35,7 @@ MessageList::MessageList(QWidget *parent) : menu(new QMenu(this)), QWidget(paren
   connect(header, &MessageHeader::customContextMenuRequested, this, &MessageList::headerContextMenuEvent);
   connect(view->horizontalScrollBar(), &QScrollBar::valueChanged, header, &MessageHeader::updateHeaderPositions);
   connect(&StreamManager::instance(), &StreamManager::snapshotsUpdated, model, &MessageModel::onSnapshotsUpdated);
+  connect(&StreamManager::instance(), &StreamManager::streamChanged, this, &MessageList::resetState);
   connect(GetDBC(), &dbc::Manager::DBCFileChanged, model, &MessageModel::dbcModified);
   connect(UndoStack::instance(), &QUndoStack::indexChanged, model, &MessageModel::dbcModified);
   connect(view->selectionModel(), &QItemSelectionModel::currentChanged, this, &MessageList::handleSelectionChanged);
@@ -40,7 +43,6 @@ MessageList::MessageList(QWidget *parent) : menu(new QMenu(this)), QWidget(paren
     if (current_msg_id) {
       selectMessage(*current_msg_id);
     }
-    view->updateLayout();
     updateTitle();
   });
 
@@ -67,7 +69,7 @@ QWidget *MessageList::createToolBar() {
   suppress_clear->setToolTip(tr("Clear all suppressed bits.\n"
                             "Restores activity highlighting for all previously muted bits."));
   layout->addStretch(1);
-  QCheckBox *suppress_defined_signals = new QCheckBox(tr("Suppress Signals"), this);
+  suppress_defined_signals = new QCheckBox(tr("Suppress Signals"), this);
   suppress_defined_signals->setToolTip(tr("Mute activity for all bits already assigned to signals.\n"
                                         "Helps isolate unknown bit transitions in the message."));
 
@@ -82,12 +84,28 @@ QWidget *MessageList::createToolBar() {
 
   connect(suppress_add, &QPushButton::clicked, this, &MessageList::suppressHighlighted);
   connect(suppress_clear, &QPushButton::clicked, this, &MessageList::suppressHighlighted);
-  connect(suppress_defined_signals, &QCheckBox::stateChanged, this , [suppress_defined_signals]() {
+  connect(suppress_defined_signals, &QCheckBox::stateChanged, this , [this]() {
     StreamManager::stream()->suppressDefinedSignals(suppress_defined_signals->isChecked());
   });
 
   suppressHighlighted();
   return toolbar;
+}
+
+void MessageList::resetState() {
+  current_msg_id.reset();
+  if (view->selectionModel()) {
+    view->selectionModel()->clearSelection();
+    view->selectionModel()->clearCurrentIndex();
+  }
+  model->dbcModified();
+
+  suppress_clear->setText(tr("Clear"));
+  suppress_clear->setEnabled(false);
+
+  StreamManager::stream()->suppressDefinedSignals(settings.suppress_defined_signals);
+  updateTitle();
+  view->scrollToTop();
 }
 
 void MessageList::updateTitle() {

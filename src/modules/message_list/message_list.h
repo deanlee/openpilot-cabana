@@ -1,13 +1,15 @@
 #pragma once
 
-#include <QMenu>
-#include <QPushButton>
 #include <optional>
 
 #include "message_delegate.h"
 #include "message_header.h"
 #include "message_model.h"
 #include "message_table.h"
+
+class QCheckBox;
+class QMenu;
+class QPushButton;
 
 class MessageList : public QWidget {
   Q_OBJECT
@@ -25,6 +27,7 @@ signals:
 
 protected:
   QWidget *createToolBar();
+  void resetState();
   void headerContextMenuEvent(const QPoint &pos);
   void menuAboutToShow();
   void setMultiLineBytes(bool multi);
@@ -38,6 +41,7 @@ protected:
   MessageModel *model;
   QPushButton *suppress_add;
   QPushButton *suppress_clear;
+  QCheckBox *suppress_defined_signals;
   QMenu *menu;
   friend class MessageModel;
 };
