@@ -1,12 +1,15 @@
 #include "tools/routeinfo.h"
+
 #include <QHeaderView>
 #include <QScrollBar>
 #include <QTableWidget>
 #include <QVBoxLayout>
+
 #include "core/streams/replaystream.h"
+#include "modules/system/stream_manager.h"
 
 RouteInfoDlg::RouteInfoDlg(QWidget *parent) : QDialog(parent) {
-  auto *replay = qobject_cast<ReplayStream *>(can)->getReplay();
+  auto *replay = qobject_cast<ReplayStream *>(StreamManager::stream())->getReplay();
   setWindowTitle(tr("Route: %1").arg(QString::fromStdString(replay->route().name())));
 
   auto *table = new QTableWidget(replay->route().segments().size(), 7, this);
@@ -33,7 +36,7 @@ RouteInfoDlg::RouteInfoDlg(QWidget *parent) : QDialog(parent) {
   table->setMinimumWidth(table->horizontalHeader()->length() + table->verticalScrollBar()->sizeHint().width());
   table->setMinimumHeight(table->rowHeight(0) * std::min(table->rowCount(), 13) + table->horizontalHeader()->height() + table->frameWidth() * 2);
 
-  connect(table, &QTableWidget::itemClicked, [](QTableWidgetItem *item) { can->seekTo(item->row() * 60.0); });
+  connect(table, &QTableWidget::itemClicked, [](QTableWidgetItem *item) { StreamManager::stream()->seekTo(item->row() * 60.0); });
 
   QVBoxLayout *layout = new QVBoxLayout(this);
   layout->addWidget(table);

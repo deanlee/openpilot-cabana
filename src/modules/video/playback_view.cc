@@ -2,11 +2,10 @@
 
 #include <QtConcurrent>
 
-#include "core/streams/abstractstream.h"
-#include "core/streams/replaystream.h"
+#include "modules/system/stream_manager.h"
 
 static Replay *getReplay() {
-  auto stream = qobject_cast<ReplayStream *>(can);
+  auto stream = qobject_cast<ReplayStream *>(StreamManager::stream());
   return stream ? stream->getReplay() : nullptr;
 }
 
@@ -28,7 +27,7 @@ void PlaybackCameraView::parseQLog(std::shared_ptr<LogReader> qlog) {
       auto thumb_data = reader.getRoot<cereal::Event>().getThumbnail();
       auto image_data = thumb_data.getThumbnail();
       if (QPixmap thumb; thumb.loadFromData(image_data.begin(), image_data.size(), "jpeg")) {
-        QPixmap generated_thumb = generateThumbnail(thumb, can->toSeconds(thumb_data.getTimestampEof()));
+        QPixmap generated_thumb = generateThumbnail(thumb, StreamManager::stream()->toSeconds(thumb_data.getTimestampEof()));
         std::lock_guard lock(mutex);
         thumbnails[thumb_data.getTimestampEof()] = generated_thumb;
         big_thumbnails[thumb_data.getTimestampEof()] = thumb;
@@ -44,14 +43,14 @@ void PlaybackCameraView::paintGL() {
   QPainter p(this);
   bool scrubbing = false;
   if (thumbnail_dispaly_time >= 0) {
-    scrubbing = can->isPaused();
+    scrubbing = StreamManager::stream()->isPaused();
     scrubbing ? drawScrubThumbnail(p) : drawThumbnail(p);
   }
-  if (auto alert = getReplay()->findAlertAtTime(scrubbing ? thumbnail_dispaly_time : can->currentSec())) {
+  if (auto alert = getReplay()->findAlertAtTime(scrubbing ? thumbnail_dispaly_time : StreamManager::stream()->currentSec())) {
     drawAlert(p, rect(), *alert);
   }
 
-  if (can->isPaused()) {
+  if (StreamManager::stream()->isPaused()) {
     p.setPen(QColor(200, 200, 200, static_cast<int>(255 * fade_animation->currentValue().toFloat())));
     p.setFont(QFont(font().family(), 16, QFont::Bold));
     p.drawText(rect(), Qt::AlignCenter, tr("PAUSED"));
@@ -83,7 +82,7 @@ QPixmap PlaybackCameraView::generateThumbnail(QPixmap thumb, double seconds) {
 
 void PlaybackCameraView::drawScrubThumbnail(QPainter& p) {
   p.fillRect(rect(), Qt::black);
-  auto it = big_thumbnails.lowerBound(can->toMonoTime(thumbnail_dispaly_time));
+  auto it = big_thumbnails.lowerBound(StreamManager::stream()->toMonoTime(thumbnail_dispaly_time));
   if (it != big_thumbnails.end()) {
     QPixmap scaled_thumb = it.value().scaled(rect().size(), Qt::KeepAspectRatio, Qt::SmoothTransformation);
     QRect thumb_rect(rect().center() - scaled_thumb.rect().center(), scaled_thumb.size());
@@ -93,10 +92,10 @@ void PlaybackCameraView::drawScrubThumbnail(QPainter& p) {
 }
 
 void PlaybackCameraView::drawThumbnail(QPainter& p) {
-  auto it = thumbnails.lowerBound(can->toMonoTime(thumbnail_dispaly_time));
+  auto it = thumbnails.lowerBound(StreamManager::stream()->toMonoTime(thumbnail_dispaly_time));
   if (it != thumbnails.end()) {
     const QPixmap& thumb = it.value();
-    auto [min_sec, max_sec] = can->timeRange().value_or(std::make_pair(can->minSeconds(), can->maxSeconds()));
+    auto [min_sec, max_sec] = StreamManager::stream()->timeRange().value_or(std::make_pair(StreamManager::stream()->minSeconds(), StreamManager::stream()->maxSeconds()));
     int pos = (thumbnail_dispaly_time - min_sec) * width() / (max_sec - min_sec);
     int x = std::clamp(pos - thumb.width() / 2, THUMBNAIL_MARGIN, width() - thumb.width() - THUMBNAIL_MARGIN + 1);
     int y = height() - thumb.height() - THUMBNAIL_MARGIN;

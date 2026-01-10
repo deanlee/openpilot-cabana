@@ -6,6 +6,7 @@
 
 #include "message_list.h"
 #include "modules/settings/settings.h"
+#include "modules/system/stream_manager.h"
 
 static const QString NA = QStringLiteral("N/A");
 static const QString DASH = QStringLiteral("--");
@@ -162,6 +163,7 @@ bool MessageModel::match(const MessageModel::Item &item) {
 }
 
 bool MessageModel::filterAndSort() {
+  auto *can = StreamManager::stream();
   const auto& snapshots = can->snapshots();
   auto* dbc = GetDBC();
 

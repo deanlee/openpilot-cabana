@@ -33,9 +33,6 @@ public:
   inline bool isPaused() const override { return replay->isPaused(); }
   void pause(bool pause) override;
 
-signals:
-  void qLogLoaded(std::shared_ptr<LogReader> qlog);
-
 private:
   void mergeSegments();
   std::unique_ptr<Replay> replay = nullptr;

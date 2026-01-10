@@ -10,8 +10,6 @@
 
 static const int EVENT_NEXT_BUFFER_SIZE = 6 * 1024 * 1024;  // 6MB
 
-AbstractStream *can = nullptr;
-
 template <>
 uint64_t TimeIndex<const CanEvent*>::get_timestamp(const CanEvent* const& e) {
   return e->mono_time;

@@ -16,6 +16,7 @@
 #include "core/dbc/dbc_manager.h"
 #include "message_state.h"
 #include "replay/include/util.h"
+#include "replay/include/replay.h"
 #include "utils/time_index.h"
 #include "utils/util.h"
 
@@ -86,6 +87,7 @@ signals:
   void snapshotsUpdated(const std::set<MessageId> *ids, bool needs_rebuild);
   void sourcesUpdated(const SourceSet &s);
   void privateUpdateLastMsgsSignal();
+  void qLogLoaded(std::shared_ptr<LogReader> qlog);
 
 public:
   SourceSet sources;
@@ -127,6 +129,3 @@ public:
   QString routeName() const override { return tr("No Stream"); }
   void start() override {}
 };
-
-// A global pointer referring to the unique AbstractStream object
-extern AbstractStream *can;

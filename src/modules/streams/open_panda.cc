@@ -8,10 +8,12 @@
 #include <QPushButton>
 #include <QTimer>
 
+#include "modules/system/stream_manager.h"
+
 OpenPandaWidget::OpenPandaWidget(QWidget *parent) : AbstractStreamWidget(parent) {
   form_layout = new QFormLayout(this);
-  if (can && dynamic_cast<PandaStream *>(can) != nullptr) {
-    form_layout->addWidget(new QLabel(tr("Already connected to %1.").arg(can->routeName())));
+  if (dynamic_cast<PandaStream *>(StreamManager::stream()) != nullptr) {
+    form_layout->addWidget(new QLabel(tr("Already connected to %1.").arg(StreamManager::stream()->routeName())));
     form_layout->addWidget(new QLabel("Close the current connection via [File menu -> Close Stream] before connecting to another Panda."));
     QTimer::singleShot(0, [this]() { emit enableOpenButton(false); });
     return;

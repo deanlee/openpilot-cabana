@@ -2,6 +2,7 @@
 
 #include <QApplication>
 #include <cmath>
+#include "modules/system/stream_manager.h"
 
 // EditMsgCommand
 
@@ -67,7 +68,7 @@ void AddSigCommand::undo() {
 void AddSigCommand::redo() {
   if (auto msg = GetDBC()->msg(id); !msg) {
     msg_created = true;
-    GetDBC()->updateMsg(id, GetDBC()->newMsgName(id), can->snapshot(id)->dat.size(), "", "");
+    GetDBC()->updateMsg(id, GetDBC()->newMsgName(id), StreamManager::stream()->snapshot(id)->dat.size(), "", "");
   }
   signal.name = GetDBC()->newSignalName(id);
   signal.max = std::pow(2, signal.size) - 1;

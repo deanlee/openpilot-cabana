@@ -7,6 +7,7 @@
 #include "core/commands/commands.h"
 #include "mainwin.h"
 #include "message_edit.h"
+#include "modules/system/stream_manager.h"
 
 MessageDetails::MessageDetails(ChartsPanel *charts, QWidget *parent) : charts(charts), QWidget(parent) {
   QVBoxLayout *main_layout = new QVBoxLayout(this);
@@ -52,7 +53,7 @@ MessageDetails::MessageDetails(ChartsPanel *charts, QWidget *parent) : charts(ch
   connect(signal_editor, &SignalEditor::showChart, charts, &ChartsPanel::showChart);
   connect(signal_editor, &SignalEditor::highlight, binary_view, &BinaryView::highlight);
   connect(tab_widget, &QTabWidget::currentChanged, [this]() { updateState(); });
-  connect(can, &AbstractStream::snapshotsUpdated, this, &MessageDetails::updateState);
+  connect(&StreamManager::instance(), &StreamManager::snapshotsUpdated, this, &MessageDetails::updateState);
   connect(GetDBC(), &dbc::Manager::DBCFileChanged, this, &MessageDetails::refresh);
   connect(UndoStack::instance(), &QUndoStack::indexChanged, this, &MessageDetails::refresh);
   connect(tabbar, &QTabBar::customContextMenuRequested, this, &MessageDetails::showTabBarContextMenu);
@@ -93,7 +94,7 @@ void MessageDetails::createToolBar() {
   layout()->addWidget(toolbar);
 
   connect(heatmap_live, &QAbstractButton::toggled, this, [this](bool on) { binary_view->setHeatmapLiveMode(on); });
-  connect(can, &AbstractStream::timeRangeChanged, this, [=](const std::optional<std::pair<double, double>> &range) {
+  connect(&StreamManager::instance(), &StreamManager::timeRangeChanged, this, [=](const std::optional<std::pair<double, double>> &range) {
     auto text = range ? QString("%1 - %2").arg(range->first, 0, 'f', 3).arg(range->second, 0, 'f', 3) : "All";
     heatmap_all->setText(text);
     (range ? heatmap_all : heatmap_live)->setChecked(true);
@@ -167,7 +168,7 @@ void MessageDetails::restoreTabs(const QString active_msg_id, const QStringList&
 void MessageDetails::refresh() {
   QStringList warnings;
   auto msg = GetDBC()->msg(msg_id);
-  auto *can_msg = can->snapshot(msg_id);
+  auto *can_msg = StreamManager::stream()->snapshot(msg_id);
   if (msg) {
     if (msg_id.source == INVALID_SOURCE) {
       warnings.push_back(tr("No messages received."));
@@ -202,13 +203,13 @@ void MessageDetails::updateState(const std::set<MessageId> *msgs) {
 
 void MessageDetails::editMsg() {
   auto msg = GetDBC()->msg(msg_id);
-  int size = msg ? msg->size : can->snapshot(msg_id)->dat.size();
+  int size = msg ? msg->size : StreamManager::stream()->snapshot(msg_id)->dat.size();
   MessageEdit dlg(msg_id, msgName(msg_id), size, this);
   if (dlg.exec()) {
     UndoStack::push(new EditMsgCommand(msg_id, dlg.name_edit->text().trimmed(), dlg.size_spin->value(),
                                        dlg.node->text().trimmed(), dlg.comment_edit->toPlainText().trimmed()));
   }
-}
+  }
 
 void MessageDetails::removeMsg() {
   UndoStack::push(new RemoveMsgCommand(msg_id));

@@ -7,9 +7,10 @@
 #include "playback_view.h"
 #include "replay/include/timeline.h"
 #include "core/streams/replaystream.h"
+#include "modules/system/stream_manager.h"
 
 static Replay* getReplay() {
-  auto stream = qobject_cast<ReplayStream*>(can);
+  auto stream = qobject_cast<ReplayStream*>(StreamManager::stream());
   return stream ? stream->getReplay() : nullptr;
 }
 

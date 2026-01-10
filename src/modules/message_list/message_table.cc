@@ -7,6 +7,7 @@
 #include "message_delegate.h"
 #include "message_model.h"
 #include "modules/settings/settings.h"
+#include "modules/system/stream_manager.h"
 
 MessageTable::MessageTable(QWidget* parent) : QTreeView(parent) {
   setSortingEnabled(true);
@@ -33,8 +34,8 @@ void MessageTable::updateLayout() {
   setUniformRowHeights(!multiLine);
 
   int max_bytes = 8;
-  if (!multiLine && can) {
-    for (const auto& [_, m] : can->snapshots()) {
+  if (!multiLine) {
+    for (const auto& [_, m] : StreamManager::stream()->snapshots()) {
       max_bytes = std::max<int>(max_bytes, m->dat.size());
     }
   }

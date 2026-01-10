@@ -8,6 +8,7 @@
 #include "common.h"
 #include "core/commands/commands.h"
 #include "modules/settings/settings.h"
+#include "modules/system/stream_manager.h"
 
 MessageList::MessageList(QWidget *parent) : menu(new QMenu(this)), QWidget(parent) {
   QVBoxLayout *main_layout = new QVBoxLayout(this);
@@ -31,7 +32,7 @@ MessageList::MessageList(QWidget *parent) : menu(new QMenu(this)), QWidget(paren
   connect(menu, &QMenu::aboutToShow, this, &MessageList::menuAboutToShow);
   connect(header, &MessageHeader::customContextMenuRequested, this, &MessageList::headerContextMenuEvent);
   connect(view->horizontalScrollBar(), &QScrollBar::valueChanged, header, &MessageHeader::updateHeaderPositions);
-  connect(can, &AbstractStream::snapshotsUpdated, model, &MessageModel::onSnapshotsUpdated);
+  connect(&StreamManager::instance(), &StreamManager::snapshotsUpdated, model, &MessageModel::onSnapshotsUpdated);
   connect(GetDBC(), &dbc::Manager::DBCFileChanged, model, &MessageModel::dbcModified);
   connect(UndoStack::instance(), &QUndoStack::indexChanged, model, &MessageModel::dbcModified);
   connect(view->selectionModel(), &QItemSelectionModel::currentChanged, this, &MessageList::handleSelectionChanged);
@@ -81,7 +82,9 @@ QWidget *MessageList::createToolBar() {
 
   connect(suppress_add, &QPushButton::clicked, this, &MessageList::suppressHighlighted);
   connect(suppress_clear, &QPushButton::clicked, this, &MessageList::suppressHighlighted);
-  connect(suppress_defined_signals, &QCheckBox::stateChanged, can, &AbstractStream::suppressDefinedSignals);
+  connect(suppress_defined_signals, &QCheckBox::stateChanged, this , [suppress_defined_signals]() {
+    StreamManager::stream()->suppressDefinedSignals(suppress_defined_signals->isChecked());
+  });
 
   suppressHighlighted();
   return toolbar;
@@ -117,6 +120,7 @@ void MessageList::selectMessage(const MessageId &msg_id) {
 }
 
 void MessageList::suppressHighlighted() {
+  auto *can = StreamManager::stream();
   int n = sender() == suppress_add ? can->suppressHighlighted() : (can->clearSuppressed(), 0);
   suppress_clear->setText(n > 0 ? tr("Clear (%1)").arg(n) : tr("Clear"));
   suppress_clear->setEnabled(n > 0);

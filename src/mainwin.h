@@ -33,7 +33,6 @@ public slots:
   void exportToCSV();
 
 protected:
-  void startStream(AbstractStream *stream, QString dbc_file);
   bool eventFilter(QObject *obj, QEvent *event) override;
   void remindSaveChanges();
   void createActions();

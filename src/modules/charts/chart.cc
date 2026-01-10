@@ -20,6 +20,7 @@
 
 #include "charts_panel.h"
 #include "modules/settings/settings.h"
+#include "modules/system/stream_manager.h"
 
 // ChartAxisElement's padding is 4 (https://codebrowser.dev/qt5/qtcharts/src/charts/axis/chartaxiselement_p.h.html)
 const int AXIS_X_TOP_MARGIN = 4;
@@ -289,6 +290,7 @@ void ChartView::appendCanEvents(const dbc::Signal *sig, const std::vector<const 
   step_vals.reserve(step_vals.size() + events.capacity() * 2);
 
   double value = 0;
+  auto *can = StreamManager::stream();
   for (const CanEvent *e : events) {
     if (sig->getValue(e->dat, e->size, &value)) {
       const double ts = can->toSeconds(e->mono_time);
@@ -301,6 +303,7 @@ void ChartView::appendCanEvents(const dbc::Signal *sig, const std::vector<const 
 }
 
 void ChartView::updateSeries(const dbc::Signal *sig, const MessageEventsMap *msg_new_events) {
+  auto *can = StreamManager::stream();
   for (auto &s : sigs) {
     if (!sig || s.sig == sig) {
       if (!msg_new_events) {
@@ -341,7 +344,7 @@ void ChartView::updateAxisY() {
   double min = std::numeric_limits<double>::max();
   double max = std::numeric_limits<double>::lowest();
   QString unit = sigs[0].sig->unit;
-
+  auto *can = StreamManager::stream();
   for (auto &s : sigs) {
     if (!s.series->isVisible()) continue;
 
@@ -484,9 +487,9 @@ void ChartView::mousePressEvent(QMouseEvent *event) {
     drag->exec(Qt::CopyAction | Qt::MoveAction, Qt::MoveAction);
   } else if (event->button() == Qt::LeftButton && QApplication::keyboardModifiers().testFlag(Qt::ShiftModifier)) {
     // Save current playback state when scrubbing
-    resume_after_scrub = !can->isPaused();
+    resume_after_scrub = !StreamManager::stream()->isPaused();
     if (resume_after_scrub) {
-      can->pause(true);
+      StreamManager::stream()->pause(true);
     }
     is_scrubbing = true;
   } else {
@@ -500,6 +503,7 @@ void ChartView::mouseReleaseEvent(QMouseEvent *event) {
     rubber->hide();
     auto rect = rubber->geometry().normalized();
     // Prevent zooming/seeking past the end of the route
+    auto *can = StreamManager::stream();
     double min = std::clamp(chart()->mapToValue(rect.topLeft()).x(), can->minSeconds(), can->maxSeconds());
     double max = std::clamp(chart()->mapToValue(rect.bottomRight()).x(), can->minSeconds(), can->maxSeconds());
     if (rubber->width() <= 0) {
@@ -521,7 +525,7 @@ void ChartView::mouseReleaseEvent(QMouseEvent *event) {
   // Resume playback if we were scrubbing
   is_scrubbing = false;
   if (resume_after_scrub) {
-    can->pause(false);
+    StreamManager::stream()->pause(false);
     resume_after_scrub = false;
   }
 }
@@ -531,6 +535,7 @@ void ChartView::mouseMoveEvent(QMouseEvent *ev) {
   // Scrubbing
   if (is_scrubbing && QApplication::keyboardModifiers().testFlag(Qt::ShiftModifier)) {
     if (plot_area.contains(ev->pos())) {
+      auto *can = StreamManager::stream();
       can->seekTo(std::clamp(chart()->mapToValue(ev->pos()).x(), can->minSeconds(), can->maxSeconds()));
     }
   }
@@ -655,7 +660,7 @@ void ChartView::startAnimation() {
 }
 
 void ChartView::paintEvent(QPaintEvent *event) {
-  if (!can->liveStreaming()) {
+  if (!StreamManager::stream()->liveStreaming()) {
     if (chart_pixmap.isNull()) {
       const qreal dpr = viewport()->devicePixelRatioF();
       chart_pixmap = QPixmap(viewport()->size() * dpr);

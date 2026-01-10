@@ -4,9 +4,9 @@
 #include <cmath>
 #include <QDebug>
 
-#include "core/streams/abstractstream.h"
 #include "core/streams/message_state.h"
 #include "modules/settings/settings.h"
+#include "modules/system/stream_manager.h"
 
 void BinaryModel::refresh() {
   beginResetModel();
@@ -34,7 +34,7 @@ void BinaryModel::refresh() {
       }
     }
   } else {
-    row_count = can->snapshot(msg_id)->dat.size();
+    row_count = StreamManager::stream()->snapshot(msg_id)->dat.size();
     items.resize(row_count * column_count);
   }
   updateBorders();
@@ -81,7 +81,7 @@ void BinaryModel::updateItem(int row, int col, uint8_t val, const QColor &color)
 }
 
 void BinaryModel::updateState() {
-  const auto* last_msg = can->snapshot(msg_id);
+  const auto* last_msg = StreamManager::stream()->snapshot(msg_id);
   const auto& binary = last_msg->dat;
 
   if (binary.size() > row_count) {
@@ -101,7 +101,7 @@ void BinaryModel::updateState() {
     }
   }
 
-  const double current_sec = can->currentSec();
+  const double current_sec = StreamManager::stream()->currentSec();
   const bool is_light_theme = (settings.theme == LIGHT_THEME);
 
   for (size_t i = 0; i < binary.size(); ++i) {
@@ -161,7 +161,7 @@ QColor BinaryModel::calculateBitHeatColor(Item& item, uint32_t flips, uint32_t m
 
 const std::vector<std::array<uint32_t, 8>> &BinaryModel::getBitFlipChanges(size_t msg_size) {
   // Return cached results if time range and data are unchanged
-  auto time_range = can->timeRange();
+  auto time_range = StreamManager::stream()->timeRange();
   if (bit_flip_tracker.time_range == time_range && !bit_flip_tracker.flip_counts.empty())
     return bit_flip_tracker.flip_counts;
 
@@ -169,7 +169,7 @@ const std::vector<std::array<uint32_t, 8>> &BinaryModel::getBitFlipChanges(size_
   bit_flip_tracker.flip_counts.assign(msg_size, std::array<uint32_t, 8>{});
 
   // Iterate over events within the specified time range and calculate bit flips
-  auto [first, last] = can->eventsInRange(msg_id, time_range);
+  auto [first, last] = StreamManager::stream()->eventsInRange(msg_id, time_range);
   if (std::distance(first, last) <= 1) return bit_flip_tracker.flip_counts;
 
   std::vector<uint8_t> prev_values((*first)->dat, (*first)->dat + (*first)->size);

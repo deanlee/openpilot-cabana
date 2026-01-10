@@ -6,6 +6,7 @@
 
 #include "abstractstream.h"
 #include "modules/settings/settings.h"
+#include "modules/system/stream_manager.h"
 
 namespace {
 
@@ -34,7 +35,7 @@ double calculateBitEntropy(uint32_t set_counts, uint32_t total_samples) {
 }
 
 double calc_freq(const MessageId& msg_id, double current_ts) {
-  auto [first, last] = can->eventsInRange(msg_id, std::make_pair(current_ts - 59.0, current_ts));
+  auto [first, last] = StreamManager::stream()->eventsInRange(msg_id, std::make_pair(current_ts - 59.0, current_ts));
   const auto n = std::distance(first, last);
   if (n <= 1) return 0.0;
 

@@ -12,6 +12,7 @@
 
 #include "core/dbc/dbc_manager.h"
 #include "core/streams/abstractstream.h"
+#include "modules/system/stream_manager.h"
 
 FindSimilarBitsDlg::FindSimilarBitsDlg(QWidget *parent) : QDialog(parent, Qt::WindowFlags() | Qt::Window) {
   setWindowTitle(tr("Find similar bits"));
@@ -23,7 +24,7 @@ FindSimilarBitsDlg::FindSimilarBitsDlg(QWidget *parent) : QDialog(parent, Qt::Wi
   src_bus_combo = new QComboBox(this);
   find_bus_combo = new QComboBox(this);
   for (auto cb : {src_bus_combo, find_bus_combo}) {
-    for (uint8_t bus : can->sources) {
+    for (uint8_t bus : StreamManager::stream()->sources) {
       cb->addItem(QString::number(bus), bus);
     }
   }
@@ -118,7 +119,7 @@ QList<FindSimilarBitsDlg::mismatched_struct> FindSimilarBitsDlg::calcBits(uint8_
                                                                           int bit_idx, uint8_t find_bus, bool equal, int min_msgs_cnt) {
   QHash<uint32_t, QVector<uint32_t>> mismatches;
   QHash<uint32_t, uint32_t> msg_count;
-  const auto &events = can->allEvents();
+  const auto &events = StreamManager::stream()->allEvents();
   int bit_to_find = -1;
   for (const CanEvent *e : events) {
     if (e->src == bus) {

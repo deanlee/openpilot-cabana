@@ -11,6 +11,7 @@
 #include <utility>
 
 #include "modules/charts/signalselector.h"
+#include "modules/system/stream_manager.h"
 #include "widgets/common.h"
 #include "core/dbc/dbc_manager.h"
 #include "core/streams/abstractstream.h"
@@ -123,10 +124,10 @@ private:
 class ZoomCommand : public QUndoCommand {
 public:
   ZoomCommand(std::pair<double, double> range) : range(range), QUndoCommand() {
-    prev_range = can->timeRange();
+    prev_range = StreamManager::stream()->timeRange();
     setText(QObject::tr("Zoom to %1-%2").arg(range.first, 0, 'f', 2).arg(range.second, 0, 'f', 2));
   }
-  void undo() override { can->setTimeRange(prev_range); }
-  void redo() override { can->setTimeRange(range); }
+  void undo() override { StreamManager::stream()->setTimeRange(prev_range); }
+  void redo() override { StreamManager::stream()->setTimeRange(range); }
   std::optional<std::pair<double, double>> prev_range, range;
 };

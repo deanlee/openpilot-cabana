@@ -7,6 +7,7 @@
 #include "binary_model.h"
 #include "binary_delegate.h"
 #include "core/streams/abstractstream.h"
+#include "modules/system/stream_manager.h"
 
 class BinaryView : public QTableView {
   Q_OBJECT
@@ -18,7 +19,7 @@ public:
   QSet<const dbc::Signal*> getOverlappingSignals() const;
   void updateState() { model->updateState(); }
   void paintEvent(QPaintEvent *event) override {
-    is_message_active = can->snapshot(model->msg_id)->is_active;
+    is_message_active = StreamManager::stream()->snapshot(model->msg_id)->is_active;
     QTableView::paintEvent(event);
   }
   QSize minimumSizeHint() const override;

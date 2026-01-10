@@ -7,6 +7,7 @@
 #include "core/commands/commands.h"
 #include "modules/dbc/export.h"
 #include "modules/settings/settings.h"
+#include "modules/system/stream_manager.h"
 #include "widgets/validators.h"
 
 QSize HistoryHeader::sectionSizeFromContents(int logicalIndex) const {
@@ -81,7 +82,7 @@ MessageHistory::MessageHistory(QWidget *parent) : QFrame(parent) {
   connect(comp_box, SIGNAL(activated(int)), this, SLOT(filterChanged()));
   connect(value_edit, &QLineEdit::textEdited, this, &MessageHistory::filterChanged);
   connect(export_btn, &QToolButton::clicked, this, &MessageHistory::exportToCSV);
-  connect(can, &AbstractStream::seekedTo, model, &MessageHistoryModel::reset);
+  connect(&StreamManager::instance(), &StreamManager::seekedTo, model, &MessageHistoryModel::reset);
   connect(GetDBC(), &dbc::Manager::DBCFileChanged, model, &MessageHistoryModel::reset);
   connect(UndoStack::instance(), &QUndoStack::indexChanged, model, &MessageHistoryModel::reset);
   connect(model, &MessageHistoryModel::modelReset, this, &MessageHistory::modelReset);
@@ -113,7 +114,7 @@ void MessageHistory::filterChanged() {
 }
 
 void MessageHistory::exportToCSV() {
-  QString dir = QString("%1/%2_%3.csv").arg(settings.last_dir).arg(can->routeName()).arg(msgName(model->msg_id));
+  QString dir = QString("%1/%2_%3.csv").arg(settings.last_dir).arg(StreamManager::stream()->routeName()).arg(msgName(model->msg_id));
   QString fn = QFileDialog::getSaveFileName(this, QString("Export %1 to CSV file").arg(msgName(model->msg_id)),
                                             dir, tr("csv (*.csv)"));
   if (!fn.isEmpty()) {

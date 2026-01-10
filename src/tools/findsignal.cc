@@ -8,6 +8,7 @@
 #include <QVBoxLayout>
 #include <QtConcurrent>
 
+#include "modules/system/stream_manager.h"
 #include "widgets/validators.h"
 
 // FindSignalModel
@@ -38,7 +39,7 @@ void FindSignalModel::search(std::function<bool(double)> cmp) {
   filtered_signals.clear();
   filtered_signals.reserve(prev_sigs.size());
   QtConcurrent::blockingMap(prev_sigs, [&](auto &s) {
-    const auto &events = can->events(s.id);
+    const auto &events = StreamManager::stream()->events(s.id);
     auto first = std::upper_bound(events.cbegin(), events.cend(), s.mono_time, CompareCanEvent());
     auto last = events.cend();
     if (last_time < std::numeric_limits<uint64_t>::max()) {
@@ -48,7 +49,7 @@ void FindSignalModel::search(std::function<bool(double)> cmp) {
     auto it = std::find_if(first, last, [&](const CanEvent *e) { return cmp(decodeSignal(e->dat, e->size, s.sig)); });
     if (it != last) {
       auto values = s.values;
-      values += QString("(%1, %2)").arg(can->toSeconds((*it)->mono_time), 0, 'f', 3).arg(decodeSignal((*it)->dat, (*it)->size, s.sig));
+      values += QString("(%1, %2)").arg(StreamManager::stream()->toSeconds((*it)->mono_time), 0, 'f', 3).arg(decodeSignal((*it)->dat, (*it)->size, s.sig));
       std::lock_guard lk(lock);
       filtered_signals.push_back({.id = s.id, .mono_time = (*it)->mono_time, .sig = s.sig, .values = values});
     }
@@ -216,6 +217,7 @@ void FindSignalDlg::setInitialSignals() {
   sig.factor = factor_edit->text().toDouble();
   sig.offset = offset_edit->text().toDouble();
 
+  auto *can = StreamManager::stream();
   double first_time_val = first_time_edit->text().toDouble();
   double last_time_val = last_time_edit->text().toDouble();
   auto [first_sec, last_sec] = std::minmax(first_time_val, last_time_val);

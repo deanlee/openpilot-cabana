@@ -3,14 +3,14 @@
 #include <functional>
 
 #include "core/dbc/dbc_manager.h"
-#include "core/streams/abstractstream.h"
 #include "modules/message_list/message_delegate.h"
+#include "modules/system/stream_manager.h"
 
 QVariant MessageHistoryModel::data(const QModelIndex &index, int role) const {
   const auto &m = messages[index.row()];
   const int col = index.column();
   if (role == Qt::DisplayRole) {
-    if (col == 0) return QString::number(can->toSeconds(m.mono_time), 'f', 3);
+    if (col == 0) return QString::number(StreamManager::stream()->toSeconds(m.mono_time), 'f', 3);
     if (!isHexMode()) return sigs[col - 1]->formatValue(m.sig_values[col - 1], false);
   } else if (role == Qt::TextAlignmentRole) {
     return (uint32_t)(Qt::AlignRight | Qt::AlignVCenter);
@@ -77,12 +77,12 @@ void MessageHistoryModel::updateState(bool clear) {
     messages.clear();
     endRemoveRows();
   }
-  uint64_t current_time = can->toMonoTime(can->snapshot(msg_id)->ts) + 1;
+  uint64_t current_time = StreamManager::stream()->toMonoTime(StreamManager::stream()->snapshot(msg_id)->ts) + 1;
   fetchData(messages.begin(), current_time, messages.empty() ? 0 : messages.front().mono_time);
 }
 
 bool MessageHistoryModel::canFetchMore(const QModelIndex &parent) const {
-  const auto &events = can->events(msg_id);
+  const auto &events = StreamManager::stream()->events(msg_id);
   return !events.empty() && !messages.empty() && messages.back().mono_time > events.front()->mono_time;
 }
 
@@ -92,7 +92,7 @@ void MessageHistoryModel::fetchMore(const QModelIndex &parent) {
 }
 
 void MessageHistoryModel::fetchData(std::deque<Message>::iterator insert_pos, uint64_t from_time, uint64_t min_time) {
-  const auto &events = can->events(msg_id);
+  const auto &events = StreamManager::stream()->events(msg_id);
   auto first = std::upper_bound(events.rbegin(), events.rend(), from_time, [](uint64_t ts, auto e) {
     return ts > e->mono_time;
   });
@@ -115,9 +115,9 @@ void MessageHistoryModel::fetchData(std::deque<Message>::iterator insert_pos, ui
 
   if (!msgs.empty()) {
     if (isHexMode() && (min_time > 0 || messages.empty())) {
-      const auto freq = can->snapshot(msg_id)->freq;
+      const auto freq = StreamManager::stream()->snapshot(msg_id)->freq;
       for (auto &m : msgs) {
-        hex_colors.update(msg_id, m.data.data(), m.data.size(), m.mono_time / (double)1e9, can->getSpeed(), freq);
+        hex_colors.update(msg_id, m.data.data(), m.data.size(), m.mono_time / (double)1e9, StreamManager::stream()->getSpeed(), freq);
         hex_colors.updateAllPatternColors(m.mono_time / (double)1e9);
         m.colors = hex_colors.colors;
       }

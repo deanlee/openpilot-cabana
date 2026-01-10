@@ -11,6 +11,7 @@
 
 #include "chart.h"
 #include "modules/settings/settings.h"
+#include "modules/system/stream_manager.h"
 
 const int MAX_COLUMN_COUNT = 4;
 const int CHART_SPACING = 4;
@@ -109,7 +110,8 @@ ChartsPanel::ChartsPanel(QWidget *parent) : QFrame(parent) {
   current_theme = settings.theme;
   column_count = std::clamp(settings.chart_column_count, 1, MAX_COLUMN_COUNT);
   max_chart_range = std::clamp(settings.chart_range, 1, settings.max_cached_minutes * 60);
-  display_range = std::make_pair(can->minSeconds(), can->minSeconds() + max_chart_range);
+  auto min_sec = StreamManager::stream()->minSeconds();
+  display_range = std::make_pair(min_sec, min_sec + max_chart_range);
   range_slider->setValue(max_chart_range);
   updateToolBar();
 
@@ -117,10 +119,10 @@ ChartsPanel::ChartsPanel(QWidget *parent) : QFrame(parent) {
   connect(align_timer, &QTimer::timeout, this, &ChartsPanel::alignCharts);
   connect(auto_scroll_timer, &QTimer::timeout, this, &ChartsPanel::doAutoScroll);
   connect(GetDBC(), &dbc::Manager::DBCFileChanged, this, &ChartsPanel::removeAll);
-  connect(can, &AbstractStream::eventsMerged, this, &ChartsPanel::eventsMerged);
-  connect(can, &AbstractStream::snapshotsUpdated, this, &ChartsPanel::updateState);
-  connect(can, &AbstractStream::seeking, this, &ChartsPanel::updateState);
-  connect(can, &AbstractStream::timeRangeChanged, this, &ChartsPanel::timeRangeChanged);
+  connect(&StreamManager::instance(), &StreamManager::eventsMerged, this, &ChartsPanel::eventsMerged);
+  connect(&StreamManager::instance(), &StreamManager::snapshotsUpdated, this, &ChartsPanel::updateState);
+  connect(&StreamManager::instance(), &StreamManager::seeking, this, &ChartsPanel::updateState);
+  connect(&StreamManager::instance(), &StreamManager::timeRangeChanged, this, &ChartsPanel::timeRangeChanged);
   connect(range_slider, &QSlider::valueChanged, this, &ChartsPanel::setMaxChartRange);
   connect(new_plot_btn, &QToolButton::clicked, this, &ChartsPanel::newChart);
   connect(remove_all_btn, &QToolButton::clicked, this, &ChartsPanel::removeAll);
@@ -184,7 +186,7 @@ void ChartsPanel::timeRangeChanged(const std::optional<std::pair<double, double>
 }
 
 void ChartsPanel::zoomReset() {
-  can->setTimeRange(std::nullopt);
+  StreamManager::stream()->setTimeRange(std::nullopt);
   zoom_undo_stack->clear();
 }
 
@@ -206,6 +208,7 @@ void ChartsPanel::showValueTip(double sec) {
 void ChartsPanel::updateState() {
   if (charts.isEmpty()) return;
 
+  auto *can = StreamManager::stream();
   const auto &time_range = can->timeRange();
   const double cur_sec = can->currentSec();
   if (!time_range.has_value()) {
@@ -241,6 +244,7 @@ void ChartsPanel::updateToolBar() {
   columns_action->setText(tr("Columns: %1").arg(column_count));
   range_lb->setText(utils::formatSeconds(max_chart_range));
 
+  auto *can = StreamManager::stream();
   bool is_zoomed = can->timeRange().has_value();
   range_lb_action->setVisible(!is_zoomed);
   range_slider_action->setVisible(!is_zoomed);
@@ -277,7 +281,7 @@ ChartView *ChartsPanel::findChart(const MessageId &id, const dbc::Signal *sig) {
 }
 
 ChartView *ChartsPanel::createChart(int pos) {
-  auto chart = new ChartView(can->timeRange().value_or(display_range), this);
+  auto chart = new ChartView(StreamManager::stream()->timeRange().value_or(display_range), this);
   chart->setFixedHeight(settings.chart_height);
   chart->setMinimumWidth(CHART_MIN_WIDTH);
   chart->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Fixed);

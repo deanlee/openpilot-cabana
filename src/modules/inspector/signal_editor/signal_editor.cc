@@ -11,6 +11,7 @@
 
 #include "core/commands/commands.h"
 #include "modules/settings/settings.h"
+#include "modules/system/stream_manager.h"
 
 SignalEditor::SignalEditor(ChartsPanel *charts, QWidget *parent) : charts(charts), QFrame(parent) {
   setFrameStyle(QFrame::StyledPanel | QFrame::Plain);
@@ -71,7 +72,7 @@ SignalEditor::SignalEditor(ChartsPanel *charts, QWidget *parent) : charts(charts
   connect(GetDBC(), &dbc::Manager::signalUpdated, this, &SignalEditor::handleSignalUpdated);
   connect(tree->verticalScrollBar(), &QScrollBar::valueChanged, [this]() { updateState(); });
   connect(tree->verticalScrollBar(), &QScrollBar::rangeChanged, [this]() { updateState(); });
-  connect(can, &AbstractStream::snapshotsUpdated, this, &SignalEditor::updateState);
+  connect(&StreamManager::instance(), &StreamManager::snapshotsUpdated, this, &SignalEditor::updateState);
 
   setWhatsThis(tr(R"(
     <b>Signal view</b><br />
@@ -170,7 +171,7 @@ std::pair<QModelIndex, QModelIndex> SignalEditor::visibleSignalRange() {
 }
 
 void SignalEditor::updateState(const std::set<MessageId> *msgs) {
-  const auto *last_msg = can->snapshot(model->msg_id);
+  const auto *last_msg = StreamManager::stream()->snapshot(model->msg_id);
   if (model->rowCount() == 0 || (msgs && !msgs->count(model->msg_id)) || last_msg->dat.size() == 0) return;
 
   auto [first_visible, last_visible] = visibleSignalRange();
@@ -182,7 +183,7 @@ void SignalEditor::updateState(const std::set<MessageId> *msgs) {
   const QSize spark_size(spark_w, delegate->kBtnSize);
 
   // Prepare data window for sparklines
-  auto [first, last] = can->eventsInRange(
+  auto [first, last] = StreamManager::stream()->eventsInRange(
       model->msg_id,
       std::make_pair(last_msg->ts - settings.sparkline_range, last_msg->ts));
 

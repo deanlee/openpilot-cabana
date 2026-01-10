@@ -9,6 +9,7 @@
 #include <QVBoxLayout>
 
 #include "core/streams/abstractstream.h"
+#include "modules/system/stream_manager.h"
 
 SignalSelector::SignalSelector(QString title, QWidget *parent) : QDialog(parent) {
   setWindowTitle(title);
@@ -44,7 +45,7 @@ SignalSelector::SignalSelector(QString title, QWidget *parent) : QDialog(parent)
   auto buttonBox = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
   main_layout->addWidget(buttonBox, 3, 2);
 
-  for (const auto &[id, _] : can->snapshots()) {
+  for (const auto &[id, _] : StreamManager::stream()->snapshots()) {
     if (auto m = GetDBC()->msg(id)) {
       msgs_combo->addItem(QString("%1 (%2)").arg(m->name).arg(id.toString()), QVariant::fromValue(id));
     }
