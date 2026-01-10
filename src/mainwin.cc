@@ -114,7 +114,9 @@ void MainWindow::createActions() {
 
   QMenu *commands_menu = edit_menu->addMenu(tr("Command &List"));
   QWidgetAction *commands_act = new QWidgetAction(this);
-  commands_act->setDefaultWidget(new QUndoView(UndoStack::instance()));
+  QUndoView *view = new QUndoView(UndoStack::instance(), this); // Parent set here
+  view->setEmptyLabel(tr("No commands"));
+  commands_act->setDefaultWidget(view);
   commands_menu->addAction(commands_act);
 
   // View Menu
