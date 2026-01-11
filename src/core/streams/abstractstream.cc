@@ -276,7 +276,7 @@ void AbstractStream::mergeEvents(const std::vector<const CanEvent*>& events) {
     auto pos = is_append ? e.end() : std::upper_bound(e.begin(), e.end(), new_e.front()->mono_time, CompareCanEvent());
     e.insert(pos, new_e.begin(), new_e.end());
 
-    if (e.size() > 1000) time_index_map_[id].sync(e, e.front()->mono_time, e.back()->mono_time, !is_append);
+    time_index_map_[id].sync(e, e.front()->mono_time, e.back()->mono_time, !is_append);
   }
   emit eventsMerged(msg_events);
 }
