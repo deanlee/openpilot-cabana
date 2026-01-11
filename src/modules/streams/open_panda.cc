@@ -30,6 +30,7 @@ OpenPandaWidget::OpenPandaWidget(QWidget *parent) : AbstractStreamWidget(parent)
   connect(refresh, &QPushButton::clicked, this, &OpenPandaWidget::refreshSerials);
   connect(serial_edit, &QComboBox::currentTextChanged, this, &OpenPandaWidget::buildConfigForm);
 
+  setFocusProxy(serial_edit);
   // Populate serials
   refreshSerials();
   buildConfigForm();

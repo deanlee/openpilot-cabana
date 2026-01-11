@@ -33,6 +33,14 @@ StreamSelector::StreamSelector(QWidget *parent) : QDialog(parent) {
   btn_box = new QDialogButtonBox(QDialogButtonBox::Open | QDialogButtonBox::Cancel);
   layout->addWidget(btn_box);
 
+    tab->setFocusPolicy(Qt::TabFocus);
+  connect(tab, &QTabWidget::currentChanged, [this](int index) {
+  if (QWidget* w = tab->widget(index)) {
+    w->setFocus();
+  }
+});
+
+
   addStreamWidget(new OpenReplayWidget, tr("&Replay"));
   addStreamWidget(new OpenPandaWidget, tr("&Panda"));
   if (SocketCanStream::available()) {

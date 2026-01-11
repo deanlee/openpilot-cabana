@@ -24,6 +24,7 @@ OpenSocketCanWidget::OpenSocketCanWidget(QWidget *parent) : AbstractStreamWidget
   main_layout->addLayout(form_layout);
 
   main_layout->addStretch(1);
+  setFocusProxy(device_edit);
 
   connect(refresh, &QPushButton::clicked, this, &OpenSocketCanWidget::refreshDevices);
   connect(device_edit, &QComboBox::currentTextChanged, this, [=]{ config.device = device_edit->currentText(); });

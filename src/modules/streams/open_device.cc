@@ -26,6 +26,8 @@ OpenDeviceWidget::OpenDeviceWidget(QWidget *parent) : AbstractStreamWidget(paren
   QFormLayout *form_layout = new QFormLayout(this);
   form_layout->addRow(msgq);
   form_layout->addRow(zmq, ip_address);
+
+  setFocusProxy(ip_address);
   connect(group, qOverload<QAbstractButton *, bool>(&QButtonGroup::buttonToggled), [=](QAbstractButton *button, bool checked) {
     ip_address->setEnabled(button == zmq && checked);
   });

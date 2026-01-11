@@ -30,6 +30,8 @@ OpenReplayWidget::OpenReplayWidget(QWidget *parent) : AbstractStreamWidget(paren
   grid_layout->addItem(camera_layout, 1, 1);
 
   setMinimumWidth(550);
+  setFocusProxy(route_edit);
+
   connect(browse_local_btn, &QPushButton::clicked, [=]() {
     QString dir = QFileDialog::getExistingDirectory(this, tr("Open Local Route"), settings.last_route_dir);
     if (!dir.isEmpty()) {
