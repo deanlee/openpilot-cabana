@@ -37,14 +37,17 @@ protected:
   bool eventFilter(QObject *obj, QEvent *event) override;
   void remindSaveChanges();
 
-  void createMenus();
+  void setupMenus();
   void createFileMenu();
   void createEditMenu();
   void createViewMenu();
   void createToolsMenu();
   void createHelpMenu();
 
-  void createDockWindows();
+  void setupDocks();
+  void createMessagesDock();
+  void createVideoChartsDock();
+
   void createStatusBar();
   void createShortcuts();
   void closeEvent(QCloseEvent *event) override;
@@ -58,7 +61,6 @@ protected:
   void toggleFullScreen();
   void updateStatus();
   void updateLoadSaveMenus();
-  void createDockWidgets();
   void eventsMerged();
   void saveSessionState();
   void restoreSessionState();
