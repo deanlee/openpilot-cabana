@@ -1,21 +1,14 @@
 #pragma once
 
 #include <QComboBox>
-#include <QHeaderView>
 #include <QLineEdit>
 #include <QTableView>
 
 #include "common.h"
 #include "core/streams/abstract_stream.h"
+#include "history_header.h"
 #include "history_model.h"
 #include "modules/message_list/message_delegate.h"
-
-class HistoryHeader : public QHeaderView {
-public:
-  HistoryHeader(Qt::Orientation orientation, QWidget *parent = nullptr) : QHeaderView(orientation, parent) {}
-  QSize sectionSizeFromContents(int logicalIndex) const override;
-  void paintSection(QPainter *painter, const QRect &rect, int logicalIndex) const;
-};
 
 class MessageHistory : public QFrame {
   Q_OBJECT
