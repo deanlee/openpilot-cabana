@@ -28,15 +28,14 @@
 
 MainWindow::MainWindow(AbstractStream *stream, const QString &dbc_file) : QMainWindow() {
   center_widget = new CenterWidget(this);
-  createDockWindows();
   setCentralWidget(center_widget);
 
   dbc_ = new DbcController(this);
 
-  createMenus();
+  setupDocks();
+  setupMenus();
   createStatusBar();
   createShortcuts();
-  createDockWidgets();
 
   // save default window state to allow resetting it
   default_state = saveState();
@@ -69,7 +68,7 @@ MainWindow::MainWindow(AbstractStream *stream, const QString &dbc_file) : QMainW
   show();
 }
 
-void MainWindow::createMenus() {
+void MainWindow::setupMenus() {
   createFileMenu();
   createEditMenu();
   createViewMenu();
@@ -154,27 +153,31 @@ void MainWindow::createHelpMenu() {
   help_menu->addAction(tr("About &Qt"), qApp, &QApplication::aboutQt);
 }
 
-void MainWindow::createDockWindows() {
+void MainWindow::setupDocks() {
+  createMessagesDock();
+  createVideoChartsDock();
+}
+
+void MainWindow::createMessagesDock() {
   messages_dock = new QDockWidget(tr("MESSAGES"), this);
   messages_dock->setObjectName("MessagesPanel");
   messages_dock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea | Qt::TopDockWidgetArea | Qt::BottomDockWidgetArea);
   messages_dock->setFeatures(QDockWidget::DockWidgetMovable | QDockWidget::DockWidgetFloatable | QDockWidget::DockWidgetClosable);
-  addDockWidget(Qt::LeftDockWidgetArea, messages_dock);
 
   message_list = new MessageList(this);
   messages_dock->setWidget(message_list);
+  addDockWidget(Qt::LeftDockWidgetArea, messages_dock);
+
   connect(message_list, &MessageList::titleChanged, messages_dock, &QDockWidget::setWindowTitle);
   connect(message_list, &MessageList::msgSelectionChanged, center_widget, &CenterWidget::setMessage);
+}
 
+void MainWindow::createVideoChartsDock() {
   video_dock = new QDockWidget("", this);
   video_dock->setObjectName(tr("VideoPanel"));
   video_dock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
   video_dock->setFeatures(QDockWidget::DockWidgetMovable | QDockWidget::DockWidgetFloatable | QDockWidget::DockWidgetClosable);
-  addDockWidget(Qt::RightDockWidgetArea, video_dock);
-}
 
-void MainWindow::createDockWidgets() {
-  // right panel
   charts_widget = new ChartsPanel(this);
   QWidget *charts_container = new QWidget(this);
   charts_layout = new QVBoxLayout(charts_container);
@@ -189,7 +192,10 @@ void MainWindow::createDockWidgets() {
   video_splitter->addWidget(charts_container);
   video_splitter->setStretchFactor(1, 1);
   video_splitter->restoreState(settings.video_splitter_state);
+
   video_dock->setWidget(video_splitter);
+  addDockWidget(Qt::RightDockWidgetArea, video_dock);
+
   connect(charts_widget, &ChartsPanel::toggleChartsDocking, this, &MainWindow::toggleChartsDocking);
   connect(charts_widget, &ChartsPanel::showTip, video_widget, &VideoPlayer::showThumbnail);
 }
