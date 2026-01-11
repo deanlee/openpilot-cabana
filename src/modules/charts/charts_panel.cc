@@ -82,7 +82,7 @@ ChartsPanel::ChartsPanel(QWidget *parent) : QFrame(parent) {
   reset_zoom_btn->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
 
   toolbar->addWidget(remove_all_btn = new ToolButton("eraser", tr("Remove all charts")));
-  toolbar->addWidget(dock_btn = new ToolButton(""));
+  toolbar->addWidget(dock_btn = new ToolButton("external-link"));
   main_layout->addWidget(toolbar);
 
   // tabbar
