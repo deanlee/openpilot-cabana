@@ -6,6 +6,7 @@
 #include <QFileDialog>
 #include <QMenuBar>
 #include <QProgressDialog>
+#include <QScreen>
 #include <QShortcut>
 #include <QUndoView>
 #include <QVBoxLayout>
@@ -23,11 +24,10 @@
 #include "widgets/guide_overlay.h"
 
 MainWindow::MainWindow(AbstractStream *stream, const QString &dbc_file) : QMainWindow() {
+  dbc_controller_ = new DbcController(this);
   charts_panel = new ChartsPanel(this);
   inspector_widget_ = new MessageInspector(charts_panel, this);
   setCentralWidget(inspector_widget_);
-
-  dbc_controller_ = new DbcController(this);
 
   setupDocks();
   setupMenus();
@@ -38,28 +38,26 @@ MainWindow::MainWindow(AbstractStream *stream, const QString &dbc_file) : QMainW
   default_window_state_ = saveState();
 
   // restore states
-  restoreGeometry(settings.geometry);
-  if (isMaximized()) {
-    setGeometry(QApplication::desktop()->availableGeometry(this));
-  }
-  restoreState(settings.window_state);
+  if (!settings.geometry.isEmpty()) restoreGeometry(settings.geometry);
+  if (!settings.window_state.isEmpty()) restoreState(settings.window_state);
+  if (isMaximized()) setGeometry(screen()->availableGeometry());
 
   // install handlers
   auto& relay = SystemRelay::instance();
   connect(&relay, &SystemRelay::logMessage, statusBar(), &QStatusBar::showMessage);
   connect(&relay, &SystemRelay::downloadProgress, this, &MainWindow::updateDownloadProgress);
+  connect(GetDBC(), &dbc::Manager::DBCFileChanged, this, &MainWindow::DBCFileChanged);
+  connect(UndoStack::instance(), &QUndoStack::cleanChanged, this, &MainWindow::undoStackCleanChanged);
+  connect(&settings, &Settings::changed, this, &MainWindow::updateStatus);
+  connect(&StreamManager::instance(), &StreamManager::streamChanged, this, &MainWindow::onStreamChanged);
+  connect(&StreamManager::instance(), &StreamManager::eventsMerged, this, &MainWindow::eventsMerged);
+
   relay.installGlobalHandlers();
 
   setStyleSheet(QString(R"(QMainWindow::separator {
     width: %1px; /* when vertical */
     height: %1px; /* when horizontal */
   })").arg(style()->pixelMetric(QStyle::PM_SplitterWidth)));
-
-  connect(GetDBC(), &dbc::Manager::DBCFileChanged, this, &MainWindow::DBCFileChanged);
-  connect(UndoStack::instance(), &QUndoStack::cleanChanged, this, &MainWindow::undoStackCleanChanged);
-  connect(&settings, &Settings::changed, this, &MainWindow::updateStatus);
-  connect(&StreamManager::instance(), &StreamManager::streamChanged, this, &MainWindow::onStreamChanged);
-  connect(&StreamManager::instance(), &StreamManager::eventsMerged, this, &MainWindow::eventsMerged);
 
   QTimer::singleShot(0, this, [=]() { stream ? openStream(stream, dbc_file) : selectAndOpenStream(); });
   show();
@@ -187,7 +185,10 @@ void MainWindow::createVideoChartsDock() {
 
   video_splitter_->addWidget(charts_container);
   video_splitter_->setStretchFactor(1, 1);
-  video_splitter_->restoreState(settings.video_splitter_state);
+
+  if (!settings.video_splitter_state.isEmpty()) {
+   video_splitter_->restoreState(settings.video_splitter_state);
+  }
 
   video_dock_->setWidget(video_splitter_);
   addDockWidget(Qt::RightDockWidgetArea, video_dock_);
@@ -269,19 +270,19 @@ void MainWindow::exportToCSV() {
 }
 
 void MainWindow::openStream(AbstractStream *stream, const QString &dbc_file) {
-  StreamManager::instance().setStream(stream, dbc_file);
+  auto &sm = StreamManager::instance();
+  sm.setStream(stream, dbc_file);
 
   inspector_widget_->clear();
-
   dbc_controller_->loadFile(dbc_file);
 
-  bool has_stream = StreamManager::instance().hasStream();
-  bool is_live_stream = StreamManager::instance().isLiveStream();
+  bool has_stream = sm.hasStream();
+  bool is_live_stream = sm.isLiveStream();
   close_stream_act_->setEnabled(has_stream);
   export_to_csv_act_->setEnabled(has_stream);
   tools_menu_->setEnabled(has_stream);
 
-  video_dock_->setWindowTitle(StreamManager::stream()->routeName());
+  video_dock_->setWindowTitle(sm.stream()->routeName());
   if (is_live_stream || video_splitter_->sizes()[0] == 0) {
     // display video at minimum size.
     video_splitter_->setSizes({1, 1});
@@ -298,7 +299,7 @@ void MainWindow::openStream(AbstractStream *stream, const QString &dbc_file) {
     wait_dlg->setWindowModality(Qt::WindowModal);
     wait_dlg->setFixedSize(400, wait_dlg->sizeHint().height());
     connect(wait_dlg, &QProgressDialog::canceled, this, &MainWindow::close);
-    connect(&StreamManager::instance(), &StreamManager::eventsMerged, wait_dlg, &QProgressDialog::deleteLater);
+    connect(&sm, &StreamManager::eventsMerged, wait_dlg, &QProgressDialog::deleteLater);
     connect(&SystemRelay::instance(), &SystemRelay::downloadProgress, wait_dlg, [=](uint64_t cur, uint64_t total, bool success) {
       wait_dlg->setValue((int)((cur / (double)total) * 100));
     });
