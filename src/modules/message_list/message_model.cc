@@ -52,10 +52,6 @@ QVariant MessageModel::data(const QModelIndex &index, int role) const {
       case Column::COUNT: return item.id.source != INVALID_SOURCE ? QString::number(item.data->count) : NA;
       case Column::DATA: return item.id.source != INVALID_SOURCE ? "" : NA;
     }
-  } else if (role == ColorsRole) {
-    return QVariant::fromValue((void*)(&(item.data->colors)));
-  } else if (role == BytesRole && index.column() == Column::DATA && item.id.source != INVALID_SOURCE) {
-    return QVariant::fromValue((void*)(&item.data->dat));
   } else if (role == Qt::ToolTipRole && index.column() == Column::NAME) {
     auto msg = GetDBC()->msg(item.id);
     auto tooltip = item.name;

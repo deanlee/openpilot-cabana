@@ -16,6 +16,10 @@ public:
   void updateState(bool clear = false);
   void setFilter(int sig_idx, const QString &value, std::function<bool(double, double)> cmp);
   QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const override;
+  QModelIndex index(int row, int column, const QModelIndex& parent = QModelIndex()) const override {
+    if (!hasIndex(row, column, parent)) return {};
+    return createIndex(row, column, (void*)(&messages[row]));
+  }
   QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
   void fetchMore(const QModelIndex &parent) override;
   bool canFetchMore(const QModelIndex &parent) const override;

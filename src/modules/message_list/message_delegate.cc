@@ -6,9 +6,29 @@
 #include <QStyle>
 
 #include "utils/util.h"
+#include "message_model.h"
+#include "modules/inspector/history/history_model.h"
 
-MessageDelegate::MessageDelegate(QObject *parent, bool multiple_lines)
-    : font_metrics(QApplication::font()), multiple_lines(multiple_lines), QStyledItemDelegate(parent) {
+namespace {
+struct MessageDataRef {
+  const std::vector<uint8_t>* bytes = nullptr;
+  const std::vector<QColor>* colors = nullptr;
+};
+
+MessageDataRef getDataRef(CallerType type, const QModelIndex& index) {
+  if (type == CallerType::MessageList) {
+    auto* item = static_cast<MessageModel::Item*>(index.internalPointer());
+    return {&item->data->dat, &item->data->colors};
+  } else {
+    auto* msg = static_cast<MessageHistoryModel::Message*>(index.internalPointer());
+    return {&msg->data, &msg->colors};
+  }
+}
+
+}  // namespace
+
+MessageDelegate::MessageDelegate(QObject *parent, CallerType caller_type, bool multiple_lines)
+    : caller_type_(caller_type), multiple_lines(multiple_lines), QStyledItemDelegate(parent) {
   fixed_font = QFontDatabase::systemFont(QFontDatabase::FixedFont);
   byte_size = QFontMetrics(fixed_font).size(Qt::TextSingleLine, "00 ") + QSize(0, 2);
   for (int i = 0; i < 256; ++i) {
@@ -26,17 +46,14 @@ QSize MessageDelegate::sizeForBytes(int n) const {
   return {cols * byte_size.width() + h_margin * 2, rows * byte_size.height() + v_margin * 2};
 }
 
-QSize MessageDelegate::sizeHint(const QStyleOptionViewItem &option, const QModelIndex &index) const {
-  auto data = index.data(BytesRole);
-  return sizeForBytes(data.isValid() ? static_cast<std::vector<uint8_t> *>(data.value<void *>())->size() : 0);
+QSize MessageDelegate::sizeHint(const QStyleOptionViewItem& option, const QModelIndex& index) const {
+  MessageDataRef ref = getDataRef(caller_type_, index);
+  return sizeForBytes(ref.bytes ? ref.bytes->size() : 0);
 }
 
 void MessageDelegate::paint(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const {
-  auto data = index.data(BytesRole);
-  if (!data.isValid()) {
-    QStyledItemDelegate::paint(painter, option, index);
-    return;
-  }
+  MessageDataRef ref = getDataRef(caller_type_, index);
+  if (!ref.bytes || ref.bytes->empty()) return;
 
  if (option.state & QStyle::State_Selected) {
     painter->fillRect(option.rect, option.palette.highlight());
@@ -46,9 +63,9 @@ void MessageDelegate::paint(QPainter* painter, const QStyleOptionViewItem& optio
   painter->setFont(fixed_font);
 
   const QRect item_rect = option.rect.adjusted(h_margin, v_margin, -h_margin, -v_margin);
-  const auto& bytes = *static_cast<std::vector<uint8_t>*>(data.value<void*>());
-  const auto& colors = *static_cast<std::vector<QColor>*>(index.data(ColorsRole).value<void*>());
-
+  const auto& bytes = *ref.bytes;
+  const auto& colors = *ref.colors;
+  QColor normal_text = option.palette.color(QPalette::Text);
   QColor base_text_color = (option.state & QStyle::State_Selected)
                                ? option.palette.color(QPalette::HighlightedText)
                                : option.palette.color(QPalette::Text);
@@ -64,7 +81,7 @@ void MessageDelegate::paint(QPainter* painter, const QStyleOptionViewItem& optio
     if (i < colors.size() && colors[i].alpha() > 0) {
       painter->fillRect(r, colors[i]);
       // Use standard text color for contrast against change-colors
-      painter->setPen(option.palette.color(QPalette::Text));
+      painter->setPen(normal_text);
     } else {
       painter->setPen(base_text_color);
     }

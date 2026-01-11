@@ -15,11 +15,6 @@ QVariant MessageHistoryModel::data(const QModelIndex &index, int role) const {
   } else if (role == Qt::TextAlignmentRole) {
     return (uint32_t)(Qt::AlignRight | Qt::AlignVCenter);
   }
-
-  if (isHexMode() && col == 1) {
-    if (role == ColorsRole) return QVariant::fromValue((void *)(&m.colors));
-    if (role == BytesRole) return QVariant::fromValue((void *)(&m.data));
-  }
   return {};
 }
 

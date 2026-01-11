@@ -31,6 +31,7 @@ private slots:
   void filterChanged();
   void exportToCSV();
   void modelReset();
+  void handleDisplayTypeChange(int index);
 
 private:
   void setupConnections();

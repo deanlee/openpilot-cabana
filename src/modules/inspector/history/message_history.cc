@@ -69,7 +69,8 @@ MessageHistory::MessageHistory(QWidget *parent) : QFrame(parent) {
   main_layout->addWidget(line);
   main_layout->addWidget(logs = new QTableView(this));
   logs->setModel(model = new MessageHistoryModel(this));
-  logs->setItemDelegate(delegate = new MessageDelegate(this));
+  delegate = new MessageDelegate(this, CallerType::HistoryView);
+  // logs->setItemDelegate(delegate);
   logs->setHorizontalHeader(new HistoryHeader(Qt::Horizontal, this));
   logs->horizontalHeader()->setDefaultAlignment(Qt::AlignRight | (Qt::Alignment)Qt::TextWordWrap);
   logs->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
@@ -81,7 +82,7 @@ MessageHistory::MessageHistory(QWidget *parent) : QFrame(parent) {
 }
 
 void MessageHistory::setupConnections() {
-  connect(display_type_cb, qOverload<int>(&QComboBox::activated), model, &MessageHistoryModel::setHexMode);
+  connect(display_type_cb, qOverload<int>(&QComboBox::activated), this, &MessageHistory::handleDisplayTypeChange);
   connect(signals_cb, SIGNAL(activated(int)), this, SLOT(filterChanged()));
   connect(comp_box, SIGNAL(activated(int)), this, SLOT(filterChanged()));
   connect(value_edit, &QLineEdit::textEdited, this, &MessageHistory::filterChanged);
@@ -91,6 +92,15 @@ void MessageHistory::setupConnections() {
   connect(UndoStack::instance(), &QUndoStack::indexChanged, model, &MessageHistoryModel::reset);
   connect(model, &MessageHistoryModel::modelReset, this, &MessageHistory::modelReset);
   connect(model, &MessageHistoryModel::rowsInserted, [this]() { export_btn->setEnabled(true); });
+}
+
+void MessageHistory::handleDisplayTypeChange(int index) {
+  if (index == 0) { // Signal values
+    logs->setItemDelegateForColumn(1, nullptr);
+  } else {
+    logs->setItemDelegateForColumn(1, delegate);
+  }
+  model->setHexMode(index);
 }
 
 void MessageHistory::clearMessage() {

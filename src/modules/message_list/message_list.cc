@@ -19,7 +19,8 @@ MessageList::MessageList(QWidget *parent) : menu(new QMenu(this)), QWidget(paren
   main_layout->addWidget(createToolBar());
   // message table
   main_layout->addWidget(view = new MessageTable(this));
-  view->setItemDelegateForColumn(MessageModel::Column::DATA, delegate = new MessageDelegate(view, settings.multiple_lines_hex));
+  delegate = new MessageDelegate(view, CallerType::MessageList, settings.multiple_lines_hex);
+  view->setItemDelegateForColumn(MessageModel::Column::DATA, delegate);
   view->setModel(model = new MessageModel(this));
   view->setHeader(header = new MessageHeader(this));
 

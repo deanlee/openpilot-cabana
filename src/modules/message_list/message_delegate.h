@@ -2,15 +2,15 @@
 #include <QStaticText>
 #include <QStyledItemDelegate>
 
-enum {
-  ColorsRole = Qt::UserRole + 1,
-  BytesRole = Qt::UserRole + 2
+enum class CallerType {
+  MessageList,
+  HistoryView
 };
 
 class MessageDelegate : public QStyledItemDelegate {
   Q_OBJECT
 public:
-  MessageDelegate(QObject *parent, bool multiple_lines = false);
+  MessageDelegate(QObject *parent, CallerType caller_type, bool multiple_lines = false);
   void paint(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const override;
   QSize sizeHint(const QStyleOptionViewItem &option, const QModelIndex &index) const override;
   bool multipleLines() const { return multiple_lines; }
@@ -19,9 +19,9 @@ public:
 
 private:
   std::array<QStaticText, 256> hex_text_table;
-  QFontMetrics font_metrics;
   QFont fixed_font;
   QSize byte_size = {};
+  CallerType caller_type_;
   bool multiple_lines = false;
   int h_margin, v_margin;
 };
