@@ -146,7 +146,7 @@ QWidget *VideoPlayer::createCameraWidget() {
   slider->setTimeRange(StreamManager::stream()->minSeconds(), StreamManager::stream()->maxSeconds());
 
   connect(slider, &QSlider::sliderReleased, [this]() { StreamManager::stream()->seekTo(slider->currentSecond()); });
-  connect(&StreamManager::instance(), &StreamManager::paused, cam_widget, [c = cam_widget]() { c->showPausedOverlay(); });
+  connect(&StreamManager::instance(), &StreamManager::paused, cam_widget, [c = cam_widget]() { c->update(); });
   connect(&StreamManager::instance(), &StreamManager::eventsMerged, this, [this]() { slider->update(); });
   connect(&StreamManager::instance(), &StreamManager::qLogLoaded, cam_widget, &PlaybackCameraView::parseQLog, Qt::QueuedConnection);
   connect(cam_widget, &PlaybackCameraView::clicked, []() { StreamManager::stream()->pause(!StreamManager::stream()->isPaused()); });

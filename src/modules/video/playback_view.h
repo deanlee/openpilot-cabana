@@ -1,6 +1,5 @@
 #pragma once
 
-#include <QPropertyAnimation>
 #include <memory>
 
 #include "camera_view.h"
@@ -25,7 +24,6 @@ class PlaybackCameraView : public CameraView {
  public:
   PlaybackCameraView(std::string stream_name, VisionStreamType stream_type, QWidget* parent = nullptr);
   void paintGL() override;
-  void showPausedOverlay() { fade_animation->start(); }
   void parseQLog(std::shared_ptr<LogReader> qlog);
 
  private:
@@ -35,7 +33,6 @@ class PlaybackCameraView : public CameraView {
   void drawScrubThumbnail(QPainter& p);
   void drawTime(QPainter& p, const QRect& rect, double seconds);
 
-  QPropertyAnimation* fade_animation;
   QMap<uint64_t, QPixmap> big_thumbnails;
   QMap<uint64_t, QPixmap> thumbnails;
   double thumbnail_dispaly_time = -1;
