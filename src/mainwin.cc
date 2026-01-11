@@ -23,7 +23,8 @@
 #include "widgets/guide_overlay.h"
 
 MainWindow::MainWindow(AbstractStream *stream, const QString &dbc_file) : QMainWindow() {
-  center_widget = new CenterWidget(this);
+  charts_panel = new ChartsPanel(this);
+  center_widget = new MessageInspector(charts_panel, this);
   setCentralWidget(center_widget);
 
   dbc_ = new DbcController(this);
@@ -165,7 +166,7 @@ void MainWindow::createMessagesDock() {
   addDockWidget(Qt::LeftDockWidgetArea, messages_dock);
 
   connect(message_list, &MessageList::titleChanged, messages_dock, &QDockWidget::setWindowTitle);
-  connect(message_list, &MessageList::msgSelectionChanged, center_widget, &CenterWidget::setMessage);
+  connect(message_list, &MessageList::msgSelectionChanged, center_widget, &MessageInspector::setMessage);
 }
 
 void MainWindow::createVideoChartsDock() {
@@ -174,11 +175,10 @@ void MainWindow::createVideoChartsDock() {
   video_dock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
   video_dock->setFeatures(QDockWidget::DockWidgetMovable | QDockWidget::DockWidgetFloatable | QDockWidget::DockWidgetClosable);
 
-  charts_widget = new ChartsPanel(this);
   QWidget *charts_container = new QWidget(this);
   charts_layout = new QVBoxLayout(charts_container);
   charts_layout->setContentsMargins(0, 0, 0, 0);
-  charts_layout->addWidget(charts_widget);
+  charts_layout->addWidget(charts_panel);
 
   // splitter between video and charts
   video_splitter = new QSplitter(Qt::Vertical, this);
@@ -192,8 +192,8 @@ void MainWindow::createVideoChartsDock() {
   video_dock->setWidget(video_splitter);
   addDockWidget(Qt::RightDockWidgetArea, video_dock);
 
-  connect(charts_widget, &ChartsPanel::toggleChartsDocking, this, &MainWindow::toggleChartsDocking);
-  connect(charts_widget, &ChartsPanel::showTip, video_widget, &VideoPlayer::showThumbnail);
+  connect(charts_panel, &ChartsPanel::toggleChartsDocking, this, &MainWindow::toggleChartsDocking);
+  connect(charts_panel, &ChartsPanel::showTip, video_widget, &VideoPlayer::showThumbnail);
 }
 
 void MainWindow::createStatusBar() {
@@ -374,19 +374,19 @@ void MainWindow::toggleChartsDocking() {
   if (floating_window) {
     // Dock the charts widget back to the main window
     floating_window->removeEventFilter(this);
-    charts_layout->insertWidget(0, charts_widget, 1);
+    charts_layout->insertWidget(0, charts_panel, 1);
     floating_window->deleteLater();
     floating_window = nullptr;
-    charts_widget->setIsDocked(true);
+    charts_panel->setIsDocked(true);
   } else {
     // Float the charts widget in a separate window
     floating_window = new QWidget(this, Qt::Window);
     floating_window->setWindowTitle("Charts");
     floating_window->setLayout(new QVBoxLayout());
-    floating_window->layout()->addWidget(charts_widget);
+    floating_window->layout()->addWidget(charts_panel);
     floating_window->installEventFilter(this);
     floating_window->showMaximized();
-    charts_widget->setIsDocked(false);
+    charts_panel->setIsDocked(false);
   }
 }
 
@@ -462,13 +462,13 @@ void MainWindow::saveSessionState() {
   for (auto &f : GetDBC()->allDBCFiles())
     if (!f->isEmpty()) { settings.recent_dbc_file = f->filename; break; }
 
-  if (auto *detail = center_widget->getMessageDetails()) {
+  if (auto *detail = center_widget->getMessageView()) {
     auto [active_id, ids] = detail->serializeMessageIds();
     settings.active_msg_id = active_id;
     settings.selected_msg_ids = ids;
   }
-  if (charts_widget)
-    settings.active_charts = charts_widget->serializeChartIds();
+  if (charts_panel)
+    settings.active_charts = charts_panel->serializeChartIds();
 }
 
 void MainWindow::restoreSessionState() {
@@ -479,9 +479,11 @@ void MainWindow::restoreSessionState() {
     if (!f->isEmpty()) { dbc_file = f->filename; break; }
   if (dbc_file != settings.recent_dbc_file) return;
 
-  if (!settings.selected_msg_ids.isEmpty())
-    center_widget->getMessageDetails()->restoreTabs(settings.active_msg_id, settings.selected_msg_ids);
+  if (!settings.selected_msg_ids.isEmpty()) {
+    center_widget->getMessageView()->restoreTabs(settings.active_msg_id, settings.selected_msg_ids);
+    center_widget->setMessage(MessageId::fromString(settings.active_msg_id));
+  }
 
-  if (charts_widget != nullptr && !settings.active_charts.empty())
-    charts_widget->restoreChartsFromIds(settings.active_charts);
+  if (charts_panel != nullptr && !settings.active_charts.empty())
+    charts_panel->restoreChartsFromIds(settings.active_charts);
 }

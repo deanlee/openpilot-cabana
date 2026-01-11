@@ -23,7 +23,7 @@ public:
   MainWindow(AbstractStream *stream, const QString &dbc_file);
   void toggleChartsDocking();
   void showStatusMessage(const QString &msg, int timeout = 0) { statusBar()->showMessage(msg, timeout); }
-  ChartsPanel *charts_widget = nullptr;
+  ChartsPanel *charts_panel = nullptr;
 
 public slots:
   void selectAndOpenStream();
@@ -68,7 +68,7 @@ protected:
   QDockWidget *video_dock;
   QDockWidget *messages_dock;
   MessageList *message_list = nullptr;
-  CenterWidget *center_widget;
+  MessageInspector *center_widget;
   QWidget *floating_window = nullptr;
   QVBoxLayout *charts_layout;
   QProgressBar *progress_bar;
