@@ -112,14 +112,17 @@ void MessageList::resetState() {
 }
 
 void MessageList::updateTitle() {
-  auto stats = std::accumulate(
-      model->items_.begin(), model->items_.end(), std::pair<size_t, size_t>(),
-      [](const auto &pair, const auto &item) {
-        auto m = GetDBC()->msg(item.id);
-        return m ? std::make_pair(pair.first + 1, pair.second + m->sigs.size()) : pair;
-      });
+  size_t dbc_msg_count = 0;
+  size_t signal_count = 0;
+
+  for (const auto& item : model->items_) {
+    if (auto m = GetDBC()->msg(item.id)) {
+      dbc_msg_count++;
+      signal_count += m->sigs.size();
+    }
+  }
   emit titleChanged(tr("%1 Messages (%2 DBC Messages, %3 Signals)")
-                      .arg(model->items_.size()).arg(stats.first).arg(stats.second));
+                    .arg(model->items_.size()).arg(dbc_msg_count).arg(signal_count));
 }
 
 void MessageList::handleSelectionChanged(const QModelIndex &current) {
