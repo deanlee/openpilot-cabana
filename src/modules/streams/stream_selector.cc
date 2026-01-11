@@ -20,10 +20,10 @@ StreamSelector::StreamSelector(QWidget *parent) : QDialog(parent) {
   dbc_file = new QLineEdit(this);
   dbc_file->setReadOnly(true);
   dbc_file->setPlaceholderText(tr("Choose a dbc file to open"));
-  QPushButton *file_btn = new QPushButton(tr("Browse..."));
+  QPushButton *browse_btn = new QPushButton(tr("Browse..."));
   dbc_layout->addWidget(new QLabel(tr("dbc File")));
   dbc_layout->addWidget(dbc_file);
-  dbc_layout->addWidget(file_btn);
+  dbc_layout->addWidget(browse_btn);
   layout->addLayout(dbc_layout);
 
   QFrame *line = new QFrame(this);
@@ -33,13 +33,12 @@ StreamSelector::StreamSelector(QWidget *parent) : QDialog(parent) {
   btn_box = new QDialogButtonBox(QDialogButtonBox::Open | QDialogButtonBox::Cancel);
   layout->addWidget(btn_box);
 
-    tab->setFocusPolicy(Qt::TabFocus);
+  tab->setFocusPolicy(Qt::TabFocus);
   connect(tab, &QTabWidget::currentChanged, [this](int index) {
-  if (QWidget* w = tab->widget(index)) {
-    w->setFocus();
-  }
-});
-
+    if (QWidget* w = tab->widget(index)) {
+      w->setFocus();
+    }
+  });
 
   addStreamWidget(new OpenReplayWidget, tr("&Replay"));
   addStreamWidget(new OpenPandaWidget, tr("&Panda"));
@@ -56,7 +55,7 @@ StreamSelector::StreamSelector(QWidget *parent) : QDialog(parent) {
     }
     setEnabled(true);
   });
-  connect(file_btn, &QPushButton::clicked, [this]() {
+  connect(browse_btn, &QPushButton::clicked, [this]() {
     QString fn = QFileDialog::getOpenFileName(this, tr("Open File"), settings.last_dir, "DBC (*.dbc)");
     if (!fn.isEmpty()) {
       dbc_file->setText(fn);
