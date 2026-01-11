@@ -60,6 +60,7 @@ signals:
   void showTip(double seconds);
 
 private:
+  void setupConnections();
   QSize minimumSizeHint() const override;
   bool event(QEvent *event) override;
   void alignCharts();
@@ -100,6 +101,8 @@ private:
   QAction *reset_zoom_action;
   ToolButton *reset_zoom_btn;
   QUndoStack *zoom_undo_stack;
+  ToolButton *new_plot_btn;
+  ToolButton *new_tab_btn;
 
   ToolButton *remove_all_btn;
   QList<ChartView *> charts;

@@ -50,6 +50,10 @@ ChartView::ChartView(const std::pair<double, double> &x_range, ChartsPanel *pare
   setTheme(utils::isDarkTheme() ? QChart::QChart::ChartThemeDark : QChart::ChartThemeLight);
   signal_value_font.setPointSize(9);
 
+  setupConnections();
+}
+
+void ChartView::setupConnections() {
   connect(axis_y, &QValueAxis::rangeChanged, this, &ChartView::resetChartCache);
   connect(axis_y, &QAbstractAxis::titleTextChanged, this, &ChartView::resetChartCache);
   connect(window()->windowHandle(), &QWindow::screenChanged, this, &ChartView::resetChartCache);

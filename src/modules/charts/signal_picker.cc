@@ -28,9 +28,9 @@ SignalPicker::SignalPicker(QString title, QWidget *parent) : QDialog(parent) {
 
   // buttons
   QVBoxLayout *btn_layout = new QVBoxLayout();
-  QPushButton *add_btn = new QPushButton(utils::icon("chevron-right"), "", this);
+  add_btn = new QPushButton(utils::icon("chevron-right"), "", this);
   add_btn->setEnabled(false);
-  QPushButton *remove_btn = new QPushButton(utils::icon("chevron-left"), "", this);
+  remove_btn = new QPushButton(utils::icon("chevron-left"), "", this);
   remove_btn->setEnabled(false);
   btn_layout->addStretch(0);
   btn_layout->addWidget(add_btn);
@@ -42,8 +42,8 @@ SignalPicker::SignalPicker(QString title, QWidget *parent) : QDialog(parent) {
   main_layout->addWidget(new QLabel(tr("Selected Signals")), 0, 2);
   main_layout->addWidget(selected_list = new QListWidget(this), 1, 2, 2, 1);
 
-  auto buttonBox = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
-  main_layout->addWidget(buttonBox, 3, 2);
+  button_box = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
+  main_layout->addWidget(button_box, 3, 2);
 
   for (const auto &[id, _] : StreamManager::stream()->snapshots()) {
     if (auto m = GetDBC()->msg(id)) {
@@ -53,6 +53,10 @@ SignalPicker::SignalPicker(QString title, QWidget *parent) : QDialog(parent) {
   msgs_combo->model()->sort(0);
   msgs_combo->setCurrentIndex(-1);
 
+  setupConnections();
+}
+
+void SignalPicker::setupConnections() {
   connect(msgs_combo, qOverload<int>(&QComboBox::currentIndexChanged), this, &SignalPicker::updateAvailableList);
   connect(available_list, &QListWidget::currentRowChanged, [=](int row) { add_btn->setEnabled(row != -1); });
   connect(selected_list, &QListWidget::currentRowChanged, [=](int row) { remove_btn->setEnabled(row != -1); });
@@ -60,8 +64,8 @@ SignalPicker::SignalPicker(QString title, QWidget *parent) : QDialog(parent) {
   connect(selected_list, &QListWidget::itemDoubleClicked, this, &SignalPicker::remove);
   connect(add_btn, &QPushButton::clicked, [this]() { if (auto item = available_list->currentItem()) add(item); });
   connect(remove_btn, &QPushButton::clicked, [this]() { if (auto item = selected_list->currentItem()) remove(item); });
-  connect(buttonBox, &QDialogButtonBox::accepted, this, &QDialog::accept);
-  connect(buttonBox, &QDialogButtonBox::rejected, this, &QDialog::reject);
+  connect(button_box, &QDialogButtonBox::accepted, this, &QDialog::accept);
+  connect(button_box, &QDialogButtonBox::rejected, this, &QDialog::reject);
 }
 
 void SignalPicker::add(QListWidgetItem *item) {

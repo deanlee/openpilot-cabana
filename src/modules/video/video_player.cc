@@ -34,12 +34,7 @@ VideoPlayer::VideoPlayer(QWidget *parent) : QFrame(parent) {
 
   setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Maximum);
 
-  connect(&StreamManager::instance(), &StreamManager::streamChanged, this, &VideoPlayer::onStreamChanged);
-  connect(&StreamManager::instance(), &StreamManager::paused, this, &VideoPlayer::updatePlayBtnState);
-  connect(&StreamManager::instance(), &StreamManager::resume, this, &VideoPlayer::updatePlayBtnState);
-  connect(&StreamManager::instance(), &StreamManager::snapshotsUpdated, this, &VideoPlayer::updateState);
-  connect(&StreamManager::instance(), &StreamManager::seeking, this, &VideoPlayer::updateState);
-  connect(&StreamManager::instance(), &StreamManager::timeRangeChanged, this, &VideoPlayer::timeRangeChanged);
+  setupConnections();
 
   updatePlayBtnState();
   setWhatsThis(tr(R"(
@@ -62,6 +57,16 @@ VideoPlayer::VideoPlayer(QWidget *parent) : QFrame(parent) {
           timeline_colors[(int)TimelineType::AlertInfo].name(),
           timeline_colors[(int)TimelineType::AlertWarning].name(),
           timeline_colors[(int)TimelineType::AlertCritical].name()));
+}
+
+void VideoPlayer::setupConnections() {
+  auto &sm = StreamManager::instance();
+  connect(&sm, &StreamManager::streamChanged, this, &VideoPlayer::onStreamChanged);
+  connect(&sm, &StreamManager::paused, this, &VideoPlayer::updatePlayBtnState);
+  connect(&sm, &StreamManager::resume, this, &VideoPlayer::updatePlayBtnState);
+  connect(&sm, &StreamManager::snapshotsUpdated, this, &VideoPlayer::updateState);
+  connect(&sm, &StreamManager::seeking, this, &VideoPlayer::updateState);
+  connect(&sm, &StreamManager::timeRangeChanged, this, &VideoPlayer::timeRangeChanged);
 }
 
 void VideoPlayer::createPlaybackController() {

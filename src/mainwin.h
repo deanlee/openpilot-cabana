@@ -33,6 +33,7 @@ public slots:
   void onStreamChanged();
 
 protected:
+  void setupConnections();
   bool eventFilter(QObject *obj, QEvent *event) override;
   void remindSaveChanges();
 

@@ -21,6 +21,7 @@ public:
   void resetState();
 
 private:
+  void setupConnections();
   void createToolBar();
   int findOrAddTab(const MessageId& id);
   void showTabBarContextMenu(const QPoint &pt);

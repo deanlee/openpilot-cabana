@@ -33,6 +33,8 @@ private slots:
   void modelReset();
 
 private:
+  void setupConnections();
+
   QTableView *logs;
   MessageHistoryModel *model;
   QComboBox *signals_cb, *comp_box, *display_type_cb;

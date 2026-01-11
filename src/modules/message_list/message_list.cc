@@ -30,7 +30,21 @@ MessageList::MessageList(QWidget *parent) : menu(new QMenu(this)), QWidget(paren
   header->setStretchLastSection(true);
   header->setContextMenuPolicy(Qt::CustomContextMenu);
 
-  // signals/slots
+  setWhatsThis(tr(R"(
+    <b>Message View</b><br/>
+    <!-- TODO: add descprition here -->
+    <span style="color:gray">Byte color</span><br />
+    <span style="color:gray;">■ </span> constant changing<br />
+    <span style="color:blue;">■ </span> increasing<br />
+    <span style="color:red;">■ </span> decreasing<br />
+    <span style="color:gray">Shortcuts</span><br />
+    Horizontal Scrolling: <span style="background-color:lightGray;color:gray">&nbsp;shift+wheel&nbsp;</span>
+  )"));
+
+  setupConnections();
+}
+
+void MessageList::setupConnections() {
   connect(menu, &QMenu::aboutToShow, this, &MessageList::menuAboutToShow);
   connect(header, &MessageHeader::customContextMenuRequested, this, &MessageList::headerContextMenuEvent);
   connect(view->horizontalScrollBar(), &QScrollBar::valueChanged, header, &MessageHeader::updateHeaderPositions);
@@ -45,17 +59,6 @@ MessageList::MessageList(QWidget *parent) : menu(new QMenu(this)), QWidget(paren
     }
     updateTitle();
   });
-
-  setWhatsThis(tr(R"(
-    <b>Message View</b><br/>
-    <!-- TODO: add descprition here -->
-    <span style="color:gray">Byte color</span><br />
-    <span style="color:gray;">■ </span> constant changing<br />
-    <span style="color:blue;">■ </span> increasing<br />
-    <span style="color:red;">■ </span> decreasing<br />
-    <span style="color:gray">Shortcuts</span><br />
-    Horizontal Scrolling: <span style="background-color:lightGray;color:gray">&nbsp;shift+wheel&nbsp;</span>
-  )"));
 }
 
 QWidget *MessageList::createToolBar() {

@@ -42,17 +42,7 @@ MainWindow::MainWindow(AbstractStream *stream, const QString &dbc_file) : QMainW
   if (!settings.window_state.isEmpty()) restoreState(settings.window_state);
   if (isMaximized()) setGeometry(screen()->availableGeometry());
 
-  // install handlers
-  auto& relay = SystemRelay::instance();
-  connect(&relay, &SystemRelay::logMessage, statusBar(), &QStatusBar::showMessage);
-  connect(&relay, &SystemRelay::downloadProgress, this, &MainWindow::updateDownloadProgress);
-  connect(GetDBC(), &dbc::Manager::DBCFileChanged, this, &MainWindow::DBCFileChanged);
-  connect(UndoStack::instance(), &QUndoStack::cleanChanged, this, &MainWindow::undoStackCleanChanged);
-  connect(&settings, &Settings::changed, this, &MainWindow::updateStatus);
-  connect(&StreamManager::instance(), &StreamManager::streamChanged, this, &MainWindow::onStreamChanged);
-  connect(&StreamManager::instance(), &StreamManager::eventsMerged, this, &MainWindow::eventsMerged);
-
-  relay.installGlobalHandlers();
+  setupConnections();
 
   setStyleSheet(QString(R"(QMainWindow::separator {
     width: %1px; /* when vertical */
@@ -61,6 +51,19 @@ MainWindow::MainWindow(AbstractStream *stream, const QString &dbc_file) : QMainW
 
   QTimer::singleShot(0, this, [=]() { stream ? openStream(stream, dbc_file) : selectAndOpenStream(); });
   show();
+}
+
+void MainWindow::setupConnections() {
+  auto& relay = SystemRelay::instance();
+  relay.installGlobalHandlers();
+
+  connect(&relay, &SystemRelay::logMessage, statusBar(), &QStatusBar::showMessage);
+  connect(&relay, &SystemRelay::downloadProgress, this, &MainWindow::updateDownloadProgress);
+  connect(GetDBC(), &dbc::Manager::DBCFileChanged, this, &MainWindow::DBCFileChanged);
+  connect(UndoStack::instance(), &QUndoStack::cleanChanged, this, &MainWindow::undoStackCleanChanged);
+  connect(&settings, &Settings::changed, this, &MainWindow::updateStatus);
+  connect(&StreamManager::instance(), &StreamManager::streamChanged, this, &MainWindow::onStreamChanged);
+  connect(&StreamManager::instance(), &StreamManager::eventsMerged, this, &MainWindow::eventsMerged);
 }
 
 void MainWindow::setupMenus() {

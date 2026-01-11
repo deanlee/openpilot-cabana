@@ -12,11 +12,11 @@
 
 ValueTableEditor::ValueTableEditor(const ValueTable& descriptions, QWidget* parent) : QDialog(parent) {
   QHBoxLayout* toolbar_layout = new QHBoxLayout();
-  QPushButton* add = new QPushButton(utils::icon("plus"), "");
-  QPushButton* remove = new QPushButton(utils::icon("minus"), "");
-  remove->setEnabled(false);
-  toolbar_layout->addWidget(add);
-  toolbar_layout->addWidget(remove);
+  add_btn = new QPushButton(utils::icon("plus"), "");
+  remove_btn = new QPushButton(utils::icon("minus"), "");
+  remove_btn->setEnabled(false);
+  toolbar_layout->addWidget(add_btn);
+  toolbar_layout->addWidget(remove_btn);
   toolbar_layout->addStretch(0);
 
   table = new QTableWidget(descriptions.size(), 2, this);
@@ -35,23 +35,27 @@ ValueTableEditor::ValueTableEditor(const ValueTable& descriptions, QWidget* pare
     ++row;
   }
 
-  auto btn_box = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
+  btn_box = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
   QVBoxLayout* main_layout = new QVBoxLayout(this);
   main_layout->addLayout(toolbar_layout);
   main_layout->addWidget(table);
   main_layout->addWidget(btn_box);
   setMinimumWidth(500);
 
+  setupConnections();
+}
+
+void ValueTableEditor::setupConnections() {
   connect(btn_box, &QDialogButtonBox::accepted, this, &ValueTableEditor::save);
   connect(btn_box, &QDialogButtonBox::rejected, this, &QDialog::reject);
-  connect(add, &QPushButton::clicked, [this]() {
+  connect(add_btn, &QPushButton::clicked, [this]() {
     table->setRowCount(table->rowCount() + 1);
     table->setItem(table->rowCount() - 1, 0, new QTableWidgetItem);
     table->setItem(table->rowCount() - 1, 1, new QTableWidgetItem);
   });
-  connect(remove, &QPushButton::clicked, [this]() { table->removeRow(table->currentRow()); });
+  connect(remove_btn, &QPushButton::clicked, [this]() { table->removeRow(table->currentRow()); });
   connect(table, &QTableWidget::itemSelectionChanged, [=]() {
-    remove->setEnabled(table->currentRow() != -1);
+    remove_btn->setEnabled(table->currentRow() != -1);
   });
 }
 

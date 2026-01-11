@@ -49,6 +49,10 @@ MessageView::MessageView(ChartsPanel* charts, QWidget* parent) : charts(charts),
   tab_widget->addTab(message_history = new MessageHistory(this), utils::icon("scroll-text"), "&Logs");
   main_layout->addWidget(tab_widget);
 
+  setupConnections();
+}
+
+void MessageView::setupConnections() {
   connect(binary_view, &BinaryView::signalHovered, signal_editor, &SignalEditor::signalHovered);
   connect(binary_view, &BinaryView::signalClicked, [this](const dbc::Signal* s) { signal_editor->selectSignal(s, true); });
   connect(binary_view, &BinaryView::editSignal, signal_editor->model, &SignalTreeModel::saveSignal);

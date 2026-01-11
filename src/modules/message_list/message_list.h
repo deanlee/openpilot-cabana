@@ -26,6 +26,7 @@ signals:
   void titleChanged(const QString &title);
 
 protected:
+  void setupConnections();
   QWidget *createToolBar();
   void resetState();
   void headerContextMenuEvent(const QPoint &pos);

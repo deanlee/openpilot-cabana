@@ -37,7 +37,7 @@ SignalEditor::SignalEditor(ChartsPanel *charts, QWidget *parent) : charts(charts
   sparkline_range_slider->setValue(settings.sparkline_range);
   sparkline_range_slider->setToolTip(tr("Sparkline time range"));
 
-  auto collapse_btn = new ToolButton("fold-vertical", tr("Collapse All"));
+  collapse_btn = new ToolButton("fold-vertical", tr("Collapse All"));
   collapse_btn->setIconSize({12, 12});
   hl->addWidget(collapse_btn);
 
@@ -60,6 +60,15 @@ SignalEditor::SignalEditor(ChartsPanel *charts, QWidget *parent) : charts(charts
   main_layout->addWidget(tree);
   updateToolBar();
 
+  setupConnections();
+
+  setWhatsThis(tr(R"(
+    <b>Signal view</b><br />
+    <!-- TODO: add descprition here -->
+  )"));
+}
+
+void SignalEditor::setupConnections() {
   connect(filter_edit, &QLineEdit::textEdited, model, &SignalTreeModel::setFilter);
   connect(sparkline_range_slider, &QSlider::valueChanged, this, &SignalEditor::setSparklineRange);
   connect(collapse_btn, &QPushButton::clicked, tree, &QTreeView::collapseAll);
@@ -73,11 +82,6 @@ SignalEditor::SignalEditor(ChartsPanel *charts, QWidget *parent) : charts(charts
   connect(tree->verticalScrollBar(), &QScrollBar::valueChanged, [this]() { updateState(); });
   connect(tree->verticalScrollBar(), &QScrollBar::rangeChanged, [this]() { updateState(); });
   connect(&StreamManager::instance(), &StreamManager::snapshotsUpdated, this, &SignalEditor::updateState);
-
-  setWhatsThis(tr(R"(
-    <b>Signal view</b><br />
-    <!-- TODO: add descprition here -->
-  )"));
 }
 
 void SignalEditor::setMessage(const MessageId &id) {
