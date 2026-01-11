@@ -442,7 +442,7 @@ QSize ChartsPanel::minimumSizeHint() const {
 }
 
 void ChartsPanel::newChart() {
-  SignalSelector dlg(tr("New Chart"), this);
+  SignalPicker dlg(tr("New Chart"), this);
   if (dlg.exec() == QDialog::Accepted) {
     auto items = dlg.seletedItems();
     if (!items.isEmpty()) {

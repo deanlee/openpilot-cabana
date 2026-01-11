@@ -6,7 +6,7 @@
 
 #include "core/dbc/dbc_manager.h"
 
-class SignalSelector : public QDialog {
+class SignalPicker : public QDialog {
 public:
   struct ListItem : public QListWidgetItem {
     ListItem(const MessageId &msg_id, const dbc::Signal *sig, QListWidget *parent) : msg_id(msg_id), sig(sig), QListWidgetItem(parent) {}
@@ -14,7 +14,7 @@ public:
     const dbc::Signal *sig;
   };
 
-  SignalSelector(QString title, QWidget *parent);
+  SignalPicker(QString title, QWidget *parent);
   QList<ListItem *> seletedItems();
   inline void addSelected(const MessageId &id, const dbc::Signal *sig) { addItemToList(selected_list, id, sig, true); }
 

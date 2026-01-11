@@ -10,11 +10,11 @@
 #include <unordered_map>
 #include <utility>
 
-#include "modules/charts/signalselector.h"
-#include "modules/system/stream_manager.h"
-#include "widgets/common.h"
 #include "core/dbc/dbc_manager.h"
 #include "core/streams/abstractstream.h"
+#include "modules/system/stream_manager.h"
+#include "signal_picker.h"
+#include "widgets/common.h"
 
 const int CHART_MIN_WIDTH = 300;
 const QString CHART_MIME_TYPE = "application/x-cabanachartview";
