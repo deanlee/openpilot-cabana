@@ -14,6 +14,8 @@
 #include "core/dbc/dbc_manager.h"
 #include "modules/settings/settings.h"
 
+constexpr int MAX_RECENT_FILES = 10;
+
 inline QString GetOpendbcFilePath(const QString& name) {
   return QDir::current().absoluteFilePath(QString("data/opendbc/%1").arg(name));
 }
@@ -153,7 +155,6 @@ void DbcController::saveFileToClipboard(dbc::File* dbc_file) {
 
 void DbcController::populateRecentMenu(QMenu* recent_menu) {
   recent_menu->clear();
-  constexpr int MAX_RECENT_FILES = 10;
   int num_recent_files = std::min<int>(settings.recent_files.size(), MAX_RECENT_FILES);
   if (!num_recent_files) {
     recent_menu->addAction(QObject::tr("No Recent Files"))->setEnabled(false);
@@ -193,7 +194,6 @@ void DbcController::remindSaveChanges() {
 }
 
 void DbcController::updateRecentFiles(const QString& fn) {
-  constexpr int MAX_RECENT_FILES = 10;
   settings.recent_files.removeAll(fn);
   settings.recent_files.prepend(fn);
   while (settings.recent_files.size() > MAX_RECENT_FILES) {
