@@ -20,8 +20,10 @@ MessageDelegate::MessageDelegate(QObject *parent, bool multiple_lines)
 }
 
 QSize MessageDelegate::sizeForBytes(int n) const {
-  int rows = multiple_lines ? std::max(1, n / 8) : 1;
-  return {(n / rows) * byte_size.width() + h_margin * 2, rows * byte_size.height() + v_margin * 2};
+  if (n <= 0) return QSize(0, 0);
+  int rows = multiple_lines ? (n + 7) / 8 : 1;
+  int cols = multiple_lines ? std::min(n, 8) : n;
+  return {cols * byte_size.width() + h_margin * 2, rows * byte_size.height() + v_margin * 2};
 }
 
 QSize MessageDelegate::sizeHint(const QStyleOptionViewItem &option, const QModelIndex &index) const {
@@ -36,20 +38,20 @@ void MessageDelegate::paint(QPainter* painter, const QStyleOptionViewItem& optio
     return;
   }
 
-  QStyleOptionViewItem opt = option;
-  initStyleOption(&opt, index);
-  QApplication::style()->drawControl(QStyle::CE_ItemViewItem, &opt, painter);
+ if (option.state & QStyle::State_Selected) {
+    painter->fillRect(option.rect, option.palette.highlight());
+  }
 
   painter->save();
   painter->setFont(fixed_font);
 
-  const QRect item_rect = opt.rect.adjusted(h_margin, v_margin, -h_margin, -v_margin);
+  const QRect item_rect = option.rect.adjusted(h_margin, v_margin, -h_margin, -v_margin);
   const auto& bytes = *static_cast<std::vector<uint8_t>*>(data.value<void*>());
   const auto& colors = *static_cast<std::vector<QColor>*>(index.data(ColorsRole).value<void*>());
 
-  QColor base_text_color = (opt.state & QStyle::State_Selected)
-                               ? opt.palette.color(QPalette::HighlightedText)
-                               : opt.palette.color(QPalette::Text);
+  QColor base_text_color = (option.state & QStyle::State_Selected)
+                               ? option.palette.color(QPalette::HighlightedText)
+                               : option.palette.color(QPalette::Text);
 
   const QPoint pt = item_rect.topLeft();
 
@@ -62,7 +64,7 @@ void MessageDelegate::paint(QPainter* painter, const QStyleOptionViewItem& optio
     if (i < colors.size() && colors[i].alpha() > 0) {
       painter->fillRect(r, colors[i]);
       // Use standard text color for contrast against change-colors
-      painter->setPen(opt.palette.color(QPalette::Text));
+      painter->setPen(option.palette.color(QPalette::Text));
     } else {
       painter->setPen(base_text_color);
     }
