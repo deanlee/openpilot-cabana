@@ -31,6 +31,7 @@ public slots:
   void openStream(AbstractStream *stream, const QString &dbc_file = {});
   void closeStream();
   void exportToCSV();
+  void onStreamChanged();
 
 protected:
   bool eventFilter(QObject *obj, QEvent *event) override;

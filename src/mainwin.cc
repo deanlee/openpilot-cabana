@@ -36,6 +36,7 @@ MainWindow::MainWindow(AbstractStream *stream, const QString &dbc_file) : QMainW
   createActions();
   createStatusBar();
   createShortcuts();
+  createDockWidgets();
 
   // save default window state to allow resetting it
   default_state = saveState();
@@ -61,6 +62,7 @@ MainWindow::MainWindow(AbstractStream *stream, const QString &dbc_file) : QMainW
   connect(GetDBC(), &dbc::Manager::DBCFileChanged, this, &MainWindow::DBCFileChanged);
   connect(UndoStack::instance(), &QUndoStack::cleanChanged, this, &MainWindow::undoStackCleanChanged);
   connect(&settings, &Settings::changed, this, &MainWindow::updateStatus);
+  connect(&StreamManager::instance(), &StreamManager::streamChanged, this, &MainWindow::onStreamChanged);
   connect(&StreamManager::instance(), &StreamManager::eventsMerged, this, &MainWindow::eventsMerged);
 
   QTimer::singleShot(0, this, [=]() { stream ? openStream(stream, dbc_file) : selectAndOpenStream(); });
@@ -176,7 +178,6 @@ void MainWindow::createDockWidgets() {
   video_splitter->addWidget(charts_container);
   video_splitter->setStretchFactor(1, 1);
   video_splitter->restoreState(settings.video_splitter_state);
-  video_splitter->handle(1)->setEnabled(!StreamManager::instance().isLiveStream());
   video_dock->setWidget(video_splitter);
   connect(charts_widget, &ChartsPanel::toggleChartsDocking, this, &MainWindow::toggleChartsDocking);
   connect(charts_widget, &ChartsPanel::showTip, video_widget, &VideoPlayer::showThumbnail);
@@ -200,6 +201,10 @@ void MainWindow::createShortcuts() {
     StreamManager::stream()->pause(!StreamManager::stream()->isPaused());
   });
   // TODO: add more shortcuts here.
+}
+
+void MainWindow::onStreamChanged() {
+  video_splitter->handle(1)->setEnabled(!StreamManager::instance().isLiveStream());
 }
 
 void MainWindow::undoStackCleanChanged(bool clean) {
@@ -254,7 +259,6 @@ void MainWindow::openStream(AbstractStream *stream, const QString &dbc_file) {
   StreamManager::instance().setStream(stream, dbc_file);
 
   center_widget->clear();
-  delete video_splitter;
 
   dbc_->loadFile(dbc_file);
 
@@ -263,7 +267,7 @@ void MainWindow::openStream(AbstractStream *stream, const QString &dbc_file) {
   close_stream_act->setEnabled(has_stream);
   export_to_csv_act->setEnabled(has_stream);
   tools_menu->setEnabled(has_stream);
-  createDockWidgets();
+  // createDockWidgets();
 
   video_dock->setWindowTitle(StreamManager::stream()->routeName());
   if (is_live_stream || video_splitter->sizes()[0] == 0) {

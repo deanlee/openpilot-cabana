@@ -38,6 +38,12 @@ void PlaybackCameraView::parseQLog(std::shared_ptr<LogReader> qlog) {
 }
 
 void PlaybackCameraView::paintGL() {
+  if (!StreamManager::instance().isReplayStream()) {
+    glClearColor(bg.redF(), bg.greenF(), bg.blueF(), bg.alphaF());
+    glClear(GL_STENCIL_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
+    return;
+  }
+
   CameraView::paintGL();
 
   QPainter p(this);

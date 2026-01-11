@@ -27,6 +27,7 @@ void StreamManager::setStream(AbstractStream* new_stream, const QString& dbc_fil
   connect(stream_, &AbstractStream::snapshotsUpdated, this, &StreamManager::snapshotsUpdated);
   connect(stream_, &AbstractStream::sourcesUpdated, this, &StreamManager::sourcesUpdated);
   connect(stream_, &AbstractStream::qLogLoaded, this, &StreamManager::qLogLoaded);
+
   emit streamChanged();
   stream_->start();
   if (!isDummy()) {

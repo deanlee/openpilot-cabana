@@ -25,12 +25,16 @@ VideoPlayer::VideoPlayer(QWidget *parent) : QFrame(parent) {
   auto main_layout = new QVBoxLayout(this);
   main_layout->setContentsMargins(0, 0, 0, 0);
   main_layout->setSpacing(0);
-  if (!StreamManager::stream()->liveStreaming())
-    main_layout->addWidget(createCameraWidget());
+
+  camera_widget = createCameraWidget();
+  camera_widget->setVisible(false);
+  main_layout->addWidget(camera_widget);
 
   createPlaybackController();
 
   setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Maximum);
+
+  connect(&StreamManager::instance(), &StreamManager::streamChanged, this, &VideoPlayer::onStreamChanged);
   connect(&StreamManager::instance(), &StreamManager::paused, this, &VideoPlayer::updatePlayBtnState);
   connect(&StreamManager::instance(), &StreamManager::resume, this, &VideoPlayer::updatePlayBtnState);
   connect(&StreamManager::instance(), &StreamManager::snapshotsUpdated, this, &VideoPlayer::updateState);
@@ -71,14 +75,13 @@ void VideoPlayer::createPlaybackController() {
   play_toggle_action = toolbar->addAction(utils::icon("play"), tr("Play"), []() { StreamManager::stream()->pause(!StreamManager::stream()->isPaused()); });
   toolbar->addAction(utils::icon("step-forward"), tr("Seek forward"), []() { StreamManager::stream()->seekTo(StreamManager::stream()->currentSec() + 1); });
 
-  if (StreamManager::stream()->liveStreaming()) {
-    skip_to_end_action = toolbar->addAction(utils::icon("skip-forward"), tr("Skip to the end"), this, [this]() {
-      // set speed to 1.0
-      speed_btn->menu()->actions()[7]->setChecked(true);
-      StreamManager::stream()->pause(false);
-      StreamManager::stream()->seekTo(StreamManager::stream()->maxSeconds() + 1);
-    });
-  }
+
+  skip_to_end_action = toolbar->addAction(utils::icon("skip-forward"), tr("Skip to the end"), this, [this]() {
+    // set speed to 1.0
+    speed_btn->menu()->actions()[7]->setChecked(true);
+    StreamManager::stream()->pause(false);
+    StreamManager::stream()->seekTo(StreamManager::stream()->maxSeconds() + 1);
+  });
 
   time_display_action = toolbar->addAction("", this, [this]() {
     settings.absolute_time = !settings.absolute_time;
@@ -90,14 +93,11 @@ void VideoPlayer::createPlaybackController() {
   spacer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
   toolbar->addWidget(spacer);
 
-  if (!StreamManager::stream()->liveStreaming()) {
-    toolbar->addAction(utils::icon("repeat"), tr("Loop playback"), this, &VideoPlayer::loopPlaybackClicked);
-    createSpeedDropdown(toolbar);
-    toolbar->addSeparator();
-    toolbar->addAction(utils::icon("info"), tr("View route details"), this, &VideoPlayer::showRouteInfo);
-  } else {
-    createSpeedDropdown(toolbar);
-  }
+  loop_action = toolbar->addAction(utils::icon("repeat"), tr("Loop playback"), this, &VideoPlayer::loopPlaybackClicked);
+  createSpeedDropdown(toolbar);
+  toolbar->addSeparator();
+  route_info_action = toolbar->addAction(utils::icon("info"), tr("View route details"), this, &VideoPlayer::showRouteInfo);
+  // hide repeat,separator info if living?
 }
 
 void VideoPlayer::createSpeedDropdown(QToolBar *toolbar) {
@@ -148,7 +148,7 @@ QWidget *VideoPlayer::createCameraWidget() {
   connect(slider, &QSlider::sliderReleased, [this]() { StreamManager::stream()->seekTo(slider->currentSecond()); });
   connect(&StreamManager::instance(), &StreamManager::paused, cam_widget, [c = cam_widget]() { c->showPausedOverlay(); });
   connect(&StreamManager::instance(), &StreamManager::eventsMerged, this, [this]() { slider->update(); });
-    connect(&StreamManager::instance(), &StreamManager::qLogLoaded, cam_widget, &PlaybackCameraView::parseQLog, Qt::QueuedConnection);
+  connect(&StreamManager::instance(), &StreamManager::qLogLoaded, cam_widget, &PlaybackCameraView::parseQLog, Qt::QueuedConnection);
   connect(cam_widget, &PlaybackCameraView::clicked, []() { StreamManager::stream()->pause(!StreamManager::stream()->isPaused()); });
   connect(cam_widget, &PlaybackCameraView::vipcAvailableStreamsUpdated, this, &VideoPlayer::vipcAvailableStreamsUpdated);
   connect(camera_tab, &QTabBar::currentChanged, [this](int index) {
@@ -156,6 +156,18 @@ QWidget *VideoPlayer::createCameraWidget() {
   });
   slider->installEventFilter(this);
   return w;
+}
+
+void VideoPlayer::onStreamChanged() {
+  timeRangeChanged();
+  updateState();
+  updatePlayBtnState();
+  bool is_live = StreamManager::stream()->liveStreaming();
+
+  camera_widget->setVisible(!is_live);
+  loop_action->setVisible(!is_live);
+  route_info_action->setVisible(!is_live);
+  skip_to_end_action->setVisible(is_live);
 }
 
 void VideoPlayer::vipcAvailableStreamsUpdated(std::set<VisionStreamType> streams) {
@@ -176,7 +188,7 @@ void VideoPlayer::vipcAvailableStreamsUpdated(std::set<VisionStreamType> streams
 void VideoPlayer::loopPlaybackClicked() {
   bool is_looping = getReplay()->loop();
   getReplay()->setLoop(!is_looping);
-  qobject_cast<QAction*>(sender())->setIcon(utils::icon(!is_looping ? "repeat" : "repeat-1"));
+  loop_action->setIcon(utils::icon(!is_looping ? "repeat" : "repeat-1"));
 }
 
 void VideoPlayer::timeRangeChanged() {

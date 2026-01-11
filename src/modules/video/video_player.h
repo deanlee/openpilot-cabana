@@ -33,12 +33,16 @@ protected:
   void loopPlaybackClicked();
   void vipcAvailableStreamsUpdated(std::set<VisionStreamType> streams);
   void showRouteInfo();
+  void onStreamChanged();
 
+  QWidget *camera_widget = nullptr;
   PlaybackCameraView *cam_widget;
   QAction *time_display_action = nullptr;
   QAction *play_toggle_action = nullptr;
   QToolButton *speed_btn = nullptr;
   QAction *skip_to_end_action = nullptr;
+  QAction *route_info_action = nullptr;
+  QAction *loop_action = nullptr;
   Slider *slider = nullptr;
   QTabBar *camera_tab = nullptr;
 };
