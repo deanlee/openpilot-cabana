@@ -5,7 +5,7 @@
 #include <QTableWidget>
 #include <QVBoxLayout>
 
-#include "core/streams/replaystream.h"
+#include "core/streams/replay_stream.h"
 #include "modules/system/stream_manager.h"
 
 RouteInfoDlg::RouteInfoDlg(QWidget *parent) : QDialog(parent) {

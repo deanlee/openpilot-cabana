@@ -6,7 +6,7 @@
 
 #include <QBasicTimer>
 
-#include "abstractstream.h"
+#include "abstract_stream.h"
 
 class LiveStream : public AbstractStream {
   Q_OBJECT

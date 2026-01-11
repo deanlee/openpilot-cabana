@@ -6,7 +6,7 @@
 #include <QTableView>
 
 #include "common.h"
-#include "core/streams/abstractstream.h"
+#include "core/streams/abstract_stream.h"
 #include "history_model.h"
 #include "modules/message_list/message_delegate.h"
 

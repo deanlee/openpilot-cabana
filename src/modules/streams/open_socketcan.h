@@ -3,7 +3,7 @@
 #include <QComboBox>
 
 #include "abstract.h"
-#include "core/streams/socketcanstream.h"
+#include "core/streams/socket_can_stream.h"
 
 class OpenSocketCanWidget : public AbstractStreamWidget {
   Q_OBJECT

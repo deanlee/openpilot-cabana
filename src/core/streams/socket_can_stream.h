@@ -6,7 +6,7 @@
 #include <QtSerialBus/QCanBusDevice>
 #include <QtSerialBus/QCanBusDeviceInfo>
 
-#include "livestream.h"
+#include "live_stream.h"
 
 struct SocketCanStreamConfig {
   QString device = ""; // TODO: support multiple devices/buses at once

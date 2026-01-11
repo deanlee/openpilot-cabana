@@ -6,7 +6,7 @@
 #include <QUndoStack>
 
 #include "core/dbc/dbc_manager.h"
-#include "core/streams/abstractstream.h"
+#include "core/streams/abstract_stream.h"
 
 class EditMsgCommand : public QUndoCommand {
 public:

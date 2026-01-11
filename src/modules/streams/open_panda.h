@@ -4,7 +4,7 @@
 #include <QFormLayout>
 
 #include "abstract.h"
-#include "core/streams/pandastream.h"
+#include "core/streams/panda_stream.h"
 
 class OpenPandaWidget : public AbstractStreamWidget {
   Q_OBJECT

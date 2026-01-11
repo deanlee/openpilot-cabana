@@ -1,7 +1,7 @@
 #pragma once
 #include <QWidget>
 
-#include "core/streams/abstractstream.h"
+#include "core/streams/abstract_stream.h"
 
 class AbstractStreamWidget : public QWidget {
   Q_OBJECT

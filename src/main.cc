@@ -1,10 +1,10 @@
 #include <QApplication>
 #include <QCommandLineParser>
 
-#include "core/streams/devicestream.h"
-#include "core/streams/pandastream.h"
-#include "core/streams/replaystream.h"
-#include "core/streams/socketcanstream.h"
+#include "core/streams/device_stream.h"
+#include "core/streams/panda_stream.h"
+#include "core/streams/replay_stream.h"
+#include "core/streams/socket_can_stream.h"
 #include "mainwin.h"
 #include "modules/settings/settings.h"
 #include "utils/system_signal_handler.h"

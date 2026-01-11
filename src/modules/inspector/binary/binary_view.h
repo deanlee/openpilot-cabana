@@ -6,7 +6,7 @@
 
 #include "binary_model.h"
 #include "binary_delegate.h"
-#include "core/streams/abstractstream.h"
+#include "core/streams/abstract_stream.h"
 #include "modules/system/stream_manager.h"
 
 class BinaryView : public QTableView {

@@ -4,8 +4,8 @@
 #include <QPointer>
 #include <optional>
 
-#include "core/streams/abstractstream.h"
-#include "core/streams/replaystream.h"
+#include "core/streams/abstract_stream.h"
+#include "core/streams/replay_stream.h"
 
 class StreamManager : public QObject {
   Q_OBJECT

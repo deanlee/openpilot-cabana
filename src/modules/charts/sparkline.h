@@ -6,7 +6,7 @@
 #include <vector>
 
 #include "core/dbc/dbc_message.h"
-#include "core/streams/abstractstream.h"
+#include "core/streams/abstract_stream.h"
 
 class Sparkline {
  public:

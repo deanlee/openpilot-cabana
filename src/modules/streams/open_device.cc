@@ -7,7 +7,7 @@
 #include <QRegularExpression>
 #include <QRegularExpressionValidator>
 
-#include "core/streams/devicestream.h"
+#include "core/streams/device_stream.h"
 
 OpenDeviceWidget::OpenDeviceWidget(QWidget *parent) : AbstractStreamWidget(parent) {
   QRadioButton *msgq = new QRadioButton(tr("MSGQ"));

@@ -8,7 +8,7 @@
 #include <QMessageBox>
 #include <QPushButton>
 
-#include "core/streams/replaystream.h"
+#include "core/streams/replay_stream.h"
 #include "route_browser.h"
 #include "modules/settings/settings.h"
 

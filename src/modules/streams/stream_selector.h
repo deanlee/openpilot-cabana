@@ -6,7 +6,7 @@
 #include <QTabWidget>
 
 #include "abstract.h"
-#include "core/streams/abstractstream.h"
+#include "core/streams/abstract_stream.h"
 
 class StreamSelector : public QDialog {
   Q_OBJECT

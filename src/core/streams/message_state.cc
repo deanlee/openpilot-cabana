@@ -4,7 +4,7 @@
 #include <cmath>
 #include <cstring>
 
-#include "abstractstream.h"
+#include "abstract_stream.h"
 #include "modules/settings/settings.h"
 #include "modules/system/stream_manager.h"
 

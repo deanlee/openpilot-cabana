@@ -1,4 +1,4 @@
-#include "pandastream.h"
+#include "panda_stream.h"
 
 #include <QDebug>
 #include <QThread>

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "livestream.h"
+#include "live_stream.h"
 
 class DeviceStream : public LiveStream {
   Q_OBJECT

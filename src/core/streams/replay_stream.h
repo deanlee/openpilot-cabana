@@ -6,7 +6,7 @@
 #include <vector>
 
 #include "common/prefix.h"
-#include "abstractstream.h"
+#include "abstract_stream.h"
 #include "replay/include/replay.h"
 
 Q_DECLARE_METATYPE(std::shared_ptr<LogReader>);

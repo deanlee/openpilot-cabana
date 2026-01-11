@@ -11,7 +11,7 @@
 #include <QRadioButton>
 
 #include "core/dbc/dbc_manager.h"
-#include "core/streams/abstractstream.h"
+#include "core/streams/abstract_stream.h"
 #include "modules/system/stream_manager.h"
 
 FindSimilarBitsDlg::FindSimilarBitsDlg(QWidget *parent) : QDialog(parent, Qt::WindowFlags() | Qt::Window) {

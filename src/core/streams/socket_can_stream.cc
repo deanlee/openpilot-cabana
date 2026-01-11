@@ -1,4 +1,4 @@
-#include "socketcanstream.h"
+#include "socket_can_stream.h"
 
 #include <QDebug>
 #include <QThread>

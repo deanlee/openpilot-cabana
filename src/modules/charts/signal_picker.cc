@@ -8,7 +8,7 @@
 #include <QPushButton>
 #include <QVBoxLayout>
 
-#include "core/streams/abstractstream.h"
+#include "core/streams/abstract_stream.h"
 #include "modules/system/stream_manager.h"
 
 SignalPicker::SignalPicker(QString title, QWidget *parent) : QDialog(parent) {
