@@ -77,6 +77,10 @@ MessageHistory::MessageHistory(QWidget *parent) : QFrame(parent) {
   logs->verticalHeader()->setDefaultSectionSize(delegate->sizeForBytes(8).height());
   logs->setFrameShape(QFrame::NoFrame);
 
+  setupConnections();
+}
+
+void MessageHistory::setupConnections() {
   connect(display_type_cb, qOverload<int>(&QComboBox::activated), model, &MessageHistoryModel::setHexMode);
   connect(signals_cb, SIGNAL(activated(int)), this, SLOT(filterChanged()));
   connect(comp_box, SIGNAL(activated(int)), this, SLOT(filterChanged()));

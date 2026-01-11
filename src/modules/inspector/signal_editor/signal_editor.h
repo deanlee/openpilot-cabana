@@ -31,6 +31,7 @@ signals:
   void showChart(const MessageId &id, const dbc::Signal *sig, bool show, bool merge);
 
 private:
+  void setupConnections();
   void rowsChanged();
   void resizeEvent(QResizeEvent* event) override;
   void updateToolBar();
@@ -49,6 +50,7 @@ private:
   ChartsPanel *charts;
   QLabel *signal_count_lb;
   SignalTreeDelegate *delegate;
+  ToolButton *collapse_btn;
 
   friend class SignalTreeDelegate;
   friend class SignalTree;

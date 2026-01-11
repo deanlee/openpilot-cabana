@@ -29,8 +29,8 @@ ChartsPanel::ChartsPanel(QWidget *parent) : QFrame(parent) {
   int icon_size = style()->pixelMetric(QStyle::PM_SmallIconSize);
   toolbar->setIconSize({icon_size, icon_size});
 
-  auto new_plot_btn = new ToolButton("plus", tr("New Chart"));
-  auto new_tab_btn = new ToolButton("layer-plus", tr("New Tab"));
+  new_plot_btn = new ToolButton("plus", tr("New Chart"));
+  new_tab_btn = new ToolButton("layer-plus", tr("New Tab"));
   toolbar->addWidget(new_plot_btn);
   toolbar->addWidget(new_tab_btn);
   toolbar->addWidget(title_label = new QLabel());
@@ -116,6 +116,21 @@ ChartsPanel::ChartsPanel(QWidget *parent) : QFrame(parent) {
   updateToolBar();
 
   align_timer->setSingleShot(true);
+  setupConnections();
+
+  setIsDocked(true);
+  newTab();
+  qApp->installEventFilter(this);
+  setWhatsThis(tr(R"(
+    <b>Chart View</b><br />
+    <b>Click</b>: Click to seek to a corresponding time.<br />
+    <b>Drag</b>: Zoom into the chart.<br />
+    <b>Shift + Drag</b>: Scrub through the chart to view values.<br />
+    <b>Right Mouse</b>: Open the context menu.<br />
+  )"));
+}
+
+void ChartsPanel::setupConnections() {
   connect(align_timer, &QTimer::timeout, this, &ChartsPanel::alignCharts);
   connect(auto_scroll_timer, &QTimer::timeout, this, &ChartsPanel::doAutoScroll);
   connect(GetDBC(), &dbc::Manager::DBCFileChanged, this, &ChartsPanel::removeAll);
@@ -135,17 +150,6 @@ ChartsPanel::ChartsPanel(QWidget *parent) : QFrame(parent) {
     if (index != -1) updateLayout(true);
   });
   connect(dock_btn, &QToolButton::clicked, this, &ChartsPanel::toggleChartsDocking);
-
-  setIsDocked(true);
-  newTab();
-  qApp->installEventFilter(this);
-  setWhatsThis(tr(R"(
-    <b>Chart View</b><br />
-    <b>Click</b>: Click to seek to a corresponding time.<br />
-    <b>Drag</b>: Zoom into the chart.<br />
-    <b>Shift + Drag</b>: Scrub through the chart to view values.<br />
-    <b>Right Mouse</b>: Open the context menu.<br />
-  )"));
 }
 
 void ChartsPanel::newTab() {

@@ -66,6 +66,7 @@ private slots:
   void signalRemoved(const dbc::Signal *sig) { removeIf([=](auto &s) { return s.sig == sig; }); }
 
 private:
+  void setupConnections();
   void appendCanEvents(const dbc::Signal *sig, const std::vector<const CanEvent *> &events,
                        std::vector<QPointF> &vals, std::vector<QPointF> &step_vals);
   void createToolButtons();

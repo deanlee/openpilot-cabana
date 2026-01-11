@@ -6,6 +6,8 @@
 
 #include "core/dbc/dbc_manager.h"
 
+class QDialogButtonBox;
+
 class SignalPicker : public QDialog {
 public:
   struct ListItem : public QListWidgetItem {
@@ -19,6 +21,7 @@ public:
   inline void addSelected(const MessageId &id, const dbc::Signal *sig) { addItemToList(selected_list, id, sig, true); }
 
 private:
+  void setupConnections();
   void updateAvailableList(int index);
   void addItemToList(QListWidget *parent, const MessageId id, const dbc::Signal *sig, bool show_msg_name = false);
   void add(QListWidgetItem *item);
@@ -27,4 +30,8 @@ private:
   QComboBox *msgs_combo;
   QListWidget *available_list;
   QListWidget *selected_list;
+
+  QPushButton *add_btn;
+  QPushButton *remove_btn;
+  QDialogButtonBox *button_box;
 };
