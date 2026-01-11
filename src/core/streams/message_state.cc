@@ -23,15 +23,22 @@ static constexpr double ALPHA_DECAY_SECONDS = 1.5;
 static constexpr double ENTROPY_THRESHOLD = 0.85;  // Above this, it's considered "Noisy"
 static constexpr int MIN_SAMPLES_FOR_ENTROPY = 16;
 
+// Precomputed table
+static const std::array<float, 256> ENTROPY_LOOKUP = [] {
+  std::array<float, 256> table;
+  for (int i = 0; i < 256; ++i) {
+    double p = i / 255.0;
+    table[i] = (p <= 0.001 || p >= 0.999) ? 0.0f :
+               static_cast<float>(-(p * std::log2(p) + (1.0 - p) * std::log2(1.0 - p)));
+  }
+  return table;
+}();
+
 // Calculates Shannon Entropy for a single bit based on the probability 'p'
-double calculateBitEntropy(uint32_t set_counts, uint32_t total_samples) {
-  if (total_samples < MIN_SAMPLES_FOR_ENTROPY) return 0.0;
+double calculateBitEntropy(uint32_t highs, uint32_t total) {
+  if (total < MIN_SAMPLES_FOR_ENTROPY) return 0.0;
 
-  double p = static_cast<double>(set_counts) / total_samples;
-  if (p <= 0.001 || p >= 0.999) return 0.0;
-
-  // Shannon Entropy: -p*log2(p) - (1-p)*log2(1-p)
-  return -(p * std::log2(p) + (1.0 - p) * std::log2(1.0 - p));
+  return ENTROPY_LOOKUP[(highs * 255) / total];
 }
 
 double calc_freq(const MessageId& msg_id, double current_ts) {
