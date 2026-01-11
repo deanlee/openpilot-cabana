@@ -179,7 +179,12 @@ void AbstractStream::updateSnapshotsTo(double sec) {
   bool id_changed = false;
 
   for (const auto& [id, ev] : events_) {
-    auto [s_min, s_max] = time_index_map_[id].getBounds(ev.front()->mono_time, last_ts, ev.size());
+    auto it_idx = time_index_map_.find(id);
+    size_t s_min = 0, s_max = ev.size();
+    if (it_idx != time_index_map_.end()) {
+      std::tie(s_min, s_max) = it_idx->second.getBounds(ev.front()->mono_time, last_ts, ev.size());
+    }
+
     auto it = std::upper_bound(ev.begin() + s_min, ev.begin() + s_max, last_ts, CompareCanEvent());
 
     if (it == ev.begin()) continue;
@@ -285,13 +290,23 @@ std::pair<CanEventIter, CanEventIter> AbstractStream::eventsInRange(const Messag
   const auto& evs = events(id);
   if (evs.empty() || !range) return {evs.begin(), evs.end()};
 
-  auto &time_index = time_index_map_.at(id);
-
   uint64_t t0 = toMonoTime(range->first), t1 = toMonoTime(range->second);
-  auto [s_min, s_max] = time_index.getBounds(evs.front()->mono_time, t0, evs.size());
+  uint64_t start_ts = evs.front()->mono_time;
+
+  auto it_index = time_index_map_.find(id);
+  if (it_index == time_index_map_.end()) {
+    return {std::lower_bound(evs.begin(), evs.end(), t0, CompareCanEvent()),
+            std::upper_bound(evs.begin(), evs.end(), t1, CompareCanEvent())};
+  }
+
+  const auto& index = it_index->second;
+
+  // Narrowed search for start
+  auto [s_min, s_max] = index.getBounds(start_ts, t0, evs.size());
   auto first = std::lower_bound(evs.begin() + s_min, evs.begin() + s_max, t0, CompareCanEvent());
 
-  auto [e_min, e_max] = time_index.getBounds(evs.front()->mono_time, t1, evs.size());
+  // Narrowed search for end
+  auto [e_min, e_max] = index.getBounds(start_ts, t1, evs.size());
   auto last = std::upper_bound(std::max(first, evs.begin() + e_min), evs.begin() + e_max, t1, CompareCanEvent());
 
   return {first, last};
