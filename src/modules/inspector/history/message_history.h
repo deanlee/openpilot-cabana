@@ -23,6 +23,7 @@ class MessageHistory : public QFrame {
 public:
   MessageHistory(QWidget *parent);
   void setMessage(const MessageId &message_id) { model->setMessage(message_id); }
+  void clearMessage();
   void updateState() { model->updateState(); }
   void showEvent(QShowEvent *event) override { model->updateState(true); }
 

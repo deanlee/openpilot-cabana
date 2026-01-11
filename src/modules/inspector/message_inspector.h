@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QSplitter>
+#include <QStackedWidget>
 #include <QTabWidget>
 #include <set>
 
@@ -19,6 +20,7 @@ public:
   void refresh();
   std::pair<QString, QStringList> serializeMessageIds() const;
   void restoreTabs(const QString active_msg_id, const QStringList &msg_ids);
+  void resetState();
 
 private:
   void createToolBar();
@@ -42,13 +44,12 @@ private:
   QSplitter *splitter;
 };
 
-class CenterWidget : public QWidget {
+class CenterWidget : public QStackedWidget {
   Q_OBJECT
 public:
   CenterWidget(QWidget *parent);
-  void setMessage(const MessageId &message_id) { ensureMessageDetails()->setMessage(message_id); }
+  void setMessage(const MessageId &message_id);
   MessageDetails* getMessageDetails() { return details; }
-  MessageDetails* ensureMessageDetails();
   void clear();
 
 private:

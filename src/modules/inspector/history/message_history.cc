@@ -89,6 +89,10 @@ MessageHistory::MessageHistory(QWidget *parent) : QFrame(parent) {
   connect(model, &MessageHistoryModel::rowsInserted, [this]() { export_btn->setEnabled(true); });
 }
 
+void MessageHistory::clearMessage() {
+  model->setMessage(MessageId());
+}
+
 void MessageHistory::modelReset() {
   signals_cb->clear();
   for (auto s : model->sigs) {

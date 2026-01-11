@@ -202,6 +202,15 @@ void BinaryView::refresh() {
   highlightPosition(QCursor::pos());
 }
 
+void BinaryView::clearMessage() {
+  model->msg_id = MessageId();
+  clearSelection();
+  anchor_index = QModelIndex();
+  resize_sig = nullptr;
+  hovered_sig = nullptr;
+  model->refresh();
+}
+
 QSet<const dbc::Signal *> BinaryView::getOverlappingSignals() const {
   QSet<const dbc::Signal *> overlapping;
   for (const auto &item : model->items) {

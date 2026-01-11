@@ -267,7 +267,6 @@ void MainWindow::openStream(AbstractStream *stream, const QString &dbc_file) {
   close_stream_act->setEnabled(has_stream);
   export_to_csv_act->setEnabled(has_stream);
   tools_menu->setEnabled(has_stream);
-  // createDockWidgets();
 
   video_dock->setWindowTitle(StreamManager::stream()->routeName());
   if (is_live_stream || video_splitter->sizes()[0] == 0) {
@@ -468,7 +467,7 @@ void MainWindow::restoreSessionState() {
   if (dbc_file != settings.recent_dbc_file) return;
 
   if (!settings.selected_msg_ids.isEmpty())
-    center_widget->ensureMessageDetails()->restoreTabs(settings.active_msg_id, settings.selected_msg_ids);
+    center_widget->getMessageDetails()->restoreTabs(settings.active_msg_id, settings.selected_msg_ids);
 
   if (charts_widget != nullptr && !settings.active_charts.empty())
     charts_widget->restoreChartsFromIds(settings.active_charts);

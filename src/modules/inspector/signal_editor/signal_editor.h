@@ -20,6 +20,7 @@ class SignalEditor : public QFrame {
 public:
   SignalEditor(ChartsPanel *charts, QWidget *parent);
   void setMessage(const MessageId &id);
+  void clearMessage();
   void signalHovered(const dbc::Signal *sig);
   void updateChartState();
   void selectSignal(const dbc::Signal *sig, bool expand = false);

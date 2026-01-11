@@ -15,6 +15,7 @@ class BinaryView : public QTableView {
 public:
   BinaryView(QWidget *parent = nullptr);
   void setMessage(const MessageId &message_id);
+  void clearMessage();
   void highlight(const dbc::Signal *sig);
   QSet<const dbc::Signal*> getOverlappingSignals() const;
   void updateState() { model->updateState(); }

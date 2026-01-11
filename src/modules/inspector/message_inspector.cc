@@ -142,6 +142,19 @@ void MessageDetails::setMessage(const MessageId &message_id) {
   setUpdatesEnabled(true);
 }
 
+void MessageDetails::resetState() {
+  // tabbar->clear();
+  msg_id = MessageId();
+  tabbar->blockSignals(true);
+  for (int i = tabbar->count() - 1; i >= 0; --i) {
+    tabbar->removeTab(i);
+  }
+  tabbar->blockSignals(false);
+  binary_view->clearMessage();
+  signal_editor->clearMessage();
+  message_history->clearMessage();
+}
+
 std::pair<QString, QStringList> MessageDetails::serializeMessageIds() const {
   QStringList msgs;
   for (int i = 0; i < tabbar->count(); ++i) {
@@ -217,40 +230,36 @@ void MessageDetails::removeMsg() {
 
 // CenterWidget
 
-CenterWidget::CenterWidget(QWidget *parent) : QWidget(parent) {
-  QVBoxLayout *main_layout = new QVBoxLayout(this);
-  main_layout->setContentsMargins(0, 0, 0, 0);
-  main_layout->addWidget(welcome_widget = createWelcomeWidget());
+CenterWidget::CenterWidget(QWidget* parent) : QStackedWidget(parent) {
+  addWidget(welcome_widget = createWelcomeWidget());
+  addWidget(details = new MessageDetails(((MainWindow*)parentWidget())->charts_widget, this));
 }
 
-MessageDetails* CenterWidget::ensureMessageDetails() {
-  if (!details) {
-    delete welcome_widget;
-    welcome_widget = nullptr;
-    layout()->addWidget(details = new MessageDetails(((MainWindow*)parentWidget())->charts_widget, this));
+void CenterWidget::setMessage(const MessageId& message_id) {
+  if (currentWidget() != details) {
+    setCurrentWidget(details);
   }
-  return details;
+  details->setMessage(message_id);
 }
 
 void CenterWidget::clear() {
-  delete details;
-  details = nullptr;
-  if (!welcome_widget) {
-    layout()->addWidget(welcome_widget = createWelcomeWidget());
+  details->resetState();
+  if (currentWidget() != welcome_widget) {
+    setCurrentWidget(welcome_widget);
   }
 }
 
-QWidget *CenterWidget::createWelcomeWidget() {
-  QWidget *w = new QWidget(this);
-  QVBoxLayout *main_layout = new QVBoxLayout(w);
+QWidget* CenterWidget::createWelcomeWidget() {
+  QWidget* w = new QWidget(this);
+  QVBoxLayout* main_layout = new QVBoxLayout(w);
   main_layout->addStretch(0);
-  QLabel *logo = new QLabel("CABANA");
+  QLabel* logo = new QLabel("CABANA");
   logo->setAlignment(Qt::AlignCenter);
   logo->setStyleSheet("font-size:50px;font-weight:bold;");
   main_layout->addWidget(logo);
 
-  auto newShortcutRow = [](const QString &title, const QString &key) {
-    QHBoxLayout *hlayout = new QHBoxLayout();
+  auto newShortcutRow = [](const QString& title, const QString& key) {
+    QHBoxLayout* hlayout = new QHBoxLayout();
     auto btn = new QToolButton();
     btn->setText(key);
     btn->setEnabled(false);

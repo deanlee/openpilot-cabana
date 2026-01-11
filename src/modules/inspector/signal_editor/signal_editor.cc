@@ -85,6 +85,11 @@ void SignalEditor::setMessage(const MessageId &id) {
   model->setMessage(id);
 }
 
+void SignalEditor::clearMessage() {
+  filter_edit->clear();
+  model->setMessage(MessageId());
+}
+
 void SignalEditor::rowsChanged() {
   updateToolBar();
   updateColumnWidths();
