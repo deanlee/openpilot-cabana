@@ -53,7 +53,10 @@ QSize MessageDelegate::sizeHint(const QStyleOptionViewItem& option, const QModel
 
 void MessageDelegate::paint(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const {
   MessageDataRef ref = getDataRef(caller_type_, index);
-  if (!ref.bytes || ref.bytes->empty()) return;
+  if (!ref.bytes || ref.bytes->empty()) {
+    QStyledItemDelegate::paint(painter, option, index);
+    return;
+  }
 
  if (option.state & QStyle::State_Selected) {
     painter->fillRect(option.rect, option.palette.highlight());
