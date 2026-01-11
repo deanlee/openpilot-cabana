@@ -74,7 +74,6 @@ protected:
   QProgressBar *progress_bar;
   QLabel *status_label;
   QSplitter *video_splitter = nullptr;
-  enum { MAX_RECENT_FILES = 15 };
   QMenu *open_recent_menu = nullptr;
   QMenu *manage_dbcs_menu = nullptr;
   QMenu *tools_menu = nullptr;
