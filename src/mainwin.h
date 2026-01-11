@@ -6,7 +6,6 @@
 #include <QProgressBar>
 #include <QSplitter>
 #include <QStatusBar>
-#include <set>
 
 #include "core/dbc/dbc_manager.h"
 #include "modules/charts/charts_panel.h"

@@ -10,18 +10,14 @@
 #include <QUndoView>
 #include <QVBoxLayout>
 #include <QWidgetAction>
-#include <algorithm>
-#include <iostream>
-#include <string>
 
 #include "core/commands/commands.h"
-#include "core/streams/abstractstream.h"
 #include "modules/dbc/dbc_controller.h"
 #include "modules/dbc/export.h"
 #include "modules/settings/settings_dialog.h"
 #include "modules/streams/stream_selector.h"
-#include "modules/system/system_relay.h"
 #include "modules/system/stream_manager.h"
+#include "modules/system/system_relay.h"
 #include "replay/include/http.h"
 #include "tools/findsignal.h"
 #include "widgets/guide_overlay.h"
