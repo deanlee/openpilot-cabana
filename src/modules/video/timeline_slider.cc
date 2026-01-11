@@ -26,6 +26,8 @@ void Slider::paintEvent(QPaintEvent* ev) {
   QRect handle_rect = style()->subControlRect(QStyle::CC_Slider, &opt, QStyle::SC_SliderHandle, this);
   QRect groove_rect = style()->subControlRect(QStyle::CC_Slider, &opt, QStyle::SC_SliderGroove, this);
 
+  if (maximum() <= minimum()) return;
+
   // Adjust groove height to match handle height
   int handle_height = handle_rect.height();
   groove_rect.setHeight(handle_height * 0.5);
