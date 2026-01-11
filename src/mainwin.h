@@ -36,7 +36,14 @@ public slots:
 protected:
   bool eventFilter(QObject *obj, QEvent *event) override;
   void remindSaveChanges();
-  void createActions();
+
+  void createMenus();
+  void createFileMenu();
+  void createEditMenu();
+  void createViewMenu();
+  void createToolsMenu();
+  void createHelpMenu();
+
   void createDockWindows();
   void createStatusBar();
   void createShortcuts();

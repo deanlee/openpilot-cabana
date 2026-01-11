@@ -33,7 +33,7 @@ MainWindow::MainWindow(AbstractStream *stream, const QString &dbc_file) : QMainW
 
   dbc_ = new DbcController(this);
 
-  createActions();
+  createMenus();
   createStatusBar();
   createShortcuts();
   createDockWidgets();
@@ -69,8 +69,15 @@ MainWindow::MainWindow(AbstractStream *stream, const QString &dbc_file) : QMainW
   show();
 }
 
-void MainWindow::createActions() {
-  // File menu
+void MainWindow::createMenus() {
+  createFileMenu();
+  createEditMenu();
+  createViewMenu();
+  createToolsMenu();
+  createHelpMenu();
+}
+
+void MainWindow::createFileMenu() {
   QMenu *file_menu = menuBar()->addMenu(tr("&File"));
   file_menu->addAction(tr("Open Stream..."), this, &MainWindow::selectAndOpenStream);
   close_stream_act = file_menu->addAction(tr("Close stream"), this, &MainWindow::closeStream);
@@ -104,8 +111,9 @@ void MainWindow::createActions() {
 
   file_menu->addSeparator();
   file_menu->addAction(tr("E&xit"), qApp, &QApplication::closeAllWindows, QKeySequence::Quit);
+}
 
-  // Edit Menu
+void MainWindow::createEditMenu() {
   QMenu *edit_menu = menuBar()->addMenu(tr("&Edit"));
   auto undo_act = UndoStack::instance()->createUndoAction(this, tr("&Undo"));
   undo_act->setShortcuts(QKeySequence::Undo);
@@ -121,8 +129,9 @@ void MainWindow::createActions() {
   view->setEmptyLabel(tr("No commands"));
   commands_act->setDefaultWidget(view);
   commands_menu->addAction(commands_act);
+}
 
-  // View Menu
+void MainWindow::createViewMenu() {
   QMenu *view_menu = menuBar()->addMenu(tr("&View"));
   auto act = view_menu->addAction(tr("Full Screen"), this, &MainWindow::toggleFullScreen, QKeySequence::FullScreen);
   addAction(act);
@@ -131,13 +140,15 @@ void MainWindow::createActions() {
   view_menu->addAction(video_dock->toggleViewAction());
   view_menu->addSeparator();
   view_menu->addAction(tr("Reset Window Layout"), [this]() { restoreState(default_state); });
+}
 
-  // Tools Menu
+void MainWindow::createToolsMenu() {
   tools_menu = menuBar()->addMenu(tr("&Tools"));
   tools_menu->addAction(tr("Find &Similar Bits"), this, &MainWindow::findSimilarBits);
   tools_menu->addAction(tr("&Find Signal"), this, &MainWindow::findSignal);
+}
 
-  // Help Menu
+void MainWindow::createHelpMenu() {
   QMenu *help_menu = menuBar()->addMenu(tr("&Help"));
   help_menu->addAction(tr("Help"), this, &MainWindow::onlineHelp, QKeySequence::HelpContents);
   help_menu->addAction(tr("About &Qt"), qApp, &QApplication::aboutQt);
