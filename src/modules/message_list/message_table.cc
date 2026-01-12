@@ -29,7 +29,7 @@ void MessageTable::dataChanged(const QModelIndex& topLeft, const QModelIndex& bo
 
 void MessageTable::updateLayout() {
   bool multiLine = settings.multiple_lines_hex;
-  auto delegate = static_cast<MessageDelegate*>(itemDelegate());
+  auto delegate = static_cast<MessageDelegate*>(itemDelegateForColumn(MessageModel::Column::DATA));
   delegate->setMultipleLines(multiLine);
 
   setUniformRowHeights(!multiLine);
