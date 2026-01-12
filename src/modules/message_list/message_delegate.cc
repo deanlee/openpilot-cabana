@@ -40,7 +40,7 @@ MessageDelegate::MessageDelegate(QObject *parent, CallerType caller_type, bool m
 }
 
 QSize MessageDelegate::sizeForBytes(int n) const {
-  if (n <= 0) return QSize(0, 0);
+  if (n <= 0) return QSize(0, byte_size.height() + v_margin * 2);
   int rows = multiple_lines ? (n + 7) / 8 : 1;
   int cols = multiple_lines ? std::min(n, 8) : n;
   return {cols * byte_size.width() + h_margin * 2, rows * byte_size.height() + v_margin * 2};
