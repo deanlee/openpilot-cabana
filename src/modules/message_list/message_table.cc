@@ -28,19 +28,24 @@ void MessageTable::dataChanged(const QModelIndex& topLeft, const QModelIndex& bo
 }
 
 void MessageTable::updateLayout() {
-  bool multiLine = settings.multiple_lines_hex;
-  auto delegate = static_cast<MessageDelegate*>(itemDelegateForColumn(MessageModel::Column::DATA));
-  delegate->setMultipleLines(multiLine);
+  auto delegate = qobject_cast<MessageDelegate*>(itemDelegateForColumn(MessageModel::Column::DATA));
+  if (!delegate) return;
 
-  setUniformRowHeights(!multiLine);
+  bool multi_line = settings.multiple_lines_hex;
+  delegate->setMultipleLines(multi_line);
+  setUniformRowHeights(!multi_line);
 
   int max_bytes = 8;
-  if (!multiLine) {
+  if (!multi_line) {
     for (const auto& [_, m] : StreamManager::stream()->snapshots()) {
       max_bytes = std::max<int>(max_bytes, m->dat.size());
     }
   }
-  header()->resizeSection(MessageModel::Column::DATA, delegate->sizeForBytes(max_bytes).width());
+
+  int target_width = delegate->sizeForBytes(max_bytes).width();
+  if (header()->sectionSize(MessageModel::Column::DATA) != target_width) {
+    header()->resizeSection(MessageModel::Column::DATA, target_width);
+  }
   doItemsLayout();
 }
 
