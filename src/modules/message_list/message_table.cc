@@ -18,6 +18,7 @@ MessageTable::MessageTable(QWidget* parent) : QTreeView(parent) {
   setIndentation(0);
   setRootIsDecorated(false);
   setAlternatingRowColors(true);
+  setUniformRowHeights(settings.multiple_lines_hex == false);
 }
 
 void MessageTable::dataChanged(const QModelIndex& topLeft, const QModelIndex& bottomRight, const QVector<int>& roles) {
