@@ -1,10 +1,10 @@
 #include "message_model.h"
 
 #include <QApplication>
+#include <QPalette>
 #include <cmath>
 #include <unordered_set>
 
-#include "message_list.h"
 #include "modules/settings/settings.h"
 #include "modules/system/stream_manager.h"
 
@@ -49,9 +49,10 @@ QVariant MessageModel::data(const QModelIndex &index, int role) const {
 
   if (role == Qt::ToolTipRole && index.column() == Column::NAME) {
     auto msg = GetDBC()->msg(item.id);
-    auto tooltip = item.name;
-    if (msg && !msg->comment.isEmpty()) tooltip += "<br /><span style=\"color:gray;\">" + msg->comment + "</span>";
-    return tooltip;
+    if (msg && !msg->comment.isEmpty()) {
+      return QString("%1<br/><span style=\"color:gray;\">%2</span>").arg(item.name, msg->comment);
+    }
+    return item.name;
   }
 
   if (role == Qt::ForegroundRole && !(item.data && item.data->is_active)) {
@@ -214,10 +215,8 @@ void MessageModel::onSnapshotsUpdated(const std::set<MessageId> *ids, bool needs
     if (filterAndSort()) return;
   }
 
-  // Update viewport
-  MessageList *widget = qobject_cast<MessageList*>(parent());
-  if (widget && widget->view) {
-    widget->view->viewport()->update();
+  for (int col : {Column::FREQ, Column::COUNT, Column::DATA}) {
+    emit dataChanged(index(0, col), index(rowCount() - 1, col), {Qt::DisplayRole});
   }
 }
 
