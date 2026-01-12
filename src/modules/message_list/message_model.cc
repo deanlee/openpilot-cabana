@@ -16,18 +16,10 @@ inline QString toHexString(int value) {
 }
 
 QVariant MessageModel::headerData(int section, Qt::Orientation orientation, int role) const {
-  if (orientation == Qt::Horizontal && role == Qt::DisplayRole) {
-    switch (section) {
-      case Column::NAME: return tr("Name");
-      case Column::SOURCE: return tr("Bus");
-      case Column::ADDRESS: return tr("ID");
-      case Column::NODE: return tr("Node");
-      case Column::FREQ: return tr("Freq");
-      case Column::COUNT: return tr("Count");
-      case Column::DATA: return tr("Bytes");
-    }
-  }
-  return {};
+  if (orientation != Qt::Horizontal || role != Qt::DisplayRole) return {};
+
+  static const QVector<QString> headers = {"Name", "Bus", "ID", "Node", "Freq", "Count", "Bytes"};
+  return (section >= 0 && section < headers.size()) ? headers[section] : QVariant();
 }
 
 QVariant MessageModel::data(const QModelIndex &index, int role) const {
