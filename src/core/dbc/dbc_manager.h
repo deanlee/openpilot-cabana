@@ -37,7 +37,7 @@ public:
   QString newMsgName(const MessageId &id);
   QString newSignalName(const MessageId &id);
 
-  const std::map<uint32_t, dbc::Msg> &getMessages(uint8_t source);
+  const std::map<uint32_t, dbc::Msg> &getMessages(uint8_t source = -1);
   dbc::Msg *msg(const MessageId &id);
   dbc::Msg* msg(uint8_t source, const QString &name);
 

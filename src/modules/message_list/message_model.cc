@@ -79,14 +79,6 @@ void MessageModel::showInactivemessages(bool show) {
   filterAndSort();
 }
 
-void MessageModel::dbcModified() {
-  dbc_messages_.clear();
-  for (const auto &[_, m] : GetDBC()->getMessages(-1)) {
-    dbc_messages_.insert(MessageId{INVALID_SOURCE, m.address});
-  }
-  filterAndSort();
-}
-
 void MessageModel::sortItems(std::vector<MessageModel::Item> &items) {
   auto do_sort = [this, &items](auto compare) {
     if (sort_order == Qt::DescendingOrder)
@@ -169,20 +161,18 @@ bool MessageModel::match(const MessageModel::Item &item) {
 }
 
 bool MessageModel::filterAndSort() {
-  auto *can = StreamManager::stream();
-  const auto& snapshots = can->snapshots();
-  auto* dbc = GetDBC();
+  const auto& snapshots = StreamManager::stream()->snapshots();
+  const auto &dbc_messages = GetDBC()->getMessages();
 
   std::vector<Item> new_items;
-  new_items.reserve(snapshots.size() + dbc_messages_.size());
+  new_items.reserve(snapshots.size() + dbc_messages.size());
 
   // Set to track addresses already handled by snapshots
   std::unordered_set<uint32_t> snapshot_addrs;
   snapshot_addrs.reserve(snapshots.size());
 
   // Helper: Builds item, matches against filters, and moves to vector
-  auto processItem = [&](const MessageId& id, const MessageState* data) {
-    auto msg = dbc->msg(id);
+  auto processItem = [&](const MessageId& id, const dbc::Msg *msg, const MessageState* data) {
     Item item = {
         .id = id,
         .name = msg ? msg->name : UNTITLED,
@@ -200,15 +190,16 @@ bool MessageModel::filterAndSort() {
   for (const auto& [id, data] : snapshots) {
     snapshot_addrs.insert(id.address);
     if (show_inactive_messages || (data && data->is_active)) {
-      processItem(id, data.get());
+      auto msg_it = dbc_messages.find(id.address);
+      processItem(id, msg_it != dbc_messages.end() ? &(msg_it->second) : nullptr, data.get());
     }
   }
 
   // Process DBC placeholders (only if address not on live bus)
   if (show_inactive_messages) {
-    for (const auto& id : dbc_messages_) {
-      if (snapshot_addrs.find(id.address) == snapshot_addrs.end()) {
-        processItem(id, nullptr);
+    for (const auto& [address, msg] : dbc_messages) {
+      if (snapshot_addrs.find(address) == snapshot_addrs.end()) {
+        processItem(MessageId{0, address}, &msg, nullptr);
       }
     }
   }

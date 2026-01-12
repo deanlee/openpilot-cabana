@@ -51,8 +51,8 @@ void MessageList::setupConnections() {
   connect(view->horizontalScrollBar(), &QScrollBar::valueChanged, header, &MessageHeader::updateHeaderPositions);
   connect(&StreamManager::instance(), &StreamManager::snapshotsUpdated, model, &MessageModel::onSnapshotsUpdated);
   connect(&StreamManager::instance(), &StreamManager::streamChanged, this, &MessageList::resetState);
-  connect(GetDBC(), &dbc::Manager::DBCFileChanged, model, &MessageModel::dbcModified);
-  connect(UndoStack::instance(), &QUndoStack::indexChanged, model, &MessageModel::dbcModified);
+  connect(GetDBC(), &dbc::Manager::DBCFileChanged, model, &MessageModel::resetState);
+  connect(UndoStack::instance(), &QUndoStack::indexChanged, model, &MessageModel::resetState);
   connect(view->selectionModel(), &QItemSelectionModel::currentChanged, this, &MessageList::handleSelectionChanged);
   connect(model, &MessageModel::modelReset, [this]() {
     if (current_msg_id) {
@@ -102,7 +102,7 @@ void MessageList::resetState() {
     view->selectionModel()->clearSelection();
     view->selectionModel()->clearCurrentIndex();
   }
-  model->dbcModified();
+  model->resetState();
 
   suppress_clear->setText(tr("Clear"));
   suppress_clear->setEnabled(false);

@@ -35,8 +35,8 @@ public:
   void setFilterStrings(const QMap<int, QString> &filters);
   void showInactivemessages(bool show);
   void onSnapshotsUpdated(const std::set<MessageId> *ids, bool needs_rebuild);
+  inline void resetState() { filterAndSort(); }
   bool filterAndSort();
-  void dbcModified();
 
   struct Item {
     MessageId id;
@@ -57,7 +57,6 @@ private:
   bool match(const MessageModel::Item &id);
 
   QMap<int, QString> filters_;
-  std::set<MessageId> dbc_messages_;
   int sort_column = 0;
   Qt::SortOrder sort_order = Qt::AscendingOrder;
   int sort_threshold_ = 0;
