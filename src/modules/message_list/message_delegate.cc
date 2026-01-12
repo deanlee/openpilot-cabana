@@ -18,10 +18,10 @@ struct MessageDataRef {
 MessageDataRef getDataRef(CallerType type, const QModelIndex& index) {
   if (type == CallerType::MessageList) {
     auto* item = static_cast<MessageModel::Item*>(index.internalPointer());
-    return {&item->data->dat, &item->data->colors};
+    return item->data ? MessageDataRef{&item->data->dat, &item->data->colors} : MessageDataRef{nullptr, nullptr};
   } else {
     auto* msg = static_cast<MessageHistoryModel::Message*>(index.internalPointer());
-    return {&msg->data, &msg->colors};
+    return msg ? MessageDataRef{&msg->data, &msg->colors} : MessageDataRef{nullptr, nullptr};
   }
 }
 

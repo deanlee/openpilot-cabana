@@ -25,7 +25,6 @@ void MessageHeader::setModel(QAbstractItemModel* model) {
   QHeaderView::setModel(model);
   if (model) {
     // Wipe editors when the model changes (e.g., loading a new DBC)
-    connect(model, &QAbstractItemModel::modelAboutToBeReset, this, &MessageHeader::clearEditors);
     connect(model, &QAbstractItemModel::modelReset, this, [this]() { updateGeometries(); });
   }
 }

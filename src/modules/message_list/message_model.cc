@@ -48,20 +48,24 @@ QVariant MessageModel::data(const QModelIndex &index, int role) const {
       case Column::SOURCE: return item.id.source != INVALID_SOURCE ? QString::number(item.id.source) : NA;
       case Column::ADDRESS: return item.address_hex;
       case Column::NODE: return item.node;
-      case Column::FREQ: return item.id.source != INVALID_SOURCE ? getFreq(item.data->freq) : NA;
-      case Column::COUNT: return item.id.source != INVALID_SOURCE ? QString::number(item.data->count) : NA;
-      case Column::DATA: return item.id.source != INVALID_SOURCE ? "" : NA;
+      case Column::FREQ: return item.data ? getFreq(item.data->freq) : NA;
+      case Column::COUNT: return item.data ? QString::number(item.data->count) : NA;
+      case Column::DATA: return item.data ? "" : NA;
+      default: return {};
     }
-  } else if (role == Qt::ToolTipRole && index.column() == Column::NAME) {
+  }
+
+  if (role == Qt::ToolTipRole && index.column() == Column::NAME) {
     auto msg = GetDBC()->msg(item.id);
     auto tooltip = item.name;
     if (msg && !msg->comment.isEmpty()) tooltip += "<br /><span style=\"color:gray;\">" + msg->comment + "</span>";
     return tooltip;
-  } else if (role == Qt::ForegroundRole) {
-    if (!item.data->is_active) {
-      return QApplication::palette().color(QPalette::Disabled, QPalette::Text);
-    }
   }
+
+  if (role == Qt::ForegroundRole && !(item.data && item.data->is_active)) {
+    return QApplication::palette().color(QPalette::Disabled, QPalette::Text);
+  }
+
   return {};
 }
 
@@ -96,8 +100,14 @@ void MessageModel::sortItems(std::vector<MessageModel::Item> &items) {
     case Column::SOURCE: do_sort([](auto &l, auto &r){ return std::tie(l.id.source, l.id.address) < std::tie(r.id.source, r.id.address); }); break;
     case Column::ADDRESS: do_sort([](auto &l, auto &r){ return std::tie(l.id.address, l.id.source) < std::tie(r.id.address, r.id.source); }); break;
     case Column::NODE: do_sort([](auto &l, auto &r){ return std::tie(l.node, l.id) < std::tie(r.node, r.id); }); break;
-    case Column::FREQ: do_sort([](auto &l, auto &r){ return std::tie(l.data->freq, l.id) < std::tie(r.data->freq, r.id); }); break;
-    case Column::COUNT: do_sort([](auto &l, auto &r){ return std::tie(l.data->count, l.id) < std::tie(r.data->count, r.id); }); break;
+    case Column::FREQ: do_sort([](auto &l, auto &r){
+      auto l_freq = l.data ? l.data->freq : 0;
+      auto r_freq = r.data ? r.data->freq : 0;
+      return std::tie(l_freq, l.id) < std::tie(r_freq, r.id); }); break;
+    case Column::COUNT: do_sort([](auto &l, auto &r){
+      auto l_count = l.data ? l.data->count : 0;
+      auto r_count = r.data ? r.data->count : 0;
+      return std::tie(l_count, l.id) < std::tie(r_count, r.id); }); break;
     default: break; // Default case to suppress compiler warning
   }
 }
@@ -145,13 +155,13 @@ bool MessageModel::match(const MessageModel::Item &item) {
         match = item.node.contains(txt, Qt::CaseInsensitive);
         break;
       case Column::FREQ:
-        match = parseRange(txt, item.data->freq);
+        match = item.data ? parseRange(txt, item.data->freq) : false;
         break;
       case Column::COUNT:
-        match = parseRange(txt, item.data->count);
+        match = item.data ? parseRange(txt, item.data->count) : false;
         break;
       case Column::DATA:
-        match = utils::toHex(item.data->dat).contains(txt, Qt::CaseInsensitive);
+        match = item.data ? utils::toHex(item.data->dat).contains(txt, Qt::CaseInsensitive) : false;
         break;
     }
   }
@@ -198,7 +208,7 @@ bool MessageModel::filterAndSort() {
   if (show_inactive_messages) {
     for (const auto& id : dbc_messages_) {
       if (snapshot_addrs.find(id.address) == snapshot_addrs.end()) {
-        processItem(id, can->snapshot(id));
+        processItem(id, nullptr);
       }
     }
   }
