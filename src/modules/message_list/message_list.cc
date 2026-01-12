@@ -43,6 +43,7 @@ MessageList::MessageList(QWidget *parent) : menu(new QMenu(this)), QWidget(paren
   )"));
 
   setupConnections();
+  view->updateLayout();
 }
 
 void MessageList::setupConnections() {
