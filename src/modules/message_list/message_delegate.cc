@@ -62,17 +62,15 @@ void MessageDelegate::paint(QPainter* painter, const QStyleOptionViewItem& optio
     painter->fillRect(option.rect, option.palette.highlight());
   }
 
-  painter->save();
   painter->setFont(fixed_font);
 
   const QRect item_rect = option.rect.adjusted(h_margin, v_margin, -h_margin, -v_margin);
   const auto& bytes = *ref.bytes;
   const auto& colors = *ref.colors;
-  QColor normal_text = option.palette.color(QPalette::Text);
-  QColor base_text_color = (option.state & QStyle::State_Selected)
-                               ? option.palette.color(QPalette::HighlightedText)
-                               : option.palette.color(QPalette::Text);
-
+  QColor text_color = (option.state & QStyle::State_Selected)
+                          ? option.palette.color(QPalette::HighlightedText)
+                          : option.palette.color(QPalette::Text);
+  painter->setPen(text_color);
   const QPoint pt = item_rect.topLeft();
 
   for (int i = 0; i < bytes.size(); ++i) {
@@ -81,16 +79,9 @@ void MessageDelegate::paint(QPainter* painter, const QStyleOptionViewItem& optio
     QRect r({pt.x() + col * byte_size.width(), pt.y() + row * byte_size.height()}, byte_size);
 
     // Byte-specific background (e.g., green/red change indicators)
-    if (i < colors.size() && colors[i].alpha() > 0) {
+    if (i < colors.size() && colors[i].alpha() > 1) {
       painter->fillRect(r, colors[i]);
-      // Use standard text color for contrast against change-colors
-      painter->setPen(normal_text);
-    } else {
-      painter->setPen(base_text_color);
     }
-
     utils::drawStaticText(painter, r, hex_text_table[bytes[i]]);
   }
-
-  painter->restore();
 }
