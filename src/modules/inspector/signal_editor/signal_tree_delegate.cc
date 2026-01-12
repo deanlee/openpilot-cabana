@@ -109,11 +109,11 @@ void SignalTreeDelegate::drawDataColumn(QPainter* p, QRect r, const QStyleOption
 
   // 1. Sparkline (Fixed width from pixmap)
   int sparkW = 0;
-  if (!item->sparkline.pixmap.isNull()) {
-    sparkW = item->sparkline.pixmap.width() / item->sparkline.pixmap.devicePixelRatio();
-    int y_off = (r.height() - (item->sparkline.pixmap.height() / item->sparkline.pixmap.devicePixelRatio())) / 2;
+  if (!item->sparkline.image.isNull()) {
+    sparkW = item->sparkline.image.width() / item->sparkline.image.devicePixelRatio();
+    int y_off = (r.height() - (item->sparkline.image.height() / item->sparkline.image.devicePixelRatio())) / 2;
     item->sparkline.setHighlight(selected);
-    p->drawPixmap(r.left(), r.top() + y_off, item->sparkline.pixmap);
+    p->drawImage(r.left(), r.top() + y_off, item->sparkline.image);
   }
 
   // 2. Anchor Point

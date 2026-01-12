@@ -9,7 +9,7 @@
 void Sparkline::update(const dbc::Signal* sig, CanEventIter first, CanEventIter last, int time_range, QSize size) {
   signal_ = sig;
   if (first == last || size.isEmpty()) {
-    pixmap = QPixmap();
+    image = QImage();
     history_.clear();
     last_processed_mono_time_ = 0;
     return;
@@ -57,11 +57,11 @@ void Sparkline::updateRenderPoints(int time_range, QSize size) {
   if (history_.empty() || size.isEmpty()) return;
 
   const qreal dpr = qApp->devicePixelRatio();
-  if (pixmap.size() != size * dpr) {
-    pixmap = QPixmap(size * dpr);
-    pixmap.setDevicePixelRatio(dpr);
+  if (image.size() != size * dpr) {
+    image = QImage(size * dpr, QImage::Format_ARGB32_Premultiplied);
+    image.setDevicePixelRatio(dpr);
   }
-  pixmap.fill(Qt::transparent);
+  image.fill(Qt::transparent);
 
   const int width = size.width();
   const int height = size.height();
@@ -162,7 +162,7 @@ void Sparkline::updateRenderPoints(int time_range, QSize size) {
 void Sparkline::render() {
   if (render_pts_.empty()) return;
 
-  QPainter painter(&pixmap);
+  QPainter painter(&image);
   // Grid-snapped points look best with Aliasing OFF (sharp 1px vertical lines)
   painter.setRenderHint(QPainter::Antialiasing, false);
 

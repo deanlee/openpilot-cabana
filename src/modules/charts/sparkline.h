@@ -1,6 +1,6 @@
 #pragma once
 
-#include <QPixmap>
+#include <QImage>
 #include <QPointF>
 #include <deque>
 #include <vector>
@@ -16,11 +16,11 @@ class Sparkline {
   };
   void update(const dbc::Signal* sig, CanEventIter first, CanEventIter last, int time_range, QSize size);
   inline double freq() const { return freq_; }
-  bool isEmpty() const { return pixmap.isNull(); }
+  bool isEmpty() const { return image.isNull(); }
   void setHighlight(bool highlight);
   void clearHistory() { history_.clear(); }
 
-  QPixmap pixmap;
+  QImage image;
   double min_val = 0;
   double max_val = 0;
 
