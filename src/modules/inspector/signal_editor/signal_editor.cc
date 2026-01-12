@@ -74,7 +74,6 @@ void SignalEditor::setupConnections() {
   connect(collapse_btn, &QPushButton::clicked, tree, &QTreeView::collapseAll);
   connect(tree, &QTreeView::viewportEntered, [this]() { emit highlight(nullptr); });
   connect(tree, &QTreeView::entered, [this](const QModelIndex &index) { emit highlight(model->getItem(index)->sig); });
-  connect(tree, &QTreeView::expanded, this, &SignalEditor::updateColumnWidths);
   connect(model, &QAbstractItemModel::modelReset, this, &SignalEditor::rowsChanged);
   connect(model, &QAbstractItemModel::rowsRemoved, this, &SignalEditor::rowsChanged);
   connect(GetDBC(), &dbc::Manager::signalAdded, this, &SignalEditor::handleSignalAdded);
