@@ -36,15 +36,15 @@ File::File(const QString &name, const QString &content) : name_(name), filename(
 
 bool File::save() {
   assert(!filename.isEmpty());
-  return writeContents(filename);
+  return safeToFile(filename);
 }
 
 bool File::saveAs(const QString &new_filename) {
   filename = new_filename;
-  return save();
+  return safeToFile(filename);
 }
 
-bool File::writeContents(const QString &fn) {
+bool File::safeToFile(const QString &fn) {
   QFile file(fn);
   if (file.open(QIODevice::WriteOnly)) {
     return file.write(toDBCString().toUtf8()) >= 0;

@@ -15,7 +15,7 @@ public:
 
   bool save();
   bool saveAs(const QString &new_filename);
-  bool writeContents(const QString &fn);
+  bool safeToFile(const QString &fn);
   QString toDBCString();
 
   void updateMsg(const MessageId &id, const QString &name, uint32_t size, const QString &node, const QString &comment);
