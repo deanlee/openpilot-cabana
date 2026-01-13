@@ -203,21 +203,25 @@ void File::parseComment(const QString& line, QTextStream& stream) {
   }
 }
 
-void File::parseVAL(const QString &line) {
-  static QRegularExpression val_regexp(R"(VAL_ (\w+) (\w+) (\s*[-+]?[0-9]+\s+\".+?\"[^;]*))");
+void File::parseVAL(const QString& line) {
+  static const QRegularExpression val_header(R"(VAL_\s+(\d+)\s+(\w+))");
+  // Regex 2: Match every pair of: 123 "Description Text"
+  static const QRegularExpression pair_regex(R"((-?\d+)\s+\"([^\"]*)\")");
 
-  auto match = val_regexp.match(line);
-  if (!match.hasMatch())
-    throw std::runtime_error("invalid VAL_ line format");
+  auto header_match = val_header.match(line);
+  if (!header_match.hasMatch()) return;
 
-  if (auto s = signal(match.captured(1).toUInt(), match.captured(2))) {
-    QStringList desc_list = match.captured(3).trimmed().split('"');
-    for (int i = 0; i < desc_list.size(); i += 2) {
-      auto val = desc_list[i].trimmed();
-      if (!val.isEmpty() && (i + 1) < desc_list.size()) {
-        auto desc = desc_list[i + 1].trimmed();
-        s->value_table.push_back({val.toDouble(), desc});
-      }
+  uint32_t addr = header_match.captured(1).toUInt();
+  QString sig_name = header_match.captured(2);
+
+  if (auto s = signal(addr, sig_name)) {
+    s->value_table.clear();
+
+    // Iterate through all matches in the line
+    auto it = pair_regex.globalMatch(line);
+    while (it.hasNext()) {
+      auto match = it.next();
+      s->value_table.push_back({match.captured(1).toDouble(), match.captured(2)});
     }
   }
 }
