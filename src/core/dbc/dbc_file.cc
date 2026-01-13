@@ -88,9 +88,9 @@ void File::parse(const QString &content) {
       } else if (line.startsWith("VAL_ ")) {
         parseVAL(line);
       } else if (line.startsWith("CM_ BO_")) {
-        parseCM_BO(line, content, raw_line, stream);
+        parseComment(line, stream);
       } else if (line.startsWith("CM_ SG_ ")) {
-        parseCM_SG(line, content, raw_line, stream);
+        parseComment(line, stream);
       } else {
         seen = false;
       }
@@ -128,22 +128,6 @@ dbc::Msg *File::parseBO(const QString &line) {
   msg->size = match.captured("size").toULong();
   msg->transmitter = match.captured("transmitter").trimmed();
   return msg;
-}
-
-void File::parseCM_BO(const QString &line, const QString &content, const QString &raw_line, const QTextStream &stream) {
-  static QRegularExpression msg_comment_regexp(R"(^CM_ BO_ *(?<address>\w+) *\"(?<comment>(?:[^"\\]|\\.)*)\"\s*;)");
-
-  QString parse_line = line;
-  if (!parse_line.endsWith("\";")) {
-    int pos = stream.pos() - raw_line.length() - 1;
-    parse_line = content.mid(pos, content.indexOf("\";", pos));
-  }
-  auto match = msg_comment_regexp.match(parse_line);
-  if (!match.hasMatch())
-    throw std::runtime_error("Invalid message comment format");
-
-  if (auto m = (dbc::Msg *)msg(match.captured("address").toUInt()))
-    m->comment = match.captured("comment").trimmed().replace("\\\"", "\"");
 }
 
 void File::parseSG(const QString &line, dbc::Msg *current_msg, int &multiplexor_cnt) {
@@ -195,20 +179,27 @@ void File::parseSG(const QString &line, dbc::Msg *current_msg, int &multiplexor_
   current_msg->sigs.push_back(new dbc::Signal(s));
 }
 
-void File::parseCM_SG(const QString &line, const QString &content, const QString &raw_line, const QTextStream &stream) {
-  static QRegularExpression sg_comment_regexp(R"(^CM_ SG_ *(\w+) *(\w+) *\"((?:[^"\\]|\\.)*)\"\s*;)");
-
-  QString parse_line = line;
-  if (!parse_line.endsWith("\";")) {
-    int pos = stream.pos() - raw_line.length() - 1;
-    parse_line = content.mid(pos, content.indexOf("\";", pos));
+void File::parseComment(const QString& line, QTextStream& stream) {
+  QString raw = line;
+  // Consume stream until the entry is closed by a semicolon
+  while (!raw.endsWith(';') && !stream.atEnd()) {
+    raw += "\n" + stream.readLine();
   }
-  auto match = sg_comment_regexp.match(parse_line);
-  if (!match.hasMatch())
-    throw std::runtime_error("Invalid CM_ SG_ line format");
 
-  if (auto s = signal(match.captured(1).toUInt(), match.captured(2))) {
-    s->comment = match.captured(3).trimmed().replace("\\\"", "\"");
+  // Capture 1: BO_|SG_, Capture 2: Address, Capture 3: Signal Name (Optional), Capture 4: Comment
+  static const QRegularExpression re_cm(R"(CM_\s+(BO_|SG_)\s+(\d+)\s*(\w+)?\s*\"(.*)\"\s*;)",
+                                        QRegularExpression::DotMatchesEverythingOption);
+
+  auto match = re_cm.match(raw);
+  if (!match.hasMatch()) return;
+
+  uint32_t addr = match.captured(2).toUInt();
+  QString comment = match.captured(4).replace("\\\"", "\"").trimmed();
+
+  if (match.captured(1) == "BO_") {
+    if (auto m = msg(addr)) m->comment = comment;
+  } else {
+    if (auto s = signal(addr, match.captured(3))) s->comment = comment;
   }
 }
 

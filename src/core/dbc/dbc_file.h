@@ -36,8 +36,7 @@ private:
   void parse(const QString &content);
   dbc::Msg *parseBO(const QString &line);
   void parseSG(const QString &line, dbc::Msg *current_msg, int &multiplexor_cnt);
-  void parseCM_BO(const QString &line, const QString &content, const QString &raw_line, const QTextStream &stream);
-  void parseCM_SG(const QString &line, const QString &content, const QString &raw_line, const QTextStream &stream);
+  void parseComment(const QString &line, QTextStream &stream);
   void parseVAL(const QString &line);
 
   QString header;
