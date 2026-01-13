@@ -192,7 +192,7 @@ bool MessageModel::filterAndSort() {
   if (show_inactive_messages) {
     for (const auto& [address, msg] : dbc_messages) {
       if (snapshot_addrs.find(address) == snapshot_addrs.end()) {
-        processItem(MessageId{0, address}, &msg, nullptr);
+        processItem(MessageId{INVALID_SOURCE, address}, &msg, nullptr);
       }
     }
   }
