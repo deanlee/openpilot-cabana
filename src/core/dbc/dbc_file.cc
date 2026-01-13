@@ -6,6 +6,19 @@
 
 namespace dbc {
 
+static QRegularExpression RE_SIGNAL(
+  R"(^SG_\s+(?<name>\w+)\s*(?<mux>M|m\d+)?\s*:\s*(?<start>\d+)\|(?<size>\d+)@(?<endian>[01])(?<sign>[\+-])\s*\((?<factor>[0-9.+\-eE]+),(?<offset>[0-9.+\-eE]+)\)\s*\[(?<min>[0-9.+\-eE]+)\|(?<max>[0-9.+\-eE]+)\]\s*\"(?<unit>.*)\"\s*(?<receiver>.*))"
+);
+static QRegularExpression sgm_regexp(
+  R"(^SG_ (\w+) (\w+) *: (\d+)\|(\d+)@(\d+)([\+|\-]) \(([0-9.+\-eE]+),([0-9.+\-eE]+)\) \[([0-9.+\-eE]+)\|([0-9.+\-eE]+)\] \"(.*)\" (.*))"
+);
+static QRegularExpression RE_MESSAGE(
+  R"(^BO_ (?<address>\w+) (?<name>\w+) *: (?<size>\w+) (?<transmitter>\w+))"
+);
+static const QRegularExpression RE_COMMENT(R"(CM_\s+(BO_|SG_)\s+(\d+)\s*(\w+)?\s*\"(.*)\"\s*;)", QRegularExpression::DotMatchesEverythingOption);
+static const QRegularExpression RE_VALUE_HEADER(R"(VAL_\s+(\d+)\s+(\w+))");
+static const QRegularExpression RE_VALUE_PAIR(R"((-?\d+)\s+\"([^\"]*)\")");
+
 File::File(const QString &dbc_file_name) {
   QFile file(dbc_file_name);
   if (file.open(QIODevice::ReadOnly)) {
@@ -111,9 +124,7 @@ void File::parse(const QString &content) {
 }
 
 dbc::Msg *File::parseBO(const QString &line) {
-  static QRegularExpression bo_regexp(R"(^BO_ (?<address>\w+) (?<name>\w+) *: (?<size>\w+) (?<transmitter>\w+))");
-
-  QRegularExpressionMatch match = bo_regexp.match(line);
+  auto match = RE_MESSAGE.match(line);
   if (!match.hasMatch())
     throw std::runtime_error("Invalid BO_ line format");
 
@@ -131,51 +142,53 @@ dbc::Msg *File::parseBO(const QString &line) {
 }
 
 void File::parseSG(const QString &line, dbc::Msg *current_msg, int &multiplexor_cnt) {
-  static QRegularExpression sg_regexp(R"(^SG_ (\w+) *: (\d+)\|(\d+)@(\d+)([\+|\-]) \(([0-9.+\-eE]+),([0-9.+\-eE]+)\) \[([0-9.+\-eE]+)\|([0-9.+\-eE]+)\] \"(.*)\" (.*))");
-  static QRegularExpression sgm_regexp(R"(^SG_ (\w+) (\w+) *: (\d+)\|(\d+)@(\d+)([\+|\-]) \(([0-9.+\-eE]+),([0-9.+\-eE]+)\) \[([0-9.+\-eE]+)\|([0-9.+\-eE]+)\] \"(.*)\" (.*))");
-
-  if (!current_msg)
-    throw std::runtime_error("No Message");
-
-  int offset = 0;
-  auto match = sg_regexp.match(line);
-  if (!match.hasMatch()) {
-    match = sgm_regexp.match(line);
-    offset = 1;
+  if (!current_msg) {
+    throw std::runtime_error("Signal defined before any Message (BO_)");
   }
-  if (!match.hasMatch())
-    throw std::runtime_error("Invalid SG_ line format");
 
-  QString name = match.captured(1);
-  if (current_msg->sig(name) != nullptr)
-    throw std::runtime_error("Duplicate signal name");
+  auto match = RE_SIGNAL.match(line);
+  if (!match.hasMatch()) {
+    throw std::runtime_error("Invalid SG_ line format");
+  }
+
+  QString name = match.captured("name");
+  if (current_msg->sig(name) != nullptr) {
+    throw std::runtime_error(QString("Duplicate signal name: %1").arg(name).toStdString());
+  }
 
   dbc::Signal s{};
-  if (offset == 1) {
-    auto indicator = match.captured(2);
-    if (indicator == "M") {
-      ++multiplexor_cnt;
-      // Only one signal within a single message can be the multiplexer switch.
-      if (multiplexor_cnt >= 2)
-        throw std::runtime_error("Multiple multiplexor");
-
-      s.type = dbc::Signal::Type::Multiplexor;
-    } else {
-      s.type = dbc::Signal::Type::Multiplexed;
-      s.multiplex_value = indicator.mid(1).toInt();
-    }
-  }
   s.name = name;
-  s.start_bit = match.captured(offset + 2).toInt();
-  s.size = match.captured(offset + 3).toInt();
-  s.is_little_endian = match.captured(offset + 4).toInt() == 1;
-  s.is_signed = match.captured(offset + 5) == "-";
-  s.factor = match.captured(offset + 6).toDouble();
-  s.offset = match.captured(offset + 7).toDouble();
-  s.min = match.captured(8 + offset).toDouble();
-  s.max = match.captured(9 + offset).toDouble();
-  s.unit = match.captured(10 + offset);
-  s.receiver_name = match.captured(11 + offset).trimmed();
+
+  // Handle Multiplexing logic
+  QString mux = match.captured("mux");
+  if (mux == "M") {
+    if (++multiplexor_cnt >= 2) {
+      throw std::runtime_error("Multiple multiplexor switch signals (M) found in one message");
+    }
+    s.type = dbc::Signal::Type::Multiplexor;
+  } else if (mux.startsWith('m')) {
+    s.type = dbc::Signal::Type::Multiplexed;
+    s.multiplex_value = mux.mid(1).toInt();
+  } else {
+    s.type = dbc::Signal::Type::Normal;
+  }
+
+  // Bit layout and Encoding
+  s.start_bit        = match.captured("start").toInt();
+  s.size             = match.captured("size").toInt();
+  s.is_little_endian = (match.captured("endian") == "1");
+  s.is_signed        = (match.captured("sign") == "-");
+
+  // Physical range and Factor
+  s.factor = match.captured("factor").toDouble();
+  s.offset = match.captured("offset").toDouble();
+  s.min    = match.captured("min").toDouble();
+  s.max    = match.captured("max").toDouble();
+
+  // Metadata
+  s.unit          = match.captured("unit");
+  s.receiver_name = match.captured("receiver").trimmed();
+
   current_msg->sigs.push_back(new dbc::Signal(s));
 }
 
@@ -186,11 +199,7 @@ void File::parseComment(const QString& line, QTextStream& stream) {
     raw += "\n" + stream.readLine();
   }
 
-  // Capture 1: BO_|SG_, Capture 2: Address, Capture 3: Signal Name (Optional), Capture 4: Comment
-  static const QRegularExpression re_cm(R"(CM_\s+(BO_|SG_)\s+(\d+)\s*(\w+)?\s*\"(.*)\"\s*;)",
-                                        QRegularExpression::DotMatchesEverythingOption);
-
-  auto match = re_cm.match(raw);
+  auto match = RE_COMMENT.match(raw);
   if (!match.hasMatch()) return;
 
   uint32_t addr = match.captured(2).toUInt();
@@ -204,11 +213,7 @@ void File::parseComment(const QString& line, QTextStream& stream) {
 }
 
 void File::parseVAL(const QString& line) {
-  static const QRegularExpression val_header(R"(VAL_\s+(\d+)\s+(\w+))");
-  // Regex 2: Match every pair of: 123 "Description Text"
-  static const QRegularExpression pair_regex(R"((-?\d+)\s+\"([^\"]*)\")");
-
-  auto header_match = val_header.match(line);
+  auto header_match = RE_VALUE_HEADER.match(line);
   if (!header_match.hasMatch()) return;
 
   uint32_t addr = header_match.captured(1).toUInt();
@@ -218,7 +223,7 @@ void File::parseVAL(const QString& line) {
     s->value_table.clear();
 
     // Iterate through all matches in the line
-    auto it = pair_regex.globalMatch(line);
+    auto it = RE_VALUE_PAIR.globalMatch(line);
     while (it.hasNext()) {
       auto match = it.next();
       s->value_table.push_back({match.captured(1).toDouble(), match.captured(2)});
