@@ -206,7 +206,7 @@ void MessageView::refresh() {
 
   if (!warnings.isEmpty()) {
     warning_label->setText(warnings.join('\n'));
-    warning_icon->setPixmap(utils::icon(msg ? "triangle-alert" : "info"));
+    warning_icon->setPixmap(utils::icon(msg ? "circle-alert" : "info", {16, 16}));
   }
   warning_widget->setVisible(!warnings.isEmpty());
 }

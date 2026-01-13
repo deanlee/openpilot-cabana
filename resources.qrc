@@ -6,6 +6,7 @@
   <file>assets/chart-line.svg</file>
   <file>assets/chevron-left.svg</file>
   <file>assets/chevron-right.svg</file>
+  <file>assets/circle-alert.svg</file>
   <file>assets/circle-minus.svg</file>
   <file>assets/dock.svg</file>
   <file>assets/ellipsis.svg</file>
@@ -31,7 +32,6 @@
   <file>assets/step-back.svg</file>
   <file>assets/step-forward.svg</file>
   <file>assets/trash-2.svg</file>
-  <file>assets/triangle-alert.svg</file>
   <file>assets/undo-2.svg</file>
   <file>assets/video-off.svg</file>
   <file>assets/x.svg</file>
