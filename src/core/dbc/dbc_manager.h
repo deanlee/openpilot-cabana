@@ -7,9 +7,11 @@
 
 #include "dbc_file.h"
 
-using SourceSet = std::set<int>;
-const SourceSet SOURCE_ALL = {-1};
 const int INVALID_SOURCE = 0xff;
+const int GLOBAL_SOURCE_ID = -1;
+
+using SourceSet = std::set<int>;
+const SourceSet SOURCE_ALL = {GLOBAL_SOURCE_ID};
 
 inline bool operator<(const std::shared_ptr<dbc::File> &l, const std::shared_ptr<dbc::File> &r) { return l.get() < r.get(); }
 
@@ -37,7 +39,7 @@ public:
   QString newMsgName(const MessageId &id);
   QString newSignalName(const MessageId &id);
 
-  const std::map<uint32_t, dbc::Msg> &getMessages(uint8_t source = -1);
+  const std::map<uint32_t, dbc::Msg> &getMessages(uint8_t source = GLOBAL_SOURCE_ID);
   dbc::Msg *msg(const MessageId &id);
   dbc::Msg* msg(uint8_t source, const QString &name);
 

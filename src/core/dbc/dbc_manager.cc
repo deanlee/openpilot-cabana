@@ -150,9 +150,17 @@ int Manager::nonEmptyDBCCount() {
 }
 
 File* Manager::findDBCFile(const uint8_t source) {
-  // Find DBC file that matches id.source, fall back to SOURCE_ALL if no specific DBC is found
-  auto it = dbc_files.count(source) ? dbc_files.find(source) : dbc_files.find(-1);
-  return it != dbc_files.end() ? it->second.get() : nullptr;
+  // 1. Single lookup for the specific source
+  if (auto it = dbc_files.find(source); it != dbc_files.end()) {
+    return it->second.get();
+  }
+
+  // 2. Fallback lookup for GLOBAL_SOURCE_ID
+  if (auto it = dbc_files.find(GLOBAL_SOURCE_ID); it != dbc_files.end()) {
+    return it->second.get();
+  }
+
+  return nullptr;
 }
 
 std::set<File*> Manager::allDBCFiles() {
@@ -176,7 +184,7 @@ const SourceSet Manager::sources(const File* dbc_file) const {
 QString toString(const SourceSet& ss) {
   return std::accumulate(ss.cbegin(), ss.cend(), QString(), [](QString str, int source) {
     if (!str.isEmpty()) str += ", ";
-    return str + (source == -1 ? QStringLiteral("all") : QString::number(source));
+    return str + (source == GLOBAL_SOURCE_ID ? QStringLiteral("all") : QString::number(source));
   });
 }
 
