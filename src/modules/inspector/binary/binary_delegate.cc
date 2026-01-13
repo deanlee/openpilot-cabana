@@ -58,7 +58,7 @@ void MessageBytesDelegate::paint(QPainter *painter, const QStyleOptionViewItem &
   if (item->valid) {
     utils::drawStaticText(painter, option.rect, index.column() == 8 ? hex_text_table[item->val] : bin_text_table[item->val]);
   }
-  if (item->is_msb || item->is_lsb) {
+  if ((item->is_msb || item->is_lsb) && item->sigs.size() == 1 && item->sigs[0]->size > 1) {
     painter->setFont(small_font);
     painter->drawText(option.rect.adjusted(8, 0, -8, -3), Qt::AlignRight | Qt::AlignBottom, item->is_msb ? "M" : "L");
   }
