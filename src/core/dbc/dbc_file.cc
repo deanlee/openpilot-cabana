@@ -227,47 +227,60 @@ void File::parseVAL(const QString& line) {
 }
 
 QString File::generateGetDBC() {
-  QString dbc_string, comment, value_table;
-  for (const auto &[address, m] : msgs) {
+  QString body, comments, value_tables;
+
+  // Use QTextStream for efficient buffer management
+  QTextStream body_stream(&body);
+  QTextStream comm_stream(&comments);
+  QTextStream val_stream(&value_tables);
+
+  for (const auto& [address, m] : msgs) {
+    // 1. Generate Message (BO_)
     const QString transmitter = m.transmitter.isEmpty() ? DEFAULT_NODE_NAME : m.transmitter;
-    dbc_string += QString("BO_ %1 %2: %3 %4\n").arg(address).arg(m.name).arg(m.size).arg(transmitter);
+    body_stream << "BO_ " << address << " " << m.name << ": " << m.size << " " << transmitter << "\n";
+
+    // 2. Generate Message Comment
     if (!m.comment.isEmpty()) {
-      comment += QString("CM_ BO_ %1 \"%2\";\n").arg(address).arg(QString(m.comment).replace("\"", "\\\""));
+      comm_stream << "CM_ BO_ " << address << " \"" << QString(m.comment).replace("\"", "\\\"") << "\";\n";
     }
+
     for (auto sig : m.getSignals()) {
-      QString multiplexer_indicator;
+      // 3. Generate Signal (SG_)
+      QString mux;
       if (sig->type == dbc::Signal::Type::Multiplexor) {
-        multiplexer_indicator = "M ";
+        mux = "M ";
       } else if (sig->type == dbc::Signal::Type::Multiplexed) {
-        multiplexer_indicator = QString("m%1 ").arg(sig->multiplex_value);
+        mux = QString("m%1 ").arg(sig->multiplex_value);
       }
-      dbc_string += QString(" SG_ %1 %2: %3|%4@%5%6 (%7,%8) [%9|%10] \"%11\" %12\n")
-                        .arg(sig->name)
-                        .arg(multiplexer_indicator)
-                        .arg(sig->start_bit)
-                        .arg(sig->size)
-                        .arg(sig->is_little_endian ? '1' : '0')
-                        .arg(sig->is_signed ? '-' : '+')
-                        .arg(doubleToString(sig->factor))
-                        .arg(doubleToString(sig->offset))
-                        .arg(doubleToString(sig->min))
-                        .arg(doubleToString(sig->max))
-                        .arg(sig->unit)
-                        .arg(sig->receiver_name.isEmpty() ? DEFAULT_NODE_NAME : sig->receiver_name);
+
+      body_stream << " SG_ " << sig->name << " " << mux << ": "
+                  << sig->start_bit << "|" << sig->size << "@"
+                  << (sig->is_little_endian ? '1' : '0') << (sig->is_signed ? '-' : '+')
+                  << " (" << doubleToString(sig->factor) << "," << doubleToString(sig->offset) << ") ["
+                  << doubleToString(sig->min) << "|" << doubleToString(sig->max) << "] \""
+                  << sig->unit << "\" "
+                  << (sig->receiver_name.isEmpty() ? DEFAULT_NODE_NAME : sig->receiver_name) << "\n";
+
+      // 4. Generate Signal Comment
       if (!sig->comment.isEmpty()) {
-        comment += QString("CM_ SG_ %1 %2 \"%3\";\n").arg(address).arg(sig->name).arg(QString(sig->comment).replace("\"", "\\\""));
+        comm_stream << "CM_ SG_ " << address << " " << sig->name
+                    << " \"" << QString(sig->comment).replace("\"", "\\\"") << "\";\n";
       }
+
+      // 5. Generate Value Table (VAL_)
       if (!sig->value_table.empty()) {
-        QStringList text;
-        for (auto &[val, desc] : sig->value_table) {
-          text << QString("%1 \"%2\"").arg(val).arg(desc);
+        val_stream << "VAL_ " << address << " " << sig->name;
+        for (const auto& [val, desc] : sig->value_table) {
+          val_stream << " " << val << " \"" << desc << "\"";
         }
-        value_table += QString("VAL_ %1 %2 %3;\n").arg(address).arg(sig->name).arg(text.join(" "));
+        val_stream << ";\n";
       }
     }
-    dbc_string += "\n";
+    body_stream << "\n";
   }
-  return header + dbc_string + comment + value_table;
+
+  // Combine components in standard DBC order: Header -> BO/SG -> CM -> VAL
+  return header + body + comments + value_tables;
 }
 
 } // namespace dbc
