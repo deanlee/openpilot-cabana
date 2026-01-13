@@ -70,5 +70,5 @@ dbc::Manager *GetDBC();
 QString toString(const SourceSet &ss);
 inline QString msgName(const MessageId &id) {
   auto msg = GetDBC()->msg(id);
-  return msg ? msg->name : UNTITLED;
+  return msg ? msg->name : UNDEFINED;
 }

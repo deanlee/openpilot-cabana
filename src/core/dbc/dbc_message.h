@@ -9,7 +9,7 @@
 
 #include "dbc_signal.h"
 
-const QString UNTITLED = "untitled";
+const QString UNDEFINED = "Undefined";
 
 #pragma pack(push, 1)
 struct MessageId {
