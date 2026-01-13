@@ -154,7 +154,9 @@ void SignalTreeDelegate::drawDataColumn(QPainter* p, QRect r, const QStyleOption
     p->setPen(selected ? text_color : opt.palette.color(QPalette::PlaceholderText));
     // Text starts kPadding pixels after the line
     QRect minMaxRect(lineX + kPadding, r.top(), detailsSpace - kPadding, r.height());
-    p->drawText(minMaxRect, Qt::AlignTop | Qt::AlignLeft, maxStr);
+    if (item->sparkline.min_val != item->sparkline.max_val) {
+      p->drawText(minMaxRect, Qt::AlignTop | Qt::AlignLeft, maxStr);
+    }
     p->drawText(minMaxRect, Qt::AlignBottom | Qt::AlignLeft, minStr);
   }
 
