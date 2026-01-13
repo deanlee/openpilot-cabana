@@ -180,11 +180,11 @@ bool MessageModel::filterAndSort() {
   };
 
   // Process Live Snapshots
+  auto *dbc = GetDBC();
   for (const auto& [id, data] : snapshots) {
     snapshot_addrs.insert(id.address);
     if (show_inactive_messages || (data && data->is_active)) {
-      auto msg_it = dbc_messages.find(id.address);
-      processItem(id, msg_it != dbc_messages.end() ? &(msg_it->second) : nullptr, data.get());
+      processItem(id, dbc->msg(id), data.get());
     }
   }
 
