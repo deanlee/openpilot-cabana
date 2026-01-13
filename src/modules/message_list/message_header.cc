@@ -50,19 +50,17 @@ void MessageHeader::updateFilters() {
 }
 
 void MessageHeader::updateGeometries() {
-  if (is_updating) return;
-
-  is_updating = true;
-  if (!model() || count() <= 0) {
+  if (is_updating || !model() || count() <= 0) {
     QHeaderView::updateGeometries();
-    is_updating = false;
     return;
   }
 
+  is_updating = true;
+
   // 1. Sync Editors with Column Count
   for (int i = 0; i < count(); ++i) {
-    if (!editors.value(i)) {
-      QString col_name = model()->headerData(i, Qt::Horizontal, Qt::DisplayRole).toString();
+    if (!editors.contains(i)) {
+      QString col_name = model()->headerData(i, Qt::Horizontal).toString();
       QLineEdit* edit = new QLineEdit(this);
       edit->setClearButtonEnabled(true);
       edit->setPlaceholderText(tr("Filter %1").arg(col_name));
@@ -76,7 +74,7 @@ void MessageHeader::updateGeometries() {
   }
 
   // 2. Recursion Guard for Margins
-  int required_h = editors.value(0) ? editors[0]->sizeHint().height() : 0;
+  int required_h = editors[0]->sizeHint().height();
   if (viewportMargins().bottom() != required_h) {
     cached_editor_height = required_h;
     setViewportMargins(0, 0, 0, required_h);
