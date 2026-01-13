@@ -14,7 +14,6 @@ public:
   void clear();
 
 private:
-  QWidget *createWelcomeWidget();
   MessageView *message_view = nullptr;
   WelcomeWidget *welcome_widget = nullptr;
 };
