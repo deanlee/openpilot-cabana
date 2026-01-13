@@ -13,6 +13,7 @@
 #include "core/commands/commands.h"
 #include "core/dbc/dbc_manager.h"
 #include "modules/settings/settings.h"
+#include "modules/system/stream_manager.h"
 
 constexpr int MAX_RECENT_FILES = 10;
 
@@ -179,6 +180,51 @@ void DbcController::populateOpendbcFiles(QMenu* opendbc_menu) {
     }
   } else {
     qWarning() << "opendbc folder not found at:" << local_opendbc_path;
+  }
+}
+
+void DbcController::populateManageMenu(QMenu* manage_menu) {
+  manage_menu->clear();
+  auto stream = StreamManager::stream();
+  if (!stream) return;
+
+  for (int source : stream->sources) {
+    if (source >= 64) continue;  // Sent and blocked buses are handled implicitly
+
+    // Define the SourceSet for this specific physical bus
+    // Includes physical, sent (+128), and blocked (+192) channels
+    SourceSet ss = {source, (int)(uint8_t)(source + 128), (int)(uint8_t)(source + 192)};
+
+    auto dbc_file = GetDBC()->findDBCFile(source);
+
+    // Create the Sub-menu for this Bus
+    QMenu* bus_menu = new QMenu(manage_menu);
+    bus_menu->setTitle(QObject::tr("Bus %1 (%2)")
+                           .arg(source)
+                           .arg(dbc_file ? dbc_file->name() : QObject::tr("No DBC loaded")));
+
+    // Standard Actions
+    bus_menu->addAction(QObject::tr("New DBC File..."), [this, ss]() { newFile(ss); });
+    bus_menu->addAction(QObject::tr("Open DBC File..."), [this, ss]() { openFile(ss); });
+    bus_menu->addAction(QObject::tr("Load From Clipboard..."), [this, ss]() { loadFromClipboard(ss); });
+
+    if (dbc_file) {
+      bus_menu->addSeparator();
+
+      // Header for current file info (Disabled action used as a label)
+      QString info = QString("%1 (%2)").arg(dbc_file->name(), toString(GetDBC()->sources(dbc_file)));
+      bus_menu->addAction(info)->setEnabled(false);
+
+      bus_menu->addAction(QObject::tr("Save..."), [this, dbc_file]() { saveFile(dbc_file); });
+      bus_menu->addAction(QObject::tr("Save As..."), [this, dbc_file]() { saveFileAs(dbc_file); });
+      bus_menu->addAction(QObject::tr("Copy to Clipboard"), [this, dbc_file]() { saveFileToClipboard(dbc_file); });
+
+      bus_menu->addSeparator();
+      bus_menu->addAction(QObject::tr("Remove from this bus"), [this, ss]() { closeFile(ss); });
+      bus_menu->addAction(QObject::tr("Remove from all buses"), [this, dbc_file]() { closeFile(dbc_file); });
+    }
+
+    manage_menu->addMenu(bus_menu);
   }
 }
 

@@ -87,7 +87,7 @@ void MainWindow::createFileMenu() {
   file_menu->addAction(tr("Open DBC File..."), [this]() { dbc_controller_->openFile(); }, QKeySequence::Open);
 
   manage_dbcs_menu_ = file_menu->addMenu(tr("Manage &DBC Files"));
-  connect(manage_dbcs_menu_, &QMenu::aboutToShow, this, &MainWindow::updateLoadSaveMenus);
+  connect(manage_dbcs_menu_, &QMenu::aboutToShow, this, [this]() { dbc_controller_->populateManageMenu(manage_dbcs_menu_); });
 
   recent_files_menu_ = file_menu->addMenu(tr("Open &Recent"));
   connect(recent_files_menu_, &QMenu::aboutToShow, this, [this]() { dbc_controller_->populateRecentMenu(recent_files_menu_); });
@@ -319,36 +319,6 @@ void MainWindow::eventsMerged() {
     if (!GetDBC()->nonEmptyDBCCount()) {
       QTimer::singleShot(0, this, [this]() { dbc_controller_->loadFromFingerprint(car_fingerprint_); });
     }
-  }
-}
-
-void MainWindow::updateLoadSaveMenus() {
-  manage_dbcs_menu_->clear();
-
-  for (int source : StreamManager::stream()->sources) {
-    if (source >= 64) continue; // Sent and blocked buses are handled implicitly
-
-    SourceSet ss = {source, uint8_t(source + 128), uint8_t(source + 192)};
-
-    QMenu *bus_menu = new QMenu(this);
-    bus_menu->addAction(tr("New DBC File..."), [=]() { dbc_controller_->newFile(ss); });
-    bus_menu->addAction(tr("Open DBC File..."), [=]() { dbc_controller_->openFile(ss); });
-    bus_menu->addAction(tr("Load DBC From Clipboard..."), [=]() { dbc_controller_->loadFromClipboard(ss, false); });
-
-    // Show sub-menu for each dbc for this source.
-    auto dbc_file = GetDBC()->findDBCFile(source);
-    if (dbc_file) {
-      bus_menu->addSeparator();
-      bus_menu->addAction(dbc_file->name() + " (" + toString(GetDBC()->sources(dbc_file)) + ")")->setEnabled(false);
-      bus_menu->addAction(tr("Save..."), [=]() { dbc_controller_->saveFile(dbc_file); });
-      bus_menu->addAction(tr("Save As..."), [=]() { dbc_controller_->saveFileAs(dbc_file); });
-      bus_menu->addAction(tr("Copy to Clipboard..."), [=]() { dbc_controller_->saveFileToClipboard(dbc_file); });
-      bus_menu->addAction(tr("Remove from this bus..."), [=]() { dbc_controller_->closeFile(ss); });
-      bus_menu->addAction(tr("Remove from all buses..."), [=]() { dbc_controller_->closeFile(dbc_file); });
-    }
-    bus_menu->setTitle(tr("Bus %1 (%2)").arg(source).arg(dbc_file ? dbc_file->name() : "No DBCs loaded"));
-
-    manage_dbcs_menu_->addMenu(bus_menu);
   }
 }
 

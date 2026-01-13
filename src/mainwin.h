@@ -60,7 +60,6 @@ protected:
   void onlineHelp();
   void toggleFullScreen();
   void updateStatus();
-  void updateLoadSaveMenus();
   void eventsMerged();
   void saveSessionState();
   void restoreSessionState();
