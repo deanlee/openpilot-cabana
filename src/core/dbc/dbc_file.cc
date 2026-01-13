@@ -47,7 +47,7 @@ bool File::saveAs(const QString &new_filename) {
 bool File::writeContents(const QString &fn) {
   QFile file(fn);
   if (file.open(QIODevice::WriteOnly)) {
-    return file.write(generateGetDBC().toUtf8()) >= 0;
+    return file.write(toDBCString().toUtf8()) >= 0;
   }
   return false;
 }
@@ -231,7 +231,7 @@ void File::parseVAL(const QString& line) {
   }
 }
 
-QString File::generateGetDBC() {
+QString File::toDBCString() {
   QString body, comments, value_tables;
 
   // Use QTextStream for efficient buffer management

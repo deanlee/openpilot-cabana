@@ -148,7 +148,7 @@ void DbcController::saveToClipboard() {
 
 void DbcController::saveFileToClipboard(dbc::File* dbc_file) {
   Q_ASSERT(dbc_file != nullptr);
-  QGuiApplication::clipboard()->setText(dbc_file->generateGetDBC());
+  QGuiApplication::clipboard()->setText(dbc_file->toDBCString());
   QMessageBox::information(parent_, QObject::tr("Copy To Clipboard"),
                            QObject::tr("DBC Successfully copied!"));
 }
