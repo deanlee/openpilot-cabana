@@ -12,7 +12,10 @@ public:
   struct Item {
     enum Type {Root, Sig, Name, Size, Node, Endian, Signed, Offset, Factor, SignalType, MultiplexValue, ExtraInfo, Unit, Comment, Min, Max, Desc };
     ~Item() { qDeleteAll(children); }
-    inline int row() { return parent->children.indexOf(this); }
+    inline int row() {
+      if (parent) return parent->children.indexOf(this);
+      return 0;
+    }
 
     Type type = Type::Root;
     Item *parent = nullptr;
