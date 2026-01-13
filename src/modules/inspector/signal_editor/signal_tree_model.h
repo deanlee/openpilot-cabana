@@ -10,7 +10,7 @@ class SignalTreeModel : public QAbstractItemModel {
   Q_OBJECT
 public:
   struct Item {
-    enum Type {Root, Sig, Name, Size, Node, Endian, Signed, Offset, Factor, SignalType, MultiplexValue, ExtraInfo, Unit, Comment, Min, Max, Desc };
+    enum Type {Root, Sig, Name, Size, Node, Endian, Signed, Offset, Factor, SignalType, MultiplexValue, ExtraInfo, Unit, Comment, Min, Max, ValueTable };
     ~Item() { qDeleteAll(children); }
     inline int row() {
       if (parent) return parent->children.indexOf(this);

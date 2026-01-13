@@ -207,7 +207,7 @@ QWidget* SignalTreeDelegate::createEditor(QWidget* parent, const QStyleOptionVie
       c->addItem(signalTypeToString(dbc::Signal::Type::Multiplexed), (int)dbc::Signal::Type::Multiplexed);
     }
     return c;
-  } else if (item->type == SignalTreeModel::Item::Desc) {
+  } else if (item->type == SignalTreeModel::Item::ValueTable) {
     ValueTableEditor dlg(item->sig->value_table, parent);
     dlg.setWindowTitle(item->sig->name);
     if (dlg.exec()) {

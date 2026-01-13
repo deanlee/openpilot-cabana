@@ -89,7 +89,7 @@ void SignalTreeModel::lazyLoadItem(Item* item) const {
     create_children({Item::Name, Item::Size, Item::Node, Item::Endian, Item::Signed,
                      Item::Offset, Item::Factor, Item::SignalType, Item::MultiplexValue, Item::ExtraInfo});
   } else if (item->type == Item::ExtraInfo) {
-    create_children({Item::Unit, Item::Comment, Item::Min, Item::Max, Item::Desc});
+    create_children({Item::Unit, Item::Comment, Item::Min, Item::Max, Item::ValueTable});
   }
 }
 
@@ -153,7 +153,7 @@ QVariant SignalTreeModel::data(const QModelIndex &index, int role) const {
           case Item::Comment: return item->sig->comment;
           case Item::Min: return doubleToString(item->sig->min);
           case Item::Max: return doubleToString(item->sig->max);
-          case Item::Desc: {
+          case Item::ValueTable: {
             QStringList value_table;
             for (auto &[val, desc] : item->sig->value_table) {
               value_table << QString("%1 \"%2\"").arg(val).arg(desc);
@@ -192,7 +192,7 @@ bool SignalTreeModel::setData(const QModelIndex &index, const QVariant &value, i
     case Item::Comment: s.comment = value.toString(); break;
     case Item::Min: s.min = value.toDouble(); break;
     case Item::Max: s.max = value.toDouble(); break;
-    case Item::Desc: s.value_table = value.value<ValueTable>(); break;
+    case Item::ValueTable: s.value_table = value.value<ValueTable>(); break;
     default: return false;
   }
   bool ret = saveSignal(item->sig, s);
