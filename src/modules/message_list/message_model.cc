@@ -9,7 +9,7 @@
 #include "modules/system/stream_manager.h"
 
 static const QString NA = QStringLiteral("N/A");
-static const QString DASH = QStringLiteral("--");
+static const QString DASH = QString::fromUtf8("\xE2\x80\x94");
 
 inline QString toHexString(int value) {
   return "0x" + QString::number(value, 16).toUpper().rightJustified(2, '0');
@@ -168,7 +168,7 @@ bool MessageModel::filterAndSort() {
   auto processItem = [&](const MessageId& id, const dbc::Msg *msg, const MessageState* data) {
     Item item = {
         .id = id,
-        .name = msg ? msg->name : UNTITLED,
+        .name = msg ? msg->name : DASH,
         .node = msg ? msg->transmitter : QString(),
         .data = data,
         .address_hex = toHexString(id.address),

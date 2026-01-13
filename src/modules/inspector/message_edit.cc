@@ -39,7 +39,7 @@ MessageEdit::MessageEdit(const MessageId& msg_id, const QString& title, int size
 }
 
 void MessageEdit::validateName(const QString& text) {
-  bool valid = text.compare(UNTITLED, Qt::CaseInsensitive) != 0;
+  bool valid = text.compare(UNDEFINED, Qt::CaseInsensitive) != 0;
   error_label->setVisible(false);
   if (!text.isEmpty() && valid && text != original_name) {
     valid = GetDBC()->msg(msg_id.source, text) == nullptr;
