@@ -89,7 +89,10 @@ void MessageBytesDelegate::drawSignalCell(QPainter* painter, const QStyleOptionV
       subtract += QRect{rc.right() - (h_space - 1), rc.bottom() - (v_space - 1), h_space, v_space};
   }
 
-  painter->setClipRegion(QRegion(rc).subtracted(subtract));
+  bool has_clip = !subtract.isEmpty();
+  if (has_clip) {
+    painter->setClipRegion(QRegion(rc).subtracted(subtract));
+  }
 
   // Fill and Borders
   QColor fill = sig->color;
@@ -104,7 +107,7 @@ void MessageBytesDelegate::drawSignalCell(QPainter* painter, const QStyleOptionV
   if (b.top) painter->drawLine(rc.topLeft(), rc.topRight());
   if (b.bottom) painter->drawLine(rc.bottomLeft(), rc.bottomRight());
 
-  if (!subtract.isEmpty()) {
+  if (has_clip) {
     painter->setPen(QPen(color, 2, Qt::SolidLine, Qt::SquareCap, Qt::MiterJoin));
     for (auto& r : subtract) {
       painter->drawRect(r);
