@@ -25,9 +25,7 @@
 // ChartAxisElement's padding is 4 (https://codebrowser.dev/qt5/qtcharts/src/charts/axis/chartaxiselement_p.h.html)
 const int AXIS_X_TOP_MARGIN = 4;
 const double MIN_ZOOM_SECONDS = 0.01; // 10ms
-// Define a small value of epsilon to compare double values
-const float EPSILON = 0.000001;
-static inline bool xLessThan(const QPointF &p, float x) { return p.x() < (x - EPSILON); }
+
 
 ChartView::ChartView(const std::pair<double, double> &x_range, ChartsPanel *parent)
     : charts_widget(parent), QChartView(parent) {
@@ -129,7 +127,7 @@ void ChartView::addSignal(const MessageId &msg_id, const dbc::Signal *sig) {
   if (hasSignal(msg_id, sig)) return;
 
   QXYSeries *series = createSeries(series_type, sig->color);
-  sigs.push_back({.msg_id = msg_id, .sig = sig, .series = series});
+  sigs.emplace_back(msg_id, sig, series);
   updateSeries(sig);
   updateSeriesPoints();
   updateTitle();
@@ -140,7 +138,7 @@ bool ChartView::hasSignal(const MessageId &msg_id, const dbc::Signal *sig) const
   return std::any_of(sigs.cbegin(), sigs.cend(), [&](auto &s) { return s.msg_id == msg_id && s.sig == sig; });
 }
 
-void ChartView::removeIf(std::function<bool(const SigItem &s)> predicate) {
+void ChartView::removeIf(std::function<bool(const ChartSignal &s)> predicate) {
   int prev_size = sigs.size();
   for (auto it = sigs.begin(); it != sigs.end(); /**/) {
     if (predicate(*it)) {
@@ -288,52 +286,10 @@ void ChartView::updateSeriesPoints() {
   }
 }
 
-void ChartView::appendCanEvents(const dbc::Signal *sig, const std::vector<const CanEvent *> &events,
-                                std::vector<QPointF> &vals, std::vector<QPointF> &step_vals) {
-  vals.reserve(vals.size() + events.capacity());
-  step_vals.reserve(step_vals.size() + events.capacity() * 2);
-
-  double value = 0;
-  auto *can = StreamManager::stream();
-  for (const CanEvent *e : events) {
-    if (sig->getValue(e->dat, e->size, &value)) {
-      const double ts = can->toSeconds(e->mono_time);
-      vals.emplace_back(ts, value);
-      if (!step_vals.empty())
-        step_vals.emplace_back(ts, step_vals.back().y());
-      step_vals.emplace_back(ts, value);
-    }
-  }
-}
-
 void ChartView::updateSeries(const dbc::Signal *sig, const MessageEventsMap *msg_new_events) {
-  auto *can = StreamManager::stream();
   for (auto &s : sigs) {
     if (!sig || s.sig == sig) {
-      if (!msg_new_events) {
-        s.vals.clear();
-        s.step_vals.clear();
-      }
-      auto events = msg_new_events ? msg_new_events : &can->eventsMap();
-      auto it = events->find(s.msg_id);
-      if (it == events->end() || it->second.empty()) continue;
-
-      if (s.vals.empty() || can->toSeconds(it->second.back()->mono_time) > s.vals.back().x()) {
-        appendCanEvents(s.sig, it->second, s.vals, s.step_vals);
-      } else {
-        std::vector<QPointF> vals, step_vals;
-        appendCanEvents(s.sig, it->second, vals, step_vals);
-        s.vals.insert(std::lower_bound(s.vals.begin(), s.vals.end(), vals.front().x(), xLessThan),
-                      vals.begin(), vals.end());
-        s.step_vals.insert(std::lower_bound(s.step_vals.begin(), s.step_vals.end(), step_vals.front().x(), xLessThan),
-                           step_vals.begin(), step_vals.end());
-      }
-
-      if (!can->liveStreaming()) {
-        s.segment_tree.build(s.vals);
-      }
-      const auto &points = series_type == SeriesType::StepLine ? s.step_vals : s.vals;
-      s.series->replace(QVector<QPointF>(points.cbegin(), points.cend()));
+      s.updateSeries(series_type, msg_new_events);
     }
   }
   updateAxisY();
@@ -348,7 +304,6 @@ void ChartView::updateAxisY() {
   double min = std::numeric_limits<double>::max();
   double max = std::numeric_limits<double>::lowest();
   QString unit = sigs[0].sig->unit;
-  auto *can = StreamManager::stream();
   for (auto &s : sigs) {
     if (!s.series->isVisible()) continue;
 
@@ -357,18 +312,7 @@ void ChartView::updateAxisY() {
       unit.clear();
     }
 
-    auto first = std::lower_bound(s.vals.cbegin(), s.vals.cend(), axis_x->min(), xLessThan);
-    auto last = std::lower_bound(first, s.vals.cend(), axis_x->max(), xLessThan);
-    s.min = std::numeric_limits<double>::max();
-    s.max = std::numeric_limits<double>::lowest();
-    if (can->liveStreaming()) {
-      for (auto it = first; it != last; ++it) {
-        if (it->y() < s.min) s.min = it->y();
-        if (it->y() > s.max) s.max = it->y();
-      }
-    } else {
-      std::tie(s.min, s.max) = s.segment_tree.minmax(std::distance(s.vals.cbegin(), first), std::distance(s.vals.cbegin(), last));
-    }
+    s.updateRange(axis_x->min(), axis_x->max());
     min = std::min(min, s.min);
     max = std::max(max, s.max);
   }
@@ -399,33 +343,6 @@ void ChartView::updateAxisY() {
     axis_y->setLabelFormat(QString("%.%1f").arg(n));
     emit axisYLabelWidthChanged(y_label_width);
   }
-}
-
-std::tuple<double, double, int> ChartView::getNiceAxisNumbers(qreal min, qreal max, int tick_count) {
-  qreal range = niceNumber((max - min), true);  // range with ceiling
-  qreal step = niceNumber(range / (tick_count - 1), false);
-  min = std::floor(min / step);
-  max = std::ceil(max / step);
-  tick_count = int(max - min) + 1;
-  return {min * step, max * step, tick_count};
-}
-
-// nice numbers can be expressed as form of 1*10^n, 2* 10^n or 5*10^n
-qreal ChartView::niceNumber(qreal x, bool ceiling) {
-  qreal z = std::pow(10, std::floor(std::log10(x))); //find corresponding number of the form of 10^n than is smaller than x
-  qreal q = x / z; //q<10 && q>=1;
-  if (ceiling) {
-    if (q <= 1.0) q = 1;
-    else if (q <= 2.0) q = 2;
-    else if (q <= 5.0) q = 5;
-    else q = 10;
-  } else {
-    if (q < 1.5) q = 1;
-    else if (q < 3.0) q = 2;
-    else if (q < 7.0) q = 5;
-    else q = 10;
-  }
-  return q * z;
 }
 
 QPixmap getBlankShadowPixmap(const QPixmap &px, int radius) {

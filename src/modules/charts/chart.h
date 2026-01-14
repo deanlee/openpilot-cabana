@@ -9,23 +9,13 @@
 #include <QGraphicsProxyWidget>
 #include <QtCharts/QChartView>
 #include <QtCharts/QLegendMarker>
-#include <QtCharts/QLineSeries>
-#include <QtCharts/QScatterSeries>
-#include <QtCharts/QValueAxis>
-using namespace QtCharts;
 
+#include "chart_signal.h"
 #include "tiplabel.h"
-#include "core/dbc/dbc_manager.h"
-#include "core/streams/abstract_stream.h"
-#include "utils/segment_tree.h"
 
-enum class SeriesType {
-  Line = 0,
-  StepLine,
-  Scatter
-};
-
+using namespace QtCharts;
 class ChartsPanel;
+
 class ChartView : public QChartView {
   Q_OBJECT
 
@@ -42,18 +32,6 @@ public:
   void startAnimation();
   double secondsAtPoint(const QPointF &pt) const { return chart()->mapToValue(pt).x(); }
 
-  struct SigItem {
-    MessageId msg_id;
-    const dbc::Signal *sig = nullptr;
-    QXYSeries *series = nullptr;
-    std::vector<QPointF> vals;
-    std::vector<QPointF> step_vals;
-    QPointF track_pt{};
-    SegmentTree segment_tree;
-    double min = 0;
-    double max = 0;
-  };
-
 signals:
   void axisYLabelWidthChanged(int w);
 
@@ -67,8 +45,6 @@ private slots:
 
 private:
   void setupConnections();
-  void appendCanEvents(const dbc::Signal *sig, const std::vector<const CanEvent *> &events,
-                       std::vector<QPointF> &vals, std::vector<QPointF> &step_vals);
   void createToolButtons();
   void addSeries(QXYSeries *series);
   void contextMenuEvent(QContextMenuEvent *event) override;
@@ -92,12 +68,10 @@ private:
   void drawSignalValue(QPainter *painter);
   void drawTimeline(QPainter *painter);
   void drawRubberBandTimeRange(QPainter *painter);
-  std::tuple<double, double, int> getNiceAxisNumbers(qreal min, qreal max, int tick_count);
-  qreal niceNumber(qreal x, bool ceiling);
   QXYSeries *createSeries(SeriesType type, QColor color);
   void setSeriesColor(QXYSeries *, QColor color);
   void updateSeriesPoints();
-  void removeIf(std::function<bool(const SigItem &)> predicate);
+  void removeIf(std::function<bool(const ChartSignal &)> predicate);
   inline void clearTrackPoints() { for (auto &s : sigs) s.track_pt = {}; }
 
   int y_label_width = 0;
@@ -111,7 +85,7 @@ private:
   QGraphicsProxyWidget *close_btn_proxy;
   QGraphicsProxyWidget *manage_btn_proxy;
   TipLabel *tip_label;
-  std::vector<SigItem> sigs;
+  std::vector<ChartSignal> sigs;
   double cur_sec = 0;
   SeriesType series_type = SeriesType::Line;
   bool is_scrubbing = false;
