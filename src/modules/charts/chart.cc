@@ -23,6 +23,13 @@ Chart::Chart(QChartView* parent) : parent_(parent), QChart() {
   initControls();
 }
 
+void Chart::syncUI() {
+  updateAxisY();
+  updateTitle();
+  updateSeriesPoints();
+  emit resetCache();
+}
+
 void Chart::initControls() {
   move_icon_ = new QGraphicsPixmapItem(utils::icon("grip-horizontal"), this);
   move_icon_->setToolTip(tr("Drag and drop to move chart"));
@@ -69,9 +76,9 @@ bool Chart::addSignal(const MessageId& msg_id, const dbc::Signal* sig) {
 
   QXYSeries* series = createSeries(series_type, sig->color);
   sigs_.emplace_back(msg_id, sig, series);
+
   updateSeries(sig);
-  updateSeriesPoints();
-  updateTitle();
+  syncUI();
 
   emit signalAdded();
   return true;
@@ -86,9 +93,7 @@ void Chart::takeSignals(std::vector<ChartSignal>&& source_sigs) {
   }
 
   std::move(source_sigs.begin(), source_sigs.end(), std::back_inserter(sigs_));
-
-  updateAxisY();
-  updateTitle();
+  syncUI();
 }
 
 void Chart::removeIf(std::function<bool(const ChartSignal& s)> predicate) {
@@ -102,13 +107,12 @@ void Chart::removeIf(std::function<bool(const ChartSignal& s)> predicate) {
       ++it;
     }
   }
+
   if (sigs_.empty()) {
     emit close();
   } else if (sigs_.size() != prev_size) {
-    updateAxisY();
-    updateTitle();
+    syncUI();
     emit signalRemoved();
-    emit resetCache();
   }
 }
 
@@ -153,11 +157,12 @@ void Chart::alignLayout(int left_pos, bool force) {
 
 void Chart::setTheme(QChart::ChartTheme theme) {
   QChart::setTheme(theme);
+  auto txtBrush = palette().text();
   if (theme == QChart::ChartThemeDark) {
-    axis_x_->setTitleBrush(palette().text());
-    axis_x_->setLabelsBrush(palette().text());
-    axis_y_->setTitleBrush(palette().text());
-    axis_y_->setLabelsBrush(palette().text());
+    axis_x_->setTitleBrush(txtBrush);
+    axis_x_->setLabelsBrush(txtBrush);
+    axis_y_->setTitleBrush(txtBrush);
+    axis_y_->setLabelsBrush(txtBrush);
     legend()->setLabelColor(palette().color(QPalette::Text));
   }
   axis_x_->setLineVisible(false);
@@ -225,12 +230,14 @@ void Chart::updateTitle() {
 
   for (auto& s : sigs_) {
     auto decoration = s.series->isVisible() ? "none" : "line-through";
-    s.series->setName(QString("<span style=\"text-decoration:%1; color:%2\"><b>%3</b> <font color=\"%4\">%5 %6</font></span>")
-                          .arg(decoration, titleColorCss, s.sig->name,
-                               msgColorCss, msgName(s.msg_id), s.msg_id.toString()));
+    QString name = QString("<span style=\"text-decoration:%1; color:%2\"><b>%3</b> <font color=\"%4\">%5 %6</font></span>")
+                       .arg(decoration, titleColorCss, s.sig->name,
+                            msgColorCss, msgName(s.msg_id), s.msg_id.toString());
+    if (s.series->name() != name) {
+      s.series->setName(name);
+    }
   }
   split_chart_act_->setEnabled(sigs_.size() > 1);
-  emit resetCache();
 }
 
 void Chart::onMarkerClicked() {
@@ -240,8 +247,7 @@ void Chart::onMarkerClicked() {
     auto series = marker->series();
     series->setVisible(!series->isVisible());
     marker->setVisible(true);
-    updateAxisY();
-    updateTitle();
+    syncUI();
   }
 }
 
@@ -280,8 +286,7 @@ void Chart::setSeriesType(SeriesType type) {
       const auto& points = series_type == SeriesType::StepLine ? s.step_vals : s.vals;
       s.series->replace(QVector<QPointF>(points.cbegin(), points.cend()));
     }
-    updateSeriesPoints();
-    updateTitle();
+    syncUI();
 
     menu_->actions()[(int)type]->setChecked(true);
   }
@@ -320,7 +325,7 @@ void Chart::attachSeries(QXYSeries* series) {
   series->attachAxis(axis_x_);
   series->attachAxis(axis_y_);
 
-  for (QLegendMarker* marker : legend()->markers()) {
+  for (QLegendMarker* marker : legend()->markers(series)) {
     connect(marker, &QLegendMarker::clicked, this, &Chart::onMarkerClicked, Qt::UniqueConnection);
   }
 
@@ -364,8 +369,7 @@ void Chart::handleSignalChange(const dbc::Signal* sig) {
     if (it->series->color() != sig->color) {
       setSeriesColor(it->series, sig->color);
     }
-    updateTitle();
-    updateSeries(sig);
+    syncUI();
   }
 }
 
@@ -378,8 +382,7 @@ void Chart::msgUpdated(MessageId id) {
 bool Chart::updateAxisXRange(double min, double max) {
   if (min != axis_x_->min() || max != axis_x_->max()) {
     axis_x_->setRange(min, max);
-    updateAxisY();
-    updateSeriesPoints();
+    syncUI();
     return true;
   }
   return false;

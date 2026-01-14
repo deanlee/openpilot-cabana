@@ -46,6 +46,7 @@ class Chart : public QChart {
   void resizeEvent(QGraphicsSceneResizeEvent* event) override;
   void setSeriesColor(QXYSeries* series, QColor color);
   void updateSeriesPoints();
+  void syncUI();
   QXYSeries* createSeries(SeriesType type, QColor color);
 
  public:
