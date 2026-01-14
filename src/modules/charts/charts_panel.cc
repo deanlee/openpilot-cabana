@@ -180,7 +180,7 @@ void ChartsPanel::updateTabBar() {
 void ChartsPanel::eventsMerged(const MessageEventsMap &new_events) {
   QFutureSynchronizer<void> future_synchronizer;
   for (auto c : charts) {
-    future_synchronizer.addFuture(QtConcurrent::run(c, &ChartView::updateSeries, nullptr, &new_events));
+    future_synchronizer.addFuture(QtConcurrent::run(c->chart_, &Chart::updateSeries, nullptr, &new_events));
   }
 }
 
@@ -265,7 +265,7 @@ void ChartsPanel::settingChanged() {
     redo_zoom_action->setIcon(utils::icon("redo-2"));
     auto theme = utils::isDarkTheme() ? QChart::QChart::ChartThemeDark : QChart::ChartThemeLight;
     for (auto c : charts) {
-      c->setTheme(theme);
+      c->chart_->setTheme(theme);
     }
   }
   if (range_slider->maximum() != settings.max_cached_minutes * 60) {
@@ -273,22 +273,19 @@ void ChartsPanel::settingChanged() {
   }
   for (auto c : charts) {
     c->setFixedHeight(settings.chart_height);
-    c->setSeriesType((SeriesType)settings.chart_series_type);
+    c->chart_->setSeriesType((SeriesType)settings.chart_series_type);
     c->resetChartCache();
   }
 }
 
 ChartView *ChartsPanel::findChart(const MessageId &id, const dbc::Signal *sig) {
   for (auto c : charts)
-    if (c->hasSignal(id, sig)) return c;
+    if (c->chart_->hasSignal(id, sig)) return c;
   return nullptr;
 }
 
 ChartView *ChartsPanel::createChart(int pos) {
   auto chart = new ChartView(StreamManager::stream()->timeRange().value_or(display_range), this);
-  chart->setFixedHeight(settings.chart_height);
-  chart->setMinimumWidth(CHART_MIN_WIDTH);
-  chart->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Fixed);
   connect(chart, &ChartView::axisYLabelWidthChanged, align_timer, qOverload<>(&QTimer::start));
   pos = std::clamp(pos, 0, charts.size());
   charts.insert(pos, chart);
@@ -299,34 +296,34 @@ ChartView *ChartsPanel::createChart(int pos) {
 }
 
 void ChartsPanel::showChart(const MessageId &id, const dbc::Signal *sig, bool show, bool merge) {
-  ChartView *chart = findChart(id, sig);
-  if (show && !chart) {
-    chart = merge && currentCharts().size() > 0 ? currentCharts().front() : createChart();
-    chart->addSignal(id, sig);
+  ChartView *c = findChart(id, sig);
+  if (show && !c) {
+    c = merge && currentCharts().size() > 0 ? currentCharts().front() : createChart();
+    c->chart_->addSignal(id, sig);
     updateState();
-  } else if (!show && chart) {
-    chart->removeIf([&](auto &s) { return s.msg_id == id && s.sig == sig; });
+  } else if (!show && c) {
+    c->chart_->removeIf([&](auto &s) { return s.msg_id == id && s.sig == sig; });
   }
 }
 
 void ChartsPanel::splitChart(ChartView *src_chart) {
-  if (src_chart->sigs.size() > 1) {
+  if (src_chart->chart_->sigs_.size() > 1) {
     int pos = charts.indexOf(src_chart) + 1;
-    for (auto it = src_chart->sigs.begin() + 1; it != src_chart->sigs.end(); /**/) {
+    for (auto it = src_chart->chart_->sigs_.begin() + 1; it != src_chart->chart_->sigs_.end(); /**/) {
       auto c = createChart(pos);
       src_chart->chart()->removeSeries(it->series);
 
       // Restore to the original color
       it->series->setColor(it->sig->color);
 
-      c->addSeries(it->series);
-      c->sigs.emplace_back(std::move(*it));
-      c->updateAxisY();
-      c->updateTitle();
-      it = src_chart->sigs.erase(it);
+      c->chart_->addSeriesHelper(it->series);
+      c->chart_->sigs_.emplace_back(std::move(*it));
+      c->chart_->updateAxisY();
+      c->chart_->updateTitle();
+      it = src_chart->chart_->sigs_.erase(it);
     }
-    src_chart->updateAxisY();
-    src_chart->updateTitle();
+    src_chart->chart_->updateAxisY();
+    src_chart->chart_->updateTitle();
     QTimer::singleShot(0, src_chart, &ChartView::resetChartCache);
   }
 }
@@ -335,7 +332,7 @@ QStringList ChartsPanel::serializeChartIds() const {
   QStringList chart_ids;
   for (auto c : charts) {
     QStringList ids;
-    for (const auto& s : c->sigs)
+    for (const auto& s : c->chart_->sigs_)
       ids += QString("%1|%2").arg(s.msg_id.toString(), s.sig->name);
     chart_ids += ids.join(',');
   }
@@ -386,7 +383,7 @@ void ChartsPanel::updateLayout(bool force) {
     }
     for (int i = 0; i < current_charts.size(); ++i) {
       charts_layout->addWidget(current_charts[i], i / n, i % n);
-      if (current_charts[i]->sigs.empty()) {
+      if (current_charts[i]->chart_->sigs_.empty()) {
         // the chart will be resized after add signal. delay setVisible to reduce flicker.
         QTimer::singleShot(0, current_charts[i], [c = current_charts[i]]() { c->setVisible(true); });
       } else {
@@ -452,7 +449,7 @@ void ChartsPanel::newChart() {
     if (!items.isEmpty()) {
       auto c = createChart();
       for (auto it : items) {
-        c->addSignal(it->msg_id, it->sig);
+        c->chart_->addSignal(it->msg_id, it->sig);
       }
     }
   }
@@ -490,11 +487,11 @@ void ChartsPanel::removeAll() {
 void ChartsPanel::alignCharts() {
   int plot_left = 0;
   for (auto c : charts) {
-    plot_left = std::max(plot_left, c->y_label_width);
+    plot_left = std::max(plot_left, c->chart_->y_label_width_);
   }
   plot_left = std::max((plot_left / 10) * 10 + 10, 50);
   for (auto c : charts) {
-    c->updatePlotArea(plot_left);
+    c->chart_->alignLayout(plot_left);
   }
 }
 

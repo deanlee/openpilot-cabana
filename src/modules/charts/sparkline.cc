@@ -53,6 +53,7 @@ void Sparkline::updateDataPoints(const dbc::Signal* sig, CanEventIter first, Can
     history_.pop_front();
   }
 }
+
 void Sparkline::updateRenderPoints(int time_range, QSize size) {
   if (history_.empty() || size.isEmpty()) return;
 
