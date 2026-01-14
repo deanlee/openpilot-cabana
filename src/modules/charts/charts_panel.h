@@ -1,6 +1,5 @@
 #pragma once
 
-#include <QGridLayout>
 #include <QLabel>
 #include <QScrollArea>
 #include <QTimer>
@@ -10,6 +9,7 @@
 #include <unordered_map>
 #include <utility>
 
+#include "charts_container.h"
 #include "core/dbc/dbc_manager.h"
 #include "core/streams/abstract_stream.h"
 #include "modules/system/stream_manager.h"
@@ -20,22 +20,6 @@ const int CHART_MIN_WIDTH = 300;
 const QString CHART_MIME_TYPE = "application/x-cabanachartview";
 
 class ChartView;
-class ChartsPanel;
-
-class ChartsContainer : public QWidget {
-public:
-  ChartsContainer(ChartsPanel *parent);
-  void dragEnterEvent(QDragEnterEvent *event) override;
-  void dropEvent(QDropEvent *event) override;
-  void dragLeaveEvent(QDragLeaveEvent *event) override { drawDropIndicator({}); }
-  void drawDropIndicator(const QPoint &pt) { drop_indictor_pos = pt; update(); }
-  void paintEvent(QPaintEvent *ev) override;
-  ChartView *getDropAfter(const QPoint &pos) const;
-
-  QGridLayout *charts_layout;
-  ChartsPanel *charts_widget;
-  QPoint drop_indictor_pos;
-};
 
 class ChartsPanel : public QFrame {
   Q_OBJECT
