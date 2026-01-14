@@ -1,4 +1,4 @@
-#include "chart.h"
+#include "chart_view.h"
 
 #include <algorithm>
 #include <limits>

@@ -9,7 +9,7 @@
 #include <QToolBar>
 #include <QtConcurrent>
 
-#include "chart.h"
+#include "chart_view.h"
 #include "modules/settings/settings.h"
 #include "modules/system/stream_manager.h"
 
