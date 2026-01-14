@@ -16,14 +16,13 @@ class Chart : public QChart {
   void alignLayout(int left_pos, bool force = false);
   void setTheme(QChart::ChartTheme theme);
   void removeIf(std::function<bool(const ChartSignal& s)> predicate);
-  void updateAxisY();
-  void updateTitle();
   bool updateAxisXRange(double min, double max);
   void handleSignalChange(const dbc::Signal* sig);
   bool addSignal(const MessageId& msg_id, const dbc::Signal* sig);
   void takeSignals(std::vector<ChartSignal>&& source_sigs);
   double getTooltipTextAt(double sec, QStringList& text_list);
   void msgUpdated(MessageId id);
+  void syncUI();
   void updateSeries(const dbc::Signal* sig = nullptr, const MessageEventsMap* msg_new_events = nullptr);
   inline bool hasSignal(const MessageId& msg_id, const dbc::Signal* sig) const {
     return std::any_of(sigs_.cbegin(), sigs_.cend(), [&](auto& s) { return s.msg_id == msg_id && s.sig == sig; });
@@ -41,12 +40,13 @@ class Chart : public QChart {
 
  protected:
   void attachSeries(QXYSeries* series);
+  void updateTitle();
   void initControls();
   void onMarkerClicked();
   void resizeEvent(QGraphicsSceneResizeEvent* event) override;
   void setSeriesColor(QXYSeries* series, QColor color);
   void updateSeriesPoints();
-  void syncUI();
+  void updateAxisY();
   QXYSeries* createSeries(SeriesType type, QColor color);
 
  public:

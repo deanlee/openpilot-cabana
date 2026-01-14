@@ -44,6 +44,8 @@ signals:
   void showTip(double seconds);
 
 private:
+  void setupToolbar(QVBoxLayout *main_layout);
+  void setupTabBar(QVBoxLayout *main_layout);
   void setupConnections();
   QSize minimumSizeHint() const override;
   bool event(QEvent *event) override;

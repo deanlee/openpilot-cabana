@@ -23,76 +23,8 @@ ChartsPanel::ChartsPanel(QWidget *parent) : QFrame(parent) {
   main_layout->setContentsMargins(0, 0, 0, 0);
   main_layout->setSpacing(0);
 
-  // toolbar
-  toolbar = new QToolBar(tr("Charts"), this);
-  int icon_size = style()->pixelMetric(QStyle::PM_SmallIconSize);
-  toolbar->setIconSize({icon_size, icon_size});
-
-  new_plot_btn = new ToolButton("plus", tr("New Chart"));
-  new_tab_btn = new ToolButton("layer-plus", tr("New Tab"));
-  toolbar->addWidget(new_plot_btn);
-  toolbar->addWidget(new_tab_btn);
-  toolbar->addWidget(title_label = new QLabel());
-  title_label->setContentsMargins(0, 0, style()->pixelMetric(QStyle::PM_LayoutHorizontalSpacing), 0);
-
-  auto chart_type_action = toolbar->addAction("");
-  QMenu *chart_type_menu = new QMenu(this);
-  auto types = std::array{tr("Line"), tr("Step"), tr("Scatter")};
-  for (int i = 0; i < types.size(); ++i) {
-    QString type_text = types[i];
-    chart_type_menu->addAction(type_text, this, [=]() {
-      settings.chart_series_type = i;
-      chart_type_action->setText("Type: " + type_text);
-      settingChanged();
-    });
-  }
-  chart_type_action->setText("Type: " + types[settings.chart_series_type]);
-  chart_type_action->setMenu(chart_type_menu);
-  qobject_cast<QToolButton *>(toolbar->widgetForAction(chart_type_action))->setPopupMode(QToolButton::InstantPopup);
-
-  QMenu *menu = new QMenu(this);
-  for (int i = 0; i < MAX_COLUMN_COUNT; ++i) {
-    menu->addAction(tr("%1").arg(i + 1), [=]() { setColumnCount(i + 1); });
-  }
-  columns_action = toolbar->addAction("");
-  columns_action->setMenu(menu);
-  qobject_cast<QToolButton*>(toolbar->widgetForAction(columns_action))->setPopupMode(QToolButton::InstantPopup);
-
-  QWidget *spacer = new QWidget(this);
-  spacer->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Preferred);
-  toolbar->addWidget(spacer);
-
-  range_lb_action = toolbar->addWidget(range_lb = new QLabel(this));
-  range_slider = new LogSlider(1000, Qt::Horizontal, this);
-  range_slider->setFixedWidth(150 * qApp->devicePixelRatio());
-  range_slider->setToolTip(tr("Set the chart range"));
-  range_slider->setRange(1, settings.max_cached_minutes * 60);
-  range_slider->setSingleStep(1);
-  range_slider->setPageStep(60);  // 1 min
-  range_slider_action = toolbar->addWidget(range_slider);
-
-  // zoom controls
-  zoom_undo_stack = new QUndoStack(this);
-  toolbar->addAction(undo_zoom_action = zoom_undo_stack->createUndoAction(this));
-  undo_zoom_action->setIcon(utils::icon("undo-2"));
-  toolbar->addAction(redo_zoom_action = zoom_undo_stack->createRedoAction(this));
-  redo_zoom_action->setIcon(utils::icon("redo-2"));
-  reset_zoom_action = toolbar->addWidget(reset_zoom_btn = new ToolButton("refresh-ccw", tr("Reset Zoom")));
-  reset_zoom_btn->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
-
-  toolbar->addWidget(remove_all_btn = new ToolButton("eraser", tr("Remove all charts")));
-  toolbar->addWidget(dock_btn = new ToolButton("external-link"));
-  main_layout->addWidget(toolbar);
-
-  // tabbar
-  tabbar = new TabBar(this);
-  tabbar->setAutoHide(true);
-  tabbar->setExpanding(false);
-  tabbar->setDrawBase(true);
-  tabbar->setAcceptDrops(true);
-  tabbar->setChangeCurrentOnDrag(true);
-  tabbar->setUsesScrollButtons(true);
-  main_layout->addWidget(tabbar);
+  setupToolbar(main_layout);
+  setupTabBar(main_layout);
 
   // charts
   charts_container = new ChartsContainer(this);
@@ -127,6 +59,79 @@ ChartsPanel::ChartsPanel(QWidget *parent) : QFrame(parent) {
     <b>Shift + Drag</b>: Scrub through the chart to view values.<br />
     <b>Right Mouse</b>: Open the context menu.<br />
   )"));
+}
+
+void ChartsPanel::setupToolbar(QVBoxLayout *main_layout) {
+  toolbar = new QToolBar(tr("Charts"), this);
+  int icon_size = style()->pixelMetric(QStyle::PM_SmallIconSize);
+  toolbar->setIconSize({icon_size, icon_size});
+
+  new_plot_btn = new ToolButton("plus", tr("New Chart"));
+  new_tab_btn = new ToolButton("layer-plus", tr("New Tab"));
+  toolbar->addWidget(new_plot_btn);
+  toolbar->addWidget(new_tab_btn);
+  toolbar->addWidget(title_label = new QLabel());
+  title_label->setContentsMargins(0, 0, style()->pixelMetric(QStyle::PM_LayoutHorizontalSpacing), 0);
+
+  auto chart_type_action = toolbar->addAction("");
+  QMenu* chart_type_menu = new QMenu(this);
+  auto types = std::array{tr("Line"), tr("Step"), tr("Scatter")};
+  for (int i = 0; i < types.size(); ++i) {
+    QString type_text = types[i];
+    chart_type_menu->addAction(type_text, this, [=]() {
+      settings.chart_series_type = i;
+      chart_type_action->setText("Type: " + type_text);
+      settingChanged();
+    });
+  }
+  chart_type_action->setText("Type: " + types[settings.chart_series_type]);
+  chart_type_action->setMenu(chart_type_menu);
+  qobject_cast<QToolButton*>(toolbar->widgetForAction(chart_type_action))->setPopupMode(QToolButton::InstantPopup);
+
+  QMenu* menu = new QMenu(this);
+  for (int i = 0; i < MAX_COLUMN_COUNT; ++i) {
+    menu->addAction(tr("%1").arg(i + 1), [=]() { setColumnCount(i + 1); });
+  }
+  columns_action = toolbar->addAction("");
+  columns_action->setMenu(menu);
+  qobject_cast<QToolButton*>(toolbar->widgetForAction(columns_action))->setPopupMode(QToolButton::InstantPopup);
+
+  QWidget* spacer = new QWidget(this);
+  spacer->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Preferred);
+  toolbar->addWidget(spacer);
+
+  range_lb_action = toolbar->addWidget(range_lb = new QLabel(this));
+  range_slider = new LogSlider(1000, Qt::Horizontal, this);
+  range_slider->setFixedWidth(150 * qApp->devicePixelRatio());
+  range_slider->setToolTip(tr("Set the chart range"));
+  range_slider->setRange(1, settings.max_cached_minutes * 60);
+  range_slider->setSingleStep(1);
+  range_slider->setPageStep(60);  // 1 min
+  range_slider_action = toolbar->addWidget(range_slider);
+
+  // zoom controls
+  zoom_undo_stack = new QUndoStack(this);
+  toolbar->addAction(undo_zoom_action = zoom_undo_stack->createUndoAction(this));
+  undo_zoom_action->setIcon(utils::icon("undo-2"));
+  toolbar->addAction(redo_zoom_action = zoom_undo_stack->createRedoAction(this));
+  redo_zoom_action->setIcon(utils::icon("redo-2"));
+  reset_zoom_action = toolbar->addWidget(reset_zoom_btn = new ToolButton("refresh-ccw", tr("Reset Zoom")));
+  reset_zoom_btn->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
+
+  toolbar->addWidget(remove_all_btn = new ToolButton("eraser", tr("Remove all charts")));
+  toolbar->addWidget(dock_btn = new ToolButton("external-link"));
+  main_layout->addWidget(toolbar);
+}
+
+void ChartsPanel::setupTabBar(QVBoxLayout *main_layout) {
+  tabbar = new TabBar(this);
+  tabbar->setAutoHide(true);
+  tabbar->setExpanding(false);
+  tabbar->setDrawBase(true);
+  tabbar->setAcceptDrops(true);
+  tabbar->setChangeCurrentOnDrag(true);
+  tabbar->setUsesScrollButtons(true);
+  main_layout->addWidget(tabbar);
 }
 
 void ChartsPanel::setupConnections() {
@@ -326,8 +331,7 @@ void ChartsPanel::splitChart(ChartView* src_view) {
   }
 
   // 3. Finalize source chart
-  src_view->chart_->updateAxisY();
-  src_view->chart_->updateTitle();
+  src_view->chart_->syncUI();
   src_view->setUpdatesEnabled(true);
 }
 
