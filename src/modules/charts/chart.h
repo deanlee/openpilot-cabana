@@ -18,7 +18,6 @@ class Chart : public QChart {
   void removeIf(std::function<bool(const ChartSignal& s)> predicate);
   void updateAxisY();
   void updateTitle();
-  void updateSeriesPoints();
   bool updateAxisXRange(double min, double max);
   void handleSignalChange(const dbc::Signal* sig);
   bool addSignal(const MessageId& msg_id, const dbc::Signal* sig);
@@ -30,9 +29,7 @@ class Chart : public QChart {
     return std::any_of(sigs_.cbegin(), sigs_.cend(), [&](auto& s) { return s.msg_id == msg_id && s.sig == sig; });
   }
   void setSeriesType(SeriesType type);
-  QXYSeries* createSeries(SeriesType type, QColor color);
-  void addSeriesHelper(QXYSeries* series);
-  void setSeriesColor(QXYSeries* series, QColor color);
+
  signals:
   void signalAdded();
   void signalRemoved();
@@ -43,9 +40,13 @@ class Chart : public QChart {
   void resetCache();
 
  protected:
+  void attachSeries(QXYSeries* series);
   void initControls();
   void onMarkerClicked();
   void resizeEvent(QGraphicsSceneResizeEvent* event) override;
+  void setSeriesColor(QXYSeries* series, QColor color);
+  void updateSeriesPoints();
+  QXYSeries* createSeries(SeriesType type, QColor color);
 
  public:
   int y_label_width_ = 0;

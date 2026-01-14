@@ -82,7 +82,7 @@ void Chart::takeSignals(std::vector<ChartSignal>&& source_sigs) {
     if (QChart* old_chart = s.series->chart()) {
       old_chart->removeSeries(s.series);
     }
-    addSeriesHelper(s.series);
+    attachSeries(s.series);
   }
 
   std::move(source_sigs.begin(), source_sigs.end(), std::back_inserter(sigs_));
@@ -216,10 +216,6 @@ void Chart::updateAxisY() {
 }
 
 void Chart::updateTitle() {
-  for (QLegendMarker* marker : legend()->markers()) {
-    connect(marker, &QLegendMarker::clicked, this, &Chart::onMarkerClicked, Qt::UniqueConnection);
-  }
-
   // Use CSS to draw titles in the WindowText color
   auto tmp = palette().color(QPalette::WindowText);
   auto titleColorCss = tmp.name(QColor::HexArgb);
@@ -314,15 +310,19 @@ QXYSeries* Chart::createSeries(SeriesType type, QColor color) {
   pen.setWidthF(2.0 * qApp->devicePixelRatio());
   series->setPen(pen);
 #endif
-  addSeriesHelper(series);
+  attachSeries(series);
   return series;
 }
 
-void Chart::addSeriesHelper(QXYSeries* series) {
+void Chart::attachSeries(QXYSeries* series) {
   setSeriesColor(series, series->color());
   addSeries(series);
   series->attachAxis(axis_x_);
   series->attachAxis(axis_y_);
+
+  for (QLegendMarker* marker : legend()->markers()) {
+    connect(marker, &QLegendMarker::clicked, this, &Chart::onMarkerClicked, Qt::UniqueConnection);
+  }
 
   // disables the delivery of mouse events to the opengl widget.
   // this enables the user to select the zoom area when the mouse press on the data point.
