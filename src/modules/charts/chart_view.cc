@@ -25,8 +25,8 @@
 const int AXIS_X_TOP_MARGIN = 4;
 const double MIN_ZOOM_SECONDS = 0.01; // 10ms
 
-ChartView::ChartView(const std::pair<double, double> &x_range, ChartsPanel *parent)
-    : charts_widget(parent), QChartView(parent) {
+ChartView::ChartView(const std::pair<double, double>& x_range, ChartsPanel* parent)
+    : QChartView(parent), charts_widget(parent) {
   setRubberBand(QChartView::HorizontalRubberBand);
   setMouseTracking(true);
   setFixedHeight(settings.chart_height);
@@ -34,13 +34,12 @@ ChartView::ChartView(const std::pair<double, double> &x_range, ChartsPanel *pare
   setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Fixed);
 
   chart_ = new Chart(this);
-  chart_->series_type = (SeriesType)settings.chart_series_type;
   setChart(chart_);
-
+  chart_->series_type = (SeriesType)settings.chart_series_type;
   chart_->axis_x_->setRange(x_range.first, x_range.second);
+  chart_->setTheme(utils::isDarkTheme() ? QChart::QChart::ChartThemeDark : QChart::ChartThemeLight);
 
   tip_label = new TipLabel(this);
-  chart_->setTheme(utils::isDarkTheme() ? QChart::QChart::ChartThemeDark : QChart::ChartThemeLight);
   signal_value_font.setPointSize(9);
 
   setupConnections();
@@ -278,22 +277,19 @@ void ChartView::dragMoveEvent(QDragMoveEvent *event) {
   charts_widget->startAutoScroll();
 }
 
-void ChartView::dropEvent(QDropEvent *event) {
+void ChartView::dropEvent(QDropEvent* event) {
   if (event->mimeData()->hasFormat(CHART_MIME_TYPE)) {
     if (event->source() != this) {
-      ChartView *source_chart = (ChartView *)event->source();
-      for (auto &s : source_chart->chart_->sigs_) {
-        source_chart->chart_->removeSeries(s.series);
-        chart_->addSeriesHelper(s.series);
-      }
-      chart_->sigs_.insert(chart_->sigs_.end(), std::move_iterator(source_chart->chart_->sigs_.begin()), std::move_iterator(source_chart->chart_->sigs_.end()));
-      chart_->updateAxisY();
-      chart_->updateTitle();
-      startAnimation();
+      ChartView* source_view = (ChartView*)event->source();
+      if (source_view) {
+        chart_->takeSignals(std::move(source_view->chart_->sigs_));
+        // Clean up the empty source
+        source_view->chart_->sigs_.clear();
+        charts_widget->removeChart(source_view);
 
-      source_chart->chart_->sigs_.clear();
-      charts_widget->removeChart(source_chart);
-      event->acceptProposedAction();
+        startAnimation();
+        event->acceptProposedAction();
+      }
     }
     can_drop = false;
   }

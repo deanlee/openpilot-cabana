@@ -22,6 +22,7 @@ class Chart : public QChart {
   bool updateAxisXRange(double min, double max);
   void handleSignalChange(const dbc::Signal* sig);
   bool addSignal(const MessageId& msg_id, const dbc::Signal* sig);
+  void takeSignals(std::vector<ChartSignal>&& source_sigs);
   double getTooltipTextAt(double sec, QStringList& text_list);
   void msgUpdated(MessageId id);
   void updateSeries(const dbc::Signal* sig = nullptr, const MessageEventsMap* msg_new_events = nullptr);
