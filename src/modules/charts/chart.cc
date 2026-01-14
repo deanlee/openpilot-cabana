@@ -77,6 +77,20 @@ bool Chart::addSignal(const MessageId& msg_id, const dbc::Signal* sig) {
   return true;
 }
 
+void Chart::takeSignals(std::vector<ChartSignal>&& source_sigs) {
+  for (auto& s : source_sigs) {
+    if (QChart* old_chart = s.series->chart()) {
+      old_chart->removeSeries(s.series);
+    }
+    addSeriesHelper(s.series);
+  }
+
+  std::move(source_sigs.begin(), source_sigs.end(), std::back_inserter(sigs_));
+
+  updateAxisY();
+  updateTitle();
+}
+
 void Chart::removeIf(std::function<bool(const ChartSignal& s)> predicate) {
   int prev_size = sigs_.size();
   for (auto it = sigs_.begin(); it != sigs_.end(); /**/) {

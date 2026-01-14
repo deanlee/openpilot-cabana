@@ -306,26 +306,30 @@ void ChartsPanel::showChart(const MessageId &id, const dbc::Signal *sig, bool sh
   }
 }
 
-void ChartsPanel::splitChart(ChartView *src_chart) {
-  if (src_chart->chart_->sigs_.size() > 1) {
-    int pos = charts.indexOf(src_chart) + 1;
-    for (auto it = src_chart->chart_->sigs_.begin() + 1; it != src_chart->chart_->sigs_.end(); /**/) {
-      auto c = createChart(pos);
-      src_chart->chart()->removeSeries(it->series);
+void ChartsPanel::splitChart(ChartView* src_view) {
+  auto& src_sigs = src_view->chart_->sigs_;
+  if (src_sigs.size() <= 1) return;
 
-      // Restore to the original color
-      it->series->setColor(it->sig->color);
+  // 1. Transaction safety: disable updates
+  src_view->setUpdatesEnabled(false);
 
-      c->chart_->addSeriesHelper(it->series);
-      c->chart_->sigs_.emplace_back(std::move(*it));
-      c->chart_->updateAxisY();
-      c->chart_->updateTitle();
-      it = src_chart->chart_->sigs_.erase(it);
-    }
-    src_chart->chart_->updateAxisY();
-    src_chart->chart_->updateTitle();
-    QTimer::singleShot(0, src_chart, &ChartView::resetChartCache);
+  int target_pos = charts.indexOf(src_view) + 1;
+
+  // 2. Logic: Create one new chart for EVERY extra signal
+  while (src_sigs.size() > 1) {
+    ChartView* dest_view = createChart(target_pos++);
+
+    std::vector<ChartSignal> to_move;
+    to_move.push_back(std::move(src_sigs.back()));
+    src_sigs.pop_back();
+
+    dest_view->chart_->takeSignals(std::move(to_move));
   }
+
+  // 3. Finalize source chart
+  src_view->chart_->updateAxisY();
+  src_view->chart_->updateTitle();
+  src_view->setUpdatesEnabled(true);
 }
 
 QStringList ChartsPanel::serializeChartIds() const {

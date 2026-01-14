@@ -67,7 +67,7 @@ private:
   void newChart();
   ChartView *createChart(int pos = 0);
   void removeChart(ChartView *chart);
-  void splitChart(ChartView *chart);
+  void splitChart(ChartView *src_view);
   QRect chartVisibleRect(ChartView *chart);
   void eventsMerged(const MessageEventsMap &new_events);
   void updateState();
