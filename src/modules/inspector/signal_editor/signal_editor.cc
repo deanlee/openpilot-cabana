@@ -109,18 +109,6 @@ void SignalEditor::selectSignal(const dbc::Signal *sig, bool expand) {
   }
 }
 
-void SignalEditor::updateChartState() {
-  if (model && model->rowCount() > 0) {
-    // This triggers a repaint of the Value column (1) for all rows
-    emit model->dataChanged(model->index(0, 1),
-                            model->index(model->rowCount() - 1, 1),
-                            {Qt::DisplayRole});
-
-    // Also ensure the viewport physically refreshes
-    tree->viewport()->update();
-  }
-}
-
 void SignalEditor::signalHovered(const dbc::Signal *sig) {
   auto &children = model->root->children;
   for (int i = 0; i < children.size(); ++i) {
