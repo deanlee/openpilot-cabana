@@ -22,7 +22,6 @@ public:
   void setMessage(const MessageId &id);
   void clearMessage();
   void signalHovered(const dbc::Signal *sig);
-  void updateChartState();
   void selectSignal(const dbc::Signal *sig, bool expand = false);
   SignalTreeModel *model = nullptr;
 

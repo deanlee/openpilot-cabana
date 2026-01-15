@@ -70,7 +70,6 @@ void MessageView::setupConnections() {
     }
   });
   connect(tabbar, &QTabBar::tabCloseRequested, tabbar, &QTabBar::removeTab);
-  connect(charts, &ChartsPanel::seriesChanged, signal_editor, &SignalEditor::updateChartState);
 }
 
 void MessageView::createToolBar() {
