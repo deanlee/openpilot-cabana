@@ -3,9 +3,7 @@
 #include <QDockWidget>
 #include <QMainWindow>
 #include <QMenu>
-#include <QProgressBar>
 #include <QSplitter>
-#include <QStatusBar>
 
 #include "core/dbc/dbc_manager.h"
 #include "modules/charts/charts_panel.h"
@@ -13,6 +11,7 @@
 #include "modules/message_list/message_list.h"
 #include "modules/video/video_player.h"
 #include "tools/findsimilarbits.h"
+#include "widgets/status_bar.h"
 
 class DbcController;
 
@@ -22,7 +21,6 @@ class MainWindow : public QMainWindow {
 public:
   MainWindow(AbstractStream *stream, const QString &dbc_file);
   void toggleChartsDocking();
-  void showStatusMessage(const QString &msg, int timeout = 0) { statusBar()->showMessage(msg, timeout); }
   ChartsPanel *charts_panel = nullptr;
 
 public slots:
@@ -48,19 +46,16 @@ protected:
   void createMessagesDock();
   void createVideoChartsDock();
 
-  void createStatusBar();
   void createLoadingDialog(bool is_live);
   void createShortcuts();
   void closeEvent(QCloseEvent *event) override;
   void DBCFileChanged();
-  void updateDownloadProgress(uint64_t cur, uint64_t total, bool success);
   void setOption();
   void findSimilarBits();
   void findSignal();
   void undoStackCleanChanged(bool clean);
   void onlineHelp();
   void toggleFullScreen();
-  void updateStatus();
   void eventsMerged();
   void saveSessionState();
   void restoreSessionState();
@@ -72,9 +67,8 @@ protected:
   MessageInspector *inspector_widget_ = nullptr;
   QWidget *floating_window_ = nullptr;
   QVBoxLayout *charts_layout_ = nullptr;
-  QProgressBar *progress_bar_ = nullptr;
-  QLabel *status_label_ = nullptr;
   QSplitter *video_splitter_ = nullptr;
+  StatusBar *status_bar_ = nullptr;
   QMenu *recent_files_menu_ = nullptr;
   QMenu *manage_dbcs_menu_ = nullptr;
   QMenu *tools_menu_ = nullptr;

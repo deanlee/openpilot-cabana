@@ -2,7 +2,6 @@
 
 #include <QApplication>
 #include <QDesktopWidget>
-#include <QFile>
 #include <QFileDialog>
 #include <QMenuBar>
 #include <QProgressDialog>
@@ -29,9 +28,10 @@ MainWindow::MainWindow(AbstractStream *stream, const QString &dbc_file) : QMainW
   inspector_widget_ = new MessageInspector(charts_panel, this);
   setCentralWidget(inspector_widget_);
 
+  status_bar_ = new StatusBar(this);
+  setStatusBar(status_bar_);
   setupDocks();
   setupMenus();
-  createStatusBar();
   createShortcuts();
 
   // save default window state to allow resetting it
@@ -57,11 +57,11 @@ void MainWindow::setupConnections() {
   auto& relay = SystemRelay::instance();
   relay.installGlobalHandlers();
 
-  connect(&relay, &SystemRelay::logMessage, statusBar(), &QStatusBar::showMessage);
-  connect(&relay, &SystemRelay::downloadProgress, this, &MainWindow::updateDownloadProgress);
+  connect(&relay, &SystemRelay::logMessage, status_bar_, &StatusBar::showMessage);
+  connect(&relay, &SystemRelay::downloadProgress, status_bar_, &StatusBar::updateDownloadProgress);
+  connect(&settings, &Settings::changed, status_bar_, &StatusBar::updateMetrics);
   connect(GetDBC(), &dbc::Manager::DBCFileChanged, this, &MainWindow::DBCFileChanged);
   connect(UndoStack::instance(), &QUndoStack::cleanChanged, this, &MainWindow::undoStackCleanChanged);
-  connect(&settings, &Settings::changed, this, &MainWindow::updateStatus);
   connect(&StreamManager::instance(), &StreamManager::streamChanged, this, &MainWindow::onStreamChanged);
   connect(&StreamManager::instance(), &StreamManager::eventsMerged, this, &MainWindow::eventsMerged);
 }
@@ -200,18 +200,6 @@ void MainWindow::createVideoChartsDock() {
   connect(charts_panel, &ChartsPanel::showTip, video_player_, &VideoPlayer::showThumbnail);
 }
 
-void MainWindow::createStatusBar() {
-  progress_bar_ = new QProgressBar();
-  progress_bar_->setRange(0, 100);
-  progress_bar_->setTextVisible(true);
-  progress_bar_->setFixedSize({300, 16});
-  progress_bar_->setVisible(false);
-  statusBar()->addWidget(new QLabel(tr("For Help, Press F1")));
-  statusBar()->addPermanentWidget(progress_bar_);
-  statusBar()->addPermanentWidget(status_label_ = new QLabel(this));
-  updateStatus();
-}
-
 void MainWindow::createShortcuts() {
   auto shortcut = new QShortcut(QKeySequence(Qt::Key_Space), this, nullptr, nullptr, Qt::ApplicationShortcut);
   connect(shortcut, &QShortcut::activated, this, []() {
@@ -329,20 +317,6 @@ void MainWindow::eventsMerged() {
       QTimer::singleShot(0, this, [this]() { dbc_controller_->loadFromFingerprint(car_fingerprint_); });
     }
   }
-}
-
-void MainWindow::updateDownloadProgress(uint64_t cur, uint64_t total, bool success) {
-  if (success && cur < total) {
-    progress_bar_->setValue((cur / (double)total) * 100);
-    progress_bar_->setFormat(tr("Downloading %p% (%1)").arg(formattedDataSize(total).c_str()));
-    progress_bar_->show();
-  } else {
-    progress_bar_->hide();
-  }
-}
-
-void MainWindow::updateStatus() {
-  status_label_->setText(tr("Cached Minutes:%1 FPS:%2").arg(settings.max_cached_minutes).arg(settings.fps));
 }
 
 bool MainWindow::eventFilter(QObject *obj, QEvent *event) {
