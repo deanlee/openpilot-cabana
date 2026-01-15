@@ -48,11 +48,12 @@ public:
   Item *getItem(const QModelIndex &index) const;
   int signalRow(const dbc::Signal *sig) const;
   void updateChartedSignals(const QSet<const dbc::Signal*>& opened);
+  void fetchMore(const QModelIndex &parent) override;
+  bool canFetchMore(const QModelIndex &parent) const override;
 
 private:
   bool hasChildren(const QModelIndex &parent) const override;
   void insertItem(SignalTreeModel::Item *root_item, int pos, const dbc::Signal *sig);
-  void lazyLoadItem(Item *item) const;
   void handleSignalAdded(MessageId id, const dbc::Signal *sig);
   void handleSignalUpdated(const dbc::Signal *sig);
   void handleSignalRemoved(const dbc::Signal *sig);

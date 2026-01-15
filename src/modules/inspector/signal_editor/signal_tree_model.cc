@@ -71,9 +71,7 @@ SignalTreeModel::Item *SignalTreeModel::getItem(const QModelIndex &index) const 
 
 int SignalTreeModel::rowCount(const QModelIndex &parent) const {
   if (parent.column() > 0) return 0;
-  Item *item = getItem(parent);
-  if (item->children.isEmpty() && hasChildren(parent)) lazyLoadItem(item);
-  return item->children.size();
+  return getItem(parent)->children.size();
 }
 
 bool SignalTreeModel::hasChildren(const QModelIndex &parent) const {
@@ -82,22 +80,34 @@ bool SignalTreeModel::hasChildren(const QModelIndex &parent) const {
   return item->type == Item::Sig || item->type == Item::ExtraInfo;
 }
 
-void SignalTreeModel::lazyLoadItem(Item* item) const {
-  if (!item || !item->children.isEmpty()) return;
+bool SignalTreeModel::canFetchMore(const QModelIndex &parent) const {
+  if (!parent.isValid()) return false;
+  Item *item = getItem(parent);
 
-  auto create_children = [&](const QList<Item::Type>& types) {
-    for (auto t : types) {
-      QString label = SIGNAL_PROPERTY_LABELS[t - Item::Name];
-      item->children.push_back(new Item{.type = t, .parent = item, .sig = item->sig, .title = label});
-    }
-  };
+  return (item->type == Item::Sig || item->type == Item::ExtraInfo) && item->children.isEmpty();
+}
 
+void SignalTreeModel::fetchMore(const QModelIndex& parent) {
+  if (!parent.isValid()) return;
+  Item* item = getItem(parent);
+
+  QList<Item::Type> types;
   if (item->type == Item::Sig) {
-    create_children({Item::Name, Item::Size, Item::Node, Item::Endian, Item::Signed,
-                     Item::Offset, Item::Factor, Item::SignalType, Item::MultiplexValue, Item::ExtraInfo});
+    types = {Item::Name, Item::Size, Item::Node, Item::Endian, Item::Signed,
+             Item::Offset, Item::Factor, Item::SignalType, Item::MultiplexValue, Item::ExtraInfo};
   } else if (item->type == Item::ExtraInfo) {
-    create_children({Item::Unit, Item::Comment, Item::Min, Item::Max, Item::ValueTable});
+    types = {Item::Unit, Item::Comment, Item::Min, Item::Max, Item::ValueTable};
   }
+
+  if (types.isEmpty()) return;
+
+  // Notify the View that we are adding rows to this specific parent
+  beginInsertRows(parent, 0, types.size() - 1);
+  for (auto t : types) {
+    QString label = SIGNAL_PROPERTY_LABELS[t - Item::Name];
+    item->children.push_back(new Item{.type = t, .parent = item, .sig = item->sig, .title = label});
+  }
+  endInsertRows();
 }
 
 Qt::ItemFlags SignalTreeModel::flags(const QModelIndex &index) const {
