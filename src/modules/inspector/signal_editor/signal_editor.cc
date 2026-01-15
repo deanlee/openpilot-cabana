@@ -69,8 +69,7 @@ void SignalEditor::setupConnections() {
   connect(filter_edit, &QLineEdit::textEdited, model, &SignalTreeModel::setFilter);
   connect(sparkline_range_slider, &QSlider::valueChanged, this, &SignalEditor::setSparklineRange);
   connect(collapse_btn, &QPushButton::clicked, tree, &QTreeView::collapseAll);
-  connect(tree, &QTreeView::viewportEntered, [this]() { emit highlight(nullptr); });
-  connect(tree, &QTreeView::entered, [this](const QModelIndex &index) { emit highlight(model->getItem(index)->sig); });
+  connect(tree, &SignalTree::highlightRequested, this, &SignalEditor::highlight);
   connect(model, &QAbstractItemModel::modelReset, this, &SignalEditor::rowsChanged);
   connect(model, &QAbstractItemModel::rowsRemoved, this, &SignalEditor::rowsChanged);
   connect(model, &QAbstractItemModel::rowsInserted, this, &SignalEditor::rowsChanged);

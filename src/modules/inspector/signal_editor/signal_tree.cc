@@ -1,4 +1,5 @@
 #include "signal_tree.h"
+
 #include "signal_editor.h"
 
 SignalTree::SignalTree(QWidget* parent) : QTreeView(parent) {
@@ -8,6 +9,7 @@ SignalTree::SignalTree(QWidget* parent) : QTreeView(parent) {
   setExpandsOnDoubleClick(true);
   setUniformRowHeights(true);
   setEditTriggers(QAbstractItemView::AllEditTriggers);
+
   viewport()->setMouseTracking(true);
   viewport()->setAttribute(Qt::WA_AlwaysShowToolTips, true);
   setToolTipDuration(1000);
@@ -23,21 +25,30 @@ void SignalTree::dataChanged(const QModelIndex& topLeft, const QModelIndex& bott
 }
 
 void SignalTree::leaveEvent(QEvent* event) {
-  emit static_cast<SignalEditor*>(parentWidget())->highlight(nullptr);
-  // if (auto d = (SignalTreeDelegate*)(itemDelegate())) {
-  //   // d->clearHoverState();
-  //   viewport()->update();
-  // }
   QTreeView::leaveEvent(event);
+  updateHighlight(nullptr);
 }
 
 void SignalTree::mouseMoveEvent(QMouseEvent* event) {
   QTreeView::mouseMoveEvent(event);
-  // QModelIndex idx = indexAt(event->pos());
-  // if (!idx.isValid()) {
-  //   if (auto d = (SignalTreeDelegate*)(itemDelegate())) {
-  //     // d->clearHoverState();
-  //     viewport()->update();
-  //   }
-  // }
+
+  const dbc::Signal* current_sig = nullptr;
+  QModelIndex idx = indexAt(event->pos());
+
+  if (idx.isValid()) {
+    if (auto m = qobject_cast<SignalTreeModel*>(model())) {
+      if (auto item = m->getItem(idx)) {
+        current_sig = item->sig;
+      }
+    }
+  }
+
+  updateHighlight(current_sig);
+}
+
+void SignalTree::updateHighlight(const dbc::Signal* sig) {
+  if (sig != last_sig) {
+    last_sig = sig;
+    emit highlightRequested(sig);
+  }
 }
