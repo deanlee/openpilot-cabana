@@ -178,37 +178,34 @@ std::pair<QModelIndex, QModelIndex> SignalEditor::visibleSignalRange() {
   return {first_visible, last_visible};
 }
 
-void SignalEditor::updateState(const std::set<MessageId> *msgs) {
-  const auto *last_msg = StreamManager::stream()->snapshot(model->msg_id);
+void SignalEditor::updateState(const std::set<MessageId>* msgs) {
+  const auto* last_msg = StreamManager::stream()->snapshot(model->msg_id);
   if (model->rowCount() == 0 || (msgs && !msgs->count(model->msg_id)) || last_msg->dat.size() == 0) return;
 
-  auto [first_visible, last_visible] = visibleSignalRange();
-  if (!first_visible.isValid() || !last_visible.isValid()) return;
+  auto [first_v, last_v] = visibleSignalRange();
+  if (!first_v.isValid()) return;
 
-  const int btn_width = delegate->getButtonsWidth();
-  const int value_width = delegate->kValueWidth;
-  const int spark_w = std::max(10, value_column_width - btn_width - value_width - (delegate->kPadding * 2));
-  const QSize spark_size(spark_w, delegate->kBtnSize);
+  // Shared Parameters & Data Window
+  const int spark_w = std::max(10, value_column_width - delegate->getButtonsWidth() - delegate->kValueWidth - (delegate->kPadding * 2));
+  const QSize spark_sz(spark_w, delegate->kBtnSize);
+  auto range = StreamManager::stream()->eventsInRange(
+      model->msg_id, std::make_pair(last_msg->ts - settings.sparkline_range, last_msg->ts));
 
-  // Prepare data window for sparklines
-  auto [first, last] = StreamManager::stream()->eventsInRange(
-      model->msg_id,
-      std::make_pair(last_msg->ts - settings.sparkline_range, last_msg->ts));
-
-  // Update items in the visible range
-  QFutureSynchronizer<void> synchronizer;
-  for (int i = first_visible.row(); i <= last_visible.row(); ++i) {
-    auto item = model->getItem(model->index(i, 1));
-    double value = 0;
-    if (item->sig->getValue(last_msg->dat.data(), last_msg->dat.size(), &value)) {
-      item->sig_val = item->sig->formatValue(value);
-    }
-    synchronizer.addFuture(QtConcurrent::run(
-        &item->sparkline, &Sparkline::update, item->sig, first, last, settings.sparkline_range, spark_size));
+  // Update signal values and sparklines in parallel
+  QVector<SignalTreeModel::Item*> items;
+  for (int i = first_v.row(); i <= last_v.row(); ++i) {
+    items << model->getItem(model->index(i, 1));
   }
-  synchronizer.waitForFinished();
 
-  emit model->dataChanged(model->index(first_visible.row(), 1), model->index(last_visible.row(), 1), {Qt::DisplayRole});
+  QtConcurrent::blockingMap(items, [&](SignalTreeModel::Item* item) {
+    double val = 0;
+    if (item->sig->getValue(last_msg->dat.data(), last_msg->dat.size(), &val)) {
+      item->sig_val = item->sig->formatValue(val);
+    }
+    item->sparkline.update(item->sig, range.first, range.second, settings.sparkline_range, spark_sz);
+  });
+
+  emit model->dataChanged(model->index(first_v.row(), 1), model->index(last_v.row(), 1), {Qt::DisplayRole});
 }
 
 void SignalEditor::updateColumnWidths() {
