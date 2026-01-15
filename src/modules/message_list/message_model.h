@@ -22,7 +22,7 @@ public:
     DATA,
   };
 
-  MessageModel(QObject *parent) : QAbstractTableModel(parent) {}
+  MessageModel(QObject *parent);
   QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const override;
   int columnCount(const QModelIndex &parent = QModelIndex()) const override { return Column::DATA + 1; }
   QModelIndex index(int row, int column, const QModelIndex &parent = QModelIndex()) const override {
@@ -60,4 +60,5 @@ private:
   int sort_column = 0;
   Qt::SortOrder sort_order = Qt::AscendingOrder;
   int sort_threshold_ = 0;
+  QColor disabled_color_;
 };

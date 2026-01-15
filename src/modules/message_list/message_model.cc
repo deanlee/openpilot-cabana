@@ -15,6 +15,10 @@ inline QString toHexString(int value) {
   return "0x" + QString::number(value, 16).toUpper().rightJustified(2, '0');
 }
 
+MessageModel::MessageModel(QObject *parent) : QAbstractTableModel(parent) {
+  disabled_color_ = QApplication::palette().color(QPalette::Disabled, QPalette::Text);
+}
+
 QVariant MessageModel::headerData(int section, Qt::Orientation orientation, int role) const {
   if (orientation != Qt::Horizontal || role != Qt::DisplayRole) return {};
 
@@ -56,7 +60,7 @@ QVariant MessageModel::data(const QModelIndex &index, int role) const {
   }
 
   if (role == Qt::ForegroundRole && !(item.data && item.data->is_active)) {
-    return QApplication::palette().color(QPalette::Disabled, QPalette::Text);
+    return disabled_color_;
   }
 
   return {};
