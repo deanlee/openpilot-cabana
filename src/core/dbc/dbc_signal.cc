@@ -36,10 +36,12 @@ void dbc::Signal::update() {
 
 QString dbc::Signal::formatValue(double value, bool with_unit) const {
   // Show enum string
-  int64_t raw_value = std::round((value - offset) / factor);
-  for (const auto& [val, desc] : value_table) {
-    if (std::abs(raw_value - val) < 1e-6) {
-      return desc;
+  if (!value_table.empty()) {
+    int64_t raw_value = std::round((value - offset) / factor);
+    for (const auto& [val, desc] : value_table) {
+      if (std::abs(raw_value - val) < 1e-6) {
+        return desc;
+      }
     }
   }
 
