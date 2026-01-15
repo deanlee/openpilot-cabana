@@ -287,52 +287,42 @@ bool SignalTreeDelegate::helpEvent(QHelpEvent* event, QAbstractItemView* view, c
   return QStyledItemDelegate::helpEvent(event, view, option, index);
 }
 
-bool SignalTreeDelegate::editorEvent(QEvent* event, QAbstractItemModel* model, const QStyleOptionViewItem& option, const QModelIndex& index) {
-  auto item = static_cast<SignalTreeModel::Item*>(index.internalPointer());
-  if (!item) return false;
+bool SignalTreeDelegate::editorEvent(QEvent* event, QAbstractItemModel* model, const QStyleOptionViewItem& opt, const QModelIndex& idx) {
+  auto item = static_cast<SignalTreeModel::Item*>(idx.internalPointer());
+  if (!item || idx.column() != 1) return QStyledItemDelegate::editorEvent(event, model, opt, idx);
 
-  QMouseEvent* e = static_cast<QMouseEvent*>(event);
+  const QMouseEvent* e = static_cast<QMouseEvent*>(event);
+  const auto type = event->type();
 
-  // Handle Leave Event
-  if (event->type() == QEvent::Leave) {
-    if (hoverIndex.isValid()) {
-      hoverIndex = QModelIndex();
-      hoverButton = -1;
-      const_cast<QWidget*>(option.widget)->update();
-    }
-    return false;
-  }
+  // 1. Handle Hover & Leave
+  if (type == QEvent::MouseMove || type == QEvent::Leave) {
+    int btn = (type == QEvent::Leave) ? -1 : buttonAt(e->pos(), opt.rect);
 
-  // 1. Hover Logic
-  if (event->type() == QEvent::MouseMove) {
-    int btn = (index.column() == 1 && item->type == SignalTreeModel::Item::Sig) ? buttonAt(e->pos(), option.rect) : -1;
-    if (hoverIndex != index || hoverButton != btn) {
-      hoverIndex = index;
+    if (hoverIndex != idx || hoverButton != btn) {
+      hoverIndex = (btn == -1) ? QModelIndex() : idx;
       hoverButton = btn;
-      qobject_cast<QAbstractItemView*>(const_cast<QWidget*>(option.widget))->viewport()->update();
+      const_cast<QWidget*>(opt.widget)->update();  // Trigger repaint
     }
     return false;
   }
 
-  // 2. Click Logic
-  if (event->type() == QEvent::MouseButtonRelease) {
-    int btn = (index.column() == 1 && item->type == SignalTreeModel::Item::Sig) ? buttonAt(e->pos(), option.rect) : -1;
-
+  // 2. Handle Button Clicks
+  if (type == QEvent::MouseButtonRelease && item->type == SignalTreeModel::Item::Sig) {
+    int btn = buttonAt(e->pos(), opt.rect);
     if (btn != -1) {
-      // It's a button click on a Signal item
-      SignalEditor* view = static_cast<SignalEditor*>(parent());
-      MessageId msg_id = static_cast<SignalTreeModel*>(model)->msg_id;
-      if (btn == 1) {
-        bool opened = index.data(IsChartedRole).toBool();
-        emit view->showChart(msg_id, item->sig, !opened, e->modifiers() & Qt::ShiftModifier);
-      } else {
+      auto* view = static_cast<SignalEditor*>(parent());
+      auto msg_id = static_cast<SignalTreeModel*>(model)->msg_id;
+
+      if (btn == 1) {  // Plot Button
+        emit view->showChart(msg_id, item->sig, !idx.data(IsChartedRole).toBool(), e->modifiers() & Qt::ShiftModifier);
+      } else {  // Remove Button
         UndoStack::push(new RemoveSigCommand(msg_id, item->sig));
       }
-      return true;  // Mark event handled so 'clicked()' isn't fired
+      return true;  // Prevent base class from handling the click
     }
   }
 
-  return QStyledItemDelegate::editorEvent(event, model, option, index);
+  return QStyledItemDelegate::editorEvent(event, model, opt, idx);
 }
 
 int SignalTreeDelegate::nameColumnWidth(const dbc::Signal* sig) const {
