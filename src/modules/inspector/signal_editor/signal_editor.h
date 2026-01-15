@@ -31,6 +31,7 @@ signals:
   void showChart(const MessageId &id, const dbc::Signal *sig, bool show, bool merge);
 
 private:
+  QWidget *createToolbar();
   void setupConnections();
   void rowsChanged();
   void resizeEvent(QResizeEvent* event) override;

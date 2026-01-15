@@ -15,34 +15,9 @@
 
 SignalEditor::SignalEditor(ChartsPanel *charts, QWidget *parent) : charts(charts), QFrame(parent) {
   setFrameStyle(QFrame::StyledPanel | QFrame::Plain);
-  // title bar
-  QWidget *title_bar = new QWidget(this);
-  QHBoxLayout *hl = new QHBoxLayout(title_bar);
-  hl->addWidget(signal_count_lb = new QLabel());
-  filter_edit = new QLineEdit(this);
-  QRegularExpression re("\\S+");
-  filter_edit->setValidator(new QRegularExpressionValidator(re, this));
-  filter_edit->setClearButtonEnabled(true);
-  filter_edit->setPlaceholderText(tr("Filter Signal"));
-  hl->addWidget(filter_edit);
-  hl->addStretch(1);
-
-  // WARNING: increasing the maximum range can result in severe performance degradation.
-  // 30s is a reasonable value at present.
-  const int max_range = 30; // 30s
-  settings.sparkline_range = std::clamp(settings.sparkline_range, 1, max_range);
-  hl->addWidget(sparkline_label = new QLabel());
-  hl->addWidget(sparkline_range_slider = new QSlider(Qt::Horizontal, this));
-  sparkline_range_slider->setRange(1, max_range);
-  sparkline_range_slider->setValue(settings.sparkline_range);
-  sparkline_range_slider->setToolTip(tr("Sparkline time range"));
-
-  collapse_btn = new ToolButton("fold-vertical", tr("Collapse All"));
-  collapse_btn->setIconSize({12, 12});
-  hl->addWidget(collapse_btn);
-
-  // tree view
+  auto *toolbar = createToolbar();
   tree = new SignalTree(this);
+
   tree->setModel(model = new SignalTreeModel(this));
   tree->setItemDelegate(delegate = new SignalTreeDelegate(this));
   tree->setMinimumHeight(300);
@@ -56,7 +31,7 @@ SignalEditor::SignalEditor(ChartsPanel *charts, QWidget *parent) : charts(charts
   QVBoxLayout *main_layout = new QVBoxLayout(this);
   main_layout->setContentsMargins(0, 0, 0, 0);
   main_layout->setSpacing(0);
-  main_layout->addWidget(title_bar);
+  main_layout->addWidget(toolbar);
   main_layout->addWidget(tree);
   updateToolBar();
 
@@ -66,6 +41,34 @@ SignalEditor::SignalEditor(ChartsPanel *charts, QWidget *parent) : charts(charts
     <b>Signal view</b><br />
     <!-- TODO: add descprition here -->
   )"));
+}
+
+QWidget *SignalEditor::createToolbar() {
+  QWidget* toolbar = new QWidget(this);
+  QHBoxLayout* hl = new QHBoxLayout(toolbar);
+  hl->addWidget(signal_count_lb = new QLabel());
+  filter_edit = new QLineEdit(this);
+  QRegularExpression re("\\S+");
+  filter_edit->setValidator(new QRegularExpressionValidator(re, this));
+  filter_edit->setClearButtonEnabled(true);
+  filter_edit->setPlaceholderText(tr("Filter Signal"));
+  hl->addWidget(filter_edit);
+  hl->addStretch(1);
+
+  // WARNING: increasing the maximum range can result in severe performance degradation.
+  // 30s is a reasonable value at present.
+  const int max_range = 30;  // 30s
+  settings.sparkline_range = std::clamp(settings.sparkline_range, 1, max_range);
+  hl->addWidget(sparkline_label = new QLabel());
+  hl->addWidget(sparkline_range_slider = new QSlider(Qt::Horizontal, this));
+  sparkline_range_slider->setRange(1, max_range);
+  sparkline_range_slider->setValue(settings.sparkline_range);
+  sparkline_range_slider->setToolTip(tr("Sparkline time range"));
+
+  collapse_btn = new ToolButton("fold-vertical", tr("Collapse All"));
+  collapse_btn->setIconSize({12, 12});
+  hl->addWidget(collapse_btn);
+  return toolbar;
 }
 
 void SignalEditor::setupConnections() {
