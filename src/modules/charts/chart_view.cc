@@ -320,8 +320,8 @@ void ChartView::paintEvent(QPaintEvent *event) {
       QPainter p(&chart_pixmap);
       p.setRenderHints(QPainter::Antialiasing);
       drawBackground(&p, viewport()->rect());
-      scene()->setSceneRect(viewport()->rect());
-      scene()->render(&p, viewport()->rect());
+      scene()->render(&p, QRectF(0, 0, viewport()->width(), viewport()->height()),
+                      viewport()->rect());
     }
 
     QPainter painter(viewport());
