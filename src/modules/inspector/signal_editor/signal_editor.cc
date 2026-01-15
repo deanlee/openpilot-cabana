@@ -2,7 +2,6 @@
 
 #include <QApplication>
 #include <QHBoxLayout>
-#include <QHeaderView>
 #include <QPainter>
 #include <QPushButton>
 #include <QScrollBar>
@@ -15,26 +14,18 @@
 
 SignalEditor::SignalEditor(ChartsPanel *charts, QWidget *parent) : charts(charts), QFrame(parent) {
   setFrameStyle(QFrame::StyledPanel | QFrame::Plain);
-  auto *toolbar = createToolbar();
   tree = new SignalTree(this);
-
   tree->setModel(model = new SignalTreeModel(this));
   tree->setItemDelegate(delegate = new SignalTreeDelegate(this));
   tree->setMinimumHeight(300);
-  tree->header()->setSectionResizeMode(0, QHeaderView::Fixed);
-  tree->header()->setSectionResizeMode(1, QHeaderView::Stretch);
-
-  // Use a distinctive background for the whole row containing a QSpinBox or QLineEdit
-  QString nodeBgColor = palette().color(QPalette::AlternateBase).name(QColor::HexArgb);
-  tree->setStyleSheet(QString("QSpinBox{background-color:%1;border:none;} QLineEdit{background-color:%1;}").arg(nodeBgColor));
 
   QVBoxLayout *main_layout = new QVBoxLayout(this);
   main_layout->setContentsMargins(0, 0, 0, 0);
   main_layout->setSpacing(0);
-  main_layout->addWidget(toolbar);
+  main_layout->addWidget(createToolbar());
   main_layout->addWidget(tree);
+ 
   updateToolBar();
-
   setupConnections();
 
   setWhatsThis(tr(R"(

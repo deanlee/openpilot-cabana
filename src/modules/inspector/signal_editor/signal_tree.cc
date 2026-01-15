@@ -1,6 +1,8 @@
 #include "signal_tree.h"
 #include "signal_editor.h"
 
+#include <QHeaderView>
+
 SignalTree::SignalTree(QWidget* parent) : QTreeView(parent) {
   setFrameShape(QFrame::NoFrame);
   setHeaderHidden(true);
@@ -11,6 +13,13 @@ SignalTree::SignalTree(QWidget* parent) : QTreeView(parent) {
   viewport()->setMouseTracking(true);
   viewport()->setAttribute(Qt::WA_AlwaysShowToolTips, true);
   setToolTipDuration(1000);
+
+  header()->setSectionResizeMode(0, QHeaderView::Fixed);
+  header()->setSectionResizeMode(1, QHeaderView::Stretch);
+
+  // Use a distinctive background for the whole row containing a QSpinBox or QLineEdit
+  QString nodeBgColor = palette().color(QPalette::AlternateBase).name(QColor::HexArgb);
+  setStyleSheet(QString("QSpinBox{background-color:%1;border:none;} QLineEdit{background-color:%1;}").arg(nodeBgColor));
 }
 
 void SignalTree::rowsInserted(const QModelIndex& parent, int start, int end) {
