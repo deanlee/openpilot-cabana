@@ -46,12 +46,10 @@ void SignalTreeDelegate::paint(QPainter* painter, const QStyleOptionViewItem& op
 
   if (index.column() == 0) {
     drawNameColumn(painter, rect, option, item, index);
+  } else if (item->type == SignalTreeModel::Item::Sig) {
+    drawDataColumn(painter, rect, option, item, index);
   } else {
-    if (item->type == SignalTreeModel::Item::Sig) {
-      drawDataColumn(painter, rect, option, item, index);
-    } else {
-      QStyledItemDelegate::paint(painter, option, index);
-    }
+    QStyledItemDelegate::paint(painter, option, index);
   }
 }
 
@@ -244,9 +242,6 @@ QRect SignalTreeDelegate::getButtonRect(const QRect& colRect, int btnIdx) const 
 }
 
 void SignalTreeDelegate::drawButtons(QPainter* p, const QStyleOptionViewItem& opt, SignalTreeModel::Item* item, const QModelIndex& idx) const {
-  SignalEditor* view = qobject_cast<SignalEditor*>(parent());
-  if (!view) return;
-
   bool chart_opened = idx.data(IsChartedRole).toBool();
 
   auto drawBtn = [&](int btnIdx, const QString& iconName, bool active) {
@@ -368,11 +363,6 @@ bool SignalTreeDelegate::editorEvent(QEvent* event, QAbstractItemModel* model, c
 
   return QStyledItemDelegate::editorEvent(event, model, option, index);
 }
-
-// void SignalTreeDelegate::clearHoverState() {
-//   hoverIndex = QModelIndex();
-//   hoverButton = -1;
-// }
 
 int SignalTreeDelegate::nameColumnWidth(const dbc::Signal* sig) const {
   // Use the default font for the name text, and label_font for badges
