@@ -1,6 +1,8 @@
 #pragma once
 
 #include <QAbstractItemModel>
+#include <QSet>
+
 #include <memory>
 
 #include "modules/charts/sparkline.h"
@@ -9,8 +11,6 @@
 enum SignalRole {
   IsChartedRole = Qt::UserRole + 10
 };
-
-class ChartsPanel;
 
 class SignalTreeModel : public QAbstractItemModel {
   Q_OBJECT
@@ -34,7 +34,7 @@ public:
     Sparkline sparkline;
   };
 
-  SignalTreeModel(ChartsPanel *charts, QObject *parent);
+  SignalTreeModel(QObject *parent);
   int rowCount(const QModelIndex &parent = QModelIndex()) const override;
   int columnCount(const QModelIndex &parent = QModelIndex()) const override { return 2; }
   QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
@@ -47,6 +47,7 @@ public:
   bool saveSignal(const dbc::Signal *origin_s, dbc::Signal &s);
   Item *getItem(const QModelIndex &index) const;
   int signalRow(const dbc::Signal *sig) const;
+  void updateChartedSignals(const QSet<const dbc::Signal*>& opened);
 
 private:
   bool hasChildren(const QModelIndex &parent) const override;
@@ -60,7 +61,7 @@ private:
 
   MessageId msg_id;
   QString filter_str;
-  ChartsPanel *charts_ = nullptr;
+  QSet<const dbc::Signal *> charted_signals_;
   std::unique_ptr<Item> root;
   friend class SignalEditor;
   friend class SignalTreeDelegate;

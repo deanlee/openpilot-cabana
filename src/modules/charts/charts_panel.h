@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QLabel>
+#include <QSet>
 #include <QScrollArea>
 #include <QTimer>
 #include <QToolBar>
@@ -27,6 +28,7 @@ class ChartsPanel : public QFrame {
 public:
   ChartsPanel(QWidget *parent = nullptr);
   void showChart(const MessageId &id, const dbc::Signal *sig, bool show, bool merge);
+  const QSet<const dbc::Signal *> getChartedSignals() const;
   inline bool hasSignal(const MessageId &id, const dbc::Signal *sig) { return findChart(id, sig) != nullptr; }
   QStringList serializeChartIds() const;
   void restoreChartsFromIds(const QStringList &chart_ids);

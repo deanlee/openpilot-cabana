@@ -5,7 +5,6 @@
 #include "core/commands/commands.h"
 #include "core/dbc/dbc_manager.h"
 #include "modules/inspector/binary/binary_model.h"
-#include "modules/charts/charts_panel.h"
 
 static const QStringList SIGNAL_PROPERTY_LABELS = {
     "Name", "Size", "Receiver Nodes", "Little Endian", "Signed", "Offset", "Factor", 
@@ -18,7 +17,7 @@ QString signalTypeToString(dbc::Signal::Type type) {
   else return "Normal Signal";
 }
 
-SignalTreeModel::SignalTreeModel(ChartsPanel *charts, QObject *parent) : charts_(charts), root(new Item), QAbstractItemModel(parent) {
+SignalTreeModel::SignalTreeModel(QObject *parent) : root(new Item), QAbstractItemModel(parent) {
   connect(GetDBC(), &dbc::Manager::DBCFileChanged, this, &SignalTreeModel::refresh);
   connect(GetDBC(), &dbc::Manager::msgUpdated, this, &SignalTreeModel::handleMsgChanged);
   connect(GetDBC(), &dbc::Manager::msgRemoved, this, &SignalTreeModel::handleMsgChanged);
@@ -36,6 +35,13 @@ void SignalTreeModel::setMessage(const MessageId &id) {
   msg_id = id;
   filter_str = "";
   refresh();
+}
+
+void SignalTreeModel::updateChartedSignals(const QSet<const dbc::Signal*>& opened) {
+  charted_signals_ = opened;
+  if (rowCount() > 0) {
+    emit dataChanged(index(0, 0), index(rowCount() - 1, 1), {IsChartedRole});
+  }
 }
 
 void SignalTreeModel::setFilter(const QString &txt) {
@@ -170,7 +176,7 @@ QVariant SignalTreeModel::data(const QModelIndex &index, int role) const {
     } else if (role == Qt::ToolTipRole && item->type == Item::Sig) {
       return (index.column() == 0) ? signalToolTip(item->sig) : QString();
     } else if (role == IsChartedRole && item->type == Item::Sig) {
-      return charts_->hasSignal(msg_id, item->sig);
+      return charted_signals_.contains(item->sig);
     }
   }
   return {};

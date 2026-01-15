@@ -288,6 +288,16 @@ ChartView *ChartsPanel::findChart(const MessageId &id, const dbc::Signal *sig) {
   return nullptr;
 }
 
+const QSet<const dbc::Signal*> ChartsPanel::getChartedSignals() const {
+  QSet<const dbc::Signal*> charted_signals;
+  for (auto* c : charts) {
+    for (const auto& s : c->chart_->sigs_) {
+      charted_signals.insert(const_cast<const dbc::Signal*>(s.sig));
+    }
+  }
+  return charted_signals;
+}
+
 ChartView *ChartsPanel::createChart(int pos) {
   auto chart = new ChartView(StreamManager::stream()->timeRange().value_or(display_range), this);
   connect(chart, &ChartView::axisYLabelWidthChanged, align_timer, qOverload<>(&QTimer::start));

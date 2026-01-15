@@ -16,7 +16,7 @@
 SignalEditor::SignalEditor(ChartsPanel *charts, QWidget *parent) : QFrame(parent) {
   setFrameStyle(QFrame::StyledPanel | QFrame::Plain);
   tree = new SignalTree(this);
-  tree->setModel(model = new SignalTreeModel(charts, this));
+  tree->setModel(model = new SignalTreeModel(this));
   tree->setItemDelegate(delegate = new SignalTreeDelegate(this));
   tree->setMinimumHeight(300);
   tree->header()->setSectionResizeMode(0, QHeaderView::Fixed);
@@ -78,11 +78,8 @@ void SignalEditor::setupConnections(ChartsPanel *charts) {
   connect(tree->verticalScrollBar(), &QScrollBar::valueChanged, [this]() { updateState(); });
   connect(tree->verticalScrollBar(), &QScrollBar::rangeChanged, [this]() { updateState(); });
   connect(&StreamManager::instance(), &StreamManager::snapshotsUpdated, this, &SignalEditor::updateState);
-  connect(charts, &ChartsPanel::seriesChanged, model, [this]() {
-    int lastRow = model->rowCount() - 1;
-    if (lastRow >= 0) {
-      emit model->dataChanged(model->index(0, 0), model->index(lastRow, 1), {IsChartedRole});
-    }
+  connect(charts, &ChartsPanel::seriesChanged, model, [this, charts]() {
+    model->updateChartedSignals(charts->getChartedSignals());
   });
 }
 
