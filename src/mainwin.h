@@ -49,6 +49,7 @@ protected:
   void createVideoChartsDock();
 
   void createStatusBar();
+  void createLoadingDialog(bool is_live);
   void createShortcuts();
   void closeEvent(QCloseEvent *event) override;
   void DBCFileChanged();

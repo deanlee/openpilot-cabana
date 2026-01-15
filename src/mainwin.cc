@@ -281,6 +281,7 @@ void MainWindow::openStream(AbstractStream *stream, const QString &dbc_file) {
 
   bool has_stream = sm.hasStream();
   bool is_live_stream = sm.isLiveStream();
+
   close_stream_act_->setEnabled(has_stream);
   export_to_csv_act_->setEnabled(has_stream);
   tools_menu_->setEnabled(has_stream);
@@ -296,17 +297,25 @@ void MainWindow::openStream(AbstractStream *stream, const QString &dbc_file) {
   }
 
   if (has_stream) {
-    auto wait_dlg = new QProgressDialog(
-        is_live_stream ? tr("Waiting for the live stream to start...") : tr("Loading segment data..."),
-        tr("&Abort"), 0, 100, this);
-    wait_dlg->setWindowModality(Qt::WindowModal);
-    wait_dlg->setFixedSize(400, wait_dlg->sizeHint().height());
-    connect(wait_dlg, &QProgressDialog::canceled, this, &MainWindow::close);
-    connect(&sm, &StreamManager::eventsMerged, wait_dlg, &QProgressDialog::deleteLater);
-    connect(&SystemRelay::instance(), &SystemRelay::downloadProgress, wait_dlg, [=](uint64_t cur, uint64_t total, bool success) {
-      wait_dlg->setValue((int)((cur / (double)total) * 100));
-    });
+    createLoadingDialog(is_live_stream);
   }
+}
+
+void MainWindow::createLoadingDialog(bool is_live) {
+  auto wait_dlg = new QProgressDialog(
+      is_live ? tr("Waiting for live stream...") : tr("Loading segments..."),
+      tr("&Abort"), 0, 100, this);
+
+  wait_dlg->setWindowModality(Qt::WindowModal);
+  wait_dlg->setAttribute(Qt::WA_DeleteOnClose);
+  wait_dlg->setFixedSize(400, wait_dlg->sizeHint().height());
+
+  connect(wait_dlg, &QProgressDialog::canceled, this, &MainWindow::close);
+  connect(&StreamManager::instance(), &StreamManager::eventsMerged, wait_dlg, &QProgressDialog::accept);
+  connect(&SystemRelay::instance(), &SystemRelay::downloadProgress, wait_dlg, [=](uint64_t cur, uint64_t total, bool success) {
+    wait_dlg->setValue((int)((cur / (double)total) * 100));
+  });
+  wait_dlg->show();
 }
 
 void MainWindow::eventsMerged() {
