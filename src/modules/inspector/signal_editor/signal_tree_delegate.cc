@@ -100,76 +100,47 @@ void SignalTreeDelegate::drawNameColumn(QPainter* p, QRect r, const QStyleOption
 }
 
 void SignalTreeDelegate::drawDataColumn(QPainter* p, QRect r, const QStyleOptionViewItem& opt, SignalTreeModel::Item* item, const QModelIndex& idx) const {
-  const bool selected = opt.state & QStyle::State_Selected;
-  const bool hovered = (hoverIndex == idx);
-  const bool show_details = (selected || hovered) && !item->sparkline.isEmpty();
-  const QColor text_color = opt.palette.color(selected ? QPalette::HighlightedText : QPalette::Text);
+  const bool sel = opt.state & QStyle::State_Selected;
+  const bool show_details = (sel || hoverIndex == idx) && !item->sparkline.isEmpty();
+  const QColor text_c = opt.palette.color(sel ? QPalette::HighlightedText : QPalette::Text);
 
-  // 1. Sparkline (Fixed width from pixmap)
+  // Sparkline
   int sparkW = 0;
   if (!item->sparkline.image.isNull()) {
-    sparkW = item->sparkline.image.width() / item->sparkline.image.devicePixelRatio();
-    int y_off = (r.height() - (item->sparkline.image.height() / item->sparkline.image.devicePixelRatio())) / 2;
-    item->sparkline.setHighlight(selected);
-    p->drawImage(r.left(), r.top() + y_off, item->sparkline.image);
+    const auto& img = item->sparkline.image;
+    sparkW = img.width() / img.devicePixelRatio();
+    item->sparkline.setHighlight(sel);
+    p->drawImage(r.left(), r.top() + (r.height() - img.height() / img.devicePixelRatio()) / 2, img);
   }
 
-  // 2. Anchor Point
-  int lineX = r.left() + sparkW;
-
-  // 3. Right-side: Buttons
-  int btnAreaW = getButtonsWidth();
-  QRect btnRect = r;
-  btnRect.setLeft(r.right() - btnAreaW);
-
-  // 4. Calculate actual Min/Max Width (only if gate is open)
-  int detailsSpace = 0;
-  QString maxStr, minStr;
+  // Details (Min/Max)
+  int detailsW = 0;
+  int anchorX = r.left() + sparkW;
   if (show_details) {
     p->setFont(minmax_font);
-    maxStr = QString::number(item->sparkline.max_val, 'f', 1);
-    minStr = QString::number(item->sparkline.min_val, 'f', 1);
-    detailsSpace = std::max(p->fontMetrics().horizontalAdvance(maxStr),
-                            p->fontMetrics().horizontalAdvance(minStr)) +
-                   (kPadding * 2);
+    QString maxS = QString::number(item->sparkline.max_val, 'f', 1);
+    QString minS = QString::number(item->sparkline.min_val, 'f', 1);
+    detailsW = std::max(p->fontMetrics().horizontalAdvance(maxS), p->fontMetrics().horizontalAdvance(minS)) + kPadding;
+
+    p->setPen(sel ? text_c : opt.palette.mid().color());
+    p->drawLine(anchorX, r.top() + 2, anchorX, r.bottom() - 2);
+
+    p->setPen(sel ? text_c : opt.palette.placeholderText().color());
+    QRect dRect(anchorX + kPadding, r.top(), detailsW, r.height());
+    p->drawText(dRect, Qt::AlignTop, maxS);
+    p->drawText(dRect, Qt::AlignBottom, minS);
   }
 
-  // 5. Signal Value: Calculate remaining flexible space
-  QRect valRect = r;
-  valRect.setRight(btnRect.left() - kPadding);
-  valRect.setLeft(lineX + (show_details ? detailsSpace : kPadding));
+  // Value + Buttons
+  QRect valR = r;
+  valR.setLeft(anchorX + detailsW + kPadding);
+  valR.setRight(r.right() - getButtonsWidth() - kPadding);
 
-  // --- Rendering ---
-
-  // Draw Details if Gate is open
-  if (show_details) {
-    // Vertical Line
-    p->setPen(selected ? opt.palette.color(QPalette::HighlightedText) : opt.palette.color(QPalette::Mid));
-    p->drawLine(lineX, r.top() + 2, lineX, r.bottom() - 2);
-
-    // Min/Max Text
-    p->setFont(minmax_font);
-    p->setPen(selected ? text_color : opt.palette.color(QPalette::PlaceholderText));
-    // Text starts kPadding pixels after the line
-    QRect minMaxRect(lineX + kPadding, r.top(), detailsSpace - kPadding, r.height());
-    if (item->sparkline.min_val != item->sparkline.max_val) {
-      p->drawText(minMaxRect, Qt::AlignTop | Qt::AlignLeft, maxStr);
-    }
-    p->drawText(minMaxRect, Qt::AlignBottom | Qt::AlignLeft, minStr);
-  }
-
-  // Draw Signal Value (Elides automatically if valRect is squished)
   p->setFont(opt.font);
-  p->setPen(text_color);
-  if (valRect.width() > 10) {
-    QString elidedVal = opt.fontMetrics.elidedText(item->sig_val, Qt::ElideRight, valRect.width());
-    p->drawText(valRect, Qt::AlignRight | Qt::AlignVCenter, elidedVal);
-  }
+  p->setPen(text_c);
+  p->drawText(valR, Qt::AlignRight | Qt::AlignVCenter, opt.fontMetrics.elidedText(item->sig_val, Qt::ElideRight, valR.width()));
 
-  // Draw Buttons
-  if (item->type == SignalTreeModel::Item::Sig) {
-    drawButtons(p, opt, item, idx);
-  }
+  drawButtons(p, opt, item, idx);
 }
 
 QWidget* SignalTreeDelegate::createEditor(QWidget* parent, const QStyleOptionViewItem& option, const QModelIndex& index) const {
