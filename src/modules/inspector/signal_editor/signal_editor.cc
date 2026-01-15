@@ -2,6 +2,7 @@
 
 #include <QApplication>
 #include <QHBoxLayout>
+#include <QHeaderView>
 #include <QPainter>
 #include <QPushButton>
 #include <QScrollBar>
@@ -18,13 +19,15 @@ SignalEditor::SignalEditor(ChartsPanel *charts, QWidget *parent) : charts(charts
   tree->setModel(model = new SignalTreeModel(this));
   tree->setItemDelegate(delegate = new SignalTreeDelegate(this));
   tree->setMinimumHeight(300);
+  tree->header()->setSectionResizeMode(0, QHeaderView::Fixed);
+  tree->header()->setSectionResizeMode(1, QHeaderView::Stretch);
 
   QVBoxLayout *main_layout = new QVBoxLayout(this);
   main_layout->setContentsMargins(0, 0, 0, 0);
   main_layout->setSpacing(0);
   main_layout->addWidget(createToolbar());
   main_layout->addWidget(tree);
- 
+
   updateToolBar();
   setupConnections();
 
@@ -70,6 +73,7 @@ void SignalEditor::setupConnections() {
   connect(tree, &QTreeView::entered, [this](const QModelIndex &index) { emit highlight(model->getItem(index)->sig); });
   connect(model, &QAbstractItemModel::modelReset, this, &SignalEditor::rowsChanged);
   connect(model, &QAbstractItemModel::rowsRemoved, this, &SignalEditor::rowsChanged);
+  connect(model, &QAbstractItemModel::rowsInserted, this, &SignalEditor::rowsChanged);
   connect(GetDBC(), &dbc::Manager::signalAdded, this, &SignalEditor::handleSignalAdded);
   connect(GetDBC(), &dbc::Manager::signalUpdated, this, &SignalEditor::handleSignalUpdated);
   connect(tree->verticalScrollBar(), &QScrollBar::valueChanged, [this]() { updateState(); });
