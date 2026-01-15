@@ -52,6 +52,9 @@ public:
   std::vector<Item> items_;
   bool show_inactive_messages = true;
 
+signals:
+  void uiUpdateRequired();
+
 private:
   void sortItems(std::vector<MessageModel::Item> &items);
   bool match(const MessageModel::Item &id);

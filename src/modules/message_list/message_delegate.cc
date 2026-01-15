@@ -58,7 +58,7 @@ void MessageDelegate::paint(QPainter* painter, const QStyleOptionViewItem& optio
     return;
   }
 
- if (option.state & QStyle::State_Selected) {
+  if (option.state & QStyle::State_Selected) {
     painter->fillRect(option.rect, option.palette.highlight());
   }
 

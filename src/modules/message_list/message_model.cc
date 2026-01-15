@@ -219,9 +219,7 @@ void MessageModel::onSnapshotsUpdated(const std::set<MessageId> *ids, bool needs
     if (filterAndSort()) return;
   }
 
-  for (int col : {Column::FREQ, Column::COUNT, Column::DATA}) {
-    emit dataChanged(index(0, col), index(rowCount() - 1, col), {Qt::DisplayRole});
-  }
+  emit uiUpdateRequired();
 }
 
 void MessageModel::sort(int column, Qt::SortOrder order) {
