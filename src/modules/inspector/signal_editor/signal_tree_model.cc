@@ -110,21 +110,27 @@ void SignalTreeModel::fetchMore(const QModelIndex& parent) {
   endInsertRows();
 }
 
-Qt::ItemFlags SignalTreeModel::flags(const QModelIndex &index) const {
+Qt::ItemFlags SignalTreeModel::flags(const QModelIndex& index) const {
   if (!index.isValid()) return Qt::NoItemFlags;
 
-  auto item = getItem(index);
-  Qt::ItemFlags flags = Qt::ItemIsSelectable | Qt::ItemIsEnabled;
-  if (index.column() == 1 && item->children.empty()) {
-    flags |= (item->type == Item::Endian || item->type == Item::Signed) ? Qt::ItemIsUserCheckable : Qt::ItemIsEditable;
+  const Item* item = getItem(index);
+  Qt::ItemFlags f = Qt::ItemIsEnabled | Qt::ItemIsSelectable;
+
+  // Only the second column for non-parent nodes is interactive
+  if (index.column() == 1 && item->type != Item::Sig && item->type != Item::ExtraInfo) {
+    if (item->type == Item::Endian || item->type == Item::Signed) {
+      f |= Qt::ItemIsUserCheckable;
+    } else {
+      f |= Qt::ItemIsEditable;
+    }
   }
-  if (item->type == Item::Sig || item->type == Item::ExtraInfo) {
-    flags &= ~Qt::ItemIsEditable;
-  }
+
+  // Business logic: disable multiplex settings if the signal isn't multiplexed
   if (item->type == Item::MultiplexValue && item->sig->type != dbc::Signal::Type::Multiplexed) {
-    flags &= ~Qt::ItemIsEnabled;
+    f &= ~Qt::ItemIsEnabled;
   }
-  return flags;
+
+  return f;
 }
 
 int SignalTreeModel::signalRow(const dbc::Signal *sig) const {
