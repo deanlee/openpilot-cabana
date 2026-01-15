@@ -244,11 +244,10 @@ QRect SignalTreeDelegate::getButtonRect(const QRect& colRect, int btnIdx) const 
 }
 
 void SignalTreeDelegate::drawButtons(QPainter* p, const QStyleOptionViewItem& opt, SignalTreeModel::Item* item, const QModelIndex& idx) const {
-  auto model = static_cast<const SignalTreeModel*>(idx.model());
   SignalEditor* view = qobject_cast<SignalEditor*>(parent());
-  if (!view || !view->charts) return;
+  if (!view) return;
 
-  bool chart_opened = view->charts->hasSignal(model->msg_id, item->sig);
+  bool chart_opened = idx.data(IsChartedRole).toBool();
 
   auto drawBtn = [&](int btnIdx, const QString& iconName, bool active) {
     QRect rect = getButtonRect(opt.rect, btnIdx);
@@ -297,8 +296,7 @@ bool SignalTreeDelegate::helpEvent(QHelpEvent* event, QAbstractItemView* view, c
     SignalEditor* sigView = qobject_cast<SignalEditor*>(view->parentWidget());
     if (sigView) {
       if (btnIdx == 1) {  // Plot Button
-        auto model = static_cast<const SignalTreeModel*>(index.model());
-        bool opened = sigView->charts->hasSignal(model->msg_id, item->sig);
+        bool opened = index.data(IsChartedRole).toBool();
         QToolTip::showText(event->globalPos(), opened ? tr("Close Plot") : tr("Show Plot\nSHIFT click to add to previous opened plot"), view);
       } else {  // Remove Button
         QToolTip::showText(event->globalPos(), tr("Remove Signal"), view);
@@ -359,7 +357,7 @@ bool SignalTreeDelegate::editorEvent(QEvent* event, QAbstractItemModel* model, c
       SignalEditor* view = static_cast<SignalEditor*>(parent());
       MessageId msg_id = static_cast<SignalTreeModel*>(model)->msg_id;
       if (btn == 1) {
-        bool opened = view->charts->hasSignal(msg_id, item->sig);
+        bool opened = index.data(IsChartedRole).toBool();
         emit view->showChart(msg_id, item->sig, !opened, e->modifiers() & Qt::ShiftModifier);
       } else {
         UndoStack::push(new RemoveSigCommand(msg_id, item->sig));

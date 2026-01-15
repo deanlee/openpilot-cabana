@@ -13,10 +13,10 @@
 #include "modules/settings/settings.h"
 #include "modules/system/stream_manager.h"
 
-SignalEditor::SignalEditor(ChartsPanel *charts, QWidget *parent) : charts(charts), QFrame(parent) {
+SignalEditor::SignalEditor(ChartsPanel *charts, QWidget *parent) : QFrame(parent) {
   setFrameStyle(QFrame::StyledPanel | QFrame::Plain);
   tree = new SignalTree(this);
-  tree->setModel(model = new SignalTreeModel(this));
+  tree->setModel(model = new SignalTreeModel(charts, this));
   tree->setItemDelegate(delegate = new SignalTreeDelegate(this));
   tree->setMinimumHeight(300);
   tree->header()->setSectionResizeMode(0, QHeaderView::Fixed);
@@ -29,7 +29,7 @@ SignalEditor::SignalEditor(ChartsPanel *charts, QWidget *parent) : charts(charts
   main_layout->addWidget(tree);
 
   updateToolBar();
-  setupConnections();
+  setupConnections(charts);
 
   setWhatsThis(tr(R"(
     <b>Signal view</b><br />
@@ -65,19 +65,25 @@ QWidget *SignalEditor::createToolbar() {
   return toolbar;
 }
 
-void SignalEditor::setupConnections() {
+void SignalEditor::setupConnections(ChartsPanel *charts) {
   connect(filter_edit, &QLineEdit::textEdited, model, &SignalTreeModel::setFilter);
   connect(sparkline_range_slider, &QSlider::valueChanged, this, &SignalEditor::setSparklineRange);
   connect(collapse_btn, &QPushButton::clicked, tree, &QTreeView::collapseAll);
-  connect(tree, &SignalTree::highlightRequested, this, &SignalEditor::highlight);
   connect(model, &QAbstractItemModel::modelReset, this, &SignalEditor::rowsChanged);
   connect(model, &QAbstractItemModel::rowsRemoved, this, &SignalEditor::rowsChanged);
   connect(model, &QAbstractItemModel::rowsInserted, this, &SignalEditor::rowsChanged);
   connect(GetDBC(), &dbc::Manager::signalAdded, this, &SignalEditor::handleSignalAdded);
   connect(GetDBC(), &dbc::Manager::signalUpdated, this, &SignalEditor::handleSignalUpdated);
+  connect(tree, &SignalTree::highlightRequested, this, &SignalEditor::highlight);
   connect(tree->verticalScrollBar(), &QScrollBar::valueChanged, [this]() { updateState(); });
   connect(tree->verticalScrollBar(), &QScrollBar::rangeChanged, [this]() { updateState(); });
   connect(&StreamManager::instance(), &StreamManager::snapshotsUpdated, this, &SignalEditor::updateState);
+  connect(charts, &ChartsPanel::seriesChanged, model, [this]() {
+    int lastRow = model->rowCount() - 1;
+    if (lastRow >= 0) {
+      emit model->dataChanged(model->index(0, 0), model->index(lastRow, 1), {IsChartedRole});
+    }
+  });
 }
 
 void SignalEditor::setMessage(const MessageId &id) {

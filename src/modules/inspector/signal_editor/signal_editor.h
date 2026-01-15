@@ -32,7 +32,7 @@ signals:
 
 private:
   QWidget *createToolbar();
-  void setupConnections();
+  void setupConnections(ChartsPanel *charts);
   void rowsChanged();
   void resizeEvent(QResizeEvent* event) override;
   void updateToolBar();
@@ -48,7 +48,6 @@ private:
   QLabel *sparkline_label;
   QSlider *sparkline_range_slider;
   QLineEdit *filter_edit;
-  ChartsPanel *charts;
   QLabel *signal_count_lb;
   SignalTreeDelegate *delegate;
   ToolButton *collapse_btn;
