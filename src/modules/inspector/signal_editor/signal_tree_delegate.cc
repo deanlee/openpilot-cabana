@@ -329,6 +329,16 @@ bool SignalTreeDelegate::editorEvent(QEvent* event, QAbstractItemModel* model, c
 
   QMouseEvent* e = static_cast<QMouseEvent*>(event);
 
+  // Handle Leave Event
+  if (event->type() == QEvent::Leave) {
+    if (hoverIndex.isValid()) {
+      hoverIndex = QModelIndex();
+      hoverButton = -1;
+      const_cast<QWidget*>(option.widget)->update();
+    }
+    return false;
+  }
+
   // 1. Hover Logic
   if (event->type() == QEvent::MouseMove) {
     int btn = (index.column() == 1 && item->type == SignalTreeModel::Item::Sig) ? buttonAt(e->pos(), option.rect) : -1;
@@ -361,10 +371,10 @@ bool SignalTreeDelegate::editorEvent(QEvent* event, QAbstractItemModel* model, c
   return QStyledItemDelegate::editorEvent(event, model, option, index);
 }
 
-void SignalTreeDelegate::clearHoverState() {
-  hoverIndex = QModelIndex();
-  hoverButton = -1;
-}
+// void SignalTreeDelegate::clearHoverState() {
+//   hoverIndex = QModelIndex();
+//   hoverButton = -1;
+// }
 
 int SignalTreeDelegate::nameColumnWidth(const dbc::Signal* sig) const {
   // Use the default font for the name text, and label_font for badges

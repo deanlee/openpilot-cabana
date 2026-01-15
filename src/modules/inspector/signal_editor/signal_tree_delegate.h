@@ -22,7 +22,7 @@ public:
   void setModelData(QWidget *editor, QAbstractItemModel *model, const QModelIndex &index) const override;
   bool editorEvent(QEvent *event, QAbstractItemModel *model, const QStyleOptionViewItem &option, const QModelIndex &index) override;
   bool helpEvent(QHelpEvent *event, QAbstractItemView *view, const QStyleOptionViewItem &option, const QModelIndex &index) override;
-  void clearHoverState();
+  // void clearHoverState();
   int nameColumnWidth(const dbc::Signal* sig) const;
   inline int signalRowHeight() const { return kBtnSize + 4; }
   inline int getButtonsWidth() const {

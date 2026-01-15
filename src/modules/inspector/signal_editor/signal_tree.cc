@@ -24,20 +24,20 @@ void SignalTree::dataChanged(const QModelIndex& topLeft, const QModelIndex& bott
 
 void SignalTree::leaveEvent(QEvent* event) {
   emit static_cast<SignalEditor*>(parentWidget())->highlight(nullptr);
-  if (auto d = (SignalTreeDelegate*)(itemDelegate())) {
-    d->clearHoverState();
-    viewport()->update();
-  }
+  // if (auto d = (SignalTreeDelegate*)(itemDelegate())) {
+  //   // d->clearHoverState();
+  //   viewport()->update();
+  // }
   QTreeView::leaveEvent(event);
 }
 
 void SignalTree::mouseMoveEvent(QMouseEvent* event) {
   QTreeView::mouseMoveEvent(event);
-  QModelIndex idx = indexAt(event->pos());
-  if (!idx.isValid()) {
-    if (auto d = (SignalTreeDelegate*)(itemDelegate())) {
-      d->clearHoverState();
-      viewport()->update();
-    }
-  }
+  // QModelIndex idx = indexAt(event->pos());
+  // if (!idx.isValid()) {
+  //   if (auto d = (SignalTreeDelegate*)(itemDelegate())) {
+  //     // d->clearHoverState();
+  //     viewport()->update();
+  //   }
+  // }
 }
