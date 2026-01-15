@@ -49,23 +49,24 @@ BinaryView::BinaryView(QWidget *parent) : QTableView(parent) {
 }
 
 void BinaryView::addShortcuts() {
-  // Delete (x, backspace, delete)
-  QShortcut *shortcut_delete_x = new QShortcut(QKeySequence(Qt::Key_X), this);
-  QShortcut *shortcut_delete_backspace = new QShortcut(QKeySequence(Qt::Key_Backspace), this);
-  QShortcut *shortcut_delete_delete = new QShortcut(QKeySequence(Qt::Key_Delete), this);
-  connect(shortcut_delete_delete, &QShortcut::activated, shortcut_delete_x, &QShortcut::activated);
-  connect(shortcut_delete_backspace, &QShortcut::activated, shortcut_delete_x, &QShortcut::activated);
-  connect(shortcut_delete_x, &QShortcut::activated, [=]{
-    if (hovered_sig != nullptr) {
+  auto bindKeys = [this](const QList<Qt::Key>& keys, auto&& func) {
+    for (auto key : keys) {
+      QShortcut *s = new QShortcut(QKeySequence(key), this);
+      connect(s, &QShortcut::activated, this, func);
+    }
+  };
+
+  // Delete Signal (x, backspace, delete)
+  bindKeys({Qt::Key_X, Qt::Key_Backspace, Qt::Key_Delete}, [this] {
+    if (hovered_sig) {
       UndoStack::push(new RemoveSigCommand(model->msg_id, hovered_sig));
       hovered_sig = nullptr;
     }
   });
 
   // Change endianness (e)
-  QShortcut *shortcut_endian = new QShortcut(QKeySequence(Qt::Key_E), this);
-  connect(shortcut_endian, &QShortcut::activated, [=]{
-    if (hovered_sig != nullptr) {
+  bindKeys({Qt::Key_E}, [this] {
+    if (hovered_sig) {
       dbc::Signal s = *hovered_sig;
       s.is_little_endian = !s.is_little_endian;
       emit editSignal(hovered_sig, s);
@@ -73,9 +74,8 @@ void BinaryView::addShortcuts() {
   });
 
   // Change signedness (s)
-  QShortcut *shortcut_sign = new QShortcut(QKeySequence(Qt::Key_S), this);
-  connect(shortcut_sign, &QShortcut::activated, [=]{
-    if (hovered_sig != nullptr) {
+  bindKeys({Qt::Key_S}, [this] {
+    if (hovered_sig) {
       dbc::Signal s = *hovered_sig;
       s.is_signed = !s.is_signed;
       emit editSignal(hovered_sig, s);
@@ -83,15 +83,8 @@ void BinaryView::addShortcuts() {
   });
 
   // Open chart (c, p, g)
-  QShortcut *shortcut_plot = new QShortcut(QKeySequence(Qt::Key_P), this);
-  QShortcut *shortcut_plot_g = new QShortcut(QKeySequence(Qt::Key_G), this);
-  QShortcut *shortcut_plot_c = new QShortcut(QKeySequence(Qt::Key_C), this);
-  connect(shortcut_plot_g, &QShortcut::activated, shortcut_plot, &QShortcut::activated);
-  connect(shortcut_plot_c, &QShortcut::activated, shortcut_plot, &QShortcut::activated);
-  connect(shortcut_plot, &QShortcut::activated, [=]{
-    if (hovered_sig != nullptr) {
-      emit showChart(model->msg_id, hovered_sig, true, false);
-    }
+  bindKeys({Qt::Key_P, Qt::Key_G, Qt::Key_C}, [this] {
+    if (hovered_sig) emit showChart(model->msg_id, hovered_sig, true, false);
   });
 }
 
