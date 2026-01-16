@@ -33,10 +33,9 @@ public:
   int rowCount(const QModelIndex &parent = QModelIndex()) const override { return items_.size(); }
   void sort(int column, Qt::SortOrder order = Qt::AscendingOrder) override;
   void setFilterStrings(const QMap<int, QString> &filters);
-  void showInactivemessages(bool show);
+  void setInactiveMessagesVisible(bool show);
   void onSnapshotsUpdated(const std::set<MessageId> *ids, bool needs_rebuild);
-  inline void resetState() { filterAndSort(); }
-  bool filterAndSort();
+  bool rebuild();
 
   struct Item {
     MessageId id;
@@ -50,7 +49,7 @@ public:
     }
   };
   std::vector<Item> items_;
-  bool show_inactive_messages = true;
+  bool show_inactive_ = true;
 
 signals:
   void uiUpdateRequired();

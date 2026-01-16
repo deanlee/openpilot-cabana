@@ -52,8 +52,8 @@ void MessageList::setupConnections() {
   connect(view->horizontalScrollBar(), &QScrollBar::valueChanged, header, &MessageHeader::updateHeaderPositions);
   connect(&StreamManager::instance(), &StreamManager::snapshotsUpdated, model, &MessageModel::onSnapshotsUpdated);
   connect(&StreamManager::instance(), &StreamManager::streamChanged, this, &MessageList::resetState);
-  connect(GetDBC(), &dbc::Manager::DBCFileChanged, model, &MessageModel::resetState);
-  connect(UndoStack::instance(), &QUndoStack::indexChanged, model, &MessageModel::resetState);
+  connect(GetDBC(), &dbc::Manager::DBCFileChanged, model, &MessageModel::rebuild);
+  connect(UndoStack::instance(), &QUndoStack::indexChanged, model, &MessageModel::rebuild);
   connect(view->selectionModel(), &QItemSelectionModel::currentChanged, this, &MessageList::handleSelectionChanged);
   connect(model, &MessageModel::uiUpdateRequired, view->viewport(), qOverload<>(&QWidget::update));
   connect(model, &MessageModel::modelReset, [this]() {
@@ -104,7 +104,7 @@ void MessageList::resetState() {
     view->selectionModel()->clearSelection();
     view->selectionModel()->clearCurrentIndex();
   }
-  model->resetState();
+  model->rebuild();
 
   suppress_clear->setText(tr("Clear"));
   suppress_clear->setEnabled(false);
@@ -173,9 +173,9 @@ void MessageList::menuAboutToShow() {
   action->setCheckable(true);
   action->setChecked(settings.multiple_lines_hex);
 
-  action = menu->addAction(tr("Show inactive Messages"), model, &MessageModel::showInactivemessages);
+  action = menu->addAction(tr("Show inactive Messages"), model, &MessageModel::setInactiveMessagesVisible);
   action->setCheckable(true);
-  action->setChecked(model->show_inactive_messages);
+  action->setChecked(model->show_inactive_);
 }
 
 void MessageList::setMultiLineBytes(bool multi) {

@@ -73,12 +73,12 @@ QVariant MessageModel::data(const QModelIndex &index, int role) const {
 
 void MessageModel::setFilterStrings(const QMap<int, QString> &filters) {
   filters_ = filters;
-  filterAndSort();
+  rebuild();
 }
 
-void MessageModel::showInactivemessages(bool show) {
-  show_inactive_messages = show;
-  filterAndSort();
+void MessageModel::setInactiveMessagesVisible(bool show) {
+  show_inactive_ = show;
+  rebuild();
 }
 
 void MessageModel::sortItems(std::vector<MessageModel::Item> &items) {
@@ -162,7 +162,7 @@ bool MessageModel::match(const MessageModel::Item &item) {
   return match;
 }
 
-bool MessageModel::filterAndSort() {
+bool MessageModel::rebuild() {
   const auto& snapshots = StreamManager::stream()->snapshots();
   const auto &dbc_messages = GetDBC()->getMessages();
 
@@ -192,13 +192,13 @@ bool MessageModel::filterAndSort() {
   auto *dbc = GetDBC();
   for (const auto& [id, data] : snapshots) {
     snapshot_addrs.insert(id.address);
-    if (show_inactive_messages || (data && data->is_active)) {
+    if (show_inactive_ || (data && data->is_active)) {
       processItem(id, dbc->msg(id), data.get());
     }
   }
 
   // Process DBC placeholders (only if address not on live bus)
-  if (show_inactive_messages) {
+  if (show_inactive_) {
     for (const auto& [address, msg] : dbc_messages) {
       if (snapshot_addrs.find(address) == snapshot_addrs.end()) {
         processItem(MessageId{INVALID_SOURCE, address}, &msg, nullptr);
@@ -221,7 +221,7 @@ void MessageModel::onSnapshotsUpdated(const std::set<MessageId> *ids, bool needs
   if (needs_rebuild || ((filters_.count(Column::FREQ) || filters_.count(Column::COUNT) || filters_.count(Column::DATA)) &&
                       ++sort_threshold_ == settings.fps)) {
     sort_threshold_ = 0;
-    if (filterAndSort()) return;
+    if (rebuild()) return;
   }
 
   emit uiUpdateRequired();
@@ -231,6 +231,8 @@ void MessageModel::sort(int column, Qt::SortOrder order) {
   if (column != Column::DATA) {
     sort_column = column;
     sort_order = order;
-    filterAndSort();
+    emit layoutAboutToBeChanged();
+    sortItems(items_);
+    emit layoutChanged();
   }
 }
