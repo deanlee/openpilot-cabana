@@ -40,7 +40,6 @@ ChartsPanel::ChartsPanel(QWidget *parent) : QFrame(parent) {
   align_timer->setSingleShot(true);
   setupConnections();
 
-  qApp->installEventFilter(this);
   setWhatsThis(tr(R"(
     <b>Chart View</b><br />
     <b>Click</b>: Click to seek to a corresponding time.<br />
@@ -314,33 +313,6 @@ void ChartsPanel::handleChartDrop(ChartView* chart, ChartView* after) {
   updateLayout(true);
   tab_manager_->updateLabels();
   chart->startAnimation();
-}
-
-bool ChartsPanel::eventFilter(QObject *o, QEvent *e) {
-  if (!value_tip_visible_) return false;
-
-  if (e->type() == QEvent::MouseMove) {
-    bool on_tip = qobject_cast<TipLabel *>(o) != nullptr;
-    auto global_pos = static_cast<QMouseEvent *>(e)->globalPos();
-
-    for (const auto &c : charts) {
-      auto local_pos = c->mapFromGlobal(global_pos);
-      if (c->chart()->plotArea().contains(local_pos)) {
-        if (on_tip) {
-          showValueTip(c->secondsAtPoint(local_pos));
-        }
-        return false;
-      }
-    }
-
-    showValueTip(-1);
-  } else if (e->type() == QEvent::Wheel) {
-    if (auto tip = qobject_cast<TipLabel *>(o)) {
-      // Forward the event to the parent widget
-      QCoreApplication::sendEvent(tip->parentWidget(), e);
-    }
-  }
-  return false;
 }
 
 bool ChartsPanel::event(QEvent *event) {

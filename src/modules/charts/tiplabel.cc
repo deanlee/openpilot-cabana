@@ -11,8 +11,12 @@
 #include "utils/util.h"
 
 TipLabel::TipLabel(QWidget *parent) : QLabel(parent, Qt::ToolTip | Qt::FramelessWindowHint) {
+  setWindowFlags(windowFlags() | Qt::WindowTransparentForInput);
+
   setAttribute(Qt::WA_ShowWithoutActivating);
   setAttribute(Qt::WA_TransparentForMouseEvents);
+
+  setAttribute(Qt::WA_NoSystemBackground);
 
   setForegroundRole(QPalette::ToolTipText);
   setBackgroundRole(QPalette::ToolTipBase);

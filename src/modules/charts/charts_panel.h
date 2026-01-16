@@ -55,7 +55,6 @@ class ChartsPanel : public QFrame {
   void updateLayout(bool force = false);
   void settingChanged();
   void showValueTip(double sec);
-  bool eventFilter(QObject* obj, QEvent* event) override;
   ChartView* findChart(const MessageId& id, const dbc::Signal* sig);
 
   // --- UI Components ---

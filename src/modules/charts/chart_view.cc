@@ -40,6 +40,7 @@ ChartView::ChartView(const std::pair<double, double>& x_range, ChartsPanel* pare
   chart_->setTheme(utils::isDarkTheme() ? QChart::QChart::ChartThemeDark : QChart::ChartThemeLight);
 
   tip_label = new TipLabel(this);
+
   signal_value_font.setPointSize(9);
 
   setupConnections();
