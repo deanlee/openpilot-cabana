@@ -31,13 +31,13 @@ void ChartsContainer::dropEvent(QDropEvent *event) {
     auto w = getDropAfter(event->pos());
     auto chart = qobject_cast<ChartView *>(event->source());
     if (w != chart) {
-      for (auto &[_, list] : charts_widget->tab_charts) {
+      for (auto &list: charts_widget->tab_manager_->tab_charts_) {
         list.removeOne(chart);
       }
       int to = w ? charts_widget->currentCharts().indexOf(w) + 1 : 0;
       charts_widget->currentCharts().insert(to, chart);
       charts_widget->updateLayout(true);
-      charts_widget->updateTabBar();
+      charts_widget->tab_manager_->updateLabels();
       event->acceptProposedAction();
       chart->startAnimation();
     }

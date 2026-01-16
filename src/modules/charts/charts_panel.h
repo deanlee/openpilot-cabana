@@ -9,6 +9,7 @@
 
 #include "charts_container.h"
 #include "components/charts_toolbar.h"
+#include "components/charts_tab_manager.h"
 #include "core/dbc/dbc_manager.h"
 #include "core/streams/abstract_stream.h"
 #include "modules/system/stream_manager.h"
@@ -43,7 +44,6 @@ signals:
   void showTip(double seconds);
 
 private:
-  void setupTabBar(QVBoxLayout *main_layout);
   void setupConnections();
   QSize minimumSizeHint() const override;
   bool event(QEvent *event) override;
@@ -51,6 +51,7 @@ private:
   void newChart();
   ChartView *createChart(int pos = 0);
   void removeChart(ChartView *chart);
+  void removeCharts(QList<ChartView*> charts_to_remove);
   void splitChart(ChartView *src_view);
   QRect chartVisibleRect(ChartView *chart);
   void eventsMerged(const MessageEventsMap &new_events);
@@ -58,21 +59,17 @@ private:
   void startAutoScroll();
   void stopAutoScroll();
   void doAutoScroll();
-  void updateTabBar();
   void setMaxChartRange(int value);
   void updateLayout(bool force = false);
   void settingChanged();
   void showValueTip(double sec);
   bool eventFilter(QObject *obj, QEvent *event) override;
-  void newTab();
-  void removeTab(int index);
-  inline QList<ChartView *> &currentCharts() { return tab_charts[tabbar->tabData(tabbar->currentIndex()).toInt()]; }
+  inline QList<ChartView *> &currentCharts() { return tab_manager_->currentCharts(); }
   ChartView *findChart(const MessageId &id, const dbc::Signal *sig);
 
-  ChartsToolBar *toolbar;
   QList<ChartView *> charts;
-  std::unordered_map<int, QList<ChartView *>> tab_charts;
-  TabBar *tabbar;
+  ChartsToolBar *toolbar;
+  ChartsTabManager *tab_manager_;
   ChartsContainer *charts_container;
   QScrollArea *charts_scroll;
   uint32_t max_chart_range = 0;

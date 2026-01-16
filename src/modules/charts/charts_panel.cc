@@ -22,7 +22,8 @@ ChartsPanel::ChartsPanel(QWidget *parent) : QFrame(parent) {
   toolbar = new ChartsToolBar(this);
   main_layout->addWidget(toolbar);
 
-  setupTabBar(main_layout);
+  tab_manager_ = new ChartsTabManager(this);
+  main_layout->addWidget(tab_manager_->tabbar_);
 
   // charts
   charts_container = new ChartsContainer(this);
@@ -45,7 +46,6 @@ ChartsPanel::ChartsPanel(QWidget *parent) : QFrame(parent) {
   align_timer->setSingleShot(true);
   setupConnections();
 
-  newTab();
   qApp->installEventFilter(this);
   setWhatsThis(tr(R"(
     <b>Chart View</b><br />
@@ -54,17 +54,6 @@ ChartsPanel::ChartsPanel(QWidget *parent) : QFrame(parent) {
     <b>Shift + Drag</b>: Scrub through the chart to view values.<br />
     <b>Right Mouse</b>: Open the context menu.<br />
   )"));
-}
-
-void ChartsPanel::setupTabBar(QVBoxLayout *main_layout) {
-  tabbar = new TabBar(this);
-  tabbar->setAutoHide(true);
-  tabbar->setExpanding(false);
-  tabbar->setDrawBase(true);
-  tabbar->setAcceptDrops(true);
-  tabbar->setChangeCurrentOnDrag(true);
-  tabbar->setUsesScrollButtons(true);
-  main_layout->addWidget(tabbar);
 }
 
 void ChartsPanel::setupConnections() {
@@ -78,41 +67,15 @@ void ChartsPanel::setupConnections() {
   connect(toolbar, &ChartsToolBar::rangeChanged, this, &ChartsPanel::setMaxChartRange);
   connect(toolbar->new_plot_btn, &QToolButton::clicked, this, &ChartsPanel::newChart);
   connect(toolbar->remove_all_btn, &QToolButton::clicked, this, &ChartsPanel::removeAll);
-  connect(toolbar->new_tab_btn, &QToolButton::clicked, this, &ChartsPanel::newTab);
+  connect(toolbar->new_tab_btn, &QToolButton::clicked, tab_manager_, &ChartsTabManager::addTab);
   connect(toolbar->dock_btn, &QToolButton::clicked, this, &ChartsPanel::toggleChartsDocking);
   connect(toolbar, &ChartsToolBar::columnCountChanged, this, &ChartsPanel::setColumnCount);
   connect(toolbar, &ChartsToolBar::seriesTypeChanged, this, &ChartsPanel::settingChanged);
   connect(&settings, &Settings::changed, this, &ChartsPanel::settingChanged);
-  connect(this, &ChartsPanel::seriesChanged, this, &ChartsPanel::updateTabBar);
-  connect(tabbar, &QTabBar::tabCloseRequested, this, &ChartsPanel::removeTab);
-  connect(tabbar, &QTabBar::currentChanged, [this](int index) {
-    if (index != -1) updateLayout(true);
-  });
-}
 
-void ChartsPanel::newTab() {
-  static int tab_unique_id = 0;
-  int idx = tabbar->addTab("");
-  tabbar->setTabData(idx, tab_unique_id++);
-  tabbar->setCurrentIndex(idx);
-  updateTabBar();
-}
-
-void ChartsPanel::removeTab(int index) {
-  int id = tabbar->tabData(index).toInt();
-  for (auto &c : tab_charts[id]) {
-    removeChart(c);
-  }
-  tab_charts.erase(id);
-  tabbar->removeTab(index);
-  updateTabBar();
-}
-
-void ChartsPanel::updateTabBar() {
-  for (int i = 0; i < tabbar->count(); ++i) {
-    const auto &charts_in_tab = tab_charts[tabbar->tabData(i).toInt()];
-    tabbar->setTabText(i, QString("Tab %1 (%2)").arg(i + 1).arg(charts_in_tab.count()));
-  }
+  connect(this, &ChartsPanel::seriesChanged, tab_manager_, &ChartsTabManager::updateLabels);
+  connect(tab_manager_, &ChartsTabManager::tabAboutToBeRemoved, this, &ChartsPanel::removeCharts);
+  connect(tab_manager_, &ChartsTabManager::currentTabChanged, this, [this]() { updateLayout(true); });
 }
 
 void ChartsPanel::eventsMerged(const MessageEventsMap &new_events) {
@@ -126,7 +89,6 @@ void ChartsPanel::timeRangeChanged(const std::optional<std::pair<double, double>
   toolbar->updateState(charts.size());
   updateState();
 }
-
 
 QRect ChartsPanel::chartVisibleRect(ChartView *chart) {
   const QRect visible_rect(-charts_container->pos(), charts_scroll->viewport()->size());
@@ -205,7 +167,7 @@ ChartView *ChartsPanel::createChart(int pos) {
   connect(chart, &ChartView::axisYLabelWidthChanged, align_timer, qOverload<>(&QTimer::start));
   pos = std::clamp(pos, 0, charts.size());
   charts.insert(pos, chart);
-  currentCharts().insert(pos, chart);
+  tab_manager_->addChartToCurrentTab(chart);
   updateLayout(true);
   toolbar->updateState(charts.size());
   return chart;
@@ -373,11 +335,10 @@ void ChartsPanel::newChart() {
   }
 }
 
-void ChartsPanel::removeChart(ChartView *chart) {
-  charts.removeOne(chart);
-  chart->deleteLater();
-  for (auto &[_, list] : tab_charts) {
-    list.removeOne(chart);
+void ChartsPanel::removeCharts(QList<ChartView*> charts_to_remove) {
+  for (auto chart : charts_to_remove) {
+    charts.removeOne(chart);
+    chart->deleteLater();
   }
   toolbar->updateState(charts.size());
   updateLayout(true);
@@ -385,20 +346,28 @@ void ChartsPanel::removeChart(ChartView *chart) {
   emit seriesChanged();
 }
 
-void ChartsPanel::removeAll() {
-  while (tabbar->count() > 1) {
-    tabbar->removeTab(1);
-  }
-  tab_charts.clear();
+void ChartsPanel::removeChart(ChartView *chart) {
+  charts.removeOne(chart);
+  chart->deleteLater();
+  tab_manager_->removeChart(chart);
+  toolbar->updateState(charts.size());
+  updateLayout(true);
+  alignCharts();
+  emit seriesChanged();
+}
 
+void ChartsPanel::removeAll() {
   if (!charts.isEmpty()) {
     for (auto c : charts) {
-      delete c;
+      c->deleteLater();
     }
     charts.clear();
     emit seriesChanged();
   }
+
+  tab_manager_->clear();
   toolbar->zoomReset();
+  toolbar->updateState(0);
   updateLayout(true);
 }
 
