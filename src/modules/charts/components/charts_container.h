@@ -5,7 +5,6 @@
 #include <QGridLayout>
 #include <QWidget>
 
-class ChartsPanel;
 class ChartView;
 
 class ChartsContainer : public QWidget {
@@ -18,15 +17,18 @@ class ChartsContainer : public QWidget {
  signals:
   void chartDropped(ChartView* chart, ChartView* after);
 
- protected:
+ private:
+  void resizeEvent(QResizeEvent* event) override;
   void dragEnterEvent(QDragEnterEvent* event) override;
   void dragLeaveEvent(QDragLeaveEvent* event) override;
   void dropEvent(QDropEvent* event) override;
   void updateDropIndicator(const QPoint& pt);
   void paintEvent(QPaintEvent* ev) override;
+  int calculateOptimalColumns() const;
+  void reflowLayout();
 
- public:
   QGridLayout* grid_layout_;
   QPoint drop_indictor_pos;
   int current_column_count_ = -1;
+  QList<ChartView*> active_charts_;
 };

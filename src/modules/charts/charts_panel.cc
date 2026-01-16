@@ -346,9 +346,6 @@ bool ChartsPanel::eventFilter(QObject *o, QEvent *e) {
 bool ChartsPanel::event(QEvent *event) {
   bool back_button = false;
   switch (event->type()) {
-    case QEvent::Resize:
-      updateLayout();
-      break;
     case QEvent::MouseButtonPress:
       back_button = static_cast<QMouseEvent *>(event)->button() == Qt::BackButton;
       break;
