@@ -4,16 +4,12 @@
 
 #include <QApplication>
 #include <QFutureSynchronizer>
-#include <QMenu>
 #include <QScrollBar>
-#include <QToolBar>
 #include <QtConcurrent>
 
 #include "chart_view.h"
 #include "modules/settings/settings.h"
 #include "modules/system/stream_manager.h"
-
-const int MAX_COLUMN_COUNT = 4;
 
 ChartsPanel::ChartsPanel(QWidget *parent) : QFrame(parent) {
   align_timer = new QTimer(this);
@@ -23,7 +19,9 @@ ChartsPanel::ChartsPanel(QWidget *parent) : QFrame(parent) {
   main_layout->setContentsMargins(0, 0, 0, 0);
   main_layout->setSpacing(0);
 
-  setupToolbar(main_layout);
+  toolbar = new ChartsToolBar(this);
+  main_layout->addWidget(toolbar);
+
   setupTabBar(main_layout);
 
   // charts
@@ -43,13 +41,10 @@ ChartsPanel::ChartsPanel(QWidget *parent) : QFrame(parent) {
   max_chart_range = std::clamp(settings.chart_range, 1, settings.max_cached_minutes * 60);
   auto min_sec = StreamManager::stream()->minSeconds();
   display_range = std::make_pair(min_sec, min_sec + max_chart_range);
-  range_slider->setValue(max_chart_range);
-  updateToolBar();
 
   align_timer->setSingleShot(true);
   setupConnections();
 
-  setIsDocked(true);
   newTab();
   qApp->installEventFilter(this);
   setWhatsThis(tr(R"(
@@ -59,68 +54,6 @@ ChartsPanel::ChartsPanel(QWidget *parent) : QFrame(parent) {
     <b>Shift + Drag</b>: Scrub through the chart to view values.<br />
     <b>Right Mouse</b>: Open the context menu.<br />
   )"));
-}
-
-void ChartsPanel::setupToolbar(QVBoxLayout *main_layout) {
-  toolbar = new QToolBar(tr("Charts"), this);
-  int icon_size = style()->pixelMetric(QStyle::PM_SmallIconSize);
-  toolbar->setIconSize({icon_size, icon_size});
-
-  new_plot_btn = new ToolButton("plus", tr("New Chart"));
-  new_tab_btn = new ToolButton("layer-plus", tr("New Tab"));
-  toolbar->addWidget(new_plot_btn);
-  toolbar->addWidget(new_tab_btn);
-  toolbar->addWidget(title_label = new QLabel());
-  title_label->setContentsMargins(0, 0, style()->pixelMetric(QStyle::PM_LayoutHorizontalSpacing), 0);
-
-  auto chart_type_action = toolbar->addAction("");
-  QMenu* chart_type_menu = new QMenu(this);
-  auto types = std::array{tr("Line"), tr("Step"), tr("Scatter")};
-  for (int i = 0; i < types.size(); ++i) {
-    QString type_text = types[i];
-    chart_type_menu->addAction(type_text, this, [=]() {
-      settings.chart_series_type = i;
-      chart_type_action->setText("Type: " + type_text);
-      settingChanged();
-    });
-  }
-  chart_type_action->setText("Type: " + types[settings.chart_series_type]);
-  chart_type_action->setMenu(chart_type_menu);
-  qobject_cast<QToolButton*>(toolbar->widgetForAction(chart_type_action))->setPopupMode(QToolButton::InstantPopup);
-
-  QMenu* menu = new QMenu(this);
-  for (int i = 0; i < MAX_COLUMN_COUNT; ++i) {
-    menu->addAction(tr("%1").arg(i + 1), [=]() { setColumnCount(i + 1); });
-  }
-  columns_action = toolbar->addAction("");
-  columns_action->setMenu(menu);
-  qobject_cast<QToolButton*>(toolbar->widgetForAction(columns_action))->setPopupMode(QToolButton::InstantPopup);
-
-  QWidget* spacer = new QWidget(this);
-  spacer->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Preferred);
-  toolbar->addWidget(spacer);
-
-  range_lb_action = toolbar->addWidget(range_lb = new QLabel(this));
-  range_slider = new LogSlider(1000, Qt::Horizontal, this);
-  range_slider->setFixedWidth(150 * qApp->devicePixelRatio());
-  range_slider->setToolTip(tr("Set the chart range"));
-  range_slider->setRange(1, settings.max_cached_minutes * 60);
-  range_slider->setSingleStep(1);
-  range_slider->setPageStep(60);  // 1 min
-  range_slider_action = toolbar->addWidget(range_slider);
-
-  // zoom controls
-  zoom_undo_stack = new QUndoStack(this);
-  toolbar->addAction(undo_zoom_action = zoom_undo_stack->createUndoAction(this));
-  undo_zoom_action->setIcon(utils::icon("undo-2"));
-  toolbar->addAction(redo_zoom_action = zoom_undo_stack->createRedoAction(this));
-  redo_zoom_action->setIcon(utils::icon("redo-2"));
-  reset_zoom_action = toolbar->addWidget(reset_zoom_btn = new ToolButton("refresh-ccw", tr("Reset Zoom")));
-  reset_zoom_btn->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
-
-  toolbar->addWidget(remove_all_btn = new ToolButton("eraser", tr("Remove all charts")));
-  toolbar->addWidget(dock_btn = new ToolButton("external-link"));
-  main_layout->addWidget(toolbar);
 }
 
 void ChartsPanel::setupTabBar(QVBoxLayout *main_layout) {
@@ -142,18 +75,19 @@ void ChartsPanel::setupConnections() {
   connect(&StreamManager::instance(), &StreamManager::snapshotsUpdated, this, &ChartsPanel::updateState);
   connect(&StreamManager::instance(), &StreamManager::seeking, this, &ChartsPanel::updateState);
   connect(&StreamManager::instance(), &StreamManager::timeRangeChanged, this, &ChartsPanel::timeRangeChanged);
-  connect(range_slider, &QSlider::valueChanged, this, &ChartsPanel::setMaxChartRange);
-  connect(new_plot_btn, &QToolButton::clicked, this, &ChartsPanel::newChart);
-  connect(remove_all_btn, &QToolButton::clicked, this, &ChartsPanel::removeAll);
-  connect(reset_zoom_btn, &QToolButton::clicked, this, &ChartsPanel::zoomReset);
+  connect(toolbar, &ChartsToolBar::rangeChanged, this, &ChartsPanel::setMaxChartRange);
+  connect(toolbar->new_plot_btn, &QToolButton::clicked, this, &ChartsPanel::newChart);
+  connect(toolbar->remove_all_btn, &QToolButton::clicked, this, &ChartsPanel::removeAll);
+  connect(toolbar->new_tab_btn, &QToolButton::clicked, this, &ChartsPanel::newTab);
+  connect(toolbar->dock_btn, &QToolButton::clicked, this, &ChartsPanel::toggleChartsDocking);
+  connect(toolbar, &ChartsToolBar::columnCountChanged, this, &ChartsPanel::setColumnCount);
+  connect(toolbar, &ChartsToolBar::seriesTypeChanged, this, &ChartsPanel::settingChanged);
   connect(&settings, &Settings::changed, this, &ChartsPanel::settingChanged);
-  connect(new_tab_btn, &QToolButton::clicked, this, &ChartsPanel::newTab);
   connect(this, &ChartsPanel::seriesChanged, this, &ChartsPanel::updateTabBar);
   connect(tabbar, &QTabBar::tabCloseRequested, this, &ChartsPanel::removeTab);
   connect(tabbar, &QTabBar::currentChanged, [this](int index) {
     if (index != -1) updateLayout(true);
   });
-  connect(dock_btn, &QToolButton::clicked, this, &ChartsPanel::toggleChartsDocking);
 }
 
 void ChartsPanel::newTab() {
@@ -189,14 +123,10 @@ void ChartsPanel::eventsMerged(const MessageEventsMap &new_events) {
 }
 
 void ChartsPanel::timeRangeChanged(const std::optional<std::pair<double, double>> &time_range) {
-  updateToolBar();
+  toolbar->updateState(charts.size());
   updateState();
 }
 
-void ChartsPanel::zoomReset() {
-  StreamManager::stream()->setTimeRange(std::nullopt);
-  zoom_undo_stack->clear();
-}
 
 QRect ChartsPanel::chartVisibleRect(ChartView *chart) {
   const QRect visible_rect(-charts_container->pos(), charts_scroll->viewport()->size());
@@ -236,44 +166,16 @@ void ChartsPanel::updateState() {
 }
 
 void ChartsPanel::setMaxChartRange(int value) {
-  max_chart_range = settings.chart_range = range_slider->value();
-  updateToolBar();
+  max_chart_range = value;
   updateState();
-}
-
-void ChartsPanel::setIsDocked(bool docked) {
-  is_docked = docked;
-  dock_btn->setIcon(is_docked ? "external-link" : "dock");
-  dock_btn->setToolTip(is_docked ? tr("Float the charts window") : tr("Dock the charts window"));
-}
-
-void ChartsPanel::updateToolBar() {
-  title_label->setText(tr("Charts: %1").arg(charts.size()));
-  columns_action->setText(tr("Columns: %1").arg(column_count));
-  range_lb->setText(utils::formatSeconds(max_chart_range));
-
-  auto *can = StreamManager::stream();
-  bool is_zoomed = can->timeRange().has_value();
-  range_lb_action->setVisible(!is_zoomed);
-  range_slider_action->setVisible(!is_zoomed);
-  undo_zoom_action->setVisible(is_zoomed);
-  redo_zoom_action->setVisible(is_zoomed);
-  reset_zoom_action->setVisible(is_zoomed);
-  reset_zoom_btn->setText(is_zoomed ? tr("%1-%2").arg(can->timeRange()->first, 0, 'f', 2).arg(can->timeRange()->second, 0, 'f', 2) : "");
-  remove_all_btn->setEnabled(!charts.isEmpty());
 }
 
 void ChartsPanel::settingChanged() {
   if (std::exchange(current_theme, settings.theme) != current_theme) {
-    undo_zoom_action->setIcon(utils::icon("undo-2"));
-    redo_zoom_action->setIcon(utils::icon("redo-2"));
     auto theme = utils::isDarkTheme() ? QChart::QChart::ChartThemeDark : QChart::ChartThemeLight;
     for (auto c : charts) {
       c->chart_->setTheme(theme);
     }
-  }
-  if (range_slider->maximum() != settings.max_cached_minutes * 60) {
-    range_slider->setRange(1, settings.max_cached_minutes * 60);
   }
   for (auto c : charts) {
     c->setFixedHeight(settings.chart_height);
@@ -305,7 +207,7 @@ ChartView *ChartsPanel::createChart(int pos) {
   charts.insert(pos, chart);
   currentCharts().insert(pos, chart);
   updateLayout(true);
-  updateToolBar();
+  toolbar->updateState(charts.size());
   return chart;
 }
 
@@ -374,8 +276,7 @@ void ChartsPanel::restoreChartsFromIds(const QStringList& chart_ids) {
 void ChartsPanel::setColumnCount(int n) {
   n = std::clamp(n, 1, MAX_COLUMN_COUNT);
   if (column_count != n) {
-    column_count = settings.chart_column_count = n;
-    updateToolBar();
+    column_count = n;
     updateLayout();
   }
 }
@@ -387,8 +288,8 @@ void ChartsPanel::updateLayout(bool force) {
     if ((n * CHART_MIN_WIDTH + (n - 1) * charts_layout->horizontalSpacing()) < charts_layout->geometry().width()) break;
   }
 
-  bool show_column_cb = n > 1;
-  columns_action->setVisible(show_column_cb);
+  // bool show_column_cb = n > 1;
+  // columns_action->setVisible(show_column_cb);
 
   n = std::min(column_count, n);
   auto &current_charts = currentCharts();
@@ -478,7 +379,7 @@ void ChartsPanel::removeChart(ChartView *chart) {
   for (auto &[_, list] : tab_charts) {
     list.removeOne(chart);
   }
-  updateToolBar();
+  toolbar->updateState(charts.size());
   updateLayout(true);
   alignCharts();
   emit seriesChanged();
@@ -497,7 +398,7 @@ void ChartsPanel::removeAll() {
     charts.clear();
     emit seriesChanged();
   }
-  zoomReset();
+  toolbar->zoomReset();
   updateLayout(true);
 }
 
@@ -559,7 +460,7 @@ bool ChartsPanel::event(QEvent *event) {
   }
 
   if (back_button) {
-    zoom_undo_stack->undo();
+    toolbar->zoom_undo_stack->undo();
     return true;  // Return true since the event has been handled
   }
   return QFrame::event(event);

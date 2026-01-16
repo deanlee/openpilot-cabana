@@ -139,8 +139,8 @@ void ChartView::contextMenuEvent(QContextMenuEvent *event) {
   QMenu context_menu(this);
   context_menu.addActions(chart_->menu_->actions());
   context_menu.addSeparator();
-  context_menu.addAction(charts_widget->undo_zoom_action);
-  context_menu.addAction(charts_widget->redo_zoom_action);
+  context_menu.addAction(charts_widget->toolbar->undo_zoom_action);
+  context_menu.addAction(charts_widget->toolbar->redo_zoom_action);
   context_menu.addSeparator();
   context_menu.addAction(chart_->close_act_);
   context_menu.exec(event->globalPos());
@@ -182,13 +182,13 @@ void ChartView::mouseReleaseEvent(QMouseEvent *event) {
       // no rubber dragged, seek to mouse position
       can->seekTo(min);
     } else if (rubber->width() > 10 && (max - min) > MIN_ZOOM_SECONDS) {
-      charts_widget->zoom_undo_stack->push(new ZoomCommand({min, max}));
+      charts_widget->toolbar->zoom_undo_stack->push(new ZoomCommand({min, max}));
     } else {
       viewport()->update();
     }
     event->accept();
   } else if (event->button() == Qt::RightButton) {
-    charts_widget->zoom_undo_stack->undo();
+    charts_widget->toolbar->zoom_undo_stack->undo();
     event->accept();
   } else {
     QGraphicsView::mouseReleaseEvent(event);
