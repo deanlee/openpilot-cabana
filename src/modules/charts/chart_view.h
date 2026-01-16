@@ -8,6 +8,10 @@
 #include "tiplabel.h"
 
 using namespace QtCharts;
+
+const QString CHART_MIME_TYPE = "application/x-cabanachartview";
+const int CHART_MIN_WIDTH = 300;
+
 class ChartsPanel;
 
 class ChartView : public QChartView {
@@ -19,6 +23,7 @@ public:
   void showTip(double sec);
   void hideTip();
   void startAnimation();
+  inline Chart* chart() const { return chart_; }
   double secondsAtPoint(const QPointF &pt) const { return chart()->mapToValue(pt).x(); }
 
 signals:

@@ -1,40 +1,33 @@
 #include "charts_panel.h"
 
-#include <algorithm>
-
 #include <QApplication>
 #include <QFutureSynchronizer>
-#include <QScrollBar>
+#include <QVBoxLayout>
 #include <QtConcurrent>
 
 #include "chart_view.h"
+#include "components/charts_container.h"
 #include "modules/settings/settings.h"
 #include "modules/system/stream_manager.h"
 
 ChartsPanel::ChartsPanel(QWidget *parent) : QFrame(parent) {
-  align_timer = new QTimer(this);
-  auto_scroll_timer = new QTimer(this);
   setFrameStyle(QFrame::StyledPanel | QFrame::Plain);
-  QVBoxLayout *main_layout = new QVBoxLayout(this);
+  auto *main_layout = new QVBoxLayout(this);
   main_layout->setContentsMargins(0, 0, 0, 0);
   main_layout->setSpacing(0);
 
   toolbar = new ChartsToolBar(this);
-  main_layout->addWidget(toolbar);
-
   tab_manager_ = new ChartsTabManager(this);
-  main_layout->addWidget(tab_manager_->tabbar_);
 
-  // charts
-  charts_container = new ChartsContainer(this);
-  charts_container->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
-  charts_scroll = new QScrollArea(this);
-  charts_scroll->viewport()->setBackgroundRole(QPalette::Base);
-  charts_scroll->setFrameStyle(QFrame::NoFrame);
-  charts_scroll->setWidgetResizable(true);
-  charts_scroll->setWidget(charts_container);
-  charts_scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-  main_layout->addWidget(charts_scroll);
+  stack_ = new QStackedWidget(this);
+  scroll_area_ = new ChartsScrollArea(this);
+  empty_view_ = new ChartsEmptyView(this);
+  stack_->addWidget(empty_view_);
+  stack_->addWidget(scroll_area_);
+
+  main_layout->addWidget(toolbar);
+  main_layout->addWidget(tab_manager_->tabbar_);
+  main_layout->addWidget(stack_);
 
   // init settings
   current_theme = settings.theme;
@@ -43,6 +36,7 @@ ChartsPanel::ChartsPanel(QWidget *parent) : QFrame(parent) {
   auto min_sec = StreamManager::stream()->minSeconds();
   display_range = std::make_pair(min_sec, min_sec + max_chart_range);
 
+  align_timer = new QTimer(this);
   align_timer->setSingleShot(true);
   setupConnections();
 
@@ -58,7 +52,6 @@ ChartsPanel::ChartsPanel(QWidget *parent) : QFrame(parent) {
 
 void ChartsPanel::setupConnections() {
   connect(align_timer, &QTimer::timeout, this, &ChartsPanel::alignCharts);
-  connect(auto_scroll_timer, &QTimer::timeout, this, &ChartsPanel::doAutoScroll);
   connect(GetDBC(), &dbc::Manager::DBCFileChanged, this, &ChartsPanel::removeAll);
   connect(&StreamManager::instance(), &StreamManager::eventsMerged, this, &ChartsPanel::eventsMerged);
   connect(&StreamManager::instance(), &StreamManager::snapshotsUpdated, this, &ChartsPanel::updateState);
@@ -76,6 +69,8 @@ void ChartsPanel::setupConnections() {
   connect(this, &ChartsPanel::seriesChanged, tab_manager_, &ChartsTabManager::updateLabels);
   connect(tab_manager_, &ChartsTabManager::tabAboutToBeRemoved, this, &ChartsPanel::removeCharts);
   connect(tab_manager_, &ChartsTabManager::currentTabChanged, this, [this]() { updateLayout(true); });
+
+  connect(scroll_area_->container_, &ChartsContainer::chartDropped, this, &ChartsPanel::handleChartDrop);
 }
 
 void ChartsPanel::eventsMerged(const MessageEventsMap &new_events) {
@@ -90,23 +85,21 @@ void ChartsPanel::timeRangeChanged(const std::optional<std::pair<double, double>
   updateState();
 }
 
-QRect ChartsPanel::chartVisibleRect(ChartView *chart) {
-  const QRect visible_rect(-charts_container->pos(), charts_scroll->viewport()->size());
-  return chart->rect().intersected(QRect(chart->mapFrom(charts_container, visible_rect.topLeft()), visible_rect.size()));
-}
-
 void ChartsPanel::showValueTip(double sec) {
   emit showTip(sec);
   if (sec < 0 && !value_tip_visible_) return;
 
   value_tip_visible_ = sec >= 0;
-  for (auto c : currentCharts()) {
+  for (auto c : tab_manager_->currentCharts()) {
     value_tip_visible_ ? c->showTip(sec) : c->hideTip();
   }
 }
 
 void ChartsPanel::updateState() {
-  if (charts.isEmpty()) return;
+  bool has_charts = !charts.isEmpty();
+  stack_->setCurrentIndex(has_charts ? 1 : 0);
+
+  if (!has_charts) return;
 
   auto *can = StreamManager::stream();
   const auto &time_range = can->timeRange();
@@ -176,7 +169,7 @@ ChartView *ChartsPanel::createChart(int pos) {
 void ChartsPanel::showChart(const MessageId &id, const dbc::Signal *sig, bool show, bool merge) {
   ChartView *c = findChart(id, sig);
   if (show && !c) {
-    c = merge && currentCharts().size() > 0 ? currentCharts().front() : createChart();
+    c = merge && tab_manager_->currentCharts().size() > 0 ? tab_manager_->currentCharts().front() : createChart();
     c->chart_->addSignal(id, sig);
     updateState();
   } else if (!show && c) {
@@ -244,78 +237,7 @@ void ChartsPanel::setColumnCount(int n) {
 }
 
 void ChartsPanel::updateLayout(bool force) {
-  auto charts_layout = charts_container->charts_layout;
-  int n = MAX_COLUMN_COUNT;
-  for (; n > 1; --n) {
-    if ((n * CHART_MIN_WIDTH + (n - 1) * charts_layout->horizontalSpacing()) < charts_layout->geometry().width()) break;
-  }
-
-  // bool show_column_cb = n > 1;
-  // columns_action->setVisible(show_column_cb);
-
-  n = std::min(column_count, n);
-  auto &current_charts = currentCharts();
-  if ((current_charts.size() != charts_layout->count() || n != current_column_count) || force) {
-    current_column_count = n;
-    charts_container->setUpdatesEnabled(false);
-    for (auto c : charts) {
-      c->setVisible(false);
-    }
-    for (int i = 0; i < current_charts.size(); ++i) {
-      charts_layout->addWidget(current_charts[i], i / n, i % n);
-      if (current_charts[i]->chart_->sigs_.empty()) {
-        // the chart will be resized after add signal. delay setVisible to reduce flicker.
-        QTimer::singleShot(0, current_charts[i], [c = current_charts[i]]() { c->setVisible(true); });
-      } else {
-        current_charts[i]->setVisible(true);
-      }
-    }
-    charts_container->setUpdatesEnabled(true);
-  }
-
-  if (charts.isEmpty()) {
-    charts_container->setMinimumHeight(charts_scroll->viewport()->height());
-  } else {
-    charts_container->setMinimumHeight(0);
-  }
-  charts_container->update();
-}
-
-void ChartsPanel::startAutoScroll() {
-  auto_scroll_timer->start(50);
-}
-
-void ChartsPanel::stopAutoScroll() {
-  auto_scroll_timer->stop();
-  auto_scroll_count = 0;
-}
-
-void ChartsPanel::doAutoScroll() {
-  QScrollBar *scroll = charts_scroll->verticalScrollBar();
-  if (auto_scroll_count < scroll->pageStep()) {
-    ++auto_scroll_count;
-  }
-
-  int value = scroll->value();
-  QPoint pos = charts_scroll->viewport()->mapFromGlobal(QCursor::pos());
-  QRect area = charts_scroll->viewport()->rect();
-
-  if (pos.y() - area.top() < settings.chart_height / 2) {
-    scroll->setValue(value - auto_scroll_count);
-  } else if (area.bottom() - pos.y() < settings.chart_height / 2) {
-    scroll->setValue(value + auto_scroll_count);
-  }
-  bool vertical_unchanged = value == scroll->value();
-  if (vertical_unchanged) {
-    stopAutoScroll();
-  } else {
-    // mouseMoveEvent to updates the drag-selection rectangle
-    const QPoint globalPos = charts_scroll->viewport()->mapToGlobal(pos);
-    const QPoint windowPos = charts_scroll->window()->mapFromGlobal(globalPos);
-    QMouseEvent mm(QEvent::MouseMove, pos, windowPos, globalPos,
-                   Qt::NoButton, Qt::LeftButton, Qt::NoModifier, Qt::MouseEventSynthesizedByQt);
-    QApplication::sendEvent(charts_scroll->viewport(), &mm);
-  }
+  scroll_area_->container_->updateLayout(tab_manager_->currentCharts(), column_count, force);
 }
 
 QSize ChartsPanel::minimumSizeHint() const {
@@ -380,6 +302,18 @@ void ChartsPanel::alignCharts() {
   for (auto c : charts) {
     c->chart_->alignLayout(plot_left);
   }
+}
+
+void ChartsPanel::handleChartDrop(ChartView* chart, ChartView* after) {
+  for (auto& list : tab_manager_->tab_charts_) {
+    list.removeOne(chart);
+  }
+  auto &current_charts = tab_manager_->currentCharts();
+  int to = after ? current_charts.indexOf(after) + 1 : 0;
+  current_charts.insert(to, chart);
+  updateLayout(true);
+  tab_manager_->updateLabels();
+  chart->startAnimation();
 }
 
 bool ChartsPanel::eventFilter(QObject *o, QEvent *e) {

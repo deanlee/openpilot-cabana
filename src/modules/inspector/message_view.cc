@@ -1,10 +1,12 @@
 #include "message_view.h"
 
+#include <QHBoxLayout>
 #include <QLabel>
 #include <QMenu>
 #include <QRadioButton>
 #include <QSplitter>
 #include <QToolBar>
+#include <QVBoxLayout>
 
 #include "core/commands/commands.h"
 #include "mainwin.h"

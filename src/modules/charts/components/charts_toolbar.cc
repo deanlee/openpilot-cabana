@@ -1,6 +1,7 @@
 #include "charts_toolbar.h"
 
 #include <QApplication>
+#include <QHBoxLayout>
 #include <QMenu>
 #include <QStyle>
 
@@ -8,8 +9,9 @@
 
 ChartsToolBar::ChartsToolBar(QWidget* parent) : QToolBar(tr("Charts"), parent) {
   setMovable(false);
+  setFloatable(false);
 
-  int icon_size = style()->pixelMetric(QStyle::PM_SmallIconSize);
+  const int icon_size = style()->pixelMetric(QStyle::PM_SmallIconSize);
   setIconSize({icon_size, icon_size});
 
   createActions();
@@ -30,9 +32,6 @@ ChartsToolBar::ChartsToolBar(QWidget* parent) : QToolBar(tr("Charts"), parent) {
 }
 
 void ChartsToolBar::createActions() {
-  int icon_size = style()->pixelMetric(QStyle::PM_SmallIconSize);
-  setIconSize({icon_size, icon_size});
-
   new_plot_btn = new ToolButton("plus", tr("New Chart"));
   new_tab_btn = new ToolButton("layer-plus", tr("New Tab"));
   addWidget(new_plot_btn);
@@ -110,21 +109,21 @@ void ChartsToolBar::updateState(int chart_count) {
   columns_action->setText(tr("Columns: %1").arg(settings.chart_column_count));
   range_lb->setText(utils::formatSeconds(settings.chart_range));
 
-  auto* can = StreamManager::stream();
-  bool is_zoomed = can->timeRange().has_value();
+  auto* stream = StreamManager::stream();
+  bool is_zoomed = stream->timeRange().has_value();
   range_lb_action->setVisible(!is_zoomed);
   range_slider_action->setVisible(!is_zoomed);
   undo_zoom_action->setVisible(is_zoomed);
   redo_zoom_action->setVisible(is_zoomed);
   reset_zoom_action->setVisible(is_zoomed);
-  reset_zoom_btn->setText(is_zoomed ? tr("%1-%2").arg(can->timeRange()->first, 0, 'f', 2).arg(can->timeRange()->second, 0, 'f', 2) : "");
+  reset_zoom_btn->setText(is_zoomed ? tr("%1-%2").arg(stream->timeRange()->first, 0, 'f', 2).arg(stream->timeRange()->second, 0, 'f', 2) : "");
   remove_all_btn->setEnabled(chart_count > 0);
 }
 
 void ChartsToolBar::setIsDocked(bool docked) {
   is_docked = docked;
   dock_btn->setIcon(is_docked ? "external-link" : "dock");
-  dock_btn->setToolTip(is_docked ? tr("Float the charts window") : tr("Dock the charts window"));
+  dock_btn->setToolTip(is_docked ? tr("Float Window") : tr("Dock Window"));
 }
 
 void ChartsToolBar::zoomReset() {
@@ -135,7 +134,8 @@ void ChartsToolBar::zoomReset() {
 void ChartsToolBar::settingChanged() {
   undo_zoom_action->setIcon(utils::icon("undo-2"));
   redo_zoom_action->setIcon(utils::icon("redo-2"));
-  if (range_slider->maximum() != settings.max_cached_minutes * 60) {
-    range_slider->setRange(1, settings.max_cached_minutes * 60);
+  int max_sec = settings.max_cached_minutes * 60;
+  if (range_slider->maximum() != max_sec) {
+    range_slider->setRange(1, max_sec);
   }
 }

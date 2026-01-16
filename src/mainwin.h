@@ -14,6 +14,7 @@
 #include "widgets/status_bar.h"
 
 class DbcController;
+class QVBoxLayout;
 
 class MainWindow : public QMainWindow {
   Q_OBJECT

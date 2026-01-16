@@ -151,7 +151,7 @@ void ChartView::mousePressEvent(QMouseEvent *event) {
     QMimeData *mimeData = new QMimeData;
     mimeData->setData(CHART_MIME_TYPE, QByteArray::number((qulonglong)this));
     QPixmap px = grab().scaledToWidth(CHART_MIN_WIDTH * viewport()->devicePixelRatio(), Qt::SmoothTransformation);
-    charts_widget->stopAutoScroll();
+    charts_widget->scroll_area_->stopAutoScroll();
     QDrag *drag = new QDrag(this);
     drag->setMimeData(mimeData);
     drag->setPixmap(getDropPixmap(px));
@@ -235,8 +235,15 @@ void ChartView::mouseMoveEvent(QMouseEvent *ev) {
 }
 
 void ChartView::showTip(double sec) {
+  ChartsScrollArea* scroll_area = charts_widget->scroll_area_;
+
+  QWidget* container = scroll_area->widget();
+  QRect visible_in_container(-container->pos(), scroll_area->viewport()->size());
+
+  QRect chart_visible_rect = rect().intersected(
+      QRect(mapFrom(container, visible_in_container.topLeft()), visible_in_container.size()));
   QRect tip_area(0, chart_->plotArea().top(), rect().width(), chart_->plotArea().height());
-  QRect visible_rect = charts_widget->chartVisibleRect(this).intersected(tip_area);
+  QRect visible_rect = chart_visible_rect.intersected(tip_area);
   if (visible_rect.isEmpty()) {
     tip_label->hide();
     return;
@@ -274,7 +281,7 @@ void ChartView::dragMoveEvent(QDragMoveEvent *event) {
     event->setDropAction(event->source() == this ? Qt::MoveAction : Qt::CopyAction);
     event->accept();
   }
-  charts_widget->startAutoScroll();
+  charts_widget->scroll_area_->startAutoScroll();
 }
 
 void ChartView::dropEvent(QDropEvent* event) {

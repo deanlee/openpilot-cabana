@@ -22,7 +22,9 @@ ChartsTabManager::ChartsTabManager(QWidget* parent)
 
 void ChartsTabManager::addTab() {
   int idx = tabbar_->addTab("");
-  tabbar_->setTabData(idx, next_tab_id_++);
+  int id = next_tab_id_++;
+  tabbar_->setTabData(idx, id);
+  tab_charts_[id] = QList<ChartView*>();  // Initialize map entry
   tabbar_->setCurrentIndex(idx);
   updateLabels();
 }
@@ -50,11 +52,12 @@ void ChartsTabManager::addChartToCurrentTab(ChartView* chart) {
 }
 
 void ChartsTabManager::removeChart(ChartView* chart) {
-  // Search and remove from all tabs (safety)
-  for (auto it = tab_charts_.begin(); it != tab_charts_.end(); ++it) {
-    it.value().removeOne(chart);
+  for (auto& list : tab_charts_) {
+    if (list.removeOne(chart)) {
+      updateLabels();
+      break;
+    }
   }
-  updateLabels();
 }
 
 void ChartsTabManager::clear() {
