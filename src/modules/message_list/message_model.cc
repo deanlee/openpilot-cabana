@@ -11,8 +11,13 @@
 static const QString NA = QStringLiteral("N/A");
 static const QString DASH = QString::fromUtf8("\xE2\x80\x94");
 
-inline QString toHexString(int value) {
-  return "0x" + QString::number(value, 16).toUpper().rightJustified(2, '0');
+static const QString getHexCached(uint32_t addr) {
+  static QHash<uint32_t, QString> cache;
+  auto it = cache.find(addr);
+  if (it == cache.end()) {
+    it = cache.insert(addr, "0x" + QString::number(addr, 16).toUpper().rightJustified(2, '0'));
+  }
+  return *it;
 }
 
 MessageModel::MessageModel(QObject *parent) : QAbstractTableModel(parent) {
@@ -59,8 +64,8 @@ QVariant MessageModel::data(const QModelIndex &index, int role) const {
     return item.name;
   }
 
-  if (role == Qt::ForegroundRole && !(item.data && item.data->is_active)) {
-    return disabled_color_;
+  if (role == Qt::ForegroundRole) {
+    return (item.data && item.data->is_active) ? QVariant() : disabled_color_;
   }
 
   return {};
@@ -175,7 +180,7 @@ bool MessageModel::filterAndSort() {
         .name = msg ? msg->name : DASH,
         .node = msg ? msg->transmitter : QString(),
         .data = data,
-        .address_hex = toHexString(id.address),
+        .address_hex = getHexCached(id.address),
     };
 
     if (match(item)) {
