@@ -334,7 +334,7 @@ void MainWindow::toggleChartsDocking() {
     charts_layout_->insertWidget(0, charts_panel, 1);
     floating_window_->deleteLater();
     floating_window_ = nullptr;
-    charts_panel->setIsDocked(true);
+    charts_panel->getToolBar()->setIsDocked(true);
   } else {
     // Float the charts widget in a separate window
     floating_window_ = new QWidget(this, Qt::Window);
@@ -343,7 +343,7 @@ void MainWindow::toggleChartsDocking() {
     floating_window_->layout()->addWidget(charts_panel);
     floating_window_->installEventFilter(this);
     floating_window_->showMaximized();
-    charts_panel->setIsDocked(false);
+    charts_panel->getToolBar()->setIsDocked(false);
   }
 }
 

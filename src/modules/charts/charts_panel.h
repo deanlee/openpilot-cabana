@@ -1,16 +1,14 @@
 #pragma once
 
 #include <QLabel>
-#include <QSet>
 #include <QScrollArea>
+#include <QSet>
 #include <QTimer>
-#include <QToolBar>
-#include <QUndoCommand>
-#include <QUndoStack>
 #include <unordered_map>
 #include <utility>
 
 #include "charts_container.h"
+#include "components/charts_toolbar.h"
 #include "core/dbc/dbc_manager.h"
 #include "core/streams/abstract_stream.h"
 #include "modules/system/stream_manager.h"
@@ -32,13 +30,12 @@ public:
   inline bool hasSignal(const MessageId &id, const dbc::Signal *sig) { return findChart(id, sig) != nullptr; }
   QStringList serializeChartIds() const;
   void restoreChartsFromIds(const QStringList &chart_ids);
- 
+  inline ChartsToolBar *getToolBar() const { return toolbar; }
 
 public slots:
   void setColumnCount(int n);
   void removeAll();
   void timeRangeChanged(const std::optional<std::pair<double, double>> &time_range);
-  void setIsDocked(bool dock);
 
 signals:
   void toggleChartsDocking();
@@ -46,7 +43,6 @@ signals:
   void showTip(double seconds);
 
 private:
-  void setupToolbar(QVBoxLayout *main_layout);
   void setupTabBar(QVBoxLayout *main_layout);
   void setupConnections();
   QSize minimumSizeHint() const override;
@@ -59,11 +55,9 @@ private:
   QRect chartVisibleRect(ChartView *chart);
   void eventsMerged(const MessageEventsMap &new_events);
   void updateState();
-  void zoomReset();
   void startAutoScroll();
   void stopAutoScroll();
   void doAutoScroll();
-  void updateToolBar();
   void updateTabBar();
   void setMaxChartRange(int value);
   void updateLayout(bool force = false);
@@ -75,24 +69,7 @@ private:
   inline QList<ChartView *> &currentCharts() { return tab_charts[tabbar->tabData(tabbar->currentIndex()).toInt()]; }
   ChartView *findChart(const MessageId &id, const dbc::Signal *sig);
 
-  QLabel *title_label;
-  QLabel *range_lb;
-  LogSlider *range_slider;
-  QAction *range_lb_action;
-  QAction *range_slider_action;
-  bool is_docked = true;
-  ToolButton *dock_btn;
-
-  QToolBar *toolbar;
-  QAction *undo_zoom_action;
-  QAction *redo_zoom_action;
-  QAction *reset_zoom_action;
-  ToolButton *reset_zoom_btn;
-  QUndoStack *zoom_undo_stack;
-  ToolButton *new_plot_btn;
-  ToolButton *new_tab_btn;
-
-  ToolButton *remove_all_btn;
+  ChartsToolBar *toolbar;
   QList<ChartView *> charts;
   std::unordered_map<int, QList<ChartView *>> tab_charts;
   TabBar *tabbar;
@@ -100,7 +77,6 @@ private:
   QScrollArea *charts_scroll;
   uint32_t max_chart_range = 0;
   std::pair<double, double> display_range;
-  QAction *columns_action;
   int column_count = 1;
   int current_column_count = 0;
   int auto_scroll_count = 0;
@@ -110,15 +86,5 @@ private:
   bool value_tip_visible_ = false;
   friend class ChartView;
   friend class ChartsContainer;
-};
-
-class ZoomCommand : public QUndoCommand {
-public:
-  ZoomCommand(std::pair<double, double> range) : range(range), QUndoCommand() {
-    prev_range = StreamManager::stream()->timeRange();
-    setText(QObject::tr("Zoom to %1-%2").arg(range.first, 0, 'f', 2).arg(range.second, 0, 'f', 2));
-  }
-  void undo() override { StreamManager::stream()->setTimeRange(prev_range); }
-  void redo() override { StreamManager::stream()->setTimeRange(range); }
-  std::optional<std::pair<double, double>> prev_range, range;
+  friend class ChartsToolBar;
 };
