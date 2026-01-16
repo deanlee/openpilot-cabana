@@ -208,11 +208,18 @@ bool MessageModel::rebuild() {
 
   sortItems(new_items);
 
-  if (items_ != new_items) {
+  bool structureChanged = (items_.size() != new_items.size()) ||
+                          !std::equal(items_.begin(), items_.end(), new_items.begin(),
+                                      [](const auto& a, const auto& b) { return a.id == b.id; });
+  if (structureChanged) {
+    // IDs changed or items added/removed: Reset is necessary
     beginResetModel();
     items_ = std::move(new_items);
     endResetModel();
-    return true;
+  } else {
+    // Structure is identical: Just update the data pointers and repaint
+    items_ = std::move(new_items);
+    emit dataChanged(index(0, 0), index(rowCount() - 1, columnCount() - 1));
   }
   return false;
 }

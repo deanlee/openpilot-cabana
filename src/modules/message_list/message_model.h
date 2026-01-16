@@ -43,10 +43,6 @@ public:
     QString node;
     const MessageState* data = nullptr;
     QString address_hex;
-
-    bool operator==(const Item &other) const {
-      return id == other.id && name == other.name && node == other.node;
-    }
   };
   std::vector<Item> items_;
   bool show_inactive_ = true;
