@@ -309,13 +309,20 @@ void ChartView::resetChartCache() {
 }
 
 void ChartView::startAnimation() {
-  QGraphicsOpacityEffect *eff = new QGraphicsOpacityEffect(this);
+  auto* eff = new QGraphicsOpacityEffect(this);
   viewport()->setGraphicsEffect(eff);
-  QPropertyAnimation *a = new QPropertyAnimation(eff, "opacity");
-  a->setDuration(250);
-  a->setStartValue(0.3);
-  a->setEndValue(1);
-  a->setEasingCurve(QEasingCurve::InBack);
+
+  // Setup a fast, linear fade
+  auto* a = new QPropertyAnimation(eff, "opacity");
+  a->setDuration(150);
+  a->setStartValue(0.0);
+  a->setEndValue(1.0);
+  a->setEasingCurve(QEasingCurve::OutQuad);
+
+  connect(a, &QPropertyAnimation::finished, [this]() {
+    viewport()->setGraphicsEffect(nullptr);
+  });
+
   a->start(QPropertyAnimation::DeleteWhenStopped);
 }
 
