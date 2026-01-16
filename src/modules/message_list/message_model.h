@@ -43,6 +43,8 @@ public:
     QString node;
     const MessageState* data = nullptr;
     QString address_hex;
+    mutable float last_freq = -1.0f;
+    mutable QString freq_str;
   };
   std::vector<Item> items_;
   bool show_inactive_ = true;
@@ -53,6 +55,7 @@ signals:
 private:
   void sortItems(std::vector<MessageModel::Item> &items);
   bool match(const MessageModel::Item &id);
+  QString formatFreq(const Item &item) const;
 
   QMap<int, QString> filters_;
   int sort_column = 0;

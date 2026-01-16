@@ -34,14 +34,6 @@ QVariant MessageModel::headerData(int section, Qt::Orientation orientation, int 
 QVariant MessageModel::data(const QModelIndex &index, int role) const {
   if (!index.isValid() || index.row() >= items_.size()) return {};
 
-  auto getFreq = [](float freq) {
-    if (freq > 0) {
-      return freq >= 0.95 ? QString::number(std::nearbyint(freq)) : QString::number(freq, 'f', 2);
-    } else {
-      return DASH;
-    }
-  };
-
   const auto &item = items_[index.row()];
   if (role == Qt::DisplayRole) {
     switch (index.column()) {
@@ -49,7 +41,7 @@ QVariant MessageModel::data(const QModelIndex &index, int role) const {
       case Column::SOURCE: return item.id.source != INVALID_SOURCE ? QString::number(item.id.source) : NA;
       case Column::ADDRESS: return item.address_hex;
       case Column::NODE: return item.node;
-      case Column::FREQ: return item.data ? getFreq(item.data->freq) : NA;
+      case Column::FREQ: return formatFreq(item);
       case Column::COUNT: return item.data ? QString::number(item.data->count) : NA;
       case Column::DATA: return item.data ? "" : NA;
       default: return {};
@@ -107,6 +99,19 @@ void MessageModel::sortItems(std::vector<MessageModel::Item> &items) {
       return l_count != r_count ? l_count < r_count : l.id < r.id; }); break;
     default: break; // Default case to suppress compiler warning
   }
+}
+
+QString MessageModel::formatFreq(const Item &item) const {
+  if (!item.data) return NA;
+
+  const float f = item.data->freq;
+  if (std::abs(item.last_freq - f) > 0.01f) {
+    item.last_freq = f;
+    item.freq_str = (f <= 0.0f) ? DASH :
+                    (f >= 0.95f) ? QString::number(std::nearbyint(f)) :
+                                   QString::number(f, 'f', 2);
+  }
+  return item.freq_str;
 }
 
 static bool parseRange(const QString &filter, uint32_t value, int base = 10) {
