@@ -19,8 +19,12 @@ SignalEditor::SignalEditor(ChartsPanel *charts, QWidget *parent) : QFrame(parent
   tree->setModel(model = new SignalTreeModel(this));
   tree->setItemDelegate(delegate = new SignalTreeDelegate(this));
   tree->setMinimumHeight(300);
-  tree->header()->setSectionResizeMode(0, QHeaderView::Fixed);
-  tree->header()->setSectionResizeMode(1, QHeaderView::Stretch);
+
+  QHeaderView* header = tree->header();
+  header->setCascadingSectionResizes(false);
+  header->setStretchLastSection(true);
+  header->setSectionResizeMode(0, QHeaderView::Interactive);
+  header->setSectionResizeMode(1, QHeaderView::Stretch);
 
   QVBoxLayout *main_layout = new QVBoxLayout(this);
   main_layout->setContentsMargins(0, 0, 0, 0);
@@ -215,7 +219,11 @@ void SignalEditor::updateColumnWidths() {
   int maxAllowedWidth = std::max(150, this->width() / 3);
   int finalWidth = std::clamp(max_content_w, 150, maxAllowedWidth);
 
+  // Block signals to prevent resizeEvent recursion
+  tree->header()->blockSignals(true);
   tree->setColumnWidth(0, finalWidth);
+  tree->header()->blockSignals(false);
+
   value_column_width = tree->viewport()->width() - finalWidth;
 
   updateState();
