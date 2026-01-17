@@ -214,6 +214,32 @@ void ChartsPanel::showChart(const MessageId &id, const dbc::Signal *sig, bool sh
   }
 }
 
+void ChartsPanel::mergeCharts(ChartView* chart, ChartView* target) {
+  target->setUpdatesEnabled(false);
+
+  target->chart_->takeSignals(std::move(chart->chart_->sigs_));
+  chart->chart_->sigs_.clear();
+  removeChart(chart);
+
+  target->setUpdatesEnabled(true);
+  target->startAnimation();
+}
+
+void ChartsPanel::moveChart(ChartView* chart, ChartView* target, DropMode mode) {
+  tab_manager_->removeChart(chart);
+
+  auto& current_charts = tab_manager_->currentCharts();
+
+  int target_idx = current_charts.indexOf(target);
+  if (target_idx == -1) return;  // Safety check
+
+  int insert_at = (mode == DropMode::InsertAfter) ? target_idx + 1 : target_idx;
+  current_charts.insert(std::clamp(insert_at, 0, current_charts.size()), chart);
+
+  updateLayout(true);
+  chart->startAnimation();
+}
+
 void ChartsPanel::splitChart(ChartView* src_view) {
   auto& src_sigs = src_view->chart_->sigs_;
   if (src_sigs.size() <= 1) return;
@@ -343,28 +369,10 @@ void ChartsPanel::alignCharts() {
 
 void ChartsPanel::handleChartDrop(ChartView* chart, ChartView* target, DropMode mode) {
   if (mode == DropMode::Merge) {
-    target->chart_->takeSignals(std::move(chart->chart_->sigs_));
-    chart->chart_->sigs_.clear();
-    removeChart(chart);
-    target->startAnimation();
-    return;
+    mergeCharts(chart, target);
+  } else {
+    moveChart(chart, target, mode);
   }
-
-  for (auto& list : tab_manager_->tab_charts_) {
-    list.removeAll(chart);
-  }
-
-  auto& current_charts = tab_manager_->currentCharts();
-
-  int target_idx = current_charts.indexOf(target);
-  if (target_idx == -1) return;  // Safety check
-
-  int insert_at = (mode == DropMode::InsertAfter) ? target_idx + 1 : target_idx;
-  current_charts.insert(std::clamp(insert_at, 0, current_charts.size()), chart);
-
-  updateLayout(true);
-  tab_manager_->updateLabels();
-  chart->startAnimation();
 }
 
 bool ChartsPanel::event(QEvent *event) {
