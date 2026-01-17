@@ -22,6 +22,14 @@ Chart::Chart(QChartView* parent) : parent_(parent), QChart() {
   addAxis(axis_y_, Qt::AlignLeft);
 
   initControls();
+  setupConnections();
+}
+
+void Chart::setupConnections() {
+  connect(axis_x_, &QValueAxis::rangeChanged, this, &Chart::updateAxisY);
+  connect(axis_x_, &QValueAxis::rangeChanged, this, &Chart::resetCache);
+  connect(axis_y_, &QValueAxis::rangeChanged, this, &Chart::resetCache);
+  connect(axis_y_, &QAbstractAxis::titleTextChanged, this, &Chart::resetCache);
 }
 
 void Chart::syncUI() {
@@ -383,6 +391,8 @@ void Chart::handleSignalChange(const dbc::Signal* sig) {
     if (it->series->color() != sig->color) {
       setSeriesColor(it->series, sig->color);
     }
+    prepareData(sig);
+    updateSeries();
     syncUI();
   }
 }
@@ -396,7 +406,6 @@ void Chart::msgUpdated(MessageId id) {
 bool Chart::updateAxisXRange(double min, double max) {
   if (min != axis_x_->min() || max != axis_x_->max()) {
     axis_x_->setRange(min, max);
-    syncUI();
     return true;
   }
   return false;

@@ -55,9 +55,6 @@ void ChartView::setupConnections() {
   connect(chart_, &Chart::close, [this]() { charts_widget->removeChart(this); });
   connect(chart_, &Chart::resetCache, this, &ChartView::resetChartCache);
 
-  connect(chart_->axis_y_, &QValueAxis::rangeChanged, this, &ChartView::resetChartCache);
-  connect(chart_->axis_y_, &QAbstractAxis::titleTextChanged, this, &ChartView::resetChartCache);
-
   connect(window()->windowHandle(), &QWindow::screenChanged, this, &ChartView::resetChartCache);
 
   connect(GetDBC(), &dbc::Manager::signalRemoved, this, &ChartView::signalRemoved);
@@ -88,9 +85,7 @@ void ChartView::manageSignals() {
 
 void ChartView::updatePlot(double cur, double min, double max) {
   cur_sec = cur;
-  if (chart_->updateAxisXRange(min, max)) {
-    resetChartCache();
-  }
+  chart_->updateAxisXRange(min, max);
   viewport()->update();
 }
 

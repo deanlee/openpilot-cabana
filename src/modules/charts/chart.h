@@ -42,6 +42,7 @@ class Chart : public QChart {
 
  protected:
   void attachSeries(QXYSeries* series);
+  void setupConnections();
   void updateTitle();
   void initControls();
   void onMarkerClicked();
