@@ -7,6 +7,7 @@
 #include "core/dbc/dbc_manager.h"
 #include "core/streams/abstract_stream.h"
 #include "utils/segment_tree.h"
+#include "utils/series_bounds.h"
 
 using namespace QtCharts;
 // Define a small value of epsilon to compare double values
@@ -28,11 +29,13 @@ public:
   std::vector<QPointF> vals;
   std::vector<QPointF> step_vals;
   QPointF track_pt{};
-  SegmentTree segment_tree;
   double min = 0;
   double max = 0;
   void updateSeries(SeriesType series_type, const MessageEventsMap* msg_new_events = nullptr);
   void updateRange(double main_x, double max_x);
+
+private:
+  SeriesBounds series_bounds;
 };
 
 inline bool xLessThan(const QPointF &p, float x) { return p.x() < (x - EPSILON); }

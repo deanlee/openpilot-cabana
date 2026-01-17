@@ -176,32 +176,33 @@ void Chart::setTheme(QChart::ChartTheme theme) {
 void Chart::updateAxisY() {
   if (sigs_.empty()) return;
 
-  double min = std::numeric_limits<double>::max();
-  double max = std::numeric_limits<double>::lowest();
+ double global_min = std::numeric_limits<double>::max();
+  double global_max = std::numeric_limits<double>::lowest();
   QString unit = sigs_[0].sig->unit;
+
+  double x_min = axis_x_->min();
+  double x_max = axis_x_->max();
 
   for (auto& s : sigs_) {
     if (!s.series->isVisible()) continue;
 
-    // Only show unit when all signals have the same unit
-    if (unit != s.sig->unit) {
-      unit.clear();
-    }
+    if (unit != s.sig->unit) unit.clear();
 
-    s.updateRange(axis_x_->min(), axis_x_->max());
-    min = std::min(min, s.min);
-    max = std::max(max, s.max);
+    s.updateRange(x_min, x_max);
+    global_min = std::min(global_min, s.min);
+    global_max = std::max(global_max, s.max);
   }
-  if (min == std::numeric_limits<double>::max()) min = 0;
-  if (max == std::numeric_limits<double>::lowest()) max = 0;
+
+  // Fallback for no data
+  if (global_min > global_max) { global_min = 0; global_max = 1; }
 
   if (axis_y_->titleText() != unit) {
     axis_y_->setTitleText(unit);
-    y_label_width_ = 0;  // recalc width
+    y_label_width_ = 0; // Force recalculation of margin
   }
 
-  double delta = std::abs(max - min) < 1e-3 ? 1 : (max - min) * 0.05;
-  auto [min_y, max_y, tick_count] = getNiceAxisNumbers(min - delta, max + delta, 3);
+  double delta = std::abs(global_max - global_min) < 1e-3 ? 1 : (global_max - global_min) * 0.05;
+  auto [min_y, max_y, tick_count] = getNiceAxisNumbers(global_min - delta, global_max + delta, 3);
   if (min_y != axis_y_->min() || max_y != axis_y_->max() || y_label_width_ == 0) {
     axis_y_->setRange(min_y, max_y);
     axis_y_->setTickCount(tick_count);
