@@ -51,6 +51,8 @@ class Chart : public QChart {
   void updateSeriesPoints();
   void updateAxisY();
   QXYSeries* createSeries(SeriesType type, QColor color);
+  std::pair<double, double> calculateGlobalRange();
+  void updateYLabelWidth(double min, double max, int precision);
 
  public:
   int y_label_width_ = 0;
