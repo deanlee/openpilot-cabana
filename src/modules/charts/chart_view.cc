@@ -149,7 +149,6 @@ void ChartView::mousePressEvent(QMouseEvent *event) {
     QMimeData *mimeData = new QMimeData;
     mimeData->setData(CHART_MIME_TYPE, QByteArray::number((qulonglong)this));
     QPixmap px = grab().scaledToWidth(CHART_MIN_WIDTH * viewport()->devicePixelRatio(), Qt::SmoothTransformation);
-    charts_widget->scroll_area_->stopAutoScroll();
     QDrag *drag = new QDrag(this);
     drag->setMimeData(mimeData);
     drag->setPixmap(getDropPixmap(px));
