@@ -299,7 +299,7 @@ bool SignalTreeDelegate::editorEvent(QEvent* event, QAbstractItemModel* model, c
     int btn = (type == QEvent::Leave) ? -1 : buttonAt(e->pos(), opt.rect);
 
     if (hoverIndex != idx || hoverButton != btn) {
-      hoverIndex = (btn == -1) ? QModelIndex() : idx;
+      hoverIndex = idx;
       hoverButton = btn;
       const_cast<QWidget*>(opt.widget)->update();  // Trigger repaint
     }
