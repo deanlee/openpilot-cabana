@@ -185,8 +185,8 @@ void Chart::setTheme(QChart::ChartTheme theme) {
 void Chart::updateAxisY() {
   if (sigs_.empty()) return;
 
- double global_min = std::numeric_limits<double>::max();
-  double global_max = std::numeric_limits<double>::lowest();
+  double g_min = std::numeric_limits<double>::max();
+  double g_max = std::numeric_limits<double>::lowest();
   QString unit = sigs_[0].sig->unit;
 
   double x_min = axis_x_->min();
@@ -198,35 +198,44 @@ void Chart::updateAxisY() {
     if (unit != s.sig->unit) unit.clear();
 
     s.updateRange(x_min, x_max);
-    global_min = std::min(global_min, s.min_value);
-    global_max = std::max(global_max, s.max_value);
+    g_min = std::min(g_min, s.min_value);
+    g_max = std::max(g_max, s.max_value);
   }
 
   // Fallback for no data
-  if (global_min > global_max) { global_min = 0; global_max = 1; }
+  if (g_min > g_max) { g_min = 0; g_max = 1; }
 
   if (axis_y_->titleText() != unit) {
     axis_y_->setTitleText(unit);
     y_label_width_ = 0; // Force recalculation of margin
   }
 
-  double delta = std::abs(global_max - global_min) < 1e-3 ? 1 : (global_max - global_min) * 0.05;
-  auto [min_y, max_y, tick_count] = getNiceAxisNumbers(global_min - delta, global_max + delta, 3);
-  if (min_y != axis_y_->min() || max_y != axis_y_->max() || y_label_width_ == 0) {
-    axis_y_->setRange(min_y, max_y);
-    axis_y_->setTickCount(tick_count);
+  double delta = std::abs(g_max - g_min) < 1e-3 ? 1 : (g_max - g_min) * 0.05;
+  auto [min_y, max_y, tick_count] = getNiceAxisNumbers(g_min - delta, g_max + delta, 3);
+  bool range_changed = !qFuzzyCompare(min_y, axis_y_->min()) ||
+                       !qFuzzyCompare(max_y, axis_y_->max()) ||
+                       tick_count != axis_y_->tickCount();
 
-    int n = std::max(int(-std::floor(std::log10((max_y - min_y) / (tick_count - 1)))), 0);
-    int max_label_width = 0;
-    QFontMetrics fm(axis_y_->labelsFont());
-    for (int i = 0; i < tick_count; i++) {
-      qreal value = min_y + (i * (max_y - min_y) / (tick_count - 1));
-      max_label_width = std::max(max_label_width, fm.horizontalAdvance(QString::number(value, 'f', n)));
-    }
+  if (!range_changed && y_label_width_ != 0) return;
 
-    int title_spacing = unit.isEmpty() ? 0 : QFontMetrics(axis_y_->titleFont()).size(Qt::TextSingleLine, unit).height();
-    y_label_width_ = title_spacing + max_label_width + 15;
-    axis_y_->setLabelFormat(QString("%.%1f").arg(n));
+  axis_y_->setRange(min_y, max_y);
+  axis_y_->setTickCount(tick_count);
+
+  double step = (max_y - min_y) / std::max(1, tick_count - 1);
+  int precision = std::clamp(static_cast<int>(-std::floor(std::log10(step))), 0, 6);
+  axis_y_->setLabelFormat(QString("%.%1f").arg(precision));
+
+  int max_label_width = 0;
+  QFontMetrics fm(axis_y_->labelsFont());
+  for (int i = 0; i < tick_count; i++) {
+    qreal value = min_y + (i * (max_y - min_y) / (tick_count - 1));
+    max_label_width = std::max(max_label_width, fm.horizontalAdvance(QString::number(value, 'f', n)));
+  }
+
+  int title_spacing = unit.isEmpty() ? 0 : QFontMetrics(axis_y_->titleFont()).size(Qt::TextSingleLine, unit).height();
+  int new_width = title_spacing + max_label_width + 15;
+  if (std::abs(new_width - y_label_width_) > 2 || y_label_width_ == 0) {
+    y_label_width_ = new_width;
     emit axisYLabelWidthChanged(y_label_width_);
   }
 }
