@@ -26,7 +26,7 @@ const int AXIS_X_TOP_MARGIN = 4;
 const double MIN_ZOOM_SECONDS = 0.01; // 10ms
 
 ChartView::ChartView(const std::pair<double, double>& x_range, ChartsPanel* parent)
-    : QChartView(parent), charts_widget(parent) {
+    : QChartView(parent), charts_panel(parent) {
   setRubberBand(QChartView::HorizontalRubberBand);
   setMouseTracking(true);
   setFixedHeight(settings.chart_height);
@@ -48,11 +48,11 @@ ChartView::ChartView(const std::pair<double, double>& x_range, ChartsPanel* pare
 
 void ChartView::setupConnections() {
   connect(chart_, &Chart::axisYLabelWidthChanged, this, &ChartView::axisYLabelWidthChanged);
-  connect(chart_, &Chart::signalAdded, charts_widget, &ChartsPanel::seriesChanged);
-  connect(chart_, &Chart::signalRemoved, charts_widget, &ChartsPanel::seriesChanged);
+  connect(chart_, &Chart::signalAdded, charts_panel, &ChartsPanel::seriesChanged);
+  connect(chart_, &Chart::signalRemoved, charts_panel, &ChartsPanel::seriesChanged);
   connect(chart_, &Chart::manageSignals, this, &ChartView::manageSignals);
-  connect(chart_, &Chart::splitSeries, [this]() { charts_widget->splitChart(this); });
-  connect(chart_, &Chart::close, [this]() { charts_widget->removeChart(this); });
+  connect(chart_, &Chart::splitSeries, [this]() { charts_panel->splitChart(this); });
+  connect(chart_, &Chart::close, [this]() { charts_panel->removeChart(this); });
   connect(chart_, &Chart::resetCache, this, &ChartView::resetChartCache);
 
   connect(window()->windowHandle(), &QWindow::screenChanged, this, &ChartView::resetChartCache);
@@ -132,8 +132,8 @@ void ChartView::contextMenuEvent(QContextMenuEvent *event) {
   QMenu context_menu(this);
   context_menu.addActions(chart_->menu_->actions());
   context_menu.addSeparator();
-  context_menu.addAction(charts_widget->toolbar->undo_zoom_action);
-  context_menu.addAction(charts_widget->toolbar->redo_zoom_action);
+  context_menu.addAction(charts_panel->toolbar->undo_zoom_action);
+  context_menu.addAction(charts_panel->toolbar->redo_zoom_action);
   context_menu.addSeparator();
   context_menu.addAction(chart_->close_act_);
   context_menu.exec(event->globalPos());
@@ -167,13 +167,13 @@ void ChartView::mouseReleaseEvent(QMouseEvent *event) {
       // no rubber dragged, seek to mouse position
       can->seekTo(min);
     } else if (rubber->width() > 10 && (max - min) > MIN_ZOOM_SECONDS) {
-      charts_widget->toolbar->zoom_undo_stack->push(new ZoomCommand({min, max}));
+      charts_panel->toolbar->zoom_undo_stack->push(new ZoomCommand({min, max}));
     } else {
       viewport()->update();
     }
     event->accept();
   } else if (event->button() == Qt::RightButton) {
-    charts_widget->toolbar->zoom_undo_stack->undo();
+    charts_panel->toolbar->zoom_undo_stack->undo();
     event->accept();
   } else {
     QGraphicsView::mouseReleaseEvent(event);
@@ -202,9 +202,9 @@ void ChartView::mouseMoveEvent(QMouseEvent *ev) {
   clearTrackPoints();
 
   if (!is_zooming && plot_area.contains(ev->pos()) && isActiveWindow()) {
-    charts_widget->updateHover(secondsAtPoint(ev->pos()));
+    charts_panel->updateHover(secondsAtPoint(ev->pos()));
   } else if (tip_label->isVisible()) {
-    charts_widget->updateHover(-1);
+    charts_panel->updateHover(-1);
   }
 
   QChartView::mouseMoveEvent(ev);
