@@ -143,25 +143,33 @@ void Chart::resizeEvent(QGraphicsSceneResizeEvent* event) {
 
 void Chart::alignLayout(int left_pos, bool force) {
   if (align_to_ == left_pos && !force) return;
-
   align_to_ = left_pos;
-  qreal left, top, right, bottom;
-  layout()->getContentsMargins(&left, &top, &right, &bottom);
-  QSizeF legend_size = legend()->layout()->minimumSize();
-  legend_size.setWidth(manage_btn_proxy_->sceneBoundingRect().left() - move_icon_->sceneBoundingRect().right());
-  legend()->setGeometry({move_icon_->sceneBoundingRect().topRight(), legend_size});
 
-  // add top space for signal value
-  QFont signal_value_font;
-  signal_value_font.setPointSize(9);
-  int adjust_top = legend()->geometry().height() + QFontMetrics(signal_value_font).height() + 3;
-  adjust_top = std::max<int>(adjust_top, manage_btn_proxy_->sceneBoundingRect().height() + style()->pixelMetric(QStyle::PM_LayoutTopMargin));
-  // add right space for x-axis label
-  QSizeF x_label_size = QFontMetrics(axis_x_->labelsFont()).size(Qt::TextSingleLine, QString::number(axis_x_->max(), 'f', 2));
-  x_label_size += QSizeF{5, 5};
-  setPlotArea(rect().adjusted(left_pos + left, adjust_top + top, -x_label_size.width() / 2 - right, -x_label_size.height() - bottom));
+  const QRectF move_rect = move_icon_->sceneBoundingRect();
+  const QRectF manage_rect = manage_btn_proxy_->sceneBoundingRect();
+
+  // Stretch legend to fill the gap between the move and manage icons
+  QRectF legend_geom(move_rect.topRight(), QSize(manage_rect.left() - move_rect.right(), move_rect.height()));
+  legend()->setGeometry(legend_geom);
+
+  QFontMetrics fm_x(axis_x_->labelsFont());
+  int x_label_h = fm_x.height();
+
+  // Top padding: Legend height + Signal value height (estimated by axis font height)
+  int adjust_top = std::max((int)legend_geom.height() + x_label_h + 3,
+                            (int)manage_rect.height() + style()->pixelMetric(QStyle::PM_LayoutTopMargin));
+
+  // Right padding: Half of the last X-axis label width to prevent clipping
+  int x_label_half_w = fm_x.horizontalAdvance(QString::number(axis_x_->max(), 'f', 2)) / 2;
+
+  // Update Plot Area with adjusted margins
+  qreal l, t, r, b;
+  layout()->getContentsMargins(&l, &t, &r, &b);
+
+  // Note: 'left_pos' already includes the calculated Y-axis label width from updateAxisY
+  setPlotArea(rect().adjusted(left_pos + l, adjust_top + t, -x_label_half_w - 5 - r, -x_label_h - 5 - b));
+
   layout()->invalidate();
-
   emit resetCache();
 }
 
