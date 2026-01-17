@@ -198,8 +198,8 @@ void Chart::updateAxisY() {
     if (unit != s.sig->unit) unit.clear();
 
     s.updateRange(x_min, x_max);
-    global_min = std::min(global_min, s.min);
-    global_max = std::max(global_max, s.max);
+    global_min = std::min(global_min, s.min_value);
+    global_max = std::max(global_max, s.max_value);
   }
 
   // Fallback for no data
@@ -424,8 +424,8 @@ double Chart::getTooltipTextAt(double sec, QStringList& text_list) {
         x = std::max(x, mapToPosition(*it).x());
       }
       QString name = sigs_.size() > 1 ? s.sig->name + ": " : "";
-      QString min = s.min == std::numeric_limits<double>::max() ? "--" : QString::number(s.min);
-      QString max = s.max == std::numeric_limits<double>::lowest() ? "--" : QString::number(s.max);
+      QString min = s.min_value == std::numeric_limits<double>::max() ? "--" : QString::number(s.min_value);
+      QString max = s.max_value == std::numeric_limits<double>::lowest() ? "--" : QString::number(s.max_value);
       text_list << QString("<span style=\"color:%1;\">■ </span>%2<b>%3</b> (%4, %5)")
                        .arg(s.series->color().name(), name, value, min, max);
     }

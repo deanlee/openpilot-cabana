@@ -68,8 +68,8 @@ void ChartSignal::updateRange(double min_x, double max_x) {
   last_range_ = {min_x, max_x};
 
   if (vals.empty()) {
-    min = 0;
-    max = 0;
+    min_value = 0;
+    max_value = 0;
     return;
   }
 
@@ -82,8 +82,8 @@ void ChartSignal::updateRange(double min_x, double max_x) {
   if (l_idx <= r_idx) {
     // Hierarchical query is O(log N) for both Live and Log data
     auto node = series_bounds.query(l_idx, r_idx, vals);
-    min = node.min;
-    max = node.max;
+    min_value = node.min;
+    max_value = node.max;
   }
 }
 

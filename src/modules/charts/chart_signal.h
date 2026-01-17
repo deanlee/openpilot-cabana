@@ -29,8 +29,8 @@ public:
   std::vector<QPointF> vals;
   std::vector<QPointF> step_vals;
   QPointF track_pt{};
-  double min = 0;
-  double max = 0;
+  double min_value = 0;
+  double max_value = 0;
   void prepareData(const MessageEventsMap* msg_new_events, double min_x, double max_x);
   void updateRange(double main_x, double max_x);
   void updateSeries(SeriesType series_type);
