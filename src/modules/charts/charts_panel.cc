@@ -1,7 +1,6 @@
 #include "charts_panel.h"
 
 #include <QApplication>
-#include <QFutureSynchronizer>
 #include <QScrollBar>
 #include <QVBoxLayout>
 #include <QtConcurrent>
@@ -75,10 +74,13 @@ void ChartsPanel::setupConnections() {
 }
 
 void ChartsPanel::eventsMerged(const MessageEventsMap &new_events) {
-  QFutureSynchronizer<void> future_synchronizer;
-  for (auto c : charts) {
-    future_synchronizer.addFuture(QtConcurrent::run(c->chart_, &Chart::updateSeries, nullptr, &new_events));
-  }
+  if (charts.empty()) return;
+
+  QtConcurrent::blockingMap(charts, [&new_events](ChartView* c) {
+    if (c && c->chart_) {
+      c->chart_->updateSeries(nullptr, &new_events);
+    }
+  });
 }
 
 void ChartsPanel::timeRangeChanged(const std::optional<std::pair<double, double>> &time_range) {
