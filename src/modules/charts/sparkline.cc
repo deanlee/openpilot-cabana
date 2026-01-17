@@ -80,6 +80,12 @@ void Sparkline::updateRenderPoints(int time_range, QSize size) {
     max_val = std::max(max_val, p.value);
   }
 
+  if (min_val == max_val) {
+    // Flat line
+    min_val -= 1.0;
+    max_val += 1.0;
+  }
+
   const double y_range = std::max(max_val - min_val, 1e-6);
   const float margin = 1.0f;
   const float y_scale = ((float)height - (2.0f * margin)) / (float)y_range;
