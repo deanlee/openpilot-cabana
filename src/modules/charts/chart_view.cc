@@ -146,18 +146,7 @@ void ChartView::contextMenuEvent(QContextMenuEvent *event) {
 
 void ChartView::mousePressEvent(QMouseEvent *event) {
   if (event->button() == Qt::LeftButton && chart_->move_icon_->sceneBoundingRect().contains(event->pos())) {
-    QMimeData *mimeData = new QMimeData;
-    mimeData->setData(CHART_MIME_TYPE, QByteArray::number((qulonglong)this));
-    QPixmap px = grab().scaledToWidth(CHART_MIN_WIDTH * viewport()->devicePixelRatio(), Qt::SmoothTransformation);
-    QDrag *drag = new QDrag(this);
-    drag->setMimeData(mimeData);
-    drag->setPixmap(getDropPixmap(px));
-    drag->setHotSpot(-QPoint(5, 5));
-    drag->exec(Qt::CopyAction | Qt::MoveAction, Qt::MoveAction);
-    // Reset any drag state in the container
-    if (auto* container = qobject_cast<ChartsContainer*>(this->parentWidget())) {
-      container->resetDragState();
-    }
+    handlDragStart();
   } else if (event->button() == Qt::LeftButton && QApplication::keyboardModifiers().testFlag(Qt::ShiftModifier)) {
     // Save current playback state when scrubbing
     resume_after_scrub = !StreamManager::stream()->isPaused();
@@ -235,6 +224,23 @@ void ChartView::mouseMoveEvent(QMouseEvent *ev) {
   }
 }
 
+void ChartView::handlDragStart() {
+  QMimeData* mimeData = new QMimeData;
+  mimeData->setData(CHART_MIME_TYPE, QByteArray::number((qulonglong)this));
+  QPixmap px = grab().scaledToWidth(CHART_MIN_WIDTH * viewport()->devicePixelRatio(), Qt::SmoothTransformation);
+  QDrag* drag = new QDrag(this);
+  drag->setMimeData(mimeData);
+  drag->setPixmap(getDropPixmap(px));
+  drag->setHotSpot(-QPoint(5, 5));
+
+  drag->exec(Qt::CopyAction | Qt::MoveAction, Qt::MoveAction);
+
+  // Reset any drag state in the container
+  if (auto* container = qobject_cast<ChartsContainer*>(this->parentWidget())) {
+    container->resetDragState();
+  }
+}
+
 void ChartView::showTip(double sec, const QRect& visible_rect) {
   int tooltip_x = chart_->mapToPosition({sec, 0}).x();
 
@@ -292,28 +298,36 @@ void ChartView::startAnimation() {
   a->start(QPropertyAnimation::DeleteWhenStopped);
 }
 
-void ChartView::paintEvent(QPaintEvent *event) {
-  if (!StreamManager::stream()->liveStreaming()) {
-    if (chart_pixmap.isNull()) {
-      const qreal dpr = viewport()->devicePixelRatioF();
-      chart_pixmap = QPixmap(viewport()->size() * dpr);
-      chart_pixmap.setDevicePixelRatio(dpr);
-      QPainter p(&chart_pixmap);
-      p.setRenderHints(QPainter::Antialiasing);
-      drawBackground(&p, viewport()->rect());
-      scene()->render(&p, QRectF(0, 0, viewport()->width(), viewport()->height()),
-                      viewport()->rect());
-    }
-
-    QPainter painter(viewport());
-    painter.setRenderHints(QPainter::Antialiasing);
-    painter.drawPixmap(QPoint(), chart_pixmap);
-
-    QRectF exposed_rect = mapToScene(event->region().boundingRect()).boundingRect();
-    drawForeground(&painter, exposed_rect);
-  } else {
+void ChartView::paintEvent(QPaintEvent* event) {
+  // If live streaming, bypass the pixmap cache to ensure smooth real-time updates
+  if (StreamManager::stream()->liveStreaming()) {
     QChartView::paintEvent(event);
+    return;
   }
+
+  // Cache the background and static elements of the chart
+  if (chart_pixmap.isNull() || chart_pixmap.size() != viewport()->size() * devicePixelRatio()) {
+    updateCache();
+  }
+
+  QPainter painter(viewport());
+  painter.setRenderHints(QPainter::Antialiasing);
+  painter.drawPixmap(0, 0, chart_pixmap);
+
+  // Draw dynamic overlays (Timeline, Tooltips, Rubberband)
+  QRectF exposed_rect = mapToScene(event->region().boundingRect()).boundingRect();
+  drawForeground(&painter, exposed_rect);
+}
+
+void ChartView::updateCache() {
+  const qreal dpr = devicePixelRatio();
+  chart_pixmap = QPixmap(viewport()->size() * dpr);
+  chart_pixmap.setDevicePixelRatio(dpr);
+  chart_pixmap.fill(palette().color(QPalette::Base));
+
+  QPainter p(&chart_pixmap);
+  p.setRenderHint(QPainter::Antialiasing);
+  scene()->render(&p, QRectF(0, 0, viewport()->width(), viewport()->height()), viewport()->rect());
 }
 
 void ChartView::drawBackground(QPainter *painter, const QRectF &rect) {

@@ -50,6 +50,8 @@ private:
   void drawSignalValue(QPainter *painter);
   void drawTimeline(QPainter *painter);
   void drawRubberBandTimeRange(QPainter *painter);
+  void handlDragStart();
+  void updateCache();
   inline void clearTrackPoints() { for (auto &s : chart_->sigs_) s.track_pt = {}; }
 
   TipLabel *tip_label;
