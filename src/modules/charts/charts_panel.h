@@ -54,7 +54,8 @@ class ChartsPanel : public QFrame {
   void setMaxChartRange(int value);
   void updateLayout(bool force = false);
   void settingChanged();
-  void showValueTip(double sec);
+  void updateHover(double time);
+  void updateHoverFromCursor();
   ChartView* findChart(const MessageId& id, const dbc::Signal* sig);
 
   // --- UI Components ---
@@ -73,7 +74,7 @@ class ChartsPanel : public QFrame {
   int column_count = 1;
   int current_column_count = 0;
   int current_theme = 0;
-  bool value_tip_visible_ = false;
+  double hover_time_ = -1;
 
   // --- Utilities ---
   QTimer* align_timer = nullptr;

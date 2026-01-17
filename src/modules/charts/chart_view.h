@@ -20,7 +20,7 @@ class ChartView : public QChartView {
 public:
   ChartView(const std::pair<double, double> &x_range, ChartsPanel *parent = nullptr);
   void updatePlot(double cur, double min, double max);
-  void showTip(double sec);
+  void showTip(double sec, const QRect &visible_rect);
   void hideTip();
   void startAnimation();
   inline Chart* chart() const { return chart_; }
