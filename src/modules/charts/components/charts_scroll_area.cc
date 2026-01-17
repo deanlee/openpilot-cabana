@@ -22,38 +22,42 @@ ChartsScrollArea::ChartsScrollArea(QWidget* parent) : QScrollArea(parent) {
 }
 
 void ChartsScrollArea::startAutoScroll() {
-  auto_scroll_timer_->start(50);
+  if (!auto_scroll_timer_->isActive()) {
+    auto_scroll_timer_->start(20);  // Smoother 50Hz update
+  }
 }
 
 void ChartsScrollArea::stopAutoScroll() {
   auto_scroll_timer_->stop();
-  auto_scroll_count_ = 0;
 }
 
 void ChartsScrollArea::doAutoScroll() {
   QScrollBar* scroll = verticalScrollBar();
-  if (auto_scroll_count_ < scroll->pageStep()) {
-    ++auto_scroll_count_;
-  }
-
-  int value = scroll->value();
-  QPoint pos = viewport()->mapFromGlobal(QCursor::pos());
+  QPoint global_pos = QCursor::pos();
+  QPoint local_pos = viewport()->mapFromGlobal(global_pos);
   QRect area = viewport()->rect();
 
-  if (pos.y() - area.top() < settings.chart_height / 2) {
-    scroll->setValue(value - auto_scroll_count_);
-  } else if (area.bottom() - pos.y() < settings.chart_height / 2) {
-    scroll->setValue(value + auto_scroll_count_);
+  int margin = 60;  // Sensitivity zone
+  int delta = 0;
+
+  if (local_pos.y() < margin) {
+    delta = -qBound(2, (margin - local_pos.y()) / 2, 30);
+  } else if (local_pos.y() > area.height() - margin) {
+    delta = qBound(2, (margin - (area.height() - local_pos.y())) / 2, 30);
   }
-  bool vertical_unchanged = value == scroll->value();
-  if (vertical_unchanged) {
+
+  if (delta == 0) {
     stopAutoScroll();
-  } else {
-    // mouseMoveEvent to updates the drag-selection rectangle
-    const QPoint globalPos = viewport()->mapToGlobal(pos);
-    const QPoint windowPos = window()->mapFromGlobal(globalPos);
-    QMouseEvent mm(QEvent::MouseMove, pos, windowPos, globalPos,
-                   Qt::NoButton, Qt::LeftButton, Qt::NoModifier, Qt::MouseEventSynthesizedByQt);
-    QApplication::sendEvent(viewport(), &mm);
+    return;
+  }
+
+  int old_val = scroll->value();
+  scroll->setValue(old_val + delta);
+
+  if (scroll->value() != old_val) {
+    // Synthesize a move event to the container to update the drop indicators
+    QMouseEvent mm(QEvent::MouseMove, container_->mapFromGlobal(global_pos),
+                   global_pos, Qt::NoButton, Qt::LeftButton, Qt::NoModifier);
+    QApplication::sendEvent(container_, &mm);
   }
 }

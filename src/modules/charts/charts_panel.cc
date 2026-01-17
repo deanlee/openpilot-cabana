@@ -193,6 +193,7 @@ const QSet<const dbc::Signal*> ChartsPanel::getChartedSignals() const {
 
 ChartView *ChartsPanel::createChart(int pos) {
   auto chart = new ChartView(StreamManager::stream()->timeRange().value_or(display_range), this);
+  chart->viewport()->installEventFilter(scroll_area_->container_);
   connect(chart, &ChartView::axisYLabelWidthChanged, align_timer, qOverload<>(&QTimer::start));
   pos = std::clamp(pos, 0, charts.size());
   charts.insert(pos, chart);
@@ -340,13 +341,27 @@ void ChartsPanel::alignCharts() {
   }
 }
 
-void ChartsPanel::handleChartDrop(ChartView* chart, ChartView* after) {
-  for (auto& list : tab_manager_->tab_charts_) {
-    list.removeOne(chart);
+void ChartsPanel::handleChartDrop(ChartView* chart, ChartView* target, DropMode mode) {
+  if (mode == DropMode::Merge) {
+    target->chart_->takeSignals(std::move(chart->chart_->sigs_));
+    chart->chart_->sigs_.clear();
+    removeChart(chart);
+    target->startAnimation();
+    return;
   }
-  auto &current_charts = tab_manager_->currentCharts();
-  int to = after ? current_charts.indexOf(after) + 1 : 0;
-  current_charts.insert(to, chart);
+
+  for (auto& list : tab_manager_->tab_charts_) {
+    list.removeAll(chart);
+  }
+
+  auto& current_charts = tab_manager_->currentCharts();
+
+  int target_idx = current_charts.indexOf(target);
+  if (target_idx == -1) return;  // Safety check
+
+  int insert_at = (mode == DropMode::InsertAfter) ? target_idx + 1 : target_idx;
+  current_charts.insert(std::clamp(insert_at, 0, current_charts.size()), chart);
+
   updateLayout(true);
   tab_manager_->updateLabels();
   chart->startAnimation();

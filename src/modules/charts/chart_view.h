@@ -41,15 +41,12 @@ private:
   void mouseReleaseEvent(QMouseEvent *event) override;
   void mouseMoveEvent(QMouseEvent *ev) override;
   void dragEnterEvent(QDragEnterEvent *event) override;
-  void dragLeaveEvent(QDragLeaveEvent *event) override { drawDropIndicator(false); }
   void dragMoveEvent(QDragMoveEvent *event) override;
-  void dropEvent(QDropEvent *event) override;
   QSize sizeHint() const override;
   void resetChartCache();
   void paintEvent(QPaintEvent *event) override;
   void drawForeground(QPainter *painter, const QRectF &rect) override;
   void drawBackground(QPainter *painter, const QRectF &rect) override;
-  void drawDropIndicator(bool draw) { if (std::exchange(can_drop, draw) != can_drop) viewport()->update(); }
   void drawSignalValue(QPainter *painter);
   void drawTimeline(QPainter *painter);
   void drawRubberBandTimeRange(QPainter *painter);
@@ -61,7 +58,6 @@ private:
   bool is_scrubbing = false;
   bool resume_after_scrub = false;
   QPixmap chart_pixmap;
-  bool can_drop = false;
   QFont signal_value_font;
   ChartsPanel *charts_widget;
 

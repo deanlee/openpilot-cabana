@@ -4,6 +4,7 @@
 #include <QPainter>
 #include <QTimer>
 
+#include "charts_scroll_area.h"
 #include "charts_toolbar.h"  // for MAX_COLUMN_COUNT
 #include "modules/charts/chart_view.h"
 #include "modules/settings/settings.h"
@@ -14,77 +15,16 @@ ChartsContainer::ChartsContainer(QWidget* parent) : QWidget(parent) {
   setAcceptDrops(true);
   setBackgroundRole(QPalette::Window);
   setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
+  setMouseTracking(true);
 
   auto* main_layout = new QVBoxLayout(this);
-  main_layout->setContentsMargins(0, CHART_SPACING, 0, CHART_SPACING);
+  main_layout->setContentsMargins(CHART_SPACING, CHART_SPACING, CHART_SPACING, CHART_SPACING);
   main_layout->setSpacing(0);
 
   grid_layout_ = new QGridLayout();
   grid_layout_->setSpacing(CHART_SPACING);
   main_layout->addLayout(grid_layout_);
   main_layout->addStretch(1);
-}
-
-void ChartsContainer::dragEnterEvent(QDragEnterEvent* event) {
-  if (event->mimeData()->hasFormat(CHART_MIME_TYPE)) {
-    event->acceptProposedAction();
-    updateDropIndicator(event->pos());
-  }
-}
-
-void ChartsContainer::dragLeaveEvent(QDragLeaveEvent* event) {
-  updateDropIndicator(QPoint());  // Clear indicator
-}
-
-void ChartsContainer::dropEvent(QDropEvent* event) {
-  if (event->mimeData()->hasFormat(CHART_MIME_TYPE)) {
-    auto* chart = qobject_cast<ChartView*>(event->source());
-    auto* after = getDropAfter(event->pos());
-
-    if (chart && chart != after) {
-      emit chartDropped(chart, after);
-    }
-    updateDropIndicator(QPoint());
-    event->acceptProposedAction();
-  }
-}
-
-void ChartsContainer::paintEvent(QPaintEvent* ev) {
-  if (!drop_indictor_pos.isNull() && !childAt(drop_indictor_pos)) {
-    QRect r = geometry();
-    r.setHeight(CHART_SPACING);
-    if (auto insert_after = getDropAfter(drop_indictor_pos)) {
-      r.moveTop(insert_after->geometry().bottom());
-    }
-
-    QPainter p(this);
-    p.fillRect(r, palette().highlight());
-    return;
-  }
-  QWidget::paintEvent(ev);
-}
-
-ChartView* ChartsContainer::getDropAfter(const QPoint& pos) const {
-  if (active_charts_.isEmpty()) return nullptr;
-
-  // 1. Precise hit test
-  if (auto* child = qobject_cast<ChartView*>(childAt(pos))) {
-    if (pos.y() > child->geometry().center().y()) {
-      return child;
-    }
-    // If in top half, return the chart BEFORE this one
-    int idx = active_charts_.indexOf(child);
-    return (idx > 0) ? active_charts_.at(idx - 1) : nullptr;
-  }
-
-  // 2. Proximity fallback (gutters and margins)
-  ChartView* last_above = nullptr;
-  for (auto* chart : active_charts_) {
-    if (pos.y() >= chart->geometry().top()) {
-      last_above = chart;
-    }
-  }
-  return last_above;
 }
 
 int ChartsContainer::calculateOptimalColumns() const {
@@ -128,11 +68,6 @@ void ChartsContainer::reflowLayout() {
   setUpdatesEnabled(true);
 }
 
-void ChartsContainer::updateDropIndicator(const QPoint& pt) {
-  drop_indictor_pos = pt;
-  update();
-}
-
 void ChartsContainer::resizeEvent(QResizeEvent* event) {
   QWidget::resizeEvent(event);
 
@@ -140,5 +75,123 @@ void ChartsContainer::resizeEvent(QResizeEvent* event) {
   if (new_cols != current_column_count_) {
     current_column_count_ = new_cols;
     reflowLayout();
+  }
+}
+
+void ChartsContainer::handleDragInteraction(const QPoint& pos) {
+  // Start auto-scroll via parent hierarchy
+  if (auto* sa = qobject_cast<ChartsScrollArea*>(parentWidget()->parentWidget())) {
+    sa->startAutoScroll();
+  }
+
+  ChartView* best_match = nullptr;
+  for (auto* chart : active_charts_) {
+    // Find chart including the gap area around it
+    if (chart->geometry().adjusted(0, -CHART_SPACING, 0, CHART_SPACING).contains(pos)) {
+      best_match = chart;
+      break;
+    }
+  }
+
+  if (best_match) {
+    active_target = best_match;
+    double rel_y = (double)(pos.y() - active_target->y()) / active_target->height();
+    if (rel_y < 0.2)
+      drop_mode = DropMode::InsertBefore;
+    else if (rel_y > 0.8)
+      drop_mode = DropMode::InsertAfter;
+    else
+      drop_mode = DropMode::Merge;
+  }
+  update();
+}
+
+void ChartsContainer::dragEnterEvent(QDragEnterEvent* event) {
+  if (event->mimeData()->hasFormat(CHART_MIME_TYPE)) {
+    event->acceptProposedAction();
+  }
+}
+
+void ChartsContainer::dragMoveEvent(QDragMoveEvent* e) {
+  if (e->mimeData()->hasFormat(CHART_MIME_TYPE)) {
+    e->acceptProposedAction();
+    handleDragInteraction(e->pos());
+  }
+}
+
+void ChartsContainer::dropEvent(QDropEvent* event) {
+  if (event->mimeData()->hasFormat(CHART_MIME_TYPE)) {
+    if (active_target) {
+      handleDrop(active_target, drop_mode, event);
+    }
+  }
+  resetDragState();
+}
+
+void ChartsContainer::dragLeaveEvent(QDragLeaveEvent* event) {
+  resetDragState();
+  event->accept();
+}
+
+bool ChartsContainer::eventFilter(QObject* obj, QEvent* event) {
+  auto* vp = qobject_cast<QWidget*>(obj);
+  if (!vp) return false;
+
+  if (event->type() == QEvent::DragMove || event->type() == QEvent::DragEnter) {
+    auto* dev = static_cast<QDropEvent*>(event);
+    if (dev->mimeData()->hasFormat(CHART_MIME_TYPE)) {
+      dev->acceptProposedAction();
+      handleDragInteraction(mapFromGlobal(vp->mapToGlobal(dev->pos())));
+      return true;
+    }
+  }
+
+  if (event->type() == QEvent::Drop) {
+    handleDrop(active_target, drop_mode, static_cast<QDropEvent*>(event));
+    resetDragState();
+    return true;
+  }
+
+  return QObject::eventFilter(obj, event);
+}
+
+void ChartsContainer::resetDragState() {
+  if (!active_target && drop_mode == DropMode::None) return;
+
+  active_target = nullptr;
+  drop_mode = DropMode::None;
+  if (auto* sa = qobject_cast<ChartsScrollArea*>(parentWidget()->parentWidget())) {
+    sa->stopAutoScroll();
+  }
+  update();
+}
+
+void ChartsContainer::handleDrop(ChartView* target, DropMode mode, QDropEvent* event) {
+  auto* source = qobject_cast<ChartView*>(event->source());
+  if (source && target && source != target) {
+    emit chartDropped(source, target, mode);
+  }
+}
+
+void ChartsContainer::paintEvent(QPaintEvent* ev) {
+  QWidget::paintEvent(ev);
+  if (!active_target || drop_mode == DropMode::None) return;
+
+  QPainter p(this);
+  p.setRenderHint(QPainter::Antialiasing);
+  QColor highlight = palette().color(QPalette::Highlight);
+  QRect geo = active_target->geometry();
+
+  if (drop_mode == DropMode::Merge) {
+    p.setPen(QPen(highlight, 2, Qt::DashLine));
+    p.setBrush(QColor(highlight.red(), highlight.green(), highlight.blue(), 60));
+    p.drawRoundedRect(geo.adjusted(-2, -2, 2, 2), 4, 4);
+  } else {
+    int y = (drop_mode == DropMode::InsertAfter) ? geo.bottom() : geo.top();
+    p.setPen(QPen(highlight, 4));
+    p.drawLine(10, y, width() - 10, y);
+    p.setBrush(highlight);
+    p.drawEllipse(QPoint(10, y), 4, 4);
+    p.drawEllipse(QPoint(width() - 10, y), 4, 4);
   }
 }

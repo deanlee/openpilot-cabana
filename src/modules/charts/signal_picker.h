@@ -34,4 +34,6 @@ private:
   QPushButton *add_btn;
   QPushButton *remove_btn;
   QDialogButtonBox *button_box;
+
+  friend class ChattView;
 };

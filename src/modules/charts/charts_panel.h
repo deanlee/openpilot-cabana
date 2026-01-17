@@ -4,6 +4,7 @@
 #include <QStackedWidget>
 #include <QTimer>
 
+#include "components/charts_container.h"
 #include "components/charts_empty_view.h"
 #include "components/charts_scroll_area.h"
 #include "components/charts_tab_manager.h"
@@ -44,7 +45,7 @@ class ChartsPanel : public QFrame {
   bool event(QEvent* event) override;
   void alignCharts();
   void newChart();
-  void handleChartDrop(ChartView* chart, ChartView* after);
+  void handleChartDrop(ChartView* chart, ChartView* target, DropMode mode);
   ChartView* createChart(int pos = 0);
   void removeChart(ChartView* chart);
   void removeCharts(QList<ChartView*> charts_to_remove);

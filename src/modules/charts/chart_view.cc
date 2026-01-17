@@ -155,6 +155,10 @@ void ChartView::mousePressEvent(QMouseEvent *event) {
     drag->setPixmap(getDropPixmap(px));
     drag->setHotSpot(-QPoint(5, 5));
     drag->exec(Qt::CopyAction | Qt::MoveAction, Qt::MoveAction);
+    // Reset any drag state in the container
+    if (auto* container = qobject_cast<ChartsContainer*>(this->parentWidget())) {
+      container->resetDragState();
+    }
   } else if (event->button() == Qt::LeftButton && QApplication::keyboardModifiers().testFlag(Qt::ShiftModifier)) {
     // Save current playback state when scrubbing
     resume_after_scrub = !StreamManager::stream()->isPaused();
@@ -256,34 +260,13 @@ void ChartView::hideTip() {
 
 void ChartView::dragEnterEvent(QDragEnterEvent *event) {
   if (event->mimeData()->hasFormat(CHART_MIME_TYPE)) {
-    drawDropIndicator(event->source() != this);
     event->acceptProposedAction();
   }
 }
 
-void ChartView::dragMoveEvent(QDragMoveEvent *event) {
+void ChartView::dragMoveEvent(QDragMoveEvent* event) {
   if (event->mimeData()->hasFormat(CHART_MIME_TYPE)) {
-    event->setDropAction(event->source() == this ? Qt::MoveAction : Qt::CopyAction);
     event->accept();
-  }
-  charts_widget->scroll_area_->startAutoScroll();
-}
-
-void ChartView::dropEvent(QDropEvent* event) {
-  if (event->mimeData()->hasFormat(CHART_MIME_TYPE)) {
-    if (event->source() != this) {
-      ChartView* source_view = (ChartView*)event->source();
-      if (source_view) {
-        chart_->takeSignals(std::move(source_view->chart_->sigs_));
-        // Clean up the empty source
-        source_view->chart_->sigs_.clear();
-        charts_widget->removeChart(source_view);
-
-        startAnimation();
-        event->acceptProposedAction();
-      }
-    }
-    can_drop = false;
   }
 }
 
@@ -326,10 +309,7 @@ void ChartView::paintEvent(QPaintEvent *event) {
     QPainter painter(viewport());
     painter.setRenderHints(QPainter::Antialiasing);
     painter.drawPixmap(QPoint(), chart_pixmap);
-    if (can_drop) {
-      painter.setPen(QPen(palette().color(QPalette::Highlight), 4));
-      painter.drawRect(viewport()->rect());
-    }
+
     QRectF exposed_rect = mapToScene(event->region().boundingRect()).boundingRect();
     drawForeground(&painter, exposed_rect);
   } else {
