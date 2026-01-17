@@ -233,7 +233,7 @@ void ChartView::mouseMoveEvent(QMouseEvent *ev) {
 }
 
 void ChartView::showTip(double sec, const QRect& visible_rect) {
-  tooltip_x = chart_->mapToPosition({sec, 0}).x();
+  int tooltip_x = chart_->mapToPosition({sec, 0}).x();
 
   QStringList entries;
   int x_override = chart_->getTooltipTextAt(sec, entries);
@@ -250,7 +250,6 @@ void ChartView::showTip(double sec, const QRect& visible_rect) {
 
 void ChartView::hideTip() {
   clearTrackPoints();
-  tooltip_x = -1;
   tip_label->hide();
   viewport()->update();
 }
