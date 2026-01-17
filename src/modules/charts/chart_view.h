@@ -61,7 +61,7 @@ private:
   bool resume_after_scrub = false;
   QPixmap chart_pixmap;
   QFont signal_value_font;
-  ChartsPanel *charts_widget;
+  ChartsPanel *charts_panel;
 
   Chart *chart_ = nullptr;
   friend class ChartsPanel;
