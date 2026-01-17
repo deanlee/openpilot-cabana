@@ -45,11 +45,10 @@ void ChartsContainer::updateLayout(const QList<ChartView*>& current_charts, int 
 }
 
 void ChartsContainer::reflowLayout() {
-  if (active_charts_.isEmpty()) return;
-
   setUpdatesEnabled(false);
 
   while (QLayoutItem* item = grid_layout_->takeAt(0)) {
+    item->widget()->setVisible(false);
     delete item;
   }
 
