@@ -62,7 +62,6 @@ private:
   bool resume_after_scrub = false;
   QPixmap chart_pixmap;
   bool can_drop = false;
-  double tooltip_x = -1;
   QFont signal_value_font;
   ChartsPanel *charts_widget;
 
