@@ -89,9 +89,6 @@ void ChartView::manageSignals() {
 void ChartView::updatePlot(double cur, double min, double max) {
   cur_sec = cur;
   if (chart_->updateAxisXRange(min, max)) {
-    if (tooltip_x >= 0) {
-      showTip(chart_->mapToValue({tooltip_x, 0}).x());
-    }
     resetChartCache();
   }
   viewport()->update();
@@ -218,9 +215,9 @@ void ChartView::mouseMoveEvent(QMouseEvent *ev) {
   clearTrackPoints();
 
   if (!is_zooming && plot_area.contains(ev->pos()) && isActiveWindow()) {
-    charts_widget->showValueTip(secondsAtPoint(ev->pos()));
+    charts_widget->updateHover(secondsAtPoint(ev->pos()));
   } else if (tip_label->isVisible()) {
-    charts_widget->showValueTip(-1);
+    charts_widget->updateHover(-1);
   }
 
   QChartView::mouseMoveEvent(ev);
@@ -235,30 +232,18 @@ void ChartView::mouseMoveEvent(QMouseEvent *ev) {
   }
 }
 
-void ChartView::showTip(double sec) {
-  ChartsScrollArea* scroll_area = charts_widget->scroll_area_;
-
-  QWidget* container = scroll_area->widget();
-  QRect visible_in_container(-container->pos(), scroll_area->viewport()->size());
-
-  QRect chart_visible_rect = rect().intersected(
-      QRect(mapFrom(container, visible_in_container.topLeft()), visible_in_container.size()));
-  QRect tip_area(0, chart_->plotArea().top(), rect().width(), chart_->plotArea().height());
-  QRect visible_rect = chart_visible_rect.intersected(tip_area);
-  if (visible_rect.isEmpty()) {
-    tip_label->hide();
-    return;
-  }
-
+void ChartView::showTip(double sec, const QRect& visible_rect) {
   tooltip_x = chart_->mapToPosition({sec, 0}).x();
-  QStringList text_list;
-  auto x = chart_->getTooltipTextAt(sec, text_list);
-  if (x < 0) {
-    x = tooltip_x;
-  }
+
+  QStringList entries;
+  int x_override = chart_->getTooltipTextAt(sec, entries);
+  int x = (x_override < 0) ? tooltip_x : x_override;
+
+  // Use the HTML table format for better alignment
+  QString text = QString("<b>%1s</b><br/>").arg(chart_->mapToValue({(qreal)x, 0}).x(), 0, 'f', 3);
+  text += entries.join("<br/>");
+
   QPoint pt(x, chart_->plotArea().top());
-  text_list.push_front(QString::number(chart_->mapToValue({x, 0}).x(), 'f', 3));
-  QString text = "<p style='white-space:pre'>" % text_list.join("<br />") % "</p>";
   tip_label->showText(pt, text, this, visible_rect);
   viewport()->update();
 }

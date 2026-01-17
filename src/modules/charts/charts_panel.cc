@@ -2,6 +2,7 @@
 
 #include <QApplication>
 #include <QFutureSynchronizer>
+#include <QScrollBar>
 #include <QVBoxLayout>
 #include <QtConcurrent>
 
@@ -70,6 +71,7 @@ void ChartsPanel::setupConnections() {
   connect(tab_manager_, &ChartsTabManager::currentTabChanged, this, [this]() { updateLayout(true); });
 
   connect(scroll_area_->container_, &ChartsContainer::chartDropped, this, &ChartsPanel::handleChartDrop);
+  connect(scroll_area_->verticalScrollBar(), &QScrollBar::valueChanged, this, &ChartsPanel::updateHoverFromCursor);
 }
 
 void ChartsPanel::eventsMerged(const MessageEventsMap &new_events) {
@@ -84,14 +86,42 @@ void ChartsPanel::timeRangeChanged(const std::optional<std::pair<double, double>
   updateState();
 }
 
-void ChartsPanel::showValueTip(double sec) {
-  emit showTip(sec);
-  if (sec < 0 && !value_tip_visible_) return;
+void ChartsPanel::updateHover(double time) {
+  emit showTip(time);
+  hover_time_ = time;
 
-  value_tip_visible_ = sec >= 0;
-  for (auto c : tab_manager_->currentCharts()) {
-    value_tip_visible_ ? c->showTip(sec) : c->hideTip();
+  int scroll_y = scroll_area_->verticalScrollBar()->value();
+  int view_h = scroll_area_->viewport()->height();
+  QRect visible_window(0, scroll_y, scroll_area_->widget()->width(), view_h);
+
+  for (auto* chart_view : charts) {
+    QPoint chart_pos = chart_view->mapTo(scroll_area_->widget(), QPoint(0, 0));
+    QRect plot_rect = chart_view->chart_->plotArea().toRect();
+    plot_rect.moveTopLeft(chart_pos + plot_rect.topLeft());
+
+    QRect intersected = plot_rect.intersected(visible_window);
+
+    if (hover_time_ >= 0 && !intersected.isEmpty()) {
+      intersected.moveTopLeft(intersected.topLeft() - chart_pos);
+      chart_view->showTip(hover_time_, intersected);
+    } else {
+      chart_view->hideTip();
+    }
   }
+}
+
+void ChartsPanel::updateHoverFromCursor() {
+  if (hover_time_ < 0) return;
+
+  QPoint global_mouse_pos = QCursor::pos();
+  for (auto* c : charts) {
+    if (c->rect().contains(c->mapFromGlobal(global_mouse_pos))) {
+      hover_time_ = c->secondsAtPoint(c->mapFromGlobal(global_mouse_pos));
+      updateHover(hover_time_);
+      return;
+    }
+  }
+  updateHover(-1);
 }
 
 void ChartsPanel::updateState() {
@@ -103,6 +133,8 @@ void ChartsPanel::updateState() {
   auto *can = StreamManager::stream();
   const auto &time_range = can->timeRange();
   const double cur_sec = can->currentSec();
+  const double prev_display_start = display_range.first;
+  const double prev_display_end = display_range.second;
   if (!time_range.has_value()) {
     double pos = (cur_sec - display_range.first) / std::max<float>(1.0, max_chart_range);
     if (pos < 0 || pos > 0.8) {
@@ -116,6 +148,11 @@ void ChartsPanel::updateState() {
   const auto &range = time_range ? *time_range : display_range;
   for (auto c : charts) {
     c->updatePlot(cur_sec, range.first, range.second);
+  }
+
+  if (hover_time_ >= 0 && std::abs(prev_display_start - display_range.first) > EPSILON ||
+      std::abs(prev_display_end - display_range.second) > EPSILON) {
+    updateHoverFromCursor();
   }
 }
 
@@ -326,7 +363,7 @@ bool ChartsPanel::event(QEvent *event) {
       break;
     case QEvent::WindowDeactivate:
     case QEvent::FocusOut:
-      showValueTip(-1);
+      updateHover(-1);
     default:
       break;
   }
