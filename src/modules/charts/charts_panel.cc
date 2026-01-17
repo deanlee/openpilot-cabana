@@ -132,22 +132,25 @@ void ChartsPanel::updateState() {
 
   if (!has_charts) return;
 
-  auto *can = StreamManager::stream();
-  const auto &time_range = can->timeRange();
-  const double cur_sec = can->currentSec();
+  auto *stream = StreamManager::stream();
+  const double cur_sec = stream->currentSec();
   const double prev_display_start = display_range.first;
   const double prev_display_end = display_range.second;
-  if (!time_range.has_value()) {
-    double pos = (cur_sec - display_range.first) / std::max<float>(1.0, max_chart_range);
+
+  const auto &manual_range = stream->timeRange();
+  if (!manual_range) {
+    // 1. Shift the window if the playhead leaves the 0-80% "viewing zone"
+    double pos = (cur_sec - display_range.first) / max_chart_range;
     if (pos < 0 || pos > 0.8) {
-      display_range.first = std::max(can->minSeconds(), cur_sec - max_chart_range * 0.1);
+      display_range.first = std::max(stream->minSeconds(), cur_sec - max_chart_range * 0.1);
     }
-    double max_sec = std::min(display_range.first + max_chart_range, can->maxSeconds());
-    display_range.first = std::max(can->minSeconds(), max_sec - max_chart_range);
-    display_range.second = display_range.first + max_chart_range;
+
+    // 2. Clamp the window to the absolute stream boundaries
+    double start = std::clamp(display_range.first, stream->minSeconds(), std::max(stream->minSeconds(), stream->maxSeconds() - max_chart_range));
+    display_range = {start, start + max_chart_range};
   }
 
-  const auto &range = time_range ? *time_range : display_range;
+  const auto &range = manual_range.value_or(display_range);
   for (auto c : charts) {
     c->updatePlot(cur_sec, range.first, range.second);
   }
