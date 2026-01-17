@@ -253,24 +253,26 @@ void Chart::onMarkerClicked() {
 }
 
 void Chart::updateSeriesPoints() {
-  // Show points when zoomed in enough
-  for (auto& s : sigs_) {
-    auto begin = std::lower_bound(s.vals.cbegin(), s.vals.cend(), axis_x_->min(), xLessThan);
-    auto end = std::lower_bound(begin, s.vals.cend(), axis_x_->max(), xLessThan);
-    if (begin != end) {
-      int num_points = std::max<int>((end - begin), 1);
-      QPointF right_pt = end == s.vals.cend() ? s.vals.back() : *end;
-      double pixels_per_point = (mapToPosition(right_pt).x() - mapToPosition(*begin).x()) / num_points;
+  const double range_sec = axis_x_->max() - axis_x_->min();
+  const double plot_width = plotArea().width();
+  if (range_sec <= 0 || plot_width <= 0) return;
 
-      if (series_type == SeriesType::Scatter) {
-        qreal size = std::clamp(pixels_per_point / 2.0, 2.0, 8.0);
-        if (s.series->useOpenGL()) {
-          size *= qApp->devicePixelRatio();
-        }
-        ((QScatterSeries*)s.series)->setMarkerSize(size);
-      } else {
-        s.series->setPointsVisible(num_points == 1 || pixels_per_point > 20);
-      }
+  const double sec_per_px = range_sec / plot_width;
+  const qreal dpr = qApp->devicePixelRatio();  // Get once
+
+  for (auto& s : sigs_) {
+    if (s.vals.size() < 2) continue;
+
+    // Average time between data points
+    double avg_period = (s.vals.back().x() - s.vals.front().x()) / s.vals.size();
+
+    if (series_type == SeriesType::Scatter) {
+      // Scale dot size by DPR so it looks consistent on all screens
+      qreal size = std::clamp(avg_period / sec_per_px / 2.0, 2.0, 8.0);
+      static_cast<QScatterSeries*>(s.series)->setMarkerSize(size * dpr);
+    } else {
+      // Threshold: Hide points if they are closer than 15 logical pixels
+      s.series->setPointsVisible(avg_period > (sec_per_px * 15.0));
     }
   }
 }
