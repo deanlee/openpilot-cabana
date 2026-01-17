@@ -185,25 +185,8 @@ void Chart::setTheme(QChart::ChartTheme theme) {
 void Chart::updateAxisY() {
   if (sigs_.empty()) return;
 
-  double g_min = std::numeric_limits<double>::max();
-  double g_max = std::numeric_limits<double>::lowest();
-  QString unit = sigs_[0].sig->unit;
-
-  double x_min = axis_x_->min();
-  double x_max = axis_x_->max();
-
-  for (auto& s : sigs_) {
-    if (!s.series->isVisible()) continue;
-
-    if (unit != s.sig->unit) unit.clear();
-
-    s.updateRange(x_min, x_max);
-    g_min = std::min(g_min, s.min_value);
-    g_max = std::max(g_max, s.max_value);
-  }
-
-  // Fallback for no data
-  if (g_min > g_max) { g_min = 0; g_max = 1; }
+  QString unit;
+  auto [g_min, g_max] = calculateValueRange(unit);
 
   if (axis_y_->titleText() != unit) {
     axis_y_->setTitleText(unit);
@@ -211,25 +194,53 @@ void Chart::updateAxisY() {
   }
 
   double delta = std::abs(g_max - g_min) < 1e-3 ? 1 : (g_max - g_min) * 0.05;
-  auto [min_y, max_y, tick_count] = getNiceAxisNumbers(g_min - delta, g_max + delta, 3);
+  auto [min_y, max_y, ticks] = getNiceAxisNumbers(g_min - delta, g_max + delta, 3);
   bool range_changed = !qFuzzyCompare(min_y, axis_y_->min()) ||
                        !qFuzzyCompare(max_y, axis_y_->max()) ||
-                       tick_count != axis_y_->tickCount();
+                       ticks != axis_y_->tickCount();
 
   if (!range_changed && y_label_width_ != 0) return;
 
   axis_y_->setRange(min_y, max_y);
-  axis_y_->setTickCount(tick_count);
+  axis_y_->setTickCount(ticks);
 
+  updateYLabelWidth(min_y, max_y, ticks, unit);
+}
+
+std::pair<double, double> Chart::calculateValueRange(QString& common_unit) {
+  double g_min = std::numeric_limits<double>::max();
+  double g_max = std::numeric_limits<double>::lowest();
+
+  const double x_min = axis_x_->min();
+  const double x_max = axis_x_->max();
+
+  if (!sigs_.empty()) common_unit = sigs_[0].sig->unit;
+
+  for (auto& s : sigs_) {
+    if (!s.series->isVisible()) continue;
+
+    s.updateRange(x_min, x_max);
+    g_min = std::min(g_min, s.min_value);
+    g_max = std::max(g_max, s.max_value);
+
+    if (common_unit != s.sig->unit) common_unit.clear();
+  }
+
+  // Fallback for no data or flat line
+  if (g_min > g_max) return {0.0, 1.0};
+  return {g_min, g_max};
+}
+
+void Chart::updateYLabelWidth(double min_y, double max_y, int tick_count, const QString& unit) {
   double step = (max_y - min_y) / std::max(1, tick_count - 1);
   int precision = std::clamp(static_cast<int>(-std::floor(std::log10(step))), 0, 6);
   axis_y_->setLabelFormat(QString("%.%1f").arg(precision));
 
-  int max_label_width = 0;
   QFontMetrics fm(axis_y_->labelsFont());
+  int max_label_width = 0;
   for (int i = 0; i < tick_count; i++) {
-    qreal value = min_y + (i * (max_y - min_y) / (tick_count - 1));
-    max_label_width = std::max(max_label_width, fm.horizontalAdvance(QString::number(value, 'f', n)));
+    double val = min_y + (i * step);
+    max_label_width = std::max(max_label_width, fm.horizontalAdvance(QString::number(val, 'f', precision)));
   }
 
   int title_spacing = unit.isEmpty() ? 0 : QFontMetrics(axis_y_->titleFont()).size(Qt::TextSingleLine, unit).height();
