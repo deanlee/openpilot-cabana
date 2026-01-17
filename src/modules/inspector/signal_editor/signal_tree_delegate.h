@@ -14,7 +14,6 @@ public:
   const int kBtnSpacing = 4;
   const int kPadding = 6;
   const int kColorLabelW = 18;
-  const int kValueWidth = 65;
 
   SignalTreeDelegate(QObject *parent);
   void clearHoverState();
@@ -25,6 +24,7 @@ public:
   bool editorEvent(QEvent *event, QAbstractItemModel *model, const QStyleOptionViewItem &option, const QModelIndex &index) override;
   bool helpEvent(QHelpEvent *event, QAbstractItemView *view, const QStyleOptionViewItem &option, const QModelIndex &index) override;
   int nameColumnWidth(const dbc::Signal* sig) const;
+  int valueTextWidth(const QString &text) const;
   inline int signalRowHeight() const { return kBtnSize + 4; }
   inline int getButtonsWidth() const {
     // Calculate total space taken by buttons area on the right
@@ -34,7 +34,8 @@ public:
   QValidator *name_validator = nullptr;
   QValidator *double_validator = nullptr;
   QValidator *node_validator = nullptr;
-  QFont label_font, minmax_font;
+  QFont label_font, minmax_font, value_font;
+  int value_width = 50;
   const int color_label_width = 18;
   mutable QSize button_size;
   mutable QModelIndex hoverIndex;

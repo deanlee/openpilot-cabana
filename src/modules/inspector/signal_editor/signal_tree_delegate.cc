@@ -24,12 +24,18 @@ SignalTreeDelegate::SignalTreeDelegate(QObject* parent) : QStyledItemDelegate(pa
 
   label_font.setPointSize(8);
   minmax_font.setPixelSize(10);
+  value_font = qApp->font();
 }
 
 QSize SignalTreeDelegate::sizeHint(const QStyleOptionViewItem& option, const QModelIndex& index) const {
   // Use toolbar icon size + padding for row height; width determined by header
   int height = option.widget->style()->pixelMetric(QStyle::PM_ToolBarIconSize) + kPadding;
   return QSize(-1, height);
+}
+
+int SignalTreeDelegate::valueTextWidth(const QString& text) const {
+  QFontMetrics fm(value_font);
+  return fm.horizontalAdvance(text);
 }
 
 void SignalTreeDelegate::paint(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const {
@@ -118,8 +124,8 @@ void SignalTreeDelegate::drawDataColumn(QPainter* p, QRect r, const QStyleOption
   int anchorX = r.left() + sparkW;
   if (show_details) {
     p->setFont(minmax_font);
-    QString maxS = QString::number(item->sparkline.max_val, 'f', 1);
-    QString minS = QString::number(item->sparkline.min_val, 'f', 1);
+    QString maxS = QString::number(item->sparkline.max_val, 'f', item->sig->precision);
+    QString minS = QString::number(item->sparkline.min_val, 'f', item->sig->precision);
     detailsW = std::max(p->fontMetrics().horizontalAdvance(maxS), p->fontMetrics().horizontalAdvance(minS)) + kPadding;
 
     p->setPen(sel ? text_c : opt.palette.mid().color());
@@ -136,9 +142,9 @@ void SignalTreeDelegate::drawDataColumn(QPainter* p, QRect r, const QStyleOption
   valR.setLeft(anchorX + detailsW + kPadding);
   valR.setRight(r.right() - getButtonsWidth() - kPadding);
 
-  p->setFont(opt.font);
+  p->setFont(value_font);
   p->setPen(text_c);
-  p->drawText(valR, Qt::AlignRight | Qt::AlignVCenter, opt.fontMetrics.elidedText(item->sig_val, Qt::ElideRight, valR.width()));
+  p->drawText(valR, Qt::AlignRight | Qt::AlignVCenter, QFontMetrics(value_font).elidedText(item->sig_val, Qt::ElideRight, valR.width()));
 
   drawButtons(p, opt, item, idx);
 }
@@ -272,7 +278,7 @@ bool SignalTreeDelegate::helpEvent(QHelpEvent* event, QAbstractItemView* view, c
   } else {
     int right_edge = option.rect.right() - getButtonsWidth();
     QRect value_rect = option.rect;
-    value_rect.setLeft(right_edge - kValueWidth);
+    value_rect.setLeft(right_edge - value_width);
     value_rect.setRight(right_edge);
     if (value_rect.contains(event->pos()) && item && !item->sig_val.isEmpty()) {
       QString tooltip = item->sig_val + "\n\n" +

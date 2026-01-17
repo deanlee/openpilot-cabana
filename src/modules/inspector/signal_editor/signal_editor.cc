@@ -100,6 +100,7 @@ void SignalEditor::clearMessage() {
 void SignalEditor::rowsChanged() {
   updateToolBar();
   updateColumnWidths();
+  delegate->value_width = 0;
 }
 
 void SignalEditor::selectSignal(const dbc::Signal *sig, bool expand) {
@@ -177,27 +178,51 @@ void SignalEditor::updateState(const std::set<MessageId>* msgs) {
   auto [first_v, last_v] = visibleSignalRange();
   if (!first_v.isValid()) return;
 
-  // Shared Parameters & Data Window
-  const int spark_w = std::max(10, value_column_width - delegate->getButtonsWidth() - delegate->kValueWidth - (delegate->kPadding * 2));
+
+  int value_w = getValueColumnWidth(last_msg);
+  if (value_w > delegate->value_width) {
+    delegate->value_width = value_w;
+  } else if (delegate->value_width - value_w > 25) {
+    // prevent jerky resizing by only decreasing width if difference is significant
+    delegate->value_width = value_w;
+  }
+
+  int fixed_parts = delegate->getButtonsWidth() + delegate->value_width +
+                    (delegate->kPadding * 4);
+  int spark_w = std::max(10, value_column_width - fixed_parts);
   const QSize spark_sz(spark_w, delegate->kBtnSize);
   auto range = StreamManager::stream()->eventsInRange(
       model->msg_id, std::make_pair(last_msg->ts - settings.sparkline_range, last_msg->ts));
 
-  // Update signal values and sparklines in parallel
+
   QVector<SignalTreeModel::Item*> items;
   for (int i = first_v.row(); i <= last_v.row(); ++i) {
     items << model->getItem(model->index(i, 1));
   }
 
   QtConcurrent::blockingMap(items, [&](SignalTreeModel::Item* item) {
-    double val = 0;
-    if (item->sig->getValue(last_msg->dat.data(), last_msg->dat.size(), &val)) {
-      item->sig_val = item->sig->formatValue(val);
-    }
     item->sparkline.update(item->sig, range.first, range.second, settings.sparkline_range, spark_sz);
   });
 
   emit model->dataChanged(model->index(first_v.row(), 1), model->index(last_v.row(), 1), {Qt::DisplayRole});
+}
+
+int SignalEditor::getValueColumnWidth(const MessageState* msg) {
+  static int digit_w = QFontMetrics(delegate->value_font).horizontalAdvance('0');
+  static int minmax_digit_w = QFontMetrics(delegate->minmax_font).horizontalAdvance('0');
+
+  int global_minmax_w = minmax_digit_w * 4;  // initial width for Min/Max
+  int global_value_w = 0;
+  for (int i = 0; i < model->rowCount(); ++i) {
+    auto* item = model->getItem(model->index(i, 1));
+    double val = 0;
+    if (item->sig->getValue(msg->dat.data(), msg->dat.size(), &val)) {
+      item->sig_val = item->sig->formatValue(val);
+      global_value_w = std::max(global_value_w, (item->sig_val.size() * digit_w));
+    }
+  }
+
+  return std::clamp(global_value_w + global_minmax_w + delegate->kPadding, 50, value_column_width / 3);
 }
 
 void SignalEditor::updateColumnWidths() {
