@@ -56,7 +56,7 @@ void ChartsContainer::reflowLayout() {
     auto* chart = active_charts_[i];
     chart->setVisible(false);
     grid_layout_->addWidget(chart, i / current_column_count_, i % current_column_count_);
-    if (chart->chart()->sigs_.empty()) {
+    if (chart->empty()) {
       // the chart will be resized after add signal. delay setVisible to reduce flicker.
       QTimer::singleShot(0, chart, [c = chart]() { c->setVisible(true); });
     } else {

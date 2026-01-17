@@ -161,8 +161,8 @@ void ChartView::mouseReleaseEvent(QMouseEvent *event) {
     auto rect = rubber->geometry().normalized();
     // Prevent zooming/seeking past the end of the route
     auto *can = StreamManager::stream();
-    double min = std::clamp(chart_->mapToValue(rect.topLeft()).x(), can->minSeconds(), can->maxSeconds());
-    double max = std::clamp(chart_->mapToValue(rect.bottomRight()).x(), can->minSeconds(), can->maxSeconds());
+    double min = std::clamp(secondsAtPoint(rect.topLeft()), can->minSeconds(), can->maxSeconds());
+    double max = std::clamp(secondsAtPoint(rect.bottomRight()), can->minSeconds(), can->maxSeconds());
     if (rubber->width() <= 0) {
       // no rubber dragged, seek to mouse position
       can->seekTo(min);
@@ -193,7 +193,7 @@ void ChartView::mouseMoveEvent(QMouseEvent *ev) {
   if (is_scrubbing && QApplication::keyboardModifiers().testFlag(Qt::ShiftModifier)) {
     if (plot_area.contains(ev->pos())) {
       auto *can = StreamManager::stream();
-      can->seekTo(std::clamp(chart_->mapToValue(ev->pos()).x(), can->minSeconds(), can->maxSeconds()));
+      can->seekTo(std::clamp(secondsAtPoint(ev->pos()), can->minSeconds(), can->maxSeconds()));
     }
   }
 
@@ -244,7 +244,7 @@ void ChartView::showTip(double sec, const QRect& visible_rect) {
   int x = (x_override < 0) ? tooltip_x : x_override;
 
   // Use the HTML table format for better alignment
-  QString text = QString("<b>%1s</b><br/>").arg(chart_->mapToValue({(qreal)x, 0}).x(), 0, 'f', 3);
+  QString text = QString("<b>%1s</b><br/>").arg(secondsAtPoint({(qreal)x, 0}), 0, 'f', 3);
   text += entries.join("<br/>");
 
   QPoint pt(x, chart_->plotArea().top());
@@ -371,7 +371,7 @@ void ChartView::drawRubberBandTimeRange(QPainter *painter) {
     painter->setPen(Qt::white);
     auto rubber_rect = rubber->geometry().normalized();
     for (const auto &pt : {rubber_rect.bottomLeft(), rubber_rect.bottomRight()}) {
-      QString sec = QString::number(chart_->mapToValue(pt).x(), 'f', 2);
+      QString sec = QString::number(secondsAtPoint(pt), 'f', 2);
       auto r = painter->fontMetrics().boundingRect(sec).adjusted(-6, -AXIS_X_TOP_MARGIN, 6, AXIS_X_TOP_MARGIN);
       pt == rubber_rect.bottomLeft() ? r.moveTopRight(pt + QPoint{0, 2}) : r.moveTopLeft(pt + QPoint{0, 2});
       painter->fillRect(r, Qt::gray);

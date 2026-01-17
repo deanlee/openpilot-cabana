@@ -19,12 +19,12 @@ class ChartView : public QChartView {
 
 public:
   ChartView(const std::pair<double, double> &x_range, ChartsPanel *parent = nullptr);
+  inline bool empty() const { return chart_->sigs_.empty(); }
   void updatePlot(double cur, double min, double max);
   void showTip(double sec, const QRect &visible_rect);
   void hideTip();
   void startAnimation();
-  inline Chart* chart() const { return chart_; }
-  double secondsAtPoint(const QPointF &pt) const { return chart()->mapToValue(pt).x(); }
+  double secondsAtPoint(const QPointF &pt) const { return chart_->mapToValue(pt).x(); }
 
 signals:
   void axisYLabelWidthChanged(int w);
