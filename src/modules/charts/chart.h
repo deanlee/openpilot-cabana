@@ -5,7 +5,7 @@
 #include <QtCharts/QChartView>
 #include <QtCharts/QLegendMarker>
 
-#include "chart_signal.h"
+#include "components/chart_signal.h"
 
 using namespace QtCharts;
 
