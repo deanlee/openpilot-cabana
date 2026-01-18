@@ -32,7 +32,7 @@ ChartsToolBar::ChartsToolBar(QWidget* parent) : QToolBar(tr("Charts"), parent) {
 }
 
 void ChartsToolBar::createActions() {
-  new_plot_btn = new ToolButton("plus", tr("New Chart"));
+  new_plot_btn = new ToolButton("plus", tr("Add New Chart"));
   new_tab_btn = new ToolButton("layer-plus", tr("New Tab"));
   addWidget(new_plot_btn);
   addWidget(new_tab_btn);
@@ -50,7 +50,7 @@ void ChartsToolBar::createActions() {
 
   addSeparator();
 
-  addWidget(remove_all_btn = new ToolButton("eraser", tr("Remove all charts")));
+  addWidget(remove_all_btn = new ToolButton("eraser", tr("Remove All Charts")));
   addWidget(dock_btn = new ToolButton("external-link"));
 }
 
@@ -67,6 +67,7 @@ void ChartsToolBar::createTypeMenu() {
     });
   }
   chart_type_action->setText("Type: " + types[settings.chart_series_type]);
+  chart_type_action->setToolTip(tr("Chart Drawing Style\nChange how signals are visualized across all plots."));
   chart_type_action->setMenu(menu);
   qobject_cast<QToolButton*>(widgetForAction(chart_type_action))->setPopupMode(QToolButton::InstantPopup);
 }
@@ -81,6 +82,7 @@ void ChartsToolBar::createColumnMenu() {
   }
   columns_action = addAction("");
   columns_action->setMenu(menu);
+  columns_action->setToolTip(tr("Grid Layout\nSet the number of columns to display charts side-by-side."));
   qobject_cast<QToolButton*>(widgetForAction(columns_action))->setPopupMode(QToolButton::InstantPopup);
 }
 
@@ -88,7 +90,7 @@ void ChartsToolBar::setupZoomControls() {
   range_lb_action = addWidget(range_lb = new QLabel(this));
   range_slider = new LogSlider(1000, Qt::Horizontal, this);
   range_slider->setFixedWidth(150 * qApp->devicePixelRatio());
-  range_slider->setToolTip(tr("Set the chart range"));
+  range_slider->setToolTip(tr("Adjust chart time window"));
   range_slider->setRange(1, settings.max_cached_minutes * 60);
   range_slider->setSingleStep(1);
   range_slider->setPageStep(60);  // 1 min
@@ -98,8 +100,10 @@ void ChartsToolBar::setupZoomControls() {
   zoom_undo_stack = new QUndoStack(this);
   addAction(undo_zoom_action = zoom_undo_stack->createUndoAction(this));
   undo_zoom_action->setIcon(utils::icon("undo-2"));
+  undo_zoom_action->setToolTip(tr("Undo last zoom"));
   addAction(redo_zoom_action = zoom_undo_stack->createRedoAction(this));
   redo_zoom_action->setIcon(utils::icon("redo-2"));
+  redo_zoom_action->setToolTip(tr("Redo last zoom"));
   reset_zoom_action = addWidget(reset_zoom_btn = new ToolButton("refresh-ccw", tr("Reset Zoom")));
   reset_zoom_btn->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
 }

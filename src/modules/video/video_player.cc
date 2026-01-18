@@ -116,6 +116,7 @@ void VideoPlayer::createSpeedDropdown(QToolBar *toolbar) {
     auto act = speed_btn->menu()->addAction(QString("%1x").arg(speed), this, [this, speed]() {
       StreamManager::stream()->setSpeed(speed);
       speed_btn->setText(QString("%1x  ").arg(speed));
+      speed_btn->setToolTip(tr("Playback Speed: %1x").arg(speed));
     });
 
     speed_group->addAction(act);
