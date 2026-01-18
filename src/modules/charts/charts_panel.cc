@@ -116,6 +116,13 @@ void ChartsPanel::updateHover(double time) {
   }
 }
 
+void ChartsPanel::hideHover() {
+  hover_time_ = -1;
+  for (auto* chart_view : charts) {
+    chart_view->hideTip();
+  }
+}
+
 void ChartsPanel::updateHoverFromCursor() {
   if (hover_time_ < 0) return;
 
@@ -127,7 +134,7 @@ void ChartsPanel::updateHoverFromCursor() {
       return;
     }
   }
-  updateHover(-1);
+  hideHover();
 }
 
 void ChartsPanel::updateState() {
@@ -395,7 +402,7 @@ bool ChartsPanel::event(QEvent *event) {
       break;
     case QEvent::WindowDeactivate:
     case QEvent::FocusOut:
-      updateHover(-1);
+      hideHover();
     default:
       break;
   }

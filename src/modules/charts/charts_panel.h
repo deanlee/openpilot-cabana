@@ -59,6 +59,7 @@ class ChartsPanel : public QFrame {
   void settingChanged();
   void updateHover(double time);
   void updateHoverFromCursor();
+  void hideHover();
   ChartView* findChart(const MessageId& id, const dbc::Signal* sig);
 
   // --- UI Components ---

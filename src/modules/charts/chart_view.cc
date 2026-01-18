@@ -204,7 +204,7 @@ void ChartView::mouseMoveEvent(QMouseEvent *ev) {
   if (!is_zooming && plot_area.contains(ev->pos()) && isActiveWindow()) {
     charts_panel->updateHover(secondsAtPoint(ev->pos()));
   } else if (tip_label->isVisible()) {
-    charts_panel->updateHover(-1);
+    charts_panel->hideHover();
   }
 
   QChartView::mouseMoveEvent(ev);
@@ -253,6 +253,8 @@ void ChartView::showTip(double sec, const QRect& visible_rect) {
 }
 
 void ChartView::hideTip() {
+  if (!tip_label->isVisible()) return;
+
   clearTrackPoints();
   tip_label->hide();
   viewport()->update();
