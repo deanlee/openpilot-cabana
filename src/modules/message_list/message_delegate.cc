@@ -52,36 +52,66 @@ QSize MessageDelegate::sizeHint(const QStyleOptionViewItem& option, const QModel
 }
 
 void MessageDelegate::paint(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const {
-  MessageDataRef ref = getDataRef(caller_type_, index);
-  if (!ref.bytes || ref.bytes->empty()) {
-    QStyledItemDelegate::paint(painter, option, index);
-    return;
-  }
-
-  if (option.state & QStyle::State_Selected) {
+  const bool is_selected = option.state & QStyle::State_Selected;
+  if (is_selected) {
     painter->fillRect(option.rect, option.palette.highlight());
   }
 
-  painter->setFont(fixed_font);
+  bool is_data_col = (caller_type_ == CallerType::MessageList && index.column() == MessageModel::Column::DATA) ||
+                     (caller_type_ == CallerType::HistoryView && index.column() == 1);
+  if (!is_data_col) {
+    QString text = index.data(Qt::DisplayRole).toString();
+    if (!text.isEmpty()) {
+      drawItemText(painter, option, index, index.data(Qt::DisplayRole).toString(), is_selected);
+    }
+    return;
+  }
+
+  MessageDataRef ref = getDataRef(caller_type_, index);
+  if (!ref.bytes || ref.bytes->empty()) return;
 
   const QRect item_rect = option.rect.adjusted(h_margin, v_margin, -h_margin, -v_margin);
   const auto& bytes = *ref.bytes;
   const auto& colors = *ref.colors;
-  QColor text_color = (option.state & QStyle::State_Selected)
-                          ? option.palette.color(QPalette::HighlightedText)
-                          : option.palette.color(QPalette::Text);
-  painter->setPen(text_color);
+  const int b_width = byte_size.width();
+  const int b_height = byte_size.height();
   const QPoint pt = item_rect.topLeft();
+
+  painter->setFont(fixed_font);
+  painter->setPen(option.palette.color(is_selected ? QPalette::HighlightedText : QPalette::Text));
 
   for (int i = 0; i < bytes.size(); ++i) {
     int row = !multiple_lines ? 0 : i / 8;
     int col = !multiple_lines ? i : i % 8;
-    QRect r({pt.x() + col * byte_size.width(), pt.y() + row * byte_size.height()}, byte_size);
+    QRect r(pt.x() + (col * b_width), pt.y() + (row * b_height), b_width, b_height);
 
     // Byte-specific background (e.g., green/red change indicators)
     if (i < colors.size() && colors[i].alpha() > 1) {
       painter->fillRect(r, colors[i]);
     }
     utils::drawStaticText(painter, r, hex_text_table[bytes[i]]);
+  }
+}
+
+void MessageDelegate::drawItemText(QPainter* painter, const QStyleOptionViewItem& option,
+                                   const QModelIndex& index, const QString& text, bool is_selected) const {
+  painter->setFont(option.font);
+
+  if (is_selected) {
+    painter->setPen(option.palette.color(QPalette::HighlightedText));
+  } else {
+    QVariant fg = index.data(Qt::ForegroundRole);
+    painter->setPen(fg.isValid() ? fg.value<QColor>() : option.palette.color(QPalette::Text));
+  }
+
+  QRect textRect = option.rect.adjusted(h_margin, 0, -h_margin, 0);
+  const QFontMetrics &fm = option.fontMetrics;
+  const int y_baseline = textRect.top() + (textRect.height() - fm.height()) / 2 + fm.ascent();
+
+  if (fm.horizontalAdvance(text) <= textRect.width()) {
+    painter->drawText(textRect.left(), y_baseline, text);
+  } else {
+    QString elided = fm.elidedText(text, Qt::ElideRight, textRect.width());
+    painter->drawText(textRect.left(), y_baseline, elided);
   }
 }

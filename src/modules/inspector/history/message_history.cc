@@ -70,9 +70,9 @@ void MessageHistory::setupConnections() {
 
 void MessageHistory::handleDisplayTypeChange(int index) {
   if (index == 0) { // Signal values
-    logs->setItemDelegateForColumn(1, nullptr);
+    logs->setItemDelegate(nullptr);
   } else {
-    logs->setItemDelegateForColumn(1, delegate);
+    logs->setItemDelegate(delegate);
   }
   model->setHexMode(index);
 }

@@ -20,7 +20,7 @@ MessageList::MessageList(QWidget *parent) : menu(new QMenu(this)), QWidget(paren
   // message table
   main_layout->addWidget(view = new MessageTable(this));
   delegate = new MessageDelegate(view, CallerType::MessageList, settings.multiple_lines_hex);
-  view->setItemDelegateForColumn(MessageModel::Column::DATA, delegate);
+  view->setItemDelegate(delegate);
   view->setModel(model = new MessageModel(this));
   view->setHeader(header = new MessageHeader(this));
 

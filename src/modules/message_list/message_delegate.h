@@ -9,15 +9,18 @@ enum class CallerType {
 
 class MessageDelegate : public QStyledItemDelegate {
   Q_OBJECT
-public:
-  MessageDelegate(QObject *parent, CallerType caller_type, bool multiple_lines = false);
-  void paint(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const override;
-  QSize sizeHint(const QStyleOptionViewItem &option, const QModelIndex &index) const override;
+ public:
+  MessageDelegate(QObject* parent, CallerType caller_type, bool multiple_lines = false);
+  void paint(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const override;
+  QSize sizeHint(const QStyleOptionViewItem& option, const QModelIndex& index) const override;
   bool multipleLines() const { return multiple_lines; }
   void setMultipleLines(bool v) { multiple_lines = v; }
   QSize sizeForBytes(int n) const;
 
-private:
+ private:
+  void drawItemText(QPainter* painter, const QStyleOptionViewItem& option,
+                    const QModelIndex& index, const QString& text, bool is_selected) const;
+
   std::array<QStaticText, 256> hex_text_table;
   QFont fixed_font;
   QSize byte_size = {};
