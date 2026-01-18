@@ -40,6 +40,7 @@ private:
   void handleSignalUpdated(const dbc::Signal *sig);
   void updateState(const std::set<MessageId> *msgs = nullptr);
   void updateColumnWidths();
+  int getValueColumnWidth(const MessageState *msg);
   std::pair<QModelIndex, QModelIndex> visibleSignalRange();
 
   int value_column_width = 0;
