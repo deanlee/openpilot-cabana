@@ -52,13 +52,6 @@ QString doubleToString(double value) {
   return s;
 }
 
-int num_decimals(double num) {
-  QString s = doubleToString(num);
-  int dotIdx = s.indexOf('.');
-  // If there's no dot, there are no decimals
-  return (dotIdx == -1) ? 0 : (s.length() - dotIdx - 1);
-}
-
 QPixmap icon(const QString& id, QSize size, std::optional<QColor> color) {
   QColor icon_color = color.value_or(isDarkTheme() ? QColor("#bbbbbb") : QColor("#333333"));
   QString key = QString("lucide_%1_%2_%3").arg(id).arg(size.width()).arg(icon_color.rgba(), 0, 16);

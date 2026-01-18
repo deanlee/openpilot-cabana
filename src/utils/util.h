@@ -13,7 +13,6 @@ namespace utils {
 
 QPixmap icon(const QString &id, QSize size = QSize(24, 24), std::optional<QColor> color = std::nullopt);
 QString doubleToString(double value);
-int num_decimals(double num);
 bool isDarkTheme();
 void setTheme(int theme);
 QString formatSeconds(double sec, bool include_milliseconds = false, bool absolute_time = false);
