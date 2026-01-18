@@ -27,7 +27,6 @@ void dbc::Signal::update() {
   float v = 0.85f + 0.15f * (float)((hash >> 8) & 0xff) / 255.0f;  // Range: 0.85 - 1.0
 
   color = QColor::fromHsvF(h, s, v);
-  precision = std::max(utils::num_decimals(factor), utils::num_decimals(offset));
 }
 
 QString dbc::Signal::formatValue(double value, bool with_unit) const {
@@ -41,7 +40,7 @@ QString dbc::Signal::formatValue(double value, bool with_unit) const {
     }
   }
 
-  QString val_str = QString::number(value, 'f', precision);
+  QString val_str = utils::doubleToString(value);
   if (with_unit && !unit.isEmpty()) {
     val_str += " " + unit;
   }

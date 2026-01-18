@@ -40,7 +40,6 @@ class Signal {
   QString comment;
   QString receiver_name;
   ValueTable value_table;
-  int precision = 0;
   QColor color;
 
   // Multiplexed
