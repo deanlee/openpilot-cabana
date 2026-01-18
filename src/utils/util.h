@@ -12,7 +12,7 @@
 namespace utils {
 
 QPixmap icon(const QString &id, QSize size = QSize(24, 24), std::optional<QColor> color = std::nullopt);
-QString doubleToString(double value);
+QString doubleToString(double value, int precision = std::numeric_limits<double>::max_digits10);
 int num_decimals(double num);
 bool isDarkTheme();
 void setTheme(int theme);
