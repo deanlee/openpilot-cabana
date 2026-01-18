@@ -1,6 +1,7 @@
 #include "signal_tree.h"
 
 #include "signal_editor.h"
+#include "signal_tree_delegate.h"
 
 SignalTree::SignalTree(QWidget* parent) : QTreeView(parent) {
   setFrameShape(QFrame::NoFrame);
@@ -27,6 +28,7 @@ void SignalTree::dataChanged(const QModelIndex& topLeft, const QModelIndex& bott
 void SignalTree::leaveEvent(QEvent* event) {
   QTreeView::leaveEvent(event);
   updateHighlight(nullptr);
+  static_cast<SignalTreeDelegate*>(itemDelegate())->clearHoverState();
 }
 
 void SignalTree::mouseMoveEvent(QMouseEvent* event) {
@@ -41,6 +43,8 @@ void SignalTree::mouseMoveEvent(QMouseEvent* event) {
         current_sig = item->sig;
       }
     }
+  } else {
+    static_cast<SignalTreeDelegate*>(itemDelegate())->clearHoverState();
   }
 
   updateHighlight(current_sig);

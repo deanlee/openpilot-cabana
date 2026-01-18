@@ -6,6 +6,7 @@
 #include "signal_tree_model.h"
 
 class SignalTreeDelegate : public QStyledItemDelegate {
+  Q_OBJECT
 public:
 
   // Layout Constants
@@ -16,6 +17,7 @@ public:
   const int kValueWidth = 65;
 
   SignalTreeDelegate(QObject *parent);
+  void clearHoverState();
   void paint(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const override;
   QSize sizeHint(const QStyleOptionViewItem &option, const QModelIndex &index) const override;
   QWidget *createEditor(QWidget *parent, const QStyleOptionViewItem &option, const QModelIndex &index) const override;
