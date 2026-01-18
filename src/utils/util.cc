@@ -26,11 +26,13 @@ bool isDarkTheme() {
   return windowColor.lightness() < 128;
 }
 
-QString doubleToString(double value) {
-  // Use 'f' to avoid 'e-09' and use max_digits10 (17) for lossless precision
-  QString s = QString::number(value, 'f', std::numeric_limits<double>::max_digits10);
+QString doubleToString(double value, int precision) {
+  if (value == 0.0) {
+    return QStringLiteral("0");
+  }
 
-  // 2. Optimized Trimming
+  QString s = QString::number(value, 'f', precision);
+
   int dotIdx = s.indexOf('.');
   if (dotIdx != -1) {
     int i = s.length() - 1;

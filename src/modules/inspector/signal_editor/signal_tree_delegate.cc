@@ -124,8 +124,8 @@ void SignalTreeDelegate::drawDataColumn(QPainter* p, QRect r, const QStyleOption
   int anchorX = r.left() + sparkW;
   if (show_details) {
     p->setFont(minmax_font);
-    QString maxS = QString::number(item->sparkline.max_val, 'f', item->sig->precision);
-    QString minS = QString::number(item->sparkline.min_val, 'f', item->sig->precision);
+    QString maxS = utils::doubleToString(item->sparkline.max_val, item->sig->precision);
+    QString minS = utils::doubleToString(item->sparkline.min_val, item->sig->precision);
     detailsW = std::max(p->fontMetrics().horizontalAdvance(maxS), p->fontMetrics().horizontalAdvance(minS)) + kPadding;
 
     p->setPen(sel ? text_c : opt.palette.mid().color());
