@@ -39,7 +39,7 @@ class ChartsPanel : public QFrame {
  signals:
   void toggleChartsDocking();
   void seriesChanged();
-  void showTip(double seconds);
+  void showCursor(double seconds);
 
  private:
   void setupConnections();

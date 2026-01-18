@@ -197,7 +197,7 @@ void MainWindow::createVideoChartsDock() {
   addDockWidget(Qt::RightDockWidgetArea, video_dock_);
 
   connect(charts_panel, &ChartsPanel::toggleChartsDocking, this, &MainWindow::toggleChartsDocking);
-  connect(charts_panel, &ChartsPanel::showTip, video_player_, &VideoPlayer::showThumbnail);
+  connect(charts_panel, &ChartsPanel::showCursor, video_player_, &VideoPlayer::showThumbnail);
 }
 
 void MainWindow::createShortcuts() {

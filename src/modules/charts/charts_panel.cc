@@ -93,7 +93,7 @@ void ChartsPanel::timeRangeChanged(const std::optional<std::pair<double, double>
 }
 
 void ChartsPanel::updateHover(double time) {
-  emit showTip(time);
+  emit showCursor(time);
   hover_time_ = time;
 
   int scroll_y = scroll_area_->verticalScrollBar()->value();
@@ -109,9 +109,9 @@ void ChartsPanel::updateHover(double time) {
 
     if (hover_time_ >= 0 && !intersected.isEmpty()) {
       intersected.moveTopLeft(intersected.topLeft() - chart_pos);
-      chart_view->showTip(hover_time_, intersected);
+      chart_view->showCursor(hover_time_, intersected);
     } else {
-      chart_view->hideTip();
+      chart_view->hideCursor();
     }
   }
 }
@@ -119,7 +119,7 @@ void ChartsPanel::updateHover(double time) {
 void ChartsPanel::hideHover() {
   hover_time_ = -1;
   for (auto* chart_view : charts) {
-    chart_view->hideTip();
+    chart_view->hideCursor();
   }
 }
 

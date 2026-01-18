@@ -236,7 +236,7 @@ void ChartView::handlDragStart() {
   }
 }
 
-void ChartView::showTip(double sec, const QRect& visible_rect) {
+void ChartView::showCursor(double sec, const QRect& visible_rect) {
   int tooltip_x = chart_->mapToPosition({sec, 0}).x();
 
   QStringList entries;
@@ -252,7 +252,7 @@ void ChartView::showTip(double sec, const QRect& visible_rect) {
   viewport()->update();
 }
 
-void ChartView::hideTip() {
+void ChartView::hideCursor() {
   if (!tip_label->isVisible()) return;
 
   clearTrackPoints();

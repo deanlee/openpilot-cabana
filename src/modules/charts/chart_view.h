@@ -21,8 +21,8 @@ public:
   ChartView(const std::pair<double, double> &x_range, ChartsPanel *parent = nullptr);
   inline bool empty() const { return chart_->sigs_.empty(); }
   void updatePlot(double cur, double min, double max);
-  void showTip(double sec, const QRect &visible_rect);
-  void hideTip();
+  void showCursor(double sec, const QRect &visible_rect);
+  void hideCursor();
   void startAnimation();
   double secondsAtPoint(const QPointF &pt) const { return chart_->mapToValue(pt).x(); }
 
