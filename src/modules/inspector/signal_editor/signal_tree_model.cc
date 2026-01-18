@@ -157,43 +157,46 @@ QModelIndex SignalTreeModel::parent(const QModelIndex &index) const {
 }
 
 QVariant SignalTreeModel::data(const QModelIndex &index, int role) const {
-  if (index.isValid()) {
-    const Item *item = getItem(index);
-    if (role == Qt::DisplayRole || role == Qt::EditRole) {
-      if (index.column() == 0) {
-        return item->type == Item::Sig ? item->sig->name : item->title;
-      } else {
-        switch (item->type) {
-          case Item::Sig: return item->sig_val;
-          case Item::Name: return item->sig->name;
-          case Item::Size: return item->sig->size;
-          case Item::Node: return item->sig->receiver_name;
-          case Item::SignalType: return signalTypeToString(item->sig->type);
-          case Item::MultiplexValue: return item->sig->multiplex_value;
-          case Item::Offset: return utils::doubleToString(item->sig->offset);
-          case Item::Factor: return utils::doubleToString(item->sig->factor);
-          case Item::Unit: return item->sig->unit;
-          case Item::Comment: return item->sig->comment;
-          case Item::Min: return utils::doubleToString(item->sig->min);
-          case Item::Max: return utils::doubleToString(item->sig->max);
-          case Item::ValueTable: {
-            QStringList value_table;
-            for (auto &[val, desc] : item->sig->value_table) {
-              value_table << QString("%1 \"%2\"").arg(val).arg(desc);
-            }
-            return value_table.join(" ");
-          }
-          default: break;
-        }
-      }
-    } else if (role == Qt::CheckStateRole && index.column() == 1) {
-      if (item->type == Item::Endian) return item->sig->is_little_endian ? Qt::Checked : Qt::Unchecked;
-      if (item->type == Item::Signed) return item->sig->is_signed ? Qt::Checked : Qt::Unchecked;
-    } else if (role == Qt::ToolTipRole && item->type == Item::Sig) {
-      return (index.column() == 0) ? signalToolTip(item->sig) : QString();
-    } else if (role == IsChartedRole && item->type == Item::Sig) {
-      return charted_signals_.contains(item->sig);
+  if (!index.isValid()) return {};
+
+  const Item *item = getItem(index);
+  if (role == Qt::DisplayRole || role == Qt::EditRole) {
+    if (index.column() == 0) {
+      return item->type == Item::Sig ? item->sig->name : item->title;
     }
+
+    switch (item->type) {
+      case Item::Sig: return item->sig_val;
+      case Item::Name: return item->sig->name;
+      case Item::Size: return item->sig->size;
+      case Item::Node: return item->sig->receiver_name;
+      case Item::SignalType: return signalTypeToString(item->sig->type);
+      case Item::MultiplexValue: return item->sig->multiplex_value;
+      case Item::Offset: return utils::doubleToString(item->sig->offset);
+      case Item::Factor: return utils::doubleToString(item->sig->factor);
+      case Item::Unit: return item->sig->unit;
+      case Item::Comment: return item->sig->comment;
+      case Item::Min: return utils::doubleToString(item->sig->min);
+      case Item::Max: return utils::doubleToString(item->sig->max);
+      case Item::ValueTable: {
+        QStringList value_table;
+        for (auto &[val, desc] : item->sig->value_table) {
+          value_table << QString("%1 \"%2\"").arg(val).arg(desc);
+        }
+        return value_table.join(" ");
+      }
+      default: break;
+    }
+    return {};
+  }
+
+  if (role == Qt::CheckStateRole && index.column() == 1) {
+    if (item->type == Item::Endian) return item->sig->is_little_endian ? Qt::Checked : Qt::Unchecked;
+    if (item->type == Item::Signed) return item->sig->is_signed ? Qt::Checked : Qt::Unchecked;
+  } else if (role == Qt::ToolTipRole && item->type == Item::Sig) {
+    return (index.column() == 0) ? signalToolTip(item->sig) : QString();
+  } else if (role == IsChartedRole && item->type == Item::Sig) {
+    return charted_signals_.contains(item->sig);
   }
   return {};
 }
