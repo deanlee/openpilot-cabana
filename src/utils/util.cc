@@ -26,6 +26,32 @@ bool isDarkTheme() {
   return windowColor.lightness() < 128;
 }
 
+QString doubleToString(double value) {
+  // Use 'f' to avoid 'e-09' and use max_digits10 (17) for lossless precision
+  QString s = QString::number(value, 'f', std::numeric_limits<double>::max_digits10);
+
+  // 2. Optimized Trimming
+  int dotIdx = s.indexOf('.');
+  if (dotIdx != -1) {
+    int i = s.length() - 1;
+    // Walk back to remove trailing zeros
+    while (i > dotIdx && s[i] == '0') i--;
+    // Remove the dot if no decimals remain
+    if (i == dotIdx) i--;
+
+    // Only truncate if we actually removed something
+    if (i < s.length() - 1) {
+      s.truncate(i + 1);
+    }
+  }
+
+  if (s == "0" || s == "-0" || s.isEmpty()) {
+    return QStringLiteral("0");
+  }
+
+  return s;
+}
+
 QPixmap icon(const QString& id, QSize size, std::optional<QColor> color) {
   QColor icon_color = color.value_or(isDarkTheme() ? QColor("#bbbbbb") : QColor("#333333"));
   QString key = QString("lucide_%1_%2_%3").arg(id).arg(size.width()).arg(icon_color.rgba(), 0, 16);

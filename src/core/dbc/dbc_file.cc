@@ -4,6 +4,8 @@
 #include <QFileInfo>
 #include <QRegularExpression>
 
+#include "utils/util.h"
+
 namespace dbc {
 
 static QRegularExpression RE_SIGNAL(
@@ -261,8 +263,8 @@ QString File::toDBCString() {
       body_stream << " SG_ " << sig->name << " " << mux << ": "
                   << sig->start_bit << "|" << sig->size << "@"
                   << (sig->is_little_endian ? '1' : '0') << (sig->is_signed ? '-' : '+')
-                  << " (" << doubleToString(sig->factor) << "," << doubleToString(sig->offset) << ") ["
-                  << doubleToString(sig->min) << "|" << doubleToString(sig->max) << "] \""
+                  << " (" << utils::doubleToString(sig->factor) << "," << utils::doubleToString(sig->offset) << ") ["
+                  << utils::doubleToString(sig->min) << "|" << utils::doubleToString(sig->max) << "] \""
                   << sig->unit << "\" "
                   << (sig->receiver_name.isEmpty() ? DEFAULT_NODE_NAME : sig->receiver_name) << "\n";
 

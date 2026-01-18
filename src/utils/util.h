@@ -22,6 +22,7 @@ inline void drawStaticText(QPainter *p, const QRect &r, const QStaticText &text)
 inline QString toHex(const std::vector<uint8_t> &dat, char separator = '\0') {
   return QByteArray::fromRawData((const char *)dat.data(), dat.size()).toHex(separator).toUpper();
 }
+QString doubleToString(double value);
 
 }
 

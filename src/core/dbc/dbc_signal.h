@@ -53,4 +53,3 @@ class Signal {
 double decodeSignal(const uint8_t* data, size_t data_size, const dbc::Signal& sig);
 void updateMsbLsb(dbc::Signal& s);
 inline int flipBitPos(int start_bit) { return 8 * (start_bit / 8) + 7 - start_bit % 8; }
-inline QString doubleToString(double value) { return QString::number(value, 'g', std::numeric_limits<double>::digits10); }

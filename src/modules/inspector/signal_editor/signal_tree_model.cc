@@ -170,12 +170,12 @@ QVariant SignalTreeModel::data(const QModelIndex &index, int role) const {
           case Item::Node: return item->sig->receiver_name;
           case Item::SignalType: return signalTypeToString(item->sig->type);
           case Item::MultiplexValue: return item->sig->multiplex_value;
-          case Item::Offset: return doubleToString(item->sig->offset);
-          case Item::Factor: return doubleToString(item->sig->factor);
+          case Item::Offset: return utils::doubleToString(item->sig->offset);
+          case Item::Factor: return utils::doubleToString(item->sig->factor);
           case Item::Unit: return item->sig->unit;
           case Item::Comment: return item->sig->comment;
-          case Item::Min: return doubleToString(item->sig->min);
-          case Item::Max: return doubleToString(item->sig->max);
+          case Item::Min: return utils::doubleToString(item->sig->min);
+          case Item::Max: return utils::doubleToString(item->sig->max);
           case Item::ValueTable: {
             QStringList value_table;
             for (auto &[val, desc] : item->sig->value_table) {
