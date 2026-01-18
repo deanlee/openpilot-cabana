@@ -67,9 +67,9 @@ void ChartSignal::updateRange(double min_x, double max_x) {
   }
   last_range_ = {min_x, max_x};
 
+  min_value = std::numeric_limits<double>::max();
+  max_value = std::numeric_limits<double>::lowest();
   if (vals.empty()) {
-    min_value = 0;
-    max_value = 0;
     return;
   }
 
