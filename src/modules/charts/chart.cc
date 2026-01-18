@@ -41,7 +41,7 @@ void Chart::syncUI() {
 
 void Chart::initControls() {
   move_icon_ = new QGraphicsPixmapItem(utils::icon("grip-horizontal"), this);
-  move_icon_->setToolTip(tr("Drag and drop to move chart"));
+  move_icon_->setToolTip(tr("Drag to reorder or merge"));
 
   QToolButton* remove_btn = new ToolButton("x", tr("Remove Chart"));
   close_btn_proxy_ = new QGraphicsProxyWidget(this);
@@ -61,13 +61,13 @@ void Chart::initControls() {
     menu_->addAction(act);
   }
   menu_->addSeparator();
-  menu_->addAction(tr("Manage Signals"), this, &Chart::manageSignals);
-  split_chart_act_ = menu_->addAction(tr("Split Chart"), this, &Chart::splitSeries);
+  menu_->addAction(tr("Edit Signals..."), this, &Chart::manageSignals);
+  split_chart_act_ = menu_->addAction(tr("Split Signals"), this, &Chart::splitSeries);
 
   QToolButton* manage_btn = new ToolButton("menu", "");
+  manage_btn->setToolTip(tr("Chart Settings"));
   manage_btn->setMenu(menu_);
   manage_btn->setPopupMode(QToolButton::InstantPopup);
-  // manage_btn->setStyleSheet("QToolButton::menu-indicator { image: none; }");
   manage_btn_proxy_ = new QGraphicsProxyWidget(this);
   manage_btn_proxy_->setWidget(manage_btn);
   manage_btn_proxy_->setZValue(zValue() + 11);
@@ -87,7 +87,7 @@ void Chart::initControls() {
   manage_btn->setStyleSheet(clean_style);
   manage_btn->setFocusPolicy(Qt::NoFocus);
 
-  close_act_ = new QAction(tr("Close"), this);
+  close_act_ = new QAction(tr("Remove Chart"), this);
   connect(close_act_, &QAction::triggered, this, &Chart::close);
   connect(remove_btn, &QToolButton::clicked, close_act_, &QAction::triggered);
   connect(change_series_group, &QActionGroup::triggered, [this](QAction* action) {
