@@ -117,6 +117,7 @@ void ChartsPanel::updateHover(double time) {
 }
 
 void ChartsPanel::hideHover() {
+  emit showCursor(-1);
   hover_time_ = -1;
   for (auto* chart_view : charts) {
     chart_view->hideCursor();
