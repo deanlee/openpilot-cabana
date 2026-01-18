@@ -148,7 +148,7 @@ void Chart::resizeEvent(QGraphicsSceneResizeEvent* event) {
   layout()->getContentsMargins(&left, &top, &right, &bottom);
   move_icon_->setPos(left, top);
   close_btn_proxy_->setPos(rect().right() - right - close_btn_proxy_->size().width(), top);
-  int x = close_btn_proxy_->pos().x() - manage_btn_proxy_->size().width() - style()->pixelMetric(QStyle::PM_LayoutHorizontalSpacing);
+  int x = close_btn_proxy_->pos().x() - manage_btn_proxy_->size().width() - style()->pixelMetric(QStyle::PM_ToolBarItemSpacing);
   manage_btn_proxy_->setPos(x, top);
 
   if (align_to_ > 0) {
