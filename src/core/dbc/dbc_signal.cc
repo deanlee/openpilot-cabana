@@ -4,11 +4,7 @@
 #include <algorithm>
 #include <cmath>
 
-static int num_decimals(double num) {
-  const QString string = QString::number(num);
-  auto dot_pos = string.indexOf('.');
-  return dot_pos == -1 ? 0 : string.size() - dot_pos - 1;
-}
+#include "utils/util.h"
 
 void dbc::Signal::update() {
   updateMsbLsb(*this);
@@ -31,7 +27,7 @@ void dbc::Signal::update() {
   float v = 0.85f + 0.15f * (float)((hash >> 8) & 0xff) / 255.0f;  // Range: 0.85 - 1.0
 
   color = QColor::fromHsvF(h, s, v);
-  precision = std::max(num_decimals(factor), num_decimals(offset));
+  precision = std::max(utils::num_decimals(factor), utils::num_decimals(offset));
 }
 
 QString dbc::Signal::formatValue(double value, bool with_unit) const {

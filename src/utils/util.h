@@ -12,6 +12,8 @@
 namespace utils {
 
 QPixmap icon(const QString &id, QSize size = QSize(24, 24), std::optional<QColor> color = std::nullopt);
+QString doubleToString(double value);
+int num_decimals(double num);
 bool isDarkTheme();
 void setTheme(int theme);
 QString formatSeconds(double sec, bool include_milliseconds = false, bool absolute_time = false);
@@ -22,7 +24,6 @@ inline void drawStaticText(QPainter *p, const QRect &r, const QStaticText &text)
 inline QString toHex(const std::vector<uint8_t> &dat, char separator = '\0') {
   return QByteArray::fromRawData((const char *)dat.data(), dat.size()).toHex(separator).toUpper();
 }
-QString doubleToString(double value);
 
 }
 
