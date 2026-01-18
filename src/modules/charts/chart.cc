@@ -67,10 +67,25 @@ void Chart::initControls() {
   QToolButton* manage_btn = new ToolButton("menu", "");
   manage_btn->setMenu(menu_);
   manage_btn->setPopupMode(QToolButton::InstantPopup);
-  manage_btn->setStyleSheet("QToolButton::menu-indicator { image: none; }");
+  // manage_btn->setStyleSheet("QToolButton::menu-indicator { image: none; }");
   manage_btn_proxy_ = new QGraphicsProxyWidget(this);
   manage_btn_proxy_->setWidget(manage_btn);
   manage_btn_proxy_->setZValue(zValue() + 11);
+
+  const QString clean_style = R"(
+    QToolButton, QToolButton:hover, QToolButton:pressed, QToolButton:checked {
+      background: transparent;
+      border: none;
+      padding: 0px;
+    }
+    QToolButton::menu-indicator {
+      image: none;
+    }
+  )";
+  remove_btn->setStyleSheet(clean_style);
+  remove_btn->setFocusPolicy(Qt::NoFocus);
+  manage_btn->setStyleSheet(clean_style);
+  manage_btn->setFocusPolicy(Qt::NoFocus);
 
   close_act_ = new QAction(tr("Close"), this);
   connect(close_act_, &QAction::triggered, this, &Chart::close);
