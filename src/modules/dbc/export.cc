@@ -4,6 +4,7 @@
 #include <QTextStream>
 
 #include "modules/system/stream_manager.h"
+#include "utils/util.h"
 
 void exportMessagesToCSV(const QString &file_name, std::optional<MessageId> msg_id) {
   QFile file(file_name);
@@ -35,7 +36,7 @@ void exportSignalsToCSV(const QString &file_name, const MessageId &msg_id) {
       for (auto s : msg->sigs) {
         double value = 0;
         s->getValue(e->dat, e->size, &value);
-        stream << "," << QString::number(value, 'f', s->precision);
+        stream << "," << utils::doubleToString(value);
       }
       stream << "\n";
     }
