@@ -145,11 +145,10 @@ QWidget *VideoPlayer::createCameraWidget() {
   cam_widget->setMinimumHeight(MIN_VIDEO_HEIGHT);
   cam_widget->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::MinimumExpanding);
 
-  l->addWidget(slider = new Slider(w));
-  slider->setSingleStep(0);
-  slider->setTimeRange(StreamManager::stream()->minSeconds(), StreamManager::stream()->maxSeconds());
+  l->addWidget(slider = new TimelineSlider(w));
+  slider->setRange(StreamManager::stream()->minSeconds(), StreamManager::stream()->maxSeconds());
 
-  connect(slider, &QSlider::sliderReleased, [this]() { StreamManager::stream()->seekTo(slider->currentSecond()); });
+  connect(slider, &TimelineSlider::timeHovered, this, &VideoPlayer::showThumbnail);
   connect(&StreamManager::instance(), &StreamManager::paused, cam_widget, [c = cam_widget]() { c->update(); });
   connect(&StreamManager::instance(), &StreamManager::eventsMerged, this, [this]() { slider->update(); });
   connect(&StreamManager::instance(), &StreamManager::qLogLoaded, cam_widget, &PlaybackCameraView::parseQLog, Qt::QueuedConnection);
@@ -158,7 +157,6 @@ QWidget *VideoPlayer::createCameraWidget() {
   connect(camera_tab, &QTabBar::currentChanged, [this](int index) {
     if (index != -1) cam_widget->setStreamType((VisionStreamType)camera_tab->tabData(index).toInt());
   });
-  slider->installEventFilter(this);
   return w;
 }
 
@@ -201,8 +199,8 @@ void VideoPlayer::timeRangeChanged() {
     skip_to_end_action->setEnabled(!time_range.has_value());
     return;
   }
-  time_range ? slider->setTimeRange(time_range->first, time_range->second)
-             : slider->setTimeRange(StreamManager::stream()->minSeconds(), StreamManager::stream()->maxSeconds());
+  time_range ? slider->setRange(time_range->first, time_range->second)
+             : slider->setRange(StreamManager::stream()->minSeconds(), StreamManager::stream()->maxSeconds());
   updateState();
 }
 
@@ -214,14 +212,12 @@ QString VideoPlayer::formatTime(double sec, bool include_milliseconds) {
 
 void VideoPlayer::updateState() {
   if (slider) {
-    if (!slider->isSliderDown()) {
-      slider->setCurrentSecond(StreamManager::stream()->currentSec());
-    }
+    slider->setTime(StreamManager::stream()->currentSec());
     if (camera_tab->count() == 0) {  //  No streams available
       cam_widget->update();          // Manually refresh to show alert events
     }
     time_label->setText(QString("%1 / %2").arg(formatTime(StreamManager::stream()->currentSec(), true),
-                                             formatTime(slider->maximum() / slider->factor)));
+                                             formatTime(slider->maximum())));
   } else {
     time_label->setText(formatTime(StreamManager::stream()->currentSec(), true));
   }
@@ -236,23 +232,11 @@ void VideoPlayer::showThumbnail(double seconds) {
   if (StreamManager::stream()->liveStreaming()) return;
 
   cam_widget->thumbnail_dispaly_time = seconds;
-  slider->thumbnail_dispaly_time = seconds;
   cam_widget->update();
-  slider->update();
 }
 
 void VideoPlayer::showRouteInfo() {
   RouteInfoDlg *route_info = new RouteInfoDlg(this);
   route_info->setAttribute(Qt::WA_DeleteOnClose);
   route_info->show();
-}
-
-bool VideoPlayer::eventFilter(QObject *obj, QEvent *event) {
-  if (event->type() == QEvent::MouseMove) {
-    auto [min_sec, max_sec] = StreamManager::stream()->timeRange().value_or(std::make_pair(StreamManager::stream()->minSeconds(), StreamManager::stream()->maxSeconds()));
-    showThumbnail(min_sec + static_cast<QMouseEvent *>(event)->pos().x() * (max_sec - min_sec) / slider->width());
-  } else if (event->type() == QEvent::Leave) {
-    showThumbnail(-1);
-  }
-  return false;
 }

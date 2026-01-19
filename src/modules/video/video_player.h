@@ -25,7 +25,6 @@ public:
 
 protected:
   void setupConnections();
-  bool eventFilter(QObject *obj, QEvent *event) override;
   QString formatTime(double sec, bool include_milliseconds = false);
   void timeRangeChanged();
   void updateState();
@@ -46,7 +45,7 @@ protected:
   QAction *skip_to_end_action = nullptr;
   QAction *route_info_action = nullptr;
   QAction *loop_action = nullptr;
-  Slider *slider = nullptr;
+  TimelineSlider *slider = nullptr;
   TimeLabel *time_label = nullptr;
   QTabBar *camera_tab = nullptr;
 };
