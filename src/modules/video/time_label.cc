@@ -15,13 +15,10 @@ void TimeLabel::setText(const QString& new_text) {
 }
 
 void TimeLabel::paintEvent(QPaintEvent* event) {
-  static const QColor bg = palette().color(QPalette::Window);
-  static const QColor fg = palette().color(QPalette::WindowText);
-
   QPainter p(this);
 
   const QRect r = rect();
-  p.fillRect(r, bg);
-  p.setPen(fg);
+  p.fillRect(r, palette().color(QPalette::Window));
+  p.setPen(palette().color(QPalette::WindowText));
   p.drawText(r, Qt::AlignLeft | Qt::AlignVCenter, text);
 }
