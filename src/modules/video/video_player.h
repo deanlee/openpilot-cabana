@@ -1,5 +1,6 @@
 #pragma once
 
+#include <QFontDatabase>
 #include <QFrame>
 #include <QTabBar>
 #include <QToolBar>
@@ -11,6 +12,7 @@
 
 #include "core/streams/replay_stream.h"
 #include "playback_view.h"
+#include "time_label.h"
 #include "timeline_slider.h"
 #include "utils/util.h"
 
@@ -38,12 +40,13 @@ protected:
 
   QWidget *camera_widget = nullptr;
   PlaybackCameraView *cam_widget;
-  QAction *time_display_action = nullptr;
+  // QAction *time_display_action = nullptr;
   QAction *play_toggle_action = nullptr;
   QToolButton *speed_btn = nullptr;
   QAction *skip_to_end_action = nullptr;
   QAction *route_info_action = nullptr;
   QAction *loop_action = nullptr;
   Slider *slider = nullptr;
+  TimeLabel *time_label = nullptr;
   QTabBar *camera_tab = nullptr;
 };

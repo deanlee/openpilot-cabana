@@ -88,21 +88,19 @@ void VideoPlayer::createPlaybackController() {
     StreamManager::stream()->seekTo(StreamManager::stream()->maxSeconds() + 1);
   });
 
-  time_display_action = toolbar->addAction("", this, [this]() {
+  time_label = new TimeLabel();
+  time_label->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+  toolbar->addWidget(time_label);
+  connect(time_label, &TimeLabel::clicked, this, [this]() {
     settings.absolute_time = !settings.absolute_time;
-    time_display_action->setToolTip(settings.absolute_time ? tr("Elapsed time") : tr("Absolute time"));
+    time_label->setToolTip(settings.absolute_time ? tr("Elapsed time") : tr("Absolute time"));
     updateState();
   });
-
-  QWidget *spacer = new QWidget();
-  spacer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
-  toolbar->addWidget(spacer);
 
   loop_action = toolbar->addAction(utils::icon("repeat"), tr("Loop playback"), this, &VideoPlayer::loopPlaybackClicked);
   createSpeedDropdown(toolbar);
   toolbar->addSeparator();
   route_info_action = toolbar->addAction(utils::icon("info"), tr("View route details"), this, &VideoPlayer::showRouteInfo);
-  // hide repeat,separator info if living?
 }
 
 void VideoPlayer::createSpeedDropdown(QToolBar *toolbar) {
@@ -222,10 +220,10 @@ void VideoPlayer::updateState() {
     if (camera_tab->count() == 0) {  //  No streams available
       cam_widget->update();          // Manually refresh to show alert events
     }
-    time_display_action->setText(QString("%1 / %2").arg(formatTime(StreamManager::stream()->currentSec(), true),
+    time_label->setText(QString("%1 / %2").arg(formatTime(StreamManager::stream()->currentSec(), true),
                                              formatTime(slider->maximum() / slider->factor)));
   } else {
-    time_display_action->setText(formatTime(StreamManager::stream()->currentSec(), true));
+    time_label->setText(formatTime(StreamManager::stream()->currentSec(), true));
   }
 }
 
