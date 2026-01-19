@@ -28,13 +28,28 @@ void TimelineSlider::setRange(double min, double max) {
 }
 
 void TimelineSlider::setTime(double t) {
-  if (current_time != t && !is_scrubbing) {
+  if (is_scrubbing) return;
+
+  const double range = max_time - min_time;
+  if (range <= 0) return;
+
+  const double w = width();
+  const double new_x = (t - min_time) * (w / range);
+  const double old_x = (current_time - min_time) * (w / range);
+
+  // Only update if the change is >= 1 pixel
+  if (std::abs(new_x - old_x) >= 1.0) {
     current_time = t;
-    update();
+
+    // Partial update for high performance
+    // Use a 20px wide rect to cover the scrubber handle (radius 8) and shadow
+    update(QRect(old_x - 10, 0, 20, height()));
+    update(QRect(new_x - 10, 0, 20, height()));
   }
 }
 
 void TimelineSlider::setThumbnailTime(double t) {
+  if (thumbnail_display_time == t) return;
   if (thumbnail_display_time != t) {
     thumbnail_display_time = t;
     emit timeHovered(t);
@@ -43,21 +58,34 @@ void TimelineSlider::setThumbnailTime(double t) {
 }
 
 void TimelineSlider::paintEvent(QPaintEvent* ev) {
-  QPainter p(this);
-  // Only repaint the area that actually needs it
-  p.fillRect(ev->rect(), palette().window());
-
+QPainter p(this);
   const double range = max_time - min_time;
   if (range <= 0 || width() <= 0) return;
 
-  // Cache commonly used values
-  const double scale = width() / range;
+  const int w = width();
+  const int h = height();
+  const double scale = w / range;
+
+  // Draw/Restore Static Data Layer
   if (timeline_cache.size() != size()) {
-    updateCache();
+    timeline_cache = QPixmap(size());
+    timeline_cache.fill(palette().window().color());
+    QPainter cache_painter(&timeline_cache);
+
+    const int groove_h = 6;
+    const int groove_y = (h - groove_h) / 2;
+
+    cache_painter.fillRect(rect(), palette().window());
+    cache_painter.fillRect(0, groove_y, w, groove_h, timeline_colors[(int)TimelineType::None]);
+
+    cache_painter.setRenderHint(QPainter::Antialiasing, false);
+    drawEvents(cache_painter, groove_y, groove_h, scale);
+    drawUnloadedOverlay(cache_painter, groove_y, groove_h, scale);
   }
+
   p.drawPixmap(ev->rect(), timeline_cache, ev->rect());
 
-  // 3. Interactive Layers - Enable AA for the diagonal lines of the playhead
+  // Interactive Layers - Enable AA for the diagonal lines of the playhead
   p.setRenderHint(QPainter::Antialiasing, true);
   drawMarkers(p, height(), scale);
   drawScrubber(p, height(), scale);
@@ -199,20 +227,6 @@ void TimelineSlider::leaveEvent(QEvent* e) {
 }
 
 void TimelineSlider::updateCache() {
-  timeline_cache = QPixmap(size());
-  timeline_cache.fill(palette().window().color());
-  QPainter cache_painter(&timeline_cache);
-
-  const double range = max_time - min_time;
-  const double scale = width() / range;
-  const int groove_h = 6;
-  const int groove_y = (height() - groove_h) / 2;
-
-  cache_painter.fillRect(rect(), palette().window());
-  cache_painter.fillRect(0, groove_y, width(), groove_h, timeline_colors[(int)TimelineType::None]);
-
-  cache_painter.setRenderHint(QPainter::Antialiasing, false);
-  drawEvents(cache_painter, groove_y, groove_h, scale);
-  drawUnloadedOverlay(cache_painter, groove_y, groove_h, scale);
+  timeline_cache = QPixmap();
   update();
 }
