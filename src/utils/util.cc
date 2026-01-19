@@ -128,10 +128,31 @@ void setTheme(int theme) {
 }
 
 QString formatSeconds(double sec, bool include_milliseconds, bool absolute_time) {
-  QString format = absolute_time ? "yyyy-MM-dd hh:mm:ss"
-                                 : (sec > 60 * 60 ? "hh:mm:ss" : "mm:ss");
-  if (include_milliseconds) format += ".zzz";
-  return QDateTime::fromMSecsSinceEpoch(sec * 1000).toString(format);
+  if (absolute_time) {
+    return QDateTime::fromMSecsSinceEpoch(sec * 1000).toString(include_milliseconds ? "yyyy-MM-dd HH:mm:ss.zzz" : "yyyy-MM-dd HH:mm:ss");
+  }
+
+  // High-performance relative time (math is faster than QTime objects)
+  int total_ms = static_cast<int>(sec * 1000);
+  int ms = total_ms % 1000;
+  int total_s = total_ms / 1000;
+  int s = total_s % 60;
+  int m = (total_s / 60) % 60;
+  int h = total_s / 3600;
+
+  char buf[32];
+  int len;
+  if (h > 0) {
+    len = include_milliseconds
+              ? std::sprintf(buf, "%02d:%02d:%02d.%03d", h, m, s, ms)
+              : std::sprintf(buf, "%02d:%02d:%02d", h, m, s);
+  } else {
+    len = include_milliseconds
+              ? std::sprintf(buf, "%02d:%02d.%03d", m, s, ms)
+              : std::sprintf(buf, "%02d:%02d", m, s);
+  }
+
+  return QString::fromLatin1(buf, len);
 }
 
 }  // namespace utils

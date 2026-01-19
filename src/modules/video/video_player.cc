@@ -222,20 +222,23 @@ void VideoPlayer::loopPlaybackClicked() {
 }
 
 void VideoPlayer::timeRangeChanged() {
-  const auto time_range = StreamManager::stream()->timeRange();
-  if (StreamManager::stream()->liveStreaming()) {
+  auto *stream = StreamManager::stream();
+  const auto time_range = stream->timeRange();
+  if (stream->liveStreaming()) {
     skip_to_end_btn->setEnabled(!time_range.has_value());
     return;
   }
   time_range ? slider->setRange(time_range->first, time_range->second)
-             : slider->setRange(StreamManager::stream()->minSeconds(), StreamManager::stream()->maxSeconds());
+             : slider->setRange(stream->minSeconds(), stream->maxSeconds());
   updateState();
 }
 
 QString VideoPlayer::formatTime(double sec, bool include_milliseconds) {
-  if (settings.absolute_time)
+  const bool abs = settings.absolute_time;
+  if (abs) {
     sec = StreamManager::stream()->beginDateTime().addMSecs(sec * 1000).toMSecsSinceEpoch() / 1000.0;
-  return utils::formatSeconds(sec, include_milliseconds, settings.absolute_time);
+  }
+  return utils::formatSeconds(sec, include_milliseconds, abs);
 }
 
 void VideoPlayer::updateState() {
