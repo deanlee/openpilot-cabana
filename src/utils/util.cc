@@ -74,16 +74,20 @@ QPixmap icon(const QString& id, QSize size, std::optional<QColor> color) {
       return QPixmap();
     }
 
-    pm = QPixmap(size);
+    const qreal deviceRatio = qApp->devicePixelRatio();
+    const QSize physicalSize = size * deviceRatio;
+    pm = QPixmap(physicalSize);
     pm.fill(Qt::transparent);
 
     QPainter p(&pm);
+    p.setRenderHint(QPainter::Antialiasing);
     renderer.render(&p);
 
     p.setCompositionMode(QPainter::CompositionMode_SourceIn);
     p.fillRect(pm.rect(), icon_color);
     p.end();
 
+    pm.setDevicePixelRatio(deviceRatio);
     QPixmapCache::insert(key, pm);
   }
   return pm;
