@@ -17,12 +17,15 @@ BinaryView::BinaryView(QWidget *parent) : QTableView(parent) {
   model = new BinaryModel(this);
   setModel(model);
   delegate = new MessageBytesDelegate(this);
+
   setItemDelegate(delegate);
   horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
   verticalHeader()->setSectionsClickable(false);
   verticalHeader()->setSectionResizeMode(QHeaderView::Fixed);
   verticalHeader()->setDefaultSectionSize(CELL_HEIGHT);
   horizontalHeader()->hide();
+
+  setFrameStyle(QFrame::NoFrame);
   setShowGrid(false);
   setMouseTracking(true);
   setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);

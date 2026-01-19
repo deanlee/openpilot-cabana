@@ -44,10 +44,16 @@ MainWindow::MainWindow(AbstractStream *stream, const QString &dbc_file) : QMainW
 
   setupConnections();
 
-  setStyleSheet(QString(R"(QMainWindow::separator {
-    width: %1px; /* when vertical */
-    height: %1px; /* when horizontal */
-  })").arg(style()->pixelMetric(QStyle::PM_SplitterWidth)));
+  setStyleSheet(R"(
+    QMainWindow::separator {
+      background-color: palette(window);
+      width: 3px;
+      height: 3px;
+    }
+    QMainWindow::separator:hover {
+      background-color: palette(highlight);
+    }
+  )");
 
   QTimer::singleShot(0, this, [=]() { stream ? openStream(stream, dbc_file) : selectAndOpenStream(); });
   show();
@@ -182,7 +188,7 @@ void MainWindow::createVideoChartsDock() {
   charts_layout_->addWidget(charts_panel);
 
   // splitter between video and charts
-  video_splitter_ = new QSplitter(Qt::Vertical, this);
+  video_splitter_ = new PanelSplitter(Qt::Vertical, this);
   video_player_ = new VideoPlayer(this);
   video_splitter_->addWidget(video_player_);
 

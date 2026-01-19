@@ -44,13 +44,16 @@ SignalEditor::SignalEditor(ChartsPanel *charts, QWidget *parent) : QFrame(parent
 QWidget *SignalEditor::createToolbar() {
   QWidget* toolbar = new QWidget(this);
   QHBoxLayout* hl = new QHBoxLayout(toolbar);
+  hl->setContentsMargins(4, 4, 4, 4);
+
   hl->addWidget(signal_count_lb = new QLabel());
   filter_edit = new QLineEdit(this);
+
   QRegularExpression re("\\S+");
   filter_edit->setValidator(new QRegularExpressionValidator(re, this));
   filter_edit->setClearButtonEnabled(true);
   filter_edit->setPlaceholderText(tr("Filter Signal"));
-  hl->addWidget(filter_edit);
+  hl->addWidget(filter_edit, 0, Qt::AlignCenter);
   hl->addStretch(1);
 
   // WARNING: increasing the maximum range can result in severe performance degradation.
