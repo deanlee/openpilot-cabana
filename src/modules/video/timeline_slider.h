@@ -1,18 +1,45 @@
 #pragma once
 
-#include <QSlider>
+#include <QPainter>
+#include <QWidget>
 
-class Slider : public QSlider {
+class TimelineSlider : public QWidget {
   Q_OBJECT
 
-public:
-  Slider(QWidget *parent);
-  double currentSecond() const { return value() / factor; }
-  void setCurrentSecond(double sec) { setValue(sec * factor); }
-  void setTimeRange(double min, double max) { setRange(min * factor, max * factor); }
-  void mousePressEvent(QMouseEvent *e) override;
-  void paintEvent(QPaintEvent *ev) override;
-  const double factor = 1000.0;
-  double thumbnail_dispaly_time = -1;
-};
+ public:
+  explicit TimelineSlider(QWidget* parent = nullptr);
 
+  inline double maximum() const { return max_time; }
+  inline double minimum() const { return min_time; }
+
+  void setRange(double min, double max);
+  void setTime(double t);
+  void setThumbnailTime(double t);
+
+ protected:
+  void paintEvent(QPaintEvent* ev) override;
+  void mousePressEvent(QMouseEvent* e) override;
+  void mouseMoveEvent(QMouseEvent* e) override;
+  void mouseReleaseEvent(QMouseEvent* e) override;
+  void leaveEvent(QEvent* e) override;
+
+ signals:
+  void timeHovered(double time);
+
+ private:
+  void handleMouse(int x);
+  void drawEvents(QPainter &p, int y, int h, double scale);
+  void drawUnloadedOverlay(QPainter &p, int y, int h, double scale);
+  void drawMarkers(QPainter &p, int h, double scale);
+  void drawScrubber(QPainter &p, int h, double scale);
+
+  double min_time = 0;
+  double max_time = 0;
+  double current_time = 0;
+  double thumbnail_display_time = -1;
+
+  bool is_hovered = false;
+  bool is_scrubbing = false;
+  bool resume_after_scrub = false;
+  double last_sent_seek_time = -1.0;
+};
