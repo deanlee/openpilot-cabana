@@ -26,6 +26,7 @@ ChartsPanel::ChartsPanel(QWidget *parent) : QFrame(parent) {
   empty_view_ = new ChartsEmptyView(this);
   stack_->addWidget(empty_view_);
   stack_->addWidget(scroll_area_);
+  scroll_area_->container_->installEventFilter(this);
 
   main_layout->addWidget(toolbar);
   main_layout->addWidget(tab_manager_->tabbar_);
@@ -398,6 +399,15 @@ void ChartsPanel::handleChartDrop(ChartView* chart, ChartView* target, DropMode 
   } else {
     moveChart(chart, target, mode);
   }
+}
+
+bool ChartsPanel::eventFilter(QObject *obj, QEvent *event) {
+  if (obj == scroll_area_->container_) {
+    if (event->type() == QEvent::Leave) {
+      hideHover();
+    }
+  }
+  return QFrame::eventFilter(obj, event);
 }
 
 bool ChartsPanel::event(QEvent *event) {

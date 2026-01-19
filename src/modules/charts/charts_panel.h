@@ -42,6 +42,7 @@ class ChartsPanel : public QFrame {
   void showCursor(double seconds);
 
  private:
+  bool eventFilter(QObject* obj, QEvent* event) override;
   void setupConnections();
   QSize minimumSizeHint() const override;
   bool event(QEvent* event) override;
