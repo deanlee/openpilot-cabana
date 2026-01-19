@@ -35,7 +35,7 @@ ChartsToolBar::ChartsToolBar(QWidget* parent) : QWidget(parent) {
 }
 
 void ChartsToolBar::createActions(QHBoxLayout* hl) {
-  hl->addWidget(new_plot_btn = new ToolButton("plus", tr("Add New Chart")));
+  hl->addWidget(new_plot_btn = new ToolButton("plus", tr("New Chart")));
   hl->addWidget(new_tab_btn = new ToolButton("layer-plus", tr("New Tab")));
 
   hl->addWidget(title_label = new QLabel());
@@ -98,6 +98,8 @@ void ChartsToolBar::setupZoomControls(QHBoxLayout* hl) {
   hl->addWidget(range_lb = new QLabel(this));
 
   range_slider = new LogSlider(1000, Qt::Horizontal, this);
+  range_slider->setFocusPolicy(Qt::NoFocus);
+  range_slider->setToolTip(tr("Chart Range\nAdjust the time window of data displayed."));
   range_slider->setMaximumWidth(200);
   range_slider->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
   range_slider->setRange(1, settings.max_cached_minutes * 60);
