@@ -42,7 +42,7 @@ void ChartsToolBar::createActions(QHBoxLayout* hl) {
   title_label->setStyleSheet("font-weight: bold;");
 
   // 1. Chart Type Menu (Preserving InstantPopup feature)
-  chart_type_btn = new ToolButton("line-chart", "");
+  chart_type_btn = new ToolButton();
   chart_type_btn->setPopupMode(QToolButton::InstantPopup);
   chart_type_btn->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
   chart_type_btn->setToolTip(tr("Chart Drawing Style\nChange how signals are visualized."));
@@ -50,7 +50,7 @@ void ChartsToolBar::createActions(QHBoxLayout* hl) {
   hl->addWidget(chart_type_btn);
 
   // 2. Column Menu (Preserving InstantPopup feature)
-  columns_btn = new ToolButton("columns", "");
+  columns_btn = new ToolButton();
   columns_btn->setPopupMode(QToolButton::InstantPopup);
   columns_btn->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
   columns_btn->setToolTip(tr("Grid Layout\nSet number of columns."));

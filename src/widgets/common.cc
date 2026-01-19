@@ -21,6 +21,7 @@ ToolButton::ToolButton(const QString& icon, const QString& tooltip, QWidget* par
 }
 
 void ToolButton::setIcon(const QString& icon) {
+  if (icon.isEmpty()) return;
   icon_str = icon;
   QToolButton::setIcon(utils::icon(icon_str));
 }
