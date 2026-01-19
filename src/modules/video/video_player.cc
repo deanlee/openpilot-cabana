@@ -238,15 +238,19 @@ QString VideoPlayer::formatTime(double sec, bool include_milliseconds) {
 }
 
 void VideoPlayer::updateState() {
-  if (slider) {
-    slider->setTime(StreamManager::stream()->currentSec());
-    if (camera_tab->count() == 0) {  //  No streams available
-      cam_widget->update();          // Manually refresh to show alert events
+  auto* stream = StreamManager::stream();
+  auto current_sec = stream->currentSec();
+  if (!stream->liveStreaming()) {
+    slider->setTime(current_sec);
+    // Refresh camera view only if no video stream is pushing frames
+    //  (ensures alert/event overlays still draw)
+    if (camera_tab->count() == 0) {
+      cam_widget->update();
     }
-    time_label->setText(QString("%1 / %2").arg(formatTime(StreamManager::stream()->currentSec(), true),
-                                             formatTime(slider->maximum())));
+    time_label->setText(QString("%1 / %2").arg(formatTime(current_sec, true),
+                                               formatTime(slider->maximum())));
   } else {
-    time_label->setText(formatTime(StreamManager::stream()->currentSec(), true));
+    time_label->setText(formatTime(current_sec, true));
   }
 }
 
