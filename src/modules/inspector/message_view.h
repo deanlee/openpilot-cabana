@@ -23,7 +23,7 @@ public:
 
 private:
   void setupConnections();
-  void createToolBar();
+  QWidget *createToolBar();
   int findOrAddTab(const MessageId& id);
   void showTabBarContextMenu(const QPoint &pt);
   void editMsg();
@@ -36,7 +36,7 @@ private:
   QWidget *warning_widget;
   TabBar *tabbar;
   QTabWidget *tab_widget;
-  QAction *action_remove_msg;
+  ToolButton *remove_msg_btn;
   MessageHistory *message_history;
   BinaryView *binary_view;
   SignalEditor *signal_editor;

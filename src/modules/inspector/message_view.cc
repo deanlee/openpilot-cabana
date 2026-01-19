@@ -5,7 +5,6 @@
 #include <QMenu>
 #include <QRadioButton>
 #include <QSplitter>
-#include <QToolBar>
 #include <QVBoxLayout>
 
 #include "core/commands/commands.h"
@@ -25,7 +24,8 @@ MessageView::MessageView(ChartsPanel* charts, QWidget* parent) : charts(charts),
   tabbar->setContextMenuPolicy(Qt::CustomContextMenu);
   main_layout->addWidget(tabbar);
 
-  createToolBar();
+  // Toolbar
+  main_layout->addWidget(createToolBar());
 
   // warning
   warning_widget = new QWidget(this);
@@ -74,39 +74,40 @@ void MessageView::setupConnections() {
   connect(tabbar, &QTabBar::tabCloseRequested, tabbar, &QTabBar::removeTab);
 }
 
-void MessageView::createToolBar() {
-  QToolBar* toolbar = new QToolBar(this);
-  int icon_size = style()->pixelMetric(QStyle::PM_SmallIconSize);
-  toolbar->setIconSize({icon_size, icon_size});
-  toolbar->addWidget(name_label = new ElidedLabel(this));
-  name_label->setStyleSheet("QLabel{font-weight:bold;}");
+QWidget* MessageView::createToolBar() {
+  QWidget* toolbar_container = new QWidget(this);
+  QHBoxLayout* hl = new QHBoxLayout(toolbar_container);
 
-  QWidget* spacer = new QWidget();
-  spacer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
-  toolbar->addWidget(spacer);
+  int spacing = style()->pixelMetric(QStyle::PM_ToolBarItemSpacing);
+  hl->setContentsMargins(4, 2, 4, 2);  // Tight vertical padding
+  hl->setSpacing(spacing);
 
-  // Heatmap label and radio buttons
-  toolbar->addWidget(new QLabel(tr("Heatmap:"), this));
+  // 1. Name Label
+  hl->addWidget(name_label = new ElidedLabel(this));
+  name_label->setStyleSheet("font-weight:bold;");
+
+  hl->addStretch(1);
+
+  // 2. Heatmap Controls
+  hl->addWidget(new QLabel(tr("Heatmap:"), this));
   auto* heatmap_live = new QRadioButton(tr("Live"), this);
   auto* heatmap_all = new QRadioButton(tr("All"), this);
   heatmap_live->setChecked(true);
-
-  toolbar->addWidget(heatmap_live);
-  toolbar->addWidget(heatmap_all);
-
-  // Edit and remove buttons
-  toolbar->addSeparator();
-  toolbar->addAction(utils::icon("square-pen"), tr("Edit Message"), this, &MessageView::editMsg);
-  action_remove_msg = toolbar->addAction(utils::icon("trash-2"), tr("Remove Message"), this, &MessageView::removeMsg);
-
-  layout()->addWidget(toolbar);
-
   connect(heatmap_live, &QAbstractButton::toggled, this, [this](bool on) { binary_view->setHeatmapLiveMode(on); });
-  connect(&StreamManager::instance(), &StreamManager::timeRangeChanged, this, [=](const std::optional<std::pair<double, double>>& range) {
-    auto text = range ? QString("%1 - %2").arg(range->first, 0, 'f', 3).arg(range->second, 0, 'f', 3) : "All";
-    heatmap_all->setText(text);
-    (range ? heatmap_all : heatmap_live)->setChecked(true);
-  });
+  hl->addWidget(heatmap_live);
+  hl->addWidget(heatmap_all);
+
+  hl->addSpacing(10);
+
+  // 3. Action Buttons (Using your ToolButton class for consistent Lucide icons)
+  ToolButton* edit_btn = new ToolButton("square-pen", tr("Edit Message"));
+  connect(edit_btn, &ToolButton::clicked, this, &MessageView::editMsg);
+  hl->addWidget(edit_btn);
+
+  remove_msg_btn = new ToolButton("trash-2", tr("Remove Message"));
+  connect(remove_msg_btn, &ToolButton::clicked, this, &MessageView::removeMsg);
+  hl->addWidget(remove_msg_btn);
+  return toolbar_container;
 }
 
 void MessageView::showTabBarContextMenu(const QPoint& pt) {
@@ -206,7 +207,7 @@ void MessageView::refresh() {
   QString msg_name = msg ? QString("%1 (%2)").arg(msg->name, msg->transmitter) : msgName(msg_id);
   name_label->setText(msg_name);
   name_label->setToolTip(msg_name);
-  action_remove_msg->setEnabled(msg != nullptr);
+  remove_msg_btn->setEnabled(msg != nullptr);
 
   if (!warnings.isEmpty()) {
     warning_label->setText(warnings.join('\n'));
