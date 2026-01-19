@@ -40,7 +40,8 @@ void Chart::syncUI() {
 }
 
 void Chart::initControls() {
-  move_icon_ = new QGraphicsPixmapItem(utils::icon("grip-horizontal"), this);
+  const int icon_size = QApplication::style()->pixelMetric(QStyle::PM_SmallIconSize);
+  move_icon_ = new QGraphicsPixmapItem(utils::icon("grip-horizontal", QSize(icon_size, icon_size)), this);
   move_icon_->setToolTip(tr("Drag to reorder or merge"));
 
   QToolButton* remove_btn = new ToolButton("x", tr("Remove Chart"));
