@@ -13,6 +13,7 @@ ToolButton::ToolButton(const QString& icon, const QString& tooltip, QWidget* par
   setIcon(icon);
   setToolTip(tooltip);
   setAutoRaise(true);
+  setFocusPolicy(Qt::NoFocus);
   const int metric = QApplication::style()->pixelMetric(QStyle::PM_SmallIconSize);
   setIconSize({metric, metric});
   theme = settings.theme;
