@@ -8,7 +8,7 @@
 #include "playback_view.h"
 #include "replay/include/timeline.h"
 
-const int kMargin = 8; // Scrubber radius
+const int kMargin = 9; // Scrubber radius
 
 static Replay* getReplay() {
   auto stream = qobject_cast<ReplayStream*>(StreamManager::stream());
@@ -82,13 +82,13 @@ void TimelineSlider::paintEvent(QPaintEvent* ev) {
 
   // Draw the full-width background color first
   p.fillRect(rect(), palette().window());
-  
+
   // Draw the actual timeline track offset by margin
   p.drawPixmap(kMargin, 0, timeline_cache);
 
   // 2. Interactive Layers
   p.setRenderHint(QPainter::Antialiasing, true);
-  
+
   // Hover Marker (Ghost Line)
   if (thumbnail_display_time >= 0) {
     double tx = kMargin + (thumbnail_display_time - min_time) * scale;
@@ -211,6 +211,13 @@ void TimelineSlider::mouseReleaseEvent(QMouseEvent* e) {
     last_sent_seek_time = -1.0;
     update();
   }
+}
+
+void TimelineSlider::changeEvent(QEvent* e) {
+  if (e->type() == QEvent::PaletteChange || e->type() == QEvent::StyleChange) {
+    updateCache();
+  }
+  QWidget::changeEvent(e);
 }
 
 void TimelineSlider::leaveEvent(QEvent* e) {

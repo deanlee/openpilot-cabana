@@ -410,6 +410,13 @@ bool ChartsPanel::eventFilter(QObject *obj, QEvent *event) {
   return QFrame::eventFilter(obj, event);
 }
 
+void ChartsPanel::changeEvent(QEvent *ev) {
+  if (ev->type() == QEvent::PaletteChange || ev->type() == QEvent::StyleChange) {
+    settingChanged();
+  }
+  QFrame::changeEvent(ev);
+}
+
 bool ChartsPanel::event(QEvent *event) {
   bool back_button = false;
   switch (event->type()) {

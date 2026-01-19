@@ -19,6 +19,7 @@ class TimelineSlider : public QWidget {
   void updateCache();
 
  protected:
+  void changeEvent(QEvent* ev) override;
   void paintEvent(QPaintEvent* ev) override;
   void mousePressEvent(QMouseEvent* e) override;
   void mouseMoveEvent(QMouseEvent* e) override;
