@@ -1,63 +1,90 @@
 #include "tiplabel.h"
 
-#include <utility>
-
 #include <QApplication>
 #include <QStyleOptionFrame>
 #include <QStylePainter>
 #include <QToolTip>
+#include <utility>
 
 #include "modules/settings/settings.h"
 #include "utils/util.h"
 
-TipLabel::TipLabel(QWidget *parent) : QLabel(parent, Qt::ToolTip | Qt::FramelessWindowHint) {
+TipLabel::TipLabel(QWidget* parent) : QLabel(parent, Qt::ToolTip | Qt::FramelessWindowHint) {
   setWindowFlags(windowFlags() | Qt::WindowTransparentForInput | Qt::WindowStaysOnTopHint);
 
   setAttribute(Qt::WA_ShowWithoutActivating);
   setAttribute(Qt::WA_TransparentForMouseEvents);
-
+  setAttribute(Qt::WA_TranslucentBackground);
   setAttribute(Qt::WA_NoSystemBackground);
 
-  setForegroundRole(QPalette::ToolTipText);
-  setBackgroundRole(QPalette::ToolTipBase);
-
+  // Modern sans-serif look
   QFont font;
-  font.setPointSizeF(8.34563465);
+  font.setPointSizeF(9.0);
   setFont(font);
-  auto palette = QToolTip::palette();
-  if (!utils::isDarkTheme()) {
-    palette.setColor(QPalette::ToolTipBase, QApplication::palette().color(QPalette::Base));
-    palette.setColor(QPalette::ToolTipText, QRgb(0x404044));  // same color as chart label brush
-  }
-  setPalette(palette);
-  ensurePolished();
-  setMargin(1 + style()->pixelMetric(QStyle::PM_ToolTipLabelFrameWidth, nullptr, this));
+
   setTextFormat(Qt::RichText);
+  setMargin(8);  // Generous padding for readability
+
+  updateTheme();
 }
 
-void TipLabel::showText(const QPoint &pt, const QString &text, QWidget *w, const QRect &rect) {
-  setText(text);
-  if (!text.isEmpty()) {
-    QSize extra(1, 1);
-    resize(sizeHint() + extra);
-    QPoint tip_pos(pt.x() + 8, rect.top() + 2);
-    if (tip_pos.x() + size().width() >= rect.right()) {
-      tip_pos.rx() = pt.x() - size().width() - 8;
-    }
-    if (rect.contains({tip_pos, size()})) {
-      move(w->mapToGlobal(tip_pos));
-      setVisible(true);
-      return;
-    }
+void TipLabel::showText(const QPoint& pt, const QString& text, QWidget* w, const QRect& rect) {
+  if (text.isEmpty()) {
+    setVisible(false);
+    return;
   }
-  setVisible(false);
+
+  setText(text);
+  adjustSize();
+
+  // Position logic: 12px offset from cursor
+  QPoint tip_pos(pt.x() + 12, rect.top() + 5);
+  if (tip_pos.x() + width() >= rect.right()) {
+    tip_pos.rx() = pt.x() - width() - 12;
+  }
+
+  move(w->mapToGlobal(tip_pos));
+  if (!isVisible()) show();
 }
 
-void TipLabel::paintEvent(QPaintEvent *ev) {
-  QStylePainter p(this);
-  QStyleOptionFrame opt;
-  opt.init(this);
-  p.drawPrimitive(QStyle::PE_PanelTipLabel, opt);
+void TipLabel::updateTheme() {
+  auto pal = palette();
+  bool is_dark = utils::isDarkTheme();
+
+  // Neutral professional colors: Deep Grey or Pure White with 85% Alpha
+  QColor bg = is_dark ? QColor(30, 30, 30, 215) : QColor(248, 248, 248, 225);
+  QColor text = is_dark ? QColor(220, 220, 220) : QColor(50, 50, 50);
+
+  pal.setColor(QPalette::ToolTipBase, bg);
+  pal.setColor(QPalette::ToolTipText, text);
+  setPalette(pal);
+}
+
+void TipLabel::changeEvent(QEvent* e) {
+  if (e->type() == QEvent::PaletteChange || e->type() == QEvent::StyleChange) {
+    updateTheme();
+  }
+  QLabel::changeEvent(e);
+}
+
+void TipLabel::paintEvent(QPaintEvent* ev) {
+  QPainter p(this);
+  p.setRenderHint(QPainter::Antialiasing);
+
+  // Draw the semi-transparent "Glass" container
+  QRectF r = rect();
+  r.adjust(0.5, 0.5, -0.5, -0.5);
+
+  QColor bg = palette().color(QPalette::ToolTipBase);
+  // Border: 1px subtle line to separate from chart
+  QColor border = utils::isDarkTheme() ? QColor(80, 80, 80, 150) : QColor(200, 200, 200, 200);
+
+  p.setBrush(bg);
+  p.setPen(QPen(border, 1));
+  p.drawRoundedRect(r, 4, 4);
+
   p.end();
+
+  // Draw the actual HTML/RichText content
   QLabel::paintEvent(ev);
 }
