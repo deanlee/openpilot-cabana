@@ -35,7 +35,7 @@ protected:
   void loopPlaybackClicked();
   void vipcAvailableStreamsUpdated(std::set<VisionStreamType> streams);
   void showRouteInfo();
-  void onStreamChanged();
+  void resetState();
 
   QWidget *camera_widget = nullptr;
   QTabBar *camera_tab = nullptr;

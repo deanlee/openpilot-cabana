@@ -35,8 +35,8 @@ VideoPlayer::VideoPlayer(QWidget *parent) : QFrame(parent) {
   setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Maximum);
 
   setupConnections();
+  resetState();
 
-  updatePlayBtnState();
   setWhatsThis(tr(R"(
     <b>Video</b><br />
     <!-- TODO: add descprition here -->
@@ -61,7 +61,7 @@ VideoPlayer::VideoPlayer(QWidget *parent) : QFrame(parent) {
 
 void VideoPlayer::setupConnections() {
   auto &sm = StreamManager::instance();
-  connect(&sm, &StreamManager::streamChanged, this, &VideoPlayer::onStreamChanged);
+  connect(&sm, &StreamManager::streamChanged, this, &VideoPlayer::resetState);
   connect(&sm, &StreamManager::paused, this, &VideoPlayer::updatePlayBtnState);
   connect(&sm, &StreamManager::resume, this, &VideoPlayer::updatePlayBtnState);
   connect(&sm, &StreamManager::snapshotsUpdated, this, &VideoPlayer::updateState);
@@ -188,7 +188,7 @@ QWidget *VideoPlayer::createCameraWidget() {
   return w;
 }
 
-void VideoPlayer::onStreamChanged() {
+void VideoPlayer::resetState() {
   timeRangeChanged();
   updateState();
   updatePlayBtnState();

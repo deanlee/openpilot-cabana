@@ -187,11 +187,8 @@ void MainWindow::createVideoChartsDock() {
   video_splitter_->addWidget(video_player_);
 
   video_splitter_->addWidget(charts_container);
+  video_splitter_->setStretchFactor(0, 0);
   video_splitter_->setStretchFactor(1, 1);
-
-  if (!settings.video_splitter_state.isEmpty()) {
-   video_splitter_->restoreState(settings.video_splitter_state);
-  }
 
   video_dock_->setWidget(video_splitter_);
   addDockWidget(Qt::RightDockWidgetArea, video_dock_);
