@@ -47,3 +47,5 @@ public:
   ElidedLabel(QWidget *parent);
   void paintEvent(QPaintEvent *event) override;
 };
+
+QFrame *createVLine(QWidget *parent);

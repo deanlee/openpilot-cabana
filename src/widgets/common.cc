@@ -83,3 +83,12 @@ void ElidedLabel::paintEvent(QPaintEvent* event) {
   QString elidedText = fontMetrics().elidedText(text(), Qt::ElideRight, width());
   painter.drawText(rect(), alignment(), elidedText);
 }
+
+QFrame* createVLine(QWidget* parent) {
+  QFrame* v_line = new QFrame();
+  v_line->setFixedHeight(16);
+  v_line->setFrameShape(QFrame::VLine);
+  v_line->setFrameShadow(QFrame::Plain);
+  v_line->setStyleSheet("color: palette(mid);");
+  return v_line;
+}

@@ -1,21 +1,22 @@
 #pragma once
 
-#include <QToolBar>
+#include <QHBoxLayout>
+#include <QLabel>
 #include <QUndoCommand>
 #include <QUndoStack>
-
+#include <QWidget>
 #include <optional>
 
-#include "widgets/common.h"
 #include "modules/system/stream_manager.h"
+#include "widgets/common.h"
 
 constexpr int MAX_COLUMN_COUNT = 4;
 
-class ChartsToolBar : public QToolBar {
+class ChartsToolBar : public QWidget {
   Q_OBJECT
+
  public:
   ChartsToolBar(QWidget* parent);
-  void createActions();
   void setIsDocked(bool docked);
   void updateState(int chart_count);
   void zoomReset();
@@ -26,30 +27,32 @@ class ChartsToolBar : public QToolBar {
   void rangeChanged(int range_seconds);
 
  public:
-  QAction* undo_zoom_action;
-  QAction* redo_zoom_action;
   QUndoStack* zoom_undo_stack;
 
  protected:
   void settingChanged();
+  void createActions(QHBoxLayout* hl);  // Pass layout to populate
   void createTypeMenu();
   void createColumnMenu();
-  void setupZoomControls();
+  void setupZoomControls(QHBoxLayout* hl);
 
  protected:
-  QAction* columns_action;
+  // UI Elements
   QLabel* title_label;
-  ToolButton* dock_btn;
   QLabel* range_lb;
   LogSlider* range_slider;
-  QAction* range_lb_action;
-  QAction* range_slider_action;
-  QAction* reset_zoom_action;
+
+  // Custom ToolButtons (Replaces QActions)
+  ToolButton* chart_type_btn;
+  ToolButton* columns_btn;
+  ToolButton* undo_btn;
+  ToolButton* redo_btn;
   ToolButton* reset_zoom_btn;
   ToolButton* new_plot_btn;
   ToolButton* new_tab_btn;
-
   ToolButton* remove_all_btn;
+  ToolButton* dock_btn;
+
   bool is_docked = true;
   friend class ChartsPanel;
 };

@@ -97,7 +97,7 @@ QWidget* MessageView::createToolBar() {
   hl->addWidget(heatmap_live);
   hl->addWidget(heatmap_all);
 
-  hl->addSpacing(10);
+  hl->addWidget(createVLine(this), 0, Qt::AlignCenter);
 
   // 3. Action Buttons (Using your ToolButton class for consistent Lucide icons)
   ToolButton* edit_btn = new ToolButton("square-pen", tr("Edit Message"));

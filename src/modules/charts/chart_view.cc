@@ -132,8 +132,8 @@ void ChartView::contextMenuEvent(QContextMenuEvent *event) {
   QMenu context_menu(this);
   context_menu.addActions(chart_->menu_->actions());
   context_menu.addSeparator();
-  context_menu.addAction(charts_panel->toolbar->undo_zoom_action);
-  context_menu.addAction(charts_panel->toolbar->redo_zoom_action);
+  // context_menu.addAction(charts_panel->toolbar->undo_zoom_action);
+  // context_menu.addAction(charts_panel->toolbar->redo_zoom_action);
   context_menu.addSeparator();
   context_menu.addAction(chart_->close_act_);
   context_menu.exec(event->globalPos());
