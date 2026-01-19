@@ -11,6 +11,7 @@
 #include "modules/message_list/message_list.h"
 #include "modules/video/video_player.h"
 #include "tools/findsimilarbits.h"
+#include "widgets/panel_splitter.h"
 #include "widgets/status_bar.h"
 
 class DbcController;
@@ -68,7 +69,7 @@ protected:
   MessageInspector *inspector_widget_ = nullptr;
   QWidget *floating_window_ = nullptr;
   QVBoxLayout *charts_layout_ = nullptr;
-  QSplitter *video_splitter_ = nullptr;
+  PanelSplitter *video_splitter_ = nullptr;
   StatusBar *status_bar_ = nullptr;
   QMenu *recent_files_menu_ = nullptr;
   QMenu *manage_dbcs_menu_ = nullptr;

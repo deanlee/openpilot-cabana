@@ -6,6 +6,7 @@
 #include "modules/inspector/binary/binary_view.h"
 #include "modules/inspector/history/message_history.h"
 #include "modules/inspector/signal_editor/signal_editor.h"
+#include "widgets/panel_splitter.h"
 
 class QSplitter;
 
@@ -40,5 +41,5 @@ private:
   BinaryView *binary_view;
   SignalEditor *signal_editor;
   ChartsPanel *charts;
-  QSplitter *splitter;
+  PanelSplitter *splitter;
 };
