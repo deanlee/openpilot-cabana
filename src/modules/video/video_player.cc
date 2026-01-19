@@ -93,6 +93,14 @@ void VideoPlayer::createPlaybackController() {
     StreamManager::stream()->seekTo(StreamManager::stream()->currentSec() + 1);
   }));
 
+  skip_to_end_btn = createToolButton("skip-forward", tr("Skip to end"), []() {
+    auto s = StreamManager::stream();
+    s->setSpeed(1.0);
+    s->pause(false);
+    s->seekTo(s->maxSeconds() + 1);
+  });
+  h_layout->addWidget(skip_to_end_btn);
+
   // Center: Time Label
   time_label = new TimeLabel();
   time_label->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
@@ -109,14 +117,6 @@ void VideoPlayer::createPlaybackController() {
 
   createSpeedDropdown();
   h_layout->addWidget(speed_btn);
-
-  skip_to_end_btn = createToolButton("skip-forward", tr("Skip to end"), []() {
-    auto s = StreamManager::stream();
-    s->setSpeed(1.0);
-    s->pause(false);
-    s->seekTo(s->maxSeconds() + 1);
-  });
-  h_layout->addWidget(skip_to_end_btn);
 
   route_info_btn = createToolButton("info", tr("View route details"), [this]() { showRouteInfo(); });
   h_layout->addWidget(route_info_btn);
