@@ -23,7 +23,7 @@ void TimelineSlider::setRange(double min, double max) {
   if (min_time != min || max_time != max) {
     min_time = min;
     max_time = max;
-    update();
+    updateCache();
   }
 }
 
@@ -51,24 +51,16 @@ void TimelineSlider::paintEvent(QPaintEvent* ev) {
   if (range <= 0 || width() <= 0) return;
 
   // Cache commonly used values
-  const int w = width();
-  const int h = height();
-  const double scale = w / range;
-  const int groove_h = 6;
-  const int groove_y = (h - groove_h) / 2;
-
-  // 1. Static Background
-  p.fillRect(0, groove_y, w, groove_h, timeline_colors[(int)TimelineType::None]);
-
-  // 2. Data Layers - Disable AA for sharp vertical edges on segments
-  p.setRenderHint(QPainter::Antialiasing, false);
-  drawEvents(p, groove_y, groove_h, scale);
-  drawUnloadedOverlay(p, groove_y, groove_h, scale);
+  const double scale = width() / range;
+  if (timeline_cache.size() != size()) {
+    updateCache();
+  }
+  p.drawPixmap(ev->rect(), timeline_cache, ev->rect());
 
   // 3. Interactive Layers - Enable AA for the diagonal lines of the playhead
   p.setRenderHint(QPainter::Antialiasing, true);
-  drawMarkers(p, h, scale);
-  drawScrubber(p, h, scale);
+  drawMarkers(p, height(), scale);
+  drawScrubber(p, height(), scale);
 }
 
 void TimelineSlider::drawEvents(QPainter& p, int y, int h, double scale) {
@@ -204,4 +196,23 @@ void TimelineSlider::leaveEvent(QEvent* e) {
   is_hovered = false;
   setThumbnailTime(-1);
   QWidget::leaveEvent(e);
+}
+
+void TimelineSlider::updateCache() {
+  timeline_cache = QPixmap(size());
+  timeline_cache.fill(palette().window().color());
+  QPainter cache_painter(&timeline_cache);
+
+  const double range = max_time - min_time;
+  const double scale = width() / range;
+  const int groove_h = 6;
+  const int groove_y = (height() - groove_h) / 2;
+
+  cache_painter.fillRect(rect(), palette().window());
+  cache_painter.fillRect(0, groove_y, width(), groove_h, timeline_colors[(int)TimelineType::None]);
+
+  cache_painter.setRenderHint(QPainter::Antialiasing, false);
+  drawEvents(cache_painter, groove_y, groove_h, scale);
+  drawUnloadedOverlay(cache_painter, groove_y, groove_h, scale);
+  update();
 }

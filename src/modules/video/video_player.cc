@@ -177,7 +177,8 @@ QWidget *VideoPlayer::createCameraWidget() {
 
   connect(slider, &TimelineSlider::timeHovered, this, &VideoPlayer::showThumbnail);
   connect(&StreamManager::instance(), &StreamManager::paused, cam_widget, [c = cam_widget]() { c->update(); });
-  connect(&StreamManager::instance(), &StreamManager::eventsMerged, this, [this]() { slider->update(); });
+  connect(&StreamManager::instance(), &StreamManager::eventsMerged, slider, &TimelineSlider::updateCache);
+  connect(&StreamManager::instance(), &StreamManager::qLogLoaded, slider, &TimelineSlider::updateCache, Qt::QueuedConnection);
   connect(&StreamManager::instance(), &StreamManager::qLogLoaded, cam_widget, &PlaybackCameraView::parseQLog, Qt::QueuedConnection);
   connect(cam_widget, &PlaybackCameraView::clicked, []() { StreamManager::stream()->pause(!StreamManager::stream()->isPaused()); });
   connect(cam_widget, &PlaybackCameraView::vipcAvailableStreamsUpdated, this, &VideoPlayer::vipcAvailableStreamsUpdated);

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QPainter>
+#include <QPixmapCache>
 #include <QWidget>
 
 class TimelineSlider : public QWidget {
@@ -15,6 +16,7 @@ class TimelineSlider : public QWidget {
   void setRange(double min, double max);
   void setTime(double t);
   void setThumbnailTime(double t);
+  void updateCache();
 
  protected:
   void paintEvent(QPaintEvent* ev) override;
@@ -42,4 +44,6 @@ class TimelineSlider : public QWidget {
   bool is_scrubbing = false;
   bool resume_after_scrub = false;
   double last_sent_seek_time = -1.0;
+
+  QPixmap timeline_cache;
 };
