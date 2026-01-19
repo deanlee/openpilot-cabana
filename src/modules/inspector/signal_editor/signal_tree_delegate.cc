@@ -228,14 +228,13 @@ void SignalTreeDelegate::drawButtons(QPainter* p, const QStyleOptionViewItem& op
     if (hovered || active) {
       // Background: Highlight if active, light overlay if hovered
       QColor bg = active ? opt.palette.color(QPalette::Highlight) : opt.palette.color(QPalette::Button);
-      p->setOpacity(active ? 1.0 : 0.4);
+      bg.setAlpha(active ? 255 : 100); 
       p->setBrush(bg);
       p->setPen(opt.palette.color(active ? QPalette::Highlight : QPalette::Mid));
       p->drawRoundedRect(rect.adjusted(1, 1, -1, -1), 4, 4);
     }
 
     // Icon rendering logic
-    double dpr = p->device()->devicePixelRatioF();
     // Padding inside the button for the icon
     int iconPadding = 4;
     QSize iconSize = QSize(kBtnSize - (iconPadding * 2), kBtnSize - (iconPadding * 2));
@@ -244,10 +243,8 @@ void SignalTreeDelegate::drawButtons(QPainter* p, const QStyleOptionViewItem& op
                             ? opt.palette.color(QPalette::HighlightedText)
                             : opt.palette.color(QPalette::Text);
 
-    QPixmap pix = utils::icon(iconName, iconSize * dpr, icon_color);
-    pix.setDevicePixelRatio(dpr);
+    QPixmap pix = utils::icon(iconName, iconSize, icon_color);
 
-    p->setOpacity(1.0);  // Reset opacity for the icon
     p->drawPixmap(rect.left() + iconPadding, rect.top() + iconPadding, pix);
   };
 
