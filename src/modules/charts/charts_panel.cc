@@ -12,6 +12,8 @@
 
 ChartsPanel::ChartsPanel(QWidget *parent) : QFrame(parent) {
   setFrameStyle(QFrame::StyledPanel | QFrame::Plain);
+  setMouseTracking(true);
+
   auto *main_layout = new QVBoxLayout(this);
   main_layout->setContentsMargins(0, 0, 0, 0);
   main_layout->setSpacing(0);
@@ -128,6 +130,12 @@ void ChartsPanel::updateHoverFromCursor() {
   if (hover_time_ < 0) return;
 
   QPoint global_mouse_pos = QCursor::pos();
+  QPoint local_pos = mapFromGlobal(global_mouse_pos);
+  if (!rect().contains(local_pos)) {
+    hideHover();
+    return;
+  }
+
   for (auto* c : charts) {
     if (c->rect().contains(c->mapFromGlobal(global_mouse_pos))) {
       hover_time_ = c->secondsAtPoint(c->mapFromGlobal(global_mouse_pos));
@@ -401,9 +409,11 @@ bool ChartsPanel::event(QEvent *event) {
     case QEvent::NativeGesture:
       back_button = (static_cast<QNativeGestureEvent *>(event)->value() == 180);
       break;
+    case QEvent::Leave:
     case QEvent::WindowDeactivate:
     case QEvent::FocusOut:
       hideHover();
+      break;
     default:
       break;
   }
