@@ -2,10 +2,10 @@
 
 #include <QAction>
 #include <QActionGroup>
+#include <QHBoxLayout>
 #include <QMenu>
 #include <QMouseEvent>
 #include <QStyle>
-#include <QToolBar>
 #include <QToolButton>
 #include <QVBoxLayout>
 #include <algorithm>
@@ -70,65 +70,92 @@ void VideoPlayer::setupConnections() {
 }
 
 void VideoPlayer::createPlaybackController() {
-  QToolBar *toolbar = new QToolBar(this);
-  layout()->addWidget(toolbar);
+  auto *bar = new QWidget(this);
 
-  int icon_size = style()->pixelMetric(QStyle::PM_SmallIconSize);
-  toolbar->setIconSize({icon_size, icon_size});
+  int margin = style()->pixelMetric(QStyle::PM_ToolBarItemMargin);
+  int spacing = style()->pixelMetric(QStyle::PM_ToolBarItemSpacing);
 
-  toolbar->addAction(utils::icon("step-back"), tr("Seek backward"), []() { StreamManager::stream()->seekTo(StreamManager::stream()->currentSec() - 1); });
-  play_toggle_action = toolbar->addAction(utils::icon("play"), tr("Play"), []() { StreamManager::stream()->pause(!StreamManager::stream()->isPaused()); });
-  toolbar->addAction(utils::icon("step-forward"), tr("Seek forward"), []() { StreamManager::stream()->seekTo(StreamManager::stream()->currentSec() + 1); });
+  auto* h_layout = new QHBoxLayout(bar);
+  h_layout->setContentsMargins(margin, margin, margin, margin);
+  h_layout->setSpacing(spacing);
 
+  // Left: Navigation
+  h_layout->addWidget(createToolButton("step-back", tr("Seek back"), []() {
+    StreamManager::stream()->seekTo(StreamManager::stream()->currentSec() - 1);
+  }));
 
-  skip_to_end_action = toolbar->addAction(utils::icon("skip-forward"), tr("Skip to the end"), this, [this]() {
-    // set speed to 1.0
-    speed_btn->menu()->actions()[7]->setChecked(true);
-    StreamManager::stream()->pause(false);
-    StreamManager::stream()->seekTo(StreamManager::stream()->maxSeconds() + 1);
+  play_toggle_btn = createToolButton("play", tr("Play"), []() {
+    StreamManager::stream()->pause(!StreamManager::stream()->isPaused());
   });
+  h_layout->addWidget(play_toggle_btn);
 
+  h_layout->addWidget(createToolButton("step-forward", tr("Seek forward"), []() {
+    StreamManager::stream()->seekTo(StreamManager::stream()->currentSec() + 1);
+  }));
+
+  // Center: Time Label
   time_label = new TimeLabel();
   time_label->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
-  toolbar->addWidget(time_label);
+  h_layout->addWidget(time_label);
   connect(time_label, &TimeLabel::clicked, this, [this]() {
     settings.absolute_time = !settings.absolute_time;
     time_label->setToolTip(settings.absolute_time ? tr("Elapsed time") : tr("Absolute time"));
     updateState();
   });
 
-  loop_action = toolbar->addAction(utils::icon("repeat"), tr("Loop playback"), this, &VideoPlayer::loopPlaybackClicked);
-  createSpeedDropdown(toolbar);
-  toolbar->addSeparator();
-  route_info_action = toolbar->addAction(utils::icon("info"), tr("View route details"), this, &VideoPlayer::showRouteInfo);
+  // Right: Settings & Info
+  loop_btn = createToolButton("repeat", tr("Loop playback"), [this]() { loopPlaybackClicked(); });
+  h_layout->addWidget(loop_btn);
+
+  createSpeedDropdown();
+  h_layout->addWidget(speed_btn);
+
+  skip_to_end_btn = createToolButton("skip-forward", tr("Skip to end"), []() {
+    auto s = StreamManager::stream();
+    s->setSpeed(1.0);
+    s->pause(false);
+    s->seekTo(s->maxSeconds() + 1);
+  });
+  h_layout->addWidget(skip_to_end_btn);
+
+  route_info_btn = createToolButton("info", tr("View route details"), [this]() { showRouteInfo(); });
+  h_layout->addWidget(route_info_btn);
+
+  layout()->addWidget(bar);
 }
 
-void VideoPlayer::createSpeedDropdown(QToolBar *toolbar) {
-  toolbar->addWidget(speed_btn = new QToolButton(this));
+QToolButton* VideoPlayer::createToolButton(const QString &icon, const QString &tip, std::function<void()> cb) {
+  int icon_size = style()->pixelMetric(QStyle::PM_SmallIconSize);
+  auto *btn = new QToolButton(this);
+  btn->setIcon(utils::icon(icon, QSize(icon_size, icon_size)));
+  btn->setToolTip(tip);
+  btn->setAutoRaise(true);
+  btn->setIconSize(QSize(icon_size, icon_size));
+  if (cb) connect(btn, &QToolButton::clicked, this, cb);
+  return btn;
+}
+
+void VideoPlayer::createSpeedDropdown() {
+  speed_btn = new QToolButton(this);
   speed_btn->setMenu(new QMenu(speed_btn));
   speed_btn->setPopupMode(QToolButton::InstantPopup);
-  QActionGroup *speed_group = new QActionGroup(this);
-  speed_group->setExclusive(true);
-
-  for (float speed : {0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 0.8, 1., 2., 3., 5.}) {
-    auto act = speed_btn->menu()->addAction(QString("%1x").arg(speed), this, [this, speed]() {
-      StreamManager::stream()->setSpeed(speed);
-      speed_btn->setText(QString("%1x  ").arg(speed));
-      speed_btn->setToolTip(tr("Playback Speed: %1x").arg(speed));
-    });
-
-    speed_group->addAction(act);
-    act->setCheckable(true);
-    if (speed == 1.0) {
-      act->setChecked(true);
-      act->trigger();
-    }
-  }
-
-  QFont font = speed_btn->font();
+  auto font = speed_btn->font();
   font.setBold(true);
   speed_btn->setFont(font);
-  speed_btn->setMinimumWidth(speed_btn->fontMetrics().horizontalAdvance("0.05x  ") + style()->pixelMetric(QStyle::PM_MenuButtonIndicator));
+  speed_btn->setAutoRaise(true);
+
+  auto *speed_group = new QActionGroup(this);
+  for (float speed : {0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 0.8, 1.0, 2.0, 3.0, 5.0}) {
+    auto *act = speed_btn->menu()->addAction(QString("%1x").arg(speed), this, [this, speed]() {
+      StreamManager::stream()->setSpeed(speed);
+      speed_btn->setText(QString("%1x ").arg(speed));
+      speed_btn->setToolTip(tr("Playback Speed: %1x").arg(speed));
+    });
+    act->setCheckable(true);
+    speed_group->addAction(act);
+    if (speed == 1.0) act->setChecked(true);
+  }
+  speed_btn->setText("1.0x ");
 }
 
 QWidget *VideoPlayer::createCameraWidget() {
@@ -167,9 +194,9 @@ void VideoPlayer::onStreamChanged() {
   bool is_live = StreamManager::stream()->liveStreaming();
 
   camera_widget->setVisible(!is_live);
-  loop_action->setVisible(!is_live);
-  route_info_action->setVisible(!is_live);
-  skip_to_end_action->setVisible(is_live);
+  loop_btn->setVisible(!is_live);
+  route_info_btn->setVisible(!is_live);
+  skip_to_end_btn->setVisible(is_live);
 }
 
 void VideoPlayer::vipcAvailableStreamsUpdated(std::set<VisionStreamType> streams) {
@@ -190,13 +217,13 @@ void VideoPlayer::vipcAvailableStreamsUpdated(std::set<VisionStreamType> streams
 void VideoPlayer::loopPlaybackClicked() {
   bool is_looping = getReplay()->loop();
   getReplay()->setLoop(!is_looping);
-  loop_action->setIcon(utils::icon(!is_looping ? "repeat" : "repeat-1"));
+  loop_btn->setIcon(utils::icon(!is_looping ? "repeat" : "repeat-1"));
 }
 
 void VideoPlayer::timeRangeChanged() {
   const auto time_range = StreamManager::stream()->timeRange();
   if (StreamManager::stream()->liveStreaming()) {
-    skip_to_end_action->setEnabled(!time_range.has_value());
+    skip_to_end_btn->setEnabled(!time_range.has_value());
     return;
   }
   time_range ? slider->setRange(time_range->first, time_range->second)
@@ -224,8 +251,8 @@ void VideoPlayer::updateState() {
 }
 
 void VideoPlayer::updatePlayBtnState() {
-  play_toggle_action->setIcon(utils::icon(StreamManager::stream()->isPaused() ? "play" : "pause"));
-  play_toggle_action->setToolTip(StreamManager::stream()->isPaused() ? tr("Play") : tr("Pause"));
+  play_toggle_btn->setIcon(utils::icon(StreamManager::stream()->isPaused() ? "play" : "pause"));
+  play_toggle_btn->setToolTip(StreamManager::stream()->isPaused() ? tr("Play") : tr("Pause"));
 }
 
 void VideoPlayer::showThumbnail(double seconds) {

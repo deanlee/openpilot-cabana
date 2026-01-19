@@ -3,7 +3,6 @@
 #include <QFontDatabase>
 #include <QFrame>
 #include <QTabBar>
-#include <QToolBar>
 #include <QToolButton>
 #include <memory>
 #include <set>
@@ -31,21 +30,23 @@ protected:
   void updatePlayBtnState();
   QWidget *createCameraWidget();
   void createPlaybackController();
-  void createSpeedDropdown(QToolBar *toolbar);
+  void createSpeedDropdown();
+  QToolButton* createToolButton(const QString &icon, const QString &tip, std::function<void()> cb);
   void loopPlaybackClicked();
   void vipcAvailableStreamsUpdated(std::set<VisionStreamType> streams);
   void showRouteInfo();
   void onStreamChanged();
 
   QWidget *camera_widget = nullptr;
-  PlaybackCameraView *cam_widget;
-  // QAction *time_display_action = nullptr;
-  QAction *play_toggle_action = nullptr;
-  QToolButton *speed_btn = nullptr;
-  QAction *skip_to_end_action = nullptr;
-  QAction *route_info_action = nullptr;
-  QAction *loop_action = nullptr;
-  TimelineSlider *slider = nullptr;
-  TimeLabel *time_label = nullptr;
   QTabBar *camera_tab = nullptr;
+  PlaybackCameraView *cam_widget;
+  TimeLabel *time_label = nullptr;
+  TimelineSlider *slider = nullptr;
+
+// Toolbar Buttons
+  QToolButton *play_toggle_btn = nullptr;
+  QToolButton *speed_btn = nullptr;
+  QToolButton *loop_btn = nullptr;
+  QToolButton *skip_to_end_btn = nullptr;
+  QToolButton *route_info_btn = nullptr;
 };
