@@ -20,6 +20,10 @@ public:
   std::pair<QString, QStringList> serializeMessageIds() const;
   void restoreTabs(const QString active_msg_id, const QStringList &msg_ids);
   void resetState();
+  void toggleCenterOrientation();
+
+signals:
+  void requestDockCompression();
 
 private:
   void setupConnections();
@@ -29,6 +33,7 @@ private:
   void editMsg();
   void removeMsg();
   void updateState(const std::set<MessageId> *msgs = nullptr);
+  void updateOrientationButton();
 
   MessageId msg_id;
   QLabel *warning_icon, *warning_label;
@@ -42,4 +47,5 @@ private:
   SignalEditor *signal_editor;
   ChartsPanel *charts;
   PanelSplitter *splitter;
+  ToolButton *toggle_orientation_btn_;
 };

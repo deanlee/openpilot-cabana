@@ -51,6 +51,7 @@ MessageView::MessageView(ChartsPanel* charts, QWidget* parent) : charts(charts),
   tab_widget->addTab(message_history = new MessageHistory(this), utils::icon("scroll-text"), "&Logs");
   main_layout->addWidget(tab_widget);
 
+  updateOrientationButton();
   setupConnections();
 }
 
@@ -82,28 +83,36 @@ QWidget* MessageView::createToolBar() {
   hl->setContentsMargins(4, 2, 4, 2);  // Tight vertical padding
   hl->setSpacing(spacing);
 
-  // 1. Name Label
+  // Name Label
   hl->addWidget(name_label = new ElidedLabel(this));
   name_label->setStyleSheet("font-weight:bold;");
 
-  hl->addStretch(1);
+  hl->addStretch();
 
-  // 2. Heatmap Controls
-  hl->addWidget(new QLabel(tr("Heatmap:"), this));
-  auto* heatmap_live = new QRadioButton(tr("Live"), this);
-  auto* heatmap_all = new QRadioButton(tr("All"), this);
-  heatmap_live->setChecked(true);
-  connect(heatmap_live, &QAbstractButton::toggled, this, [this](bool on) { binary_view->setHeatmapLiveMode(on); });
-  hl->addWidget(heatmap_live);
-  hl->addWidget(heatmap_all);
+  // Heatmap Controls
+  QComboBox* heatmap_mode = new QComboBox(this);
+  heatmap_mode->setFocusPolicy(Qt::NoFocus);
+  heatmap_mode->addItem(tr("Live Heatmap"), true);
+  heatmap_mode->addItem(tr("All Heatmap"), false);
+  heatmap_mode->setFixedWidth(120);
+  connect(heatmap_mode, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this, heatmap_mode](int index) {
+    binary_view->setHeatmapLiveMode(heatmap_mode->itemData(index).toBool());
+  });
+  hl->addWidget(heatmap_mode);
 
-  hl->addWidget(createVLine(this), 0, Qt::AlignCenter);
+  // Layout Orientation Toggle
+  toggle_orientation_btn_ = new ToolButton();
+  hl->addWidget(toggle_orientation_btn_);
+  connect(toggle_orientation_btn_, &ToolButton::clicked, this, &MessageView::toggleCenterOrientation);
 
-  // 3. Action Buttons (Using your ToolButton class for consistent Lucide icons)
+  // Action Buttons
   ToolButton* edit_btn = new ToolButton("square-pen", tr("Edit Message"));
   connect(edit_btn, &ToolButton::clicked, this, &MessageView::editMsg);
   hl->addWidget(edit_btn);
 
+  hl->addSpacing(4);
+  hl->addWidget(createVLine(this), 0, Qt::AlignCenter);
+  hl->addSpacing(4);
   remove_msg_btn = new ToolButton("trash-2", tr("Remove Message"));
   connect(remove_msg_btn, &ToolButton::clicked, this, &MessageView::removeMsg);
   hl->addWidget(remove_msg_btn);
@@ -239,4 +248,34 @@ void MessageView::editMsg() {
 
 void MessageView::removeMsg() {
   UndoStack::push(new RemoveMsgCommand(msg_id));
+}
+
+void MessageView::toggleCenterOrientation() {
+  bool willBeHorizontal = splitter->orientation() == Qt::Vertical;
+  if (willBeHorizontal) {
+    splitter->setOrientation(Qt::Horizontal);
+    emit requestDockCompression();
+
+    int totalWidth = splitter->width();
+    splitter->setSizes({totalWidth / 2, totalWidth / 2});
+    toggle_orientation_btn_->setIcon(("rows-2"));
+  } else {
+    splitter->setOrientation(Qt::Vertical);
+    int totalHeight = splitter->height();
+    int bin_height = binary_view->sizeHint().height();
+    splitter->setSizes({bin_height, totalHeight - bin_height});
+    // emit requestDockExpansion();
+    toggle_orientation_btn_->setIcon(("columns-2"));
+  }
+  updateOrientationButton();
+}
+
+void MessageView::updateOrientationButton() {
+  if (splitter->orientation() == Qt::Vertical) {
+    toggle_orientation_btn_->setIcon("columns-2");
+    toggle_orientation_btn_->setToolTip("Show views side-by-side");
+  } else {
+    toggle_orientation_btn_->setIcon("rows-2");
+    toggle_orientation_btn_->setToolTip("Stack views vertically");
+  }
 }

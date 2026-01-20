@@ -62,6 +62,7 @@ QWidget *SignalEditor::createToolbar() {
   settings.sparkline_range = std::clamp(settings.sparkline_range, 1, max_range);
   hl->addWidget(sparkline_label = new QLabel());
   hl->addWidget(sparkline_range_slider = new QSlider(Qt::Horizontal, this));
+  sparkline_range_slider->setMinimumWidth(100);
   sparkline_range_slider->setRange(1, max_range);
   sparkline_range_slider->setValue(settings.sparkline_range);
   sparkline_range_slider->setToolTip(tr("Sparkline time range"));
@@ -69,6 +70,7 @@ QWidget *SignalEditor::createToolbar() {
   collapse_btn = new ToolButton("fold-vertical", tr("Collapse All"));
   collapse_btn->setIconSize({12, 12});
   hl->addWidget(collapse_btn);
+
   return toolbar;
 }
 
