@@ -19,6 +19,7 @@ BinaryView::BinaryView(QWidget *parent) : QTableView(parent) {
 
   setItemDelegate(delegate);
   horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+  horizontalHeader()->setDefaultSectionSize(CELL_WIDTH);
   horizontalHeader()->hide();
 
   verticalHeader()->setSectionsClickable(false);
@@ -93,12 +94,15 @@ void BinaryView::addShortcuts() {
 }
 
 QSize BinaryView::minimumSizeHint() const {
-  // 8 bits + 1 extra column for spacing/labels
-  int total_width = (CELL_WIDTH * 8) + VERTICAL_HEADER_WIDTH;
-  // Show at least 4 rows, at most 10
-  int total_height = CELL_HEIGHT * std::clamp(model->rowCount(), 4, 10);
+  int cellWidth = horizontalHeader()->defaultSectionSize();
 
-  return {total_width, total_height};
+  // (9 columns * width) + the vertical header + 2px buffer for the frame
+  int totalWidth = (cellWidth * 9) + CELL_WIDTH + 2;
+
+  // Show at least 4 rows, at most 10
+  int totalHeight = CELL_HEIGHT * std::min(model->rowCount(), 10) + 2;
+
+  return {totalWidth, totalHeight};
 }
 
 void BinaryView::highlight(const dbc::Signal *sig) {
