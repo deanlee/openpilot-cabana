@@ -10,7 +10,6 @@
 #include "core/commands/commands.h"
 #include "modules/settings/settings.h"
 
-const int CELL_HEIGHT = 36;
 inline int get_bit_pos(const QModelIndex &index) { return flipBitPos(index.row() * 8 + index.column()); }
 
 BinaryView::BinaryView(QWidget *parent) : QTableView(parent) {
@@ -20,10 +19,12 @@ BinaryView::BinaryView(QWidget *parent) : QTableView(parent) {
 
   setItemDelegate(delegate);
   horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+  horizontalHeader()->hide();
+
   verticalHeader()->setSectionsClickable(false);
   verticalHeader()->setSectionResizeMode(QHeaderView::Fixed);
   verticalHeader()->setDefaultSectionSize(CELL_HEIGHT);
-  horizontalHeader()->hide();
+
 
   setFrameStyle(QFrame::NoFrame);
   setShowGrid(false);
@@ -92,8 +93,12 @@ void BinaryView::addShortcuts() {
 }
 
 QSize BinaryView::minimumSizeHint() const {
-  return {(horizontalHeader()->minimumSectionSize() + 1) * 9 + VERTICAL_HEADER_WIDTH + 2,
-          CELL_HEIGHT * std::min(model->rowCount(), 10) + 2};
+  // 8 bits + 1 extra column for spacing/labels
+  int total_width = (CELL_WIDTH * 8) + VERTICAL_HEADER_WIDTH;
+  // Show at least 4 rows, at most 10
+  int total_height = CELL_HEIGHT * std::clamp(model->rowCount(), 4, 10);
+
+  return {total_width, total_height};
 }
 
 void BinaryView::highlight(const dbc::Signal *sig) {
