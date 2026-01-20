@@ -68,16 +68,16 @@ QWidget *MessageList::createToolBar() {
   QWidget *toolbar = new QWidget(this);
   QHBoxLayout *layout = new QHBoxLayout(toolbar);
   layout->setContentsMargins(0, 9, 0, 0);
-  layout->addWidget(suppress_add = new QPushButton("Suppress Highlighted"));
-  suppress_add->setToolTip(tr("Mute activity for selected bits.\n"
-                            "This hides color changes in the highlighted area to focus on other transitions."));
+  layout->addWidget(suppress_add = new QPushButton("Mute Current"));
+  suppress_add->setToolTip(tr("Mute Current Activity.\n"
+                            "Silences bytes currently changing to help you detect new bit transitions."));
   layout->addWidget(suppress_clear = new QPushButton());
-  suppress_clear->setToolTip(tr("Clear all suppressed bits.\n"
-                            "Restores activity highlighting for all previously muted bits."));
+  suppress_clear->setToolTip(tr("Reset Activity.\n"
+                            "Restore highlighting for all bytes."));
   layout->addStretch(1);
-  suppress_defined_signals = new QCheckBox(tr("Suppress Signals"), this);
-  suppress_defined_signals->setToolTip(tr("Mute activity for all bits already assigned to signals.\n"
-                                        "Helps isolate unknown bit transitions in the message."));
+  suppress_defined_signals = new QCheckBox(tr("Mute Defined"), this);
+  suppress_defined_signals->setToolTip(tr("Mute Defined Signals.\n"
+                                        "Focus on unknown data by hiding activity for bits already assigned to a signal."));
 
   suppress_defined_signals->setChecked(settings.suppress_defined_signals);
   layout->addWidget(suppress_defined_signals);
@@ -106,7 +106,7 @@ void MessageList::resetState() {
   }
   model->rebuild();
 
-  suppress_clear->setText(tr("Clear"));
+  suppress_clear->setText(tr("Reset Activity"));
   suppress_clear->setEnabled(false);
 
   StreamManager::stream()->suppressDefinedSignals(settings.suppress_defined_signals);
@@ -149,7 +149,7 @@ void MessageList::selectMessage(const MessageId &msg_id) {
 void MessageList::suppressHighlighted() {
   auto *can = StreamManager::stream();
   int n = sender() == suppress_add ? can->suppressHighlighted() : (can->clearSuppressed(), 0);
-  suppress_clear->setText(n > 0 ? tr("Clear (%1)").arg(n) : tr("Clear"));
+  suppress_clear->setText(n > 0 ? tr("Reset Activity (%1)").arg(n) : tr("Reset Activity"));
   suppress_clear->setEnabled(n > 0);
 }
 
