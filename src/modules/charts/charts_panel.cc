@@ -219,11 +219,11 @@ const QSet<const dbc::Signal*> ChartsPanel::getChartedSignals() const {
 
 ChartView *ChartsPanel::createChart(int pos) {
   auto chart = new ChartView(StreamManager::stream()->timeRange().value_or(display_range), this);
+  charts.append(chart);
   chart->viewport()->installEventFilter(scroll_area_->container_);
   connect(chart, &ChartView::axisYLabelWidthChanged, align_timer, qOverload<>(&QTimer::start));
-  pos = std::clamp(pos, 0, charts.size());
-  charts.insert(pos, chart);
-  tab_manager_->addChartToCurrentTab(chart);
+
+  tab_manager_->insertChart(pos, chart);
   updateLayout(true);
   toolbar->updateState(charts.size());
   return chart;
@@ -273,7 +273,7 @@ void ChartsPanel::splitChart(ChartView* src_view) {
   // 1. Transaction safety: disable updates
   src_view->setUpdatesEnabled(false);
 
-  int target_pos = charts.indexOf(src_view) + 1;
+  int target_pos = tab_manager_->currentCharts().indexOf(src_view) + 1;
 
   // 2. Logic: Create one new chart for EVERY extra signal
   while (src_sigs.size() > 1) {

@@ -14,7 +14,7 @@ class ChartsTabManager : public QObject {
   QList<ChartView*>& currentCharts();
   void addTab();
   void clear();
-  void addChartToCurrentTab(ChartView* chart);
+  void insertChart(int pos, ChartView* chart);
   void removeChart(ChartView* chart);
   void updateLabels();
   QMap<int, QList<ChartView*>> tab_charts_;  // Stores associations, not ownership

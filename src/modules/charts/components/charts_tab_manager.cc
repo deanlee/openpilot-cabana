@@ -42,12 +42,10 @@ void ChartsTabManager::handleTabClose(int index) {
   updateLabels();
 }
 
-void ChartsTabManager::addChartToCurrentTab(ChartView* chart) {
-  int idx = tabbar_->currentIndex();
-  if (idx == -1) return;
-
-  int id = tabbar_->tabData(idx).toInt();
-  tab_charts_[id].append(chart);
+void ChartsTabManager::insertChart(int pos, ChartView* chart) {
+  auto &current_charts = currentCharts();
+  pos = std::clamp(pos, 0, current_charts.size());
+  current_charts.insert(pos, chart);
   updateLabels();
 }
 
