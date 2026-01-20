@@ -1,6 +1,7 @@
 <!DOCTYPE RCC><RCC version="1.0">
 <qresource>
   <file>assets/activity.svg</file>
+  <file>assets/ban.svg</file>
   <file>assets/binary.svg</file>
   <file>assets/chart-area.svg</file>
   <file>assets/chart-line.svg</file>
@@ -31,6 +32,7 @@
   <file>assets/refresh-ccw.svg</file>
   <file>assets/repeat.svg</file>
   <file>assets/repeat-1.svg</file>
+  <file>assets/rotate-ccw.svg</file>
   <file>assets/rows-2.svg</file>
   <file>assets/scroll-text.svg</file>
   <file>assets/skip-forward.svg</file>

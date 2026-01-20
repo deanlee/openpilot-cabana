@@ -10,6 +10,7 @@
 class QCheckBox;
 class QMenu;
 class QPushButton;
+class ToolButton;
 
 class MessageList : public QWidget {
   Q_OBJECT
@@ -40,8 +41,8 @@ protected:
   MessageDelegate *delegate;
   std::optional<MessageId> current_msg_id;
   MessageModel *model;
-  QPushButton *suppress_add;
-  QPushButton *suppress_clear;
+  ToolButton *suppress_add;
+  ToolButton *suppress_clear;
   QCheckBox *suppress_defined_signals;
   QMenu *menu;
   friend class MessageModel;
