@@ -165,7 +165,9 @@ void Chart::alignLayout(int left_pos, bool force) {
   const QRectF manage_rect = manage_btn_proxy_->sceneBoundingRect();
 
   // Stretch legend to fill the gap between the move and manage icons
-  QRectF legend_geom(move_rect.topRight(), QSize(manage_rect.left() - move_rect.right(), move_rect.height()));
+  // Ensure legend height matches the larger UI controls (manage_btn) rather than the
+  // smaller move_icon to provide sufficient top margin for signal value labels.
+  QRectF legend_geom(move_rect.topRight(), QSize(manage_rect.left() - move_rect.right(), manage_rect.height()));
   legend()->setGeometry(legend_geom);
 
   QFontMetrics fm_x(axis_x_->labelsFont());
