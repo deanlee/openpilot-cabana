@@ -11,6 +11,7 @@
 #include "core/commands/commands.h"
 #include "modules/settings/settings.h"
 #include "modules/system/stream_manager.h"
+#include "widgets/common.h"
 
 MessageList::MessageList(QWidget *parent) : menu(new QMenu(this)), QWidget(parent) {
   QVBoxLayout *main_layout = new QVBoxLayout(this);
@@ -67,29 +68,36 @@ void MessageList::setupConnections() {
 QWidget *MessageList::createToolBar() {
   QWidget *toolbar = new QWidget(this);
   QHBoxLayout *layout = new QHBoxLayout(toolbar);
-  layout->setContentsMargins(0, 9, 0, 0);
-  layout->addWidget(suppress_add = new QPushButton("Mute Current"));
+  layout->setContentsMargins(0, 4, 0, 0);
+  layout->setSpacing(style()->pixelMetric(QStyle::PM_ToolBarItemSpacing));
+
+  layout->addWidget(suppress_add = new ToolButton("ban"));
+  suppress_add->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
+  suppress_add->setText(tr("Mute Current"));
   suppress_add->setToolTip(tr("Mute Current Activity.\n"
                             "Silences bytes currently changing to help you detect new bit transitions."));
-  layout->addWidget(suppress_clear = new QPushButton());
+  layout->addWidget(suppress_clear = new ToolButton("refresh-ccw"));
+  suppress_clear->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
+  suppress_clear->setText(tr("Reset Activity"));
   suppress_clear->setToolTip(tr("Reset Activity.\n"
                             "Restore highlighting for all bytes."));
-  layout->addStretch(1);
+
   suppress_defined_signals = new QCheckBox(tr("Mute Defined"), this);
+  suppress_defined_signals->setFocusPolicy(Qt::NoFocus);
   suppress_defined_signals->setToolTip(tr("Mute Defined Signals.\n"
                                         "Focus on unknown data by hiding activity for bits already assigned to a signal."));
-
   suppress_defined_signals->setChecked(settings.suppress_defined_signals);
   layout->addWidget(suppress_defined_signals);
 
+  layout->addStretch(1);
   auto view_button = new ToolButton("ellipsis", tr("View..."));
   view_button->setMenu(menu);
   view_button->setPopupMode(QToolButton::InstantPopup);
   view_button->setStyleSheet("QToolButton::menu-indicator { image: none; }");
   layout->addWidget(view_button);
 
-  connect(suppress_add, &QPushButton::clicked, this, &MessageList::suppressHighlighted);
-  connect(suppress_clear, &QPushButton::clicked, this, &MessageList::suppressHighlighted);
+  connect(suppress_add, &ToolButton::clicked, this, &MessageList::suppressHighlighted);
+  connect(suppress_clear, &ToolButton::clicked, this, &MessageList::suppressHighlighted);
   connect(suppress_defined_signals, &QCheckBox::stateChanged, this , [this]() {
     StreamManager::stream()->suppressDefinedSignals(suppress_defined_signals->isChecked());
   });
