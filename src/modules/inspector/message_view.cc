@@ -274,9 +274,9 @@ void MessageView::toggleCenterOrientation() {
 void MessageView::updateOrientationButton() {
   if (splitter->orientation() == Qt::Vertical) {
     toggle_orientation_btn_->setIcon("columns-2");
-    toggle_orientation_btn_->setToolTip("Show views side-by-side");
+    toggle_orientation_btn_->setToolTip(tr("Show side-by-side\nArrange binary and signal views horizontally"));
   } else {
     toggle_orientation_btn_->setIcon("rows-2");
-    toggle_orientation_btn_->setToolTip("Stack views vertically");
+    toggle_orientation_btn_->setToolTip(tr("Stack vertically\nShow binary view above signal view"));
   }
 }
