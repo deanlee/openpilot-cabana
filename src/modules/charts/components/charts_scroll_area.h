@@ -12,6 +12,7 @@ class ChartsScrollArea : public QScrollArea {
   explicit ChartsScrollArea(QWidget* parent = nullptr);
   void startAutoScroll();
   void stopAutoScroll();
+  void resizeEvent(QResizeEvent* event) override;
 
  private slots:
   void doAutoScroll();
