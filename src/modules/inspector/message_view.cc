@@ -114,6 +114,7 @@ QWidget* MessageView::createToolBar() {
   hl->addWidget(createVLine(this), 0, Qt::AlignCenter);
   hl->addSpacing(4);
   remove_msg_btn = new ToolButton("trash-2", tr("Remove Message"));
+  remove_msg_btn->setHoverColor(QColor(220, 53, 69));
   connect(remove_msg_btn, &ToolButton::clicked, this, &MessageView::removeMsg);
   hl->addWidget(remove_msg_btn);
   return toolbar_container;

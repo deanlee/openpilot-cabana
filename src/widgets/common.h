@@ -10,10 +10,15 @@ class ToolButton : public QToolButton {
  public:
   ToolButton(const QString& icon = {}, const QString& tooltip = {}, QWidget* parent = nullptr);
   void setIcon(const QString& icon);
+  void setHoverColor(const QColor& color) { hover_color = color; }
+  void updateIconColor(const QColor& color);
 
  private:
+  void enterEvent(QEvent* event);
+  void leaveEvent(QEvent* event);
   void updateIcon();
 
+  QColor hover_color;
   QString icon_str;
   int theme;
 };
