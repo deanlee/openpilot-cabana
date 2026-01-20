@@ -305,17 +305,17 @@ bool SignalTreeDelegate::editorEvent(QEvent* event, QAbstractItemModel* model, c
   if (type == QEvent::MouseMove) {
     int btn = buttonAt(e->pos(), opt.rect);
     if (hoverIndex != idx || hoverButton != btn) {
+      QModelIndex oldIdx = hoverIndex;
       hoverIndex = idx;
       hoverButton = btn;
-      const_cast<QWidget*>(opt.widget)->update();
+
+      if (auto* view = qobject_cast<QAbstractItemView*>(const_cast<QWidget*>(opt.widget))) {
+        if (oldIdx.isValid()) view->update(oldIdx);
+        view->update(idx);
+      }
     }
   } else if (type == QEvent::Leave) {
-    // Clear hover when leaving a specific item
-    if (hoverIndex.isValid()) {
-      hoverIndex = QModelIndex();
-      hoverButton = -1;
-      const_cast<QWidget*>(opt.widget)->update();
-    }
+    clearHoverState();
   }
 
   // 2. Handle Button Clicks
@@ -360,8 +360,11 @@ int SignalTreeDelegate::nameColumnWidth(const dbc::Signal* sig) const {
 
 void SignalTreeDelegate::clearHoverState() {
   if (hoverIndex.isValid()) {
+    QModelIndex old = hoverIndex;
     hoverIndex = QModelIndex();
     hoverButton = -1;
-    if (auto v = qobject_cast<QWidget*>(parent())) v->update();
+    if (auto* view = qobject_cast<QAbstractItemView*>(parent())) {
+      view->update(old);
+    }
   }
 }
