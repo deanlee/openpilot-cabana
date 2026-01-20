@@ -28,10 +28,16 @@ ChartsContainer::ChartsContainer(QWidget* parent) : QWidget(parent) {
 }
 
 int ChartsContainer::calculateOptimalColumns() const {
+  int visible_width = width();
+  QWidget* viewport = parentWidget();
+  if (viewport) {
+    visible_width = viewport->width();
+  }
+
   int n = MAX_COLUMN_COUNT;
   for (; n > 1; --n) {
     int required_w = (n * CHART_MIN_WIDTH) + ((n - 1) * grid_layout_->spacing());
-    if (required_w <= width()) break;
+    if (required_w <= visible_width) break;
   }
   return std::min(n, settings.chart_column_count);
 }
@@ -65,16 +71,6 @@ void ChartsContainer::reflowLayout() {
   }
 
   setUpdatesEnabled(true);
-}
-
-void ChartsContainer::resizeEvent(QResizeEvent* event) {
-  QWidget::resizeEvent(event);
-
-  int new_cols = calculateOptimalColumns();
-  if (new_cols != current_column_count_) {
-    current_column_count_ = new_cols;
-    reflowLayout();
-  }
 }
 
 void ChartsContainer::handleDragInteraction(const QPoint& pos) {

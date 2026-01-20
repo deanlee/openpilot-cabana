@@ -61,3 +61,8 @@ void ChartsScrollArea::doAutoScroll() {
     QApplication::sendEvent(container_, &mm);
   }
 }
+
+void ChartsScrollArea::resizeEvent(QResizeEvent* event) {
+  QScrollArea::resizeEvent(event);
+  container_->updateLayout(container_->active_charts_, settings.chart_column_count, true);
+}
