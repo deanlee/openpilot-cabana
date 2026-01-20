@@ -10,13 +10,15 @@
 // ToolButton
 
 ToolButton::ToolButton(const QString& icon, const QString& tooltip, QWidget* parent) : QToolButton(parent) {
-  setIcon(icon);
   setToolTip(tooltip);
   setAutoRaise(true);
   setFocusPolicy(Qt::NoFocus);
   const int metric = QApplication::style()->pixelMetric(QStyle::PM_SmallIconSize);
   setIconSize({metric, metric});
+
   theme = settings.theme;
+  setIcon(icon);
+
   connect(&settings, &Settings::changed, this, &ToolButton::updateIcon);
 }
 
@@ -24,10 +26,38 @@ void ToolButton::setIcon(const QString& icon) {
   if (icon.isEmpty()) return;
   icon_str = icon;
   QToolButton::setIcon(utils::icon(icon_str));
+  update();
 }
 
 void ToolButton::updateIcon() {
-  if (std::exchange(theme, settings.theme) != theme) setIcon(icon_str);
+  if (settings.theme != theme) {
+    theme = settings.theme;
+    setIcon(icon_str);
+  }
+}
+
+void ToolButton::updateIconColor(const QColor& color) {
+  if (icon_str.isEmpty()) return;
+
+  if (!color.isValid()) {
+    QToolButton::setIcon(utils::icon(icon_str));
+  } else {
+    // Pass the current iconSize() to ensure the pixmap matches the button's scale
+    QToolButton::setIcon(utils::icon(icon_str, iconSize(), color));
+  }
+}
+
+void ToolButton::enterEvent(QEvent* event) {
+  QToolButton::enterEvent(event);
+  if (hover_color.isValid()) {
+    updateIconColor(hover_color);
+  }
+}
+
+void ToolButton::leaveEvent(QEvent* event) {
+  QToolButton::leaveEvent(event);
+  // Revert to the standard theme color when the mouse leaves
+  updateIconColor(QColor());
 }
 
 // TabBar
