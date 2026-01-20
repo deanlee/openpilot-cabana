@@ -9,55 +9,48 @@
 
 // ToolButton
 
-ToolButton::ToolButton(const QString& icon, const QString& tooltip, QWidget* parent) : QToolButton(parent) {
+ToolButton::ToolButton(const QString& icon, const QString& tooltip, QWidget* parent) 
+    : QToolButton(parent), icon_str(icon) {
   setToolTip(tooltip);
   setAutoRaise(true);
   setFocusPolicy(Qt::NoFocus);
+
   const int metric = QApplication::style()->pixelMetric(QStyle::PM_SmallIconSize);
   setIconSize({metric, metric});
 
-  theme = settings.theme;
-  setIcon(icon);
-
-  connect(&settings, &Settings::changed, this, &ToolButton::updateIcon);
+  refreshIcon();
+  connect(&settings, &Settings::changed, this, &ToolButton::onSettingsChanged);
 }
 
 void ToolButton::setIcon(const QString& icon) {
-  if (icon.isEmpty()) return;
   icon_str = icon;
-  QToolButton::setIcon(utils::icon(icon_str));
-  update();
+  refreshIcon();
 }
 
-void ToolButton::updateIcon() {
-  if (settings.theme != theme) {
-    theme = settings.theme;
-    setIcon(icon_str);
-  }
-}
-
-void ToolButton::updateIconColor(const QColor& color) {
+void ToolButton::refreshIcon(const QColor& tint_color) {
   if (icon_str.isEmpty()) return;
 
-  if (!color.isValid()) {
-    QToolButton::setIcon(utils::icon(icon_str));
-  } else {
-    // Pass the current iconSize() to ensure the pixmap matches the button's scale
-    QToolButton::setIcon(utils::icon(icon_str, iconSize(), color));
+  QIcon new_icon = utils::icon(icon_str, iconSize(), tint_color);
+  QToolButton::setIcon(new_icon);
+}
+
+void ToolButton::onSettingsChanged() {
+  // Only refresh if the actual theme property has changed
+  if (std::exchange(theme, settings.theme) != settings.theme) {
+    refreshIcon();
   }
 }
 
 void ToolButton::enterEvent(QEvent* event) {
   QToolButton::enterEvent(event);
   if (hover_color.isValid()) {
-    updateIconColor(hover_color);
+    refreshIcon(hover_color);
   }
 }
 
 void ToolButton::leaveEvent(QEvent* event) {
   QToolButton::leaveEvent(event);
-  // Revert to the standard theme color when the mouse leaves
-  updateIconColor(QColor());
+  refreshIcon(); // Reverts to default theme color
 }
 
 // TabBar

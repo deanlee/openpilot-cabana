@@ -9,14 +9,14 @@ class ToolButton : public QToolButton {
   Q_OBJECT
  public:
   ToolButton(const QString& icon = {}, const QString& tooltip = {}, QWidget* parent = nullptr);
-  void setIcon(const QString& icon);
   void setHoverColor(const QColor& color) { hover_color = color; }
-  void updateIconColor(const QColor& color);
+  void setIcon(const QString &icon);
 
  private:
-  void enterEvent(QEvent* event);
-  void leaveEvent(QEvent* event);
-  void updateIcon();
+  void enterEvent(QEvent* event) override;
+  void leaveEvent(QEvent* event) override;
+  void onSettingsChanged();
+  void refreshIcon(const QColor& tint_color = QColor());
 
   QColor hover_color;
   QString icon_str;
