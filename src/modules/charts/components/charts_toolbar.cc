@@ -41,21 +41,25 @@ void ChartsToolBar::createActions(QHBoxLayout* hl) {
   hl->addWidget(title_label = new QLabel());
   title_label->setStyleSheet("font-weight: bold;");
 
-  // 1. Chart Type Menu (Preserving InstantPopup feature)
+  hl->addSpacing(4);
+  hl->addWidget(createVLine(this), 0, Qt::AlignCenter);
+  hl->addSpacing(4);
+
+  // Column Menu (Preserving InstantPopup feature)
+  columns_btn = new ToolButton("layout-grid");
+  columns_btn->setPopupMode(QToolButton::InstantPopup);
+  columns_btn->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
+  columns_btn->setToolTip(tr("Grid Layout\nSet number of columns."));
+  createColumnMenu();
+  hl->addWidget(columns_btn);
+
+   // Chart Type Menu (Preserving InstantPopup feature)
   chart_type_btn = new ToolButton();
   chart_type_btn->setPopupMode(QToolButton::InstantPopup);
   chart_type_btn->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
   chart_type_btn->setToolTip(tr("Chart Drawing Style\nChange how signals are visualized."));
   createTypeMenu();
   hl->addWidget(chart_type_btn);
-
-  // 2. Column Menu (Preserving InstantPopup feature)
-  columns_btn = new ToolButton();
-  columns_btn->setPopupMode(QToolButton::InstantPopup);
-  columns_btn->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
-  columns_btn->setToolTip(tr("Grid Layout\nSet number of columns."));
-  createColumnMenu();
-  hl->addWidget(columns_btn);
 
   hl->addStretch(1);
 
@@ -69,16 +73,27 @@ void ChartsToolBar::createActions(QHBoxLayout* hl) {
 
 void ChartsToolBar::createTypeMenu() {
   QMenu* menu = new QMenu(this);
-  auto types = std::array{tr("Line"), tr("Step"), tr("Scatter")};
-  for (int i = 0; i < types.size(); ++i) {
-    menu->addAction(types[i], this, [=, type_text = types[i]]() {
+  struct ChartStyle { QString name; QString icon; };
+  auto styles = std::array{
+    ChartStyle{tr("Line"), "chart-line"},
+    ChartStyle{tr("Step"), "chart-network"},
+    ChartStyle{tr("Scatter"), "chart-scatter"},
+  };
+
+  for (int i = 0; i < styles.size(); ++i) {
+    QAction* action = menu->addAction(utils::icon(styles[i].icon), styles[i].name);
+    connect(action, &QAction::triggered, this, [=]() {
       settings.chart_series_type = i;
-      chart_type_btn->setText(tr("Type: %1").arg(type_text));
+      chart_type_btn->setIcon(styles[i].icon);
+      chart_type_btn->setText(styles[i].name);
       emit seriesTypeChanged(i);
     });
   }
+
   chart_type_btn->setMenu(menu);
-  chart_type_btn->setText(tr("Type: %1").arg(types[settings.chart_series_type]));
+  // Initialize with current icon and text
+  chart_type_btn->setIcon(styles[settings.chart_series_type].icon);
+  chart_type_btn->setText(styles[settings.chart_series_type].name);
 }
 
 void ChartsToolBar::createColumnMenu() {
@@ -86,12 +101,12 @@ void ChartsToolBar::createColumnMenu() {
   for (int i = 0; i < MAX_COLUMN_COUNT; ++i) {
     menu->addAction(tr("%1").arg(i + 1), [=, count = i + 1]() {
       settings.chart_column_count = count;
-      columns_btn->setText(tr("Columns: %1").arg(count));
+      columns_btn->setText(QString::number(count));
       emit columnCountChanged(count);
     });
   }
   columns_btn->setMenu(menu);
-  columns_btn->setText(tr("Columns: %1").arg(settings.chart_column_count));
+  columns_btn->setText(QString::number(settings.chart_column_count));
 }
 
 void ChartsToolBar::setupZoomControls(QHBoxLayout* hl) {
@@ -128,7 +143,7 @@ void ChartsToolBar::setupZoomControls(QHBoxLayout* hl) {
 
 void ChartsToolBar::updateState(int chart_count) {
   title_label->setText(tr("Charts: %1").arg(chart_count));
-  columns_btn->setText(tr("Columns: %1").arg(settings.chart_column_count));
+  columns_btn->setText(QString::number(settings.chart_column_count));
   range_lb->setText(utils::formatSeconds(settings.chart_range));
 
   auto* stream = StreamManager::stream();
