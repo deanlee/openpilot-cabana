@@ -239,18 +239,23 @@ void SignalTreeDelegate::drawButtons(QPainter* p, const QStyleOptionViewItem& op
     int iconPadding = 4;
     QSize iconSize = QSize(kBtnSize - (iconPadding * 2), kBtnSize - (iconPadding * 2));
 
-    QColor icon_color = (active || (opt.state & QStyle::State_Selected))
-                            ? opt.palette.color(QPalette::HighlightedText)
-                            : opt.palette.color(QPalette::Text);
-
+    QColor icon_color;
+    if (btnIdx == 0 && hovered) {
+      icon_color = QColor(220, 53, 69);  // Soft Red
+    } else {
+      icon_color = (active || (opt.state & QStyle::State_Selected))
+                       ? opt.palette.color(QPalette::HighlightedText)
+                       : opt.palette.color(QPalette::Text);
+    }
     QPixmap pix = utils::icon(iconName, iconSize, icon_color);
-
     p->drawPixmap(rect.left() + iconPadding, rect.top() + iconPadding, pix);
   };
 
+  p->setRenderHint(QPainter::Antialiasing, true);
   // 0: Remove, 1: Plot
   drawBtn(0, "circle-minus", false);
   drawBtn(1, chart_opened ? "chart-area" : "chart-line", chart_opened);
+  p->setRenderHint(QPainter::Antialiasing, false);
 }
 
 bool SignalTreeDelegate::helpEvent(QHelpEvent* event, QAbstractItemView* view, const QStyleOptionViewItem& option, const QModelIndex& index) {
