@@ -228,6 +228,7 @@ bool MessageModel::rebuild() {
     // Structure is identical: Just update the data pointers and repaint
     items_ = std::move(new_items);
     emit dataChanged(index(0, 0), index(rowCount() - 1, columnCount() - 1));
+    emit layoutChanged();
   }
   return false;
 }
