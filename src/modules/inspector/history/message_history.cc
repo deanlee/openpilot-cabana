@@ -41,7 +41,7 @@ MessageHistory::MessageHistory(QWidget *parent) : QFrame(parent) {
   QFrame *line = new QFrame(this);
   line->setFrameStyle(QFrame::HLine | QFrame::Sunken);
   main_layout->addWidget(line);
-  main_layout->addWidget(logs = new QTableView(this));
+  main_layout->addWidget(logs = new HistoryTableView(this));
   logs->setModel(model = new MessageHistoryModel(this));
   delegate = new MessageDelegate(this, CallerType::HistoryView);
   // logs->setItemDelegate(delegate);
