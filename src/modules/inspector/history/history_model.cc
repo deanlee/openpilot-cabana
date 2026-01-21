@@ -91,12 +91,13 @@ void MessageHistoryModel::setFilter(int sig_idx, const QString &value, std::func
 }
 
 void MessageHistoryModel::updateState(bool clear) {
-  if (clear) {
-    beginResetModel();
+  if (clear && !messages.empty()) {
+    beginRemoveRows({}, 0, messages.size() - 1);
     messages.clear();
     hex_colors = {};
-    endResetModel();
+    endRemoveRows();
   }
+
   if (is_paused && !clear) return;
 
   auto *stream = StreamManager::stream();
