@@ -11,9 +11,6 @@
 #include <QToolTip>
 
 #include "core/commands/commands.h"
-#include "modules/charts/charts_panel.h"
-#include "signal_editor.h"
-#include "signal_tree_model.h"
 #include "value_table_editor.h"
 #include "widgets/validators.h"
 
@@ -228,7 +225,7 @@ void SignalTreeDelegate::drawButtons(QPainter* p, const QStyleOptionViewItem& op
     if (hovered || active) {
       // Background: Highlight if active, light overlay if hovered
       QColor bg = active ? opt.palette.color(QPalette::Highlight) : opt.palette.color(QPalette::Button);
-      bg.setAlpha(active ? 255 : 100); 
+      bg.setAlpha(active ? 255 : 100);
       p->setBrush(bg);
       p->setPen(opt.palette.color(active ? QPalette::Highlight : QPalette::Mid));
       p->drawRoundedRect(rect.adjusted(1, 1, -1, -1), 4, 4);
@@ -267,16 +264,13 @@ bool SignalTreeDelegate::helpEvent(QHelpEvent* event, QAbstractItemView* view, c
   int btnIdx = (index.column() == 1 && item->type == SignalTreeModel::Item::Sig) ? buttonAt(event->pos(), option.rect) : -1;
 
   if (btnIdx != -1) {
-    SignalEditor* sigView = qobject_cast<SignalEditor*>(view->parentWidget());
-    if (sigView) {
-      if (btnIdx == 1) {  // Plot Button
-        bool opened = index.data(IsChartedRole).toBool();
-        QToolTip::showText(event->globalPos(), opened ? tr("Close Plot") : tr("Show Plot\nSHIFT click to add to previous opened plot"), view);
-      } else {  // Remove Button
-        QToolTip::showText(event->globalPos(), tr("Remove Signal"), view);
-      }
-      return true;
+    if (btnIdx == 1) {  // Plot Button
+      bool opened = index.data(IsChartedRole).toBool();
+      QToolTip::showText(event->globalPos(), opened ? tr("Close Plot") : tr("Show Plot\nSHIFT click to add to previous opened plot"), view);
+    } else {  // Remove Button
+      QToolTip::showText(event->globalPos(), tr("Remove Signal"), view);
     }
+    return true;
   } else {
     int right_edge = option.rect.right() - getButtonsWidth();
     QRect value_rect = option.rect;
@@ -322,13 +316,12 @@ bool SignalTreeDelegate::editorEvent(QEvent* event, QAbstractItemModel* model, c
   if (type == QEvent::MouseButtonRelease && item->type == SignalTreeModel::Item::Sig) {
     int btn = buttonAt(e->pos(), opt.rect);
     if (btn != -1) {
-      auto* view = static_cast<SignalEditor*>(parent());
-      auto msg_id = static_cast<SignalTreeModel*>(model)->msg_id;
-
       if (btn == 1) {  // Plot Button
-        emit view->showChart(msg_id, item->sig, !idx.data(IsChartedRole).toBool(), e->modifiers() & Qt::ShiftModifier);
+        emit plotRequested(idx, e->modifiers() & Qt::ShiftModifier);
       } else {  // Remove Button
-        UndoStack::push(new RemoveSigCommand(msg_id, item->sig));
+        hoverIndex = QModelIndex();
+        hoverButton = -1;
+        emit removeRequested(idx);
       }
       return true;  // Prevent base class from handling the click
     }

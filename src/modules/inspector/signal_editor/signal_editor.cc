@@ -90,6 +90,15 @@ void SignalEditor::setupConnections(ChartsPanel *charts) {
   connect(charts, &ChartsPanel::seriesChanged, model, [this, charts]() {
     model->updateChartedSignals(charts->getChartedSignals());
   });
+
+  connect(delegate, &SignalTreeDelegate::removeRequested, this, [this](const QModelIndex& index) {
+    auto item = (SignalTreeModel::Item*)index.internalPointer();
+    UndoStack::push(new RemoveSigCommand(model->msg_id, item->sig));
+  });
+  connect(delegate, &SignalTreeDelegate::plotRequested, this, [this](const QModelIndex& index, bool merge) {
+    auto item = (SignalTreeModel::Item*)index.internalPointer();
+    emit showChart(model->msg_id, item->sig, !index.data(IsChartedRole).toBool(), merge);
+  });
 }
 
 void SignalEditor::setMessage(const MessageId &id) {

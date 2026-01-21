@@ -31,6 +31,12 @@ public:
     return (2 * kBtnSize) + kBtnSpacing + kPadding;
   }
 
+signals:
+  void removeRequested(const QModelIndex &index);
+  void plotRequested(const QModelIndex &index, bool merge);
+
+public:
+
   QValidator *name_validator = nullptr;
   QValidator *double_validator = nullptr;
   QValidator *node_validator = nullptr;
