@@ -312,6 +312,12 @@ bool SignalTreeDelegate::editorEvent(QEvent* event, QAbstractItemModel* model, c
     clearHoverState();
   }
 
+  if (type == QEvent::MouseButtonPress || type == QEvent::MouseButtonDblClick) {
+    if (buttonAt(e->pos(), opt.rect) != -1) {
+      return true;  // Block tree expansion/selection
+    }
+  }
+
   // 2. Handle Button Clicks
   if (type == QEvent::MouseButtonRelease && item->type == SignalTreeModel::Item::Sig) {
     int btn = buttonAt(e->pos(), opt.rect);
