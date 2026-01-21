@@ -147,10 +147,18 @@ void MessageList::handleSelectionChanged(const QModelIndex &current) {
 }
 
 void MessageList::selectMessage(const MessageId &msg_id) {
+  if (current_msg_id && *current_msg_id == msg_id) return;
+
   auto it = std::find_if(model->items_.cbegin(), model->items_.cend(),
                          [&msg_id](auto &item) { return item.id == msg_id; });
   if (it != model->items_.cend()) {
-    view->setCurrentIndex(model->index(std::distance(model->items_.cbegin(), it), 0));
+    current_msg_id = msg_id;
+    int row = std::distance(model->items_.cbegin(), it);
+    QModelIndex index = model->index(row, 0);
+
+    QSignalBlocker blocker(view->selectionModel());
+    view->setCurrentIndex(index);
+    view->scrollTo(index, QAbstractItemView::PositionAtCenter);
   }
 }
 

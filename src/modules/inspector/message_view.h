@@ -24,6 +24,7 @@ public:
 
 signals:
   void requestDockCompression();
+  void activeMessageChanged(const MessageId &id);
 
 private:
   void setupConnections();

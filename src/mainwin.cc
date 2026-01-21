@@ -70,6 +70,8 @@ void MainWindow::setupConnections() {
   connect(UndoStack::instance(), &QUndoStack::cleanChanged, this, &MainWindow::undoStackCleanChanged);
   connect(&StreamManager::instance(), &StreamManager::streamChanged, this, &MainWindow::onStreamChanged);
   connect(&StreamManager::instance(), &StreamManager::eventsMerged, this, &MainWindow::eventsMerged);
+
+  connect(inspector_widget_->getMessageView(), &MessageView::activeMessageChanged, message_list_, &MessageList::selectMessage);
 }
 
 void MainWindow::setupMenus() {

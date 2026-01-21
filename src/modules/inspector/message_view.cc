@@ -69,7 +69,11 @@ void MessageView::setupConnections() {
   connect(tabbar, &QTabBar::customContextMenuRequested, this, &MessageView::showTabBarContextMenu);
   connect(tabbar, &QTabBar::currentChanged, [this](int index) {
     if (index != -1) {
-      setMessage(tabbar->tabData(index).value<MessageId>());
+      MessageId id = tabbar->tabData(index).value<MessageId>();
+      setMessage(id);
+      emit activeMessageChanged(id);
+    } else {
+      emit activeMessageChanged(MessageId());
     }
   });
   connect(tabbar, &QTabBar::tabCloseRequested, tabbar, &QTabBar::removeTab);
