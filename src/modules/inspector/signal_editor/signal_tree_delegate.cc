@@ -334,24 +334,17 @@ bool SignalTreeDelegate::editorEvent(QEvent* event, QAbstractItemModel* model, c
 }
 
 int SignalTreeDelegate::nameColumnWidth(const dbc::Signal* sig) const {
-  // Use the default font for the name text, and label_font for badges
-  QFontMetrics nameFm(QApplication::font());
-  QFontMetrics badgeFm(label_font);
-
-  int width = kPadding;
-
-  width += kColorLabelW + kPadding;
+  // Start with fixed decorative widths: Padding + Icon + Name Padding
+  int width = kPadding + kColorLabelW + kPadding;
 
   if (sig->type != dbc::Signal::Type::Normal) {
     QString m_text = (sig->type == dbc::Signal::Type::Multiplexor) ? "M" : "m00";
+    QFontMetrics badgeFm(label_font);
     width += badgeFm.horizontalAdvance(m_text) + 8 + kPadding;
   }
 
-  width += nameFm.horizontalAdvance(sig->name);
-
-  width += kPadding * 2;
-
-  return width;
+  QFontMetrics nameFm(QApplication::font());
+  return width + nameFm.horizontalAdvance(sig->name) + (kPadding * 2);
 }
 
 void SignalTreeDelegate::clearHoverState() {
