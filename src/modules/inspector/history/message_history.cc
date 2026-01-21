@@ -11,13 +11,14 @@
 
 MessageHistory::MessageHistory(QWidget *parent) : QFrame(parent) {
   setFrameStyle(QFrame::StyledPanel | QFrame::Plain);
+  setFrameStyle(QFrame::NoFrame);
   QVBoxLayout *main_layout = new QVBoxLayout(this);
   main_layout->setContentsMargins(0, 0, 0, 0);
   main_layout->setSpacing(0);
 
   QWidget *toolbar = new QWidget(this);
-  toolbar->setAutoFillBackground(true);
   QHBoxLayout *h = new QHBoxLayout(toolbar);
+  h->setContentsMargins(4, 4, 4, 4);
 
   filters_widget = new QWidget(this);
   QHBoxLayout *filter_layout = new QHBoxLayout(filters_widget);
@@ -44,12 +45,13 @@ MessageHistory::MessageHistory(QWidget *parent) : QFrame(parent) {
   main_layout->addWidget(logs = new HistoryTableView(this));
   logs->setModel(model = new MessageHistoryModel(this));
   delegate = new MessageDelegate(this, CallerType::HistoryView);
-  // logs->setItemDelegate(delegate);
+
   logs->setHorizontalHeader(new HistoryHeader(Qt::Horizontal, this));
   logs->horizontalHeader()->setDefaultAlignment(Qt::AlignRight | (Qt::Alignment)Qt::TextWordWrap);
   logs->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
   logs->verticalHeader()->setSectionResizeMode(QHeaderView::Fixed);
   logs->verticalHeader()->setDefaultSectionSize(delegate->sizeForBytes(8).height());
+  logs->verticalHeader()->setVisible(false);
   logs->setFrameShape(QFrame::NoFrame);
 
   setupConnections();

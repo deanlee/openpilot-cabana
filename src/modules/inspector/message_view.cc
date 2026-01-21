@@ -14,43 +14,51 @@
 #include "modules/system/stream_manager.h"
 
 MessageView::MessageView(ChartsPanel* charts, QWidget* parent) : charts(charts), QWidget(parent) {
-  QVBoxLayout* main_layout = new QVBoxLayout(this);
+  auto* main_layout = new QVBoxLayout(this);
   main_layout->setContentsMargins(0, 0, 0, 0);
 
-  // tabbar
+  // 1. Navigation & Controls
   tabbar = new TabBar(this);
   tabbar->setUsesScrollButtons(true);
   tabbar->setAutoHide(true);
   tabbar->setContextMenuPolicy(Qt::CustomContextMenu);
-  main_layout->addWidget(tabbar);
 
-  // Toolbar
+  main_layout->addWidget(tabbar);
   main_layout->addWidget(createToolBar());
 
-  // warning
+  // 2. Warning Bar (Simplified)
   warning_widget = new QWidget(this);
-  QHBoxLayout* warning_hlayout = new QHBoxLayout(warning_widget);
-  warning_hlayout->addWidget(warning_icon = new QLabel(this), 0, Qt::AlignTop);
-  warning_hlayout->addWidget(warning_label = new QLabel(this), 1, Qt::AlignLeft);
+  auto* warning_h = new QHBoxLayout(warning_widget);
+  warning_h->setContentsMargins(8, 4, 8, 4);
+  warning_h->addWidget(warning_icon = new QLabel(this), 0, Qt::AlignTop);
+  warning_h->addWidget(warning_label = new QLabel(this), 1);
   warning_widget->hide();
   main_layout->addWidget(warning_widget);
 
-  // msg widget
+  // 3. Main Content (Splitter)
   splitter = new PanelSplitter(Qt::Vertical, this);
   splitter->setChildrenCollapsible(true);
-  splitter->addWidget(binary_view = new BinaryView(this));
-  splitter->addWidget(signal_editor = new SignalEditor(charts, this));
-  binary_view->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Minimum);
-  signal_editor->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Expanding);
+  splitter->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+
+  binary_view = new BinaryView(this);
+  signal_editor = new SignalEditor(charts, this);
+  message_history = new MessageHistory(this);
+
+  tab_widget = new QTabWidget(this);
+  tab_widget->setTabPosition(QTabWidget::South);
+  tab_widget->setStyleSheet("QTabWidget::pane { border: none; margin-bottom: -2px; padding:0}");
+  tab_widget->addTab(signal_editor, utils::icon("binary"), tr("&Signals"));
+  tab_widget->addTab(message_history, utils::icon("scroll-text"), tr("&Trace"));
+  tab_widget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+
+  splitter->addWidget(binary_view);
+  splitter->addWidget(tab_widget);
+
+  // Stretch factor: BinaryView stays small (0), Tabs expand to fill space (1)
   splitter->setStretchFactor(0, 0);
   splitter->setStretchFactor(1, 1);
 
-  tab_widget = new QTabWidget(this);
-  tab_widget->setStyleSheet("QTabWidget::pane {border: none; margin-bottom: -2px;}");
-  tab_widget->setTabPosition(QTabWidget::South);
-  tab_widget->addTab(splitter, utils::icon("binary"), "&Msg");
-  tab_widget->addTab(message_history = new MessageHistory(this), utils::icon("scroll-text"), "&Logs");
-  main_layout->addWidget(tab_widget);
+  main_layout->addWidget(splitter);
 
   updateOrientationButton();
   setupConnections();
@@ -232,11 +240,11 @@ void MessageView::refresh() {
 }
 
 void MessageView::updateState(const std::set<MessageId>* msgs) {
-  if ((msgs && !msgs->count(msg_id)))
-    return;
+  if ((msgs && !msgs->count(msg_id))) return;
 
+  binary_view->updateState();
   if (tab_widget->currentIndex() == 0) {
-    binary_view->updateState();
+    signal_editor->updateState();
   } else {
     message_history->updateState();
   }
