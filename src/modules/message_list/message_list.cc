@@ -59,7 +59,7 @@ void MessageList::setupConnections() {
   connect(model, &MessageModel::uiUpdateRequired, view->viewport(), qOverload<>(&QWidget::update));
   connect(model, &MessageModel::modelReset, [this]() {
     if (current_msg_id) {
-      selectMessage(*current_msg_id);
+      selectMessageForced(*current_msg_id, true);
     }
     updateTitle();
   });
@@ -146,8 +146,8 @@ void MessageList::handleSelectionChanged(const QModelIndex &current) {
   }
 }
 
-void MessageList::selectMessage(const MessageId &msg_id) {
-  if (current_msg_id && *current_msg_id == msg_id) return;
+void MessageList::selectMessageForced(const MessageId &msg_id, bool force) {
+  if (!force && current_msg_id && *current_msg_id == msg_id) return;
 
   auto it = std::find_if(model->items_.cbegin(), model->items_.cend(),
                          [&msg_id](auto &item) { return item.id == msg_id; });

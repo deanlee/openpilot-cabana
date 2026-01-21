@@ -17,10 +17,10 @@ class MessageList : public QWidget {
 
 public:
   MessageList(QWidget *parent);
-  void selectMessage(const MessageId &message_id);
   QByteArray saveHeaderState() const { return view->header()->saveState(); }
   bool restoreHeaderState(const QByteArray &state) const { return view->header()->restoreState(state); }
   void suppressHighlighted();
+  void selectMessage(const MessageId &message_id) { selectMessageForced(message_id, false); }
 
 signals:
   void msgSelectionChanged(const MessageId &message_id);
@@ -28,6 +28,7 @@ signals:
 
 protected:
   void setupConnections();
+  void selectMessageForced(const MessageId &msg_id, bool force);
   QWidget *createToolBar();
   void resetState();
   void headerContextMenuEvent(const QPoint &pos);
