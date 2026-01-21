@@ -37,6 +37,7 @@ MessageView::MessageView(ChartsPanel* charts, QWidget* parent) : charts(charts),
 
   // msg widget
   splitter = new PanelSplitter(Qt::Vertical, this);
+  splitter->setChildrenCollapsible(true);
   splitter->addWidget(binary_view = new BinaryView(this));
   splitter->addWidget(signal_editor = new SignalEditor(charts, this));
   binary_view->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Minimum);
