@@ -21,8 +21,6 @@ QVariant MessageHistoryModel::data(const QModelIndex& index, int role) const {
     if (col - 1 < (int)m.sig_values.size()) {
       return sigs[col - 1]->formatValue(m.sig_values[col - 1], false);
     };
-  } else if (role == Qt::TextAlignmentRole) {
-    return (uint32_t)(Qt::AlignRight | Qt::AlignVCenter);
   } else if (role == ColumnTypeRole::IsHexColumn) {
     return isHexMode() && index.column() == 1;
   }
@@ -71,10 +69,7 @@ QVariant MessageHistoryModel::headerData(int section, Qt::Orientation orientatio
       QString unit = sigs[section - 1]->unit;
       return unit.isEmpty() ? name : QString("%1 (%2)").arg(name, unit);
     } else if (role == Qt::BackgroundRole && section > 0 && !isHexMode()) {
-      // Alpha-blend the signal color with the background to ensure contrast
-      QColor sigColor = sigs[section - 1]->color;
-      sigColor.setAlpha(128);
-      return QBrush(sigColor);
+      return sigs[section - 1]->color;
     }
   }
   return {};

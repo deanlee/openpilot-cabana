@@ -5,24 +5,30 @@
 #include "utils/util.h"
 
 QSize HistoryHeader::sectionSizeFromContents(int logicalIndex) const {
-  static const QSize time_col_size = fontMetrics().size(Qt::TextSingleLine, "000000.000") + QSize(10, 6);
-  if (logicalIndex == 0) {
-    return time_col_size;
-  } else {
-    int default_size = qMax(100, (rect().width() - time_col_size.width()) / (model()->columnCount() - 1));
-    QString text = model()->headerData(logicalIndex, this->orientation(), Qt::DisplayRole).toString();
-    const QRect rect = fontMetrics().boundingRect({0, 0, default_size, 2000}, defaultAlignment(), text.replace(QChar('_'), ' '));
-    QSize size = rect.size() + QSize{10, 6};
-    return QSize{qMax(size.width(), default_size), size.height()};
-  }
+  static const QSize time_col_size = fontMetrics().size(0, "000000.000") + QSize(20, 10);
+  if (logicalIndex == 0) return time_col_size;
+
+  QString text = model()->headerData(logicalIndex, orientation(), Qt::DisplayRole).toString();
+  if (text.contains('_')) text.replace('_', ' ');
+
+  int w = fontMetrics().horizontalAdvance(text) + 20;
+  return QSize(qBound(100, w, 300), fontMetrics().height() + 10);
 }
 
 void HistoryHeader::paintSection(QPainter* painter, const QRect& rect, int logicalIndex) const {
-  auto bg_role = model()->headerData(logicalIndex, Qt::Horizontal, Qt::BackgroundRole);
-  if (bg_role.isValid()) {
-    painter->fillRect(rect, bg_role.value<QBrush>());
-  }
-  QString text = model()->headerData(logicalIndex, Qt::Horizontal, Qt::DisplayRole).toString();
+  painter->save();
+
+  QVariant bg = model()->headerData(logicalIndex, orientation(), Qt::BackgroundRole);
+  if (bg.isValid()) painter->fillRect(rect, bg.value<QColor>());
+
+  QString text = model()->headerData(logicalIndex, orientation(), Qt::DisplayRole).toString();
+  if (text.contains('_')) text.replace('_', ' ');
+
   painter->setPen(palette().color(utils::isDarkTheme() ? QPalette::BrightText : QPalette::Text));
-  painter->drawText(rect.adjusted(5, 3, -5, -3), defaultAlignment(), text.replace(QChar('_'), ' '));
+
+  QRect text_rect = rect.adjusted(5, 0, -5, 0);
+  QString elided = fontMetrics().elidedText(text, Qt::ElideMiddle, text_rect.width());
+  painter->drawText(text_rect, Qt::AlignCenter | Qt::TextSingleLine, elided);
+
+  painter->restore();
 }
