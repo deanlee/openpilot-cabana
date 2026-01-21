@@ -62,6 +62,8 @@ void MessageHistory::setupConnections() {
   connect(value_edit, &QLineEdit::textEdited, this, &MessageHistory::filterChanged);
   connect(export_btn, &QToolButton::clicked, this, &MessageHistory::exportToCSV);
   connect(&StreamManager::instance(), &StreamManager::seekedTo, model, &MessageHistoryModel::reset);
+  connect(&StreamManager::instance(), &StreamManager::paused, model, &MessageHistoryModel::setPaused);
+  connect(&StreamManager::instance(), &StreamManager::resume, model, &MessageHistoryModel::setResumed);
   connect(GetDBC(), &dbc::Manager::DBCFileChanged, model, &MessageHistoryModel::reset);
   connect(UndoStack::instance(), &QUndoStack::indexChanged, model, &MessageHistoryModel::reset);
   connect(model, &MessageHistoryModel::modelReset, this, &MessageHistory::modelReset);

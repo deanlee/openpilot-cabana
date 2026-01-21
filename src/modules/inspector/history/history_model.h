@@ -28,6 +28,9 @@ public:
   inline bool isHexMode() const { return sigs.empty() || hex_mode; }
   void reset();
   void setHexMode(bool hex_mode);
+  void setPaused() { setPauseState(true); }
+  void setResumed() { setPauseState(false); }
+  void setPauseState(bool paused);
 
   struct Message {
     uint64_t mono_time = 0;
@@ -47,4 +50,5 @@ public:
   std::deque<Message> messages;
   std::vector<dbc::Signal *> sigs;
   bool hex_mode = false;
+  bool is_paused = false;
 };

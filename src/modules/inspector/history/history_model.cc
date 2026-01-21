@@ -6,12 +6,21 @@
 #include "modules/message_list/message_delegate.h"
 #include "modules/system/stream_manager.h"
 
-QVariant MessageHistoryModel::data(const QModelIndex &index, int role) const {
-  const auto &m = messages[index.row()];
+static const size_t LIVE_VIEW_LIMIT = 500;
+
+QVariant MessageHistoryModel::data(const QModelIndex& index, int role) const {
+  if (!index.isValid() || index.row() >= (int)messages.size()) return {};
+
+  const auto& m = messages[index.row()];
   const int col = index.column();
+
   if (role == Qt::DisplayRole) {
     if (col == 0) return QString::number(StreamManager::stream()->toSeconds(m.mono_time), 'f', 3);
-    if (!isHexMode()) return sigs[col - 1]->formatValue(m.sig_values[col - 1], false);
+    if (isHexMode()) return {};  // Handled by delegate
+
+    if (col - 1 < (int)m.sig_values.size()) {
+      return sigs[col - 1]->formatValue(m.sig_values[col - 1], false);
+    };
   } else if (role == Qt::TextAlignmentRole) {
     return (uint32_t)(Qt::AlignRight | Qt::AlignVCenter);
   }
@@ -21,6 +30,21 @@ QVariant MessageHistoryModel::data(const QModelIndex &index, int role) const {
 void MessageHistoryModel::setMessage(const MessageId &message_id) {
   msg_id = message_id;
   reset();
+}
+
+void MessageHistoryModel::setPauseState(bool paused) {
+  if (is_paused == paused) return;
+  is_paused = paused;
+
+  if (!is_paused) {
+    // Transitioning back to Live: Prune the list to the live limit immediately
+    if (messages.size() > LIVE_VIEW_LIMIT) {
+      beginRemoveRows({}, LIVE_VIEW_LIMIT, messages.size() - 1);
+      messages.erase(messages.begin() + LIVE_VIEW_LIMIT, messages.end());
+      endRemoveRows();
+    }
+    updateState(false);
+  }
 }
 
 void MessageHistoryModel::reset() {
@@ -67,27 +91,48 @@ void MessageHistoryModel::setFilter(int sig_idx, const QString &value, std::func
 }
 
 void MessageHistoryModel::updateState(bool clear) {
-  if (clear && !messages.empty()) {
-    beginRemoveRows({}, 0, messages.size() - 1);
+  if (clear) {
+    beginResetModel();
     messages.clear();
+    hex_colors = {};
+    endResetModel();
+  }
+  if (is_paused && !clear) return;
+
+  auto *stream = StreamManager::stream();
+  uint64_t current_time = stream->toMonoTime(stream->snapshot(msg_id)->ts) + 1;
+  uint64_t last_time = messages.empty() ? 0 : messages.front().mono_time;
+
+  // Fetch new messages at the front (Live Tail)
+  fetchData(messages.begin(), current_time, last_time);
+
+  if (!is_paused && messages.size() > LIVE_VIEW_LIMIT) {
+    beginRemoveRows({}, LIVE_VIEW_LIMIT, messages.size() - 1);
+    messages.erase(messages.begin() + LIVE_VIEW_LIMIT, messages.end());
     endRemoveRows();
   }
-  uint64_t current_time = StreamManager::stream()->toMonoTime(StreamManager::stream()->snapshot(msg_id)->ts) + 1;
-  fetchData(messages.begin(), current_time, messages.empty() ? 0 : messages.front().mono_time);
 }
 
-bool MessageHistoryModel::canFetchMore(const QModelIndex &parent) const {
-  const auto &events = StreamManager::stream()->events(msg_id);
-  return !events.empty() && !messages.empty() && messages.back().mono_time > events.front()->mono_time;
+bool MessageHistoryModel::canFetchMore(const QModelIndex& parent) const {
+  // Strategy: Only allow fetching older history when paused to prevent list jumps
+  if (!is_paused || messages.empty()) return false;
+
+  const auto& events = StreamManager::stream()->events(msg_id);
+  if (events.empty()) return false;
+
+  return messages.back().mono_time > events.front()->mono_time;
 }
 
 void MessageHistoryModel::fetchMore(const QModelIndex &parent) {
-  if (!messages.empty())
-    fetchData(messages.end(), messages.back().mono_time, 0);
+  if (messages.empty()) return;
+  // Fetch older data at the end (Infinite Scroll)
+  fetchData(messages.end(), messages.back().mono_time, 0);
 }
 
 void MessageHistoryModel::fetchData(std::deque<Message>::iterator insert_pos, uint64_t from_time, uint64_t min_time) {
   const auto &events = StreamManager::stream()->events(msg_id);
+  if (events.empty()) return;
+
   auto first = std::upper_bound(events.rbegin(), events.rend(), from_time, [](uint64_t ts, auto e) {
     return ts > e->mono_time;
   });
