@@ -1,5 +1,6 @@
 #pragma once
 #include <QPainter>
+#include <QPersistentModelIndex>
 #include <QStyledItemDelegate>
 
 #include "core/dbc/dbc_message.h"
@@ -32,8 +33,8 @@ public:
   }
 
 signals:
-  void removeRequested(const QModelIndex &index);
-  void plotRequested(const QModelIndex &index, bool merge);
+  void removeRequested(const dbc::Signal*);
+  void plotRequested(const dbc::Signal*, bool show, bool merge);
 
 public:
 
@@ -44,7 +45,7 @@ public:
   int value_width = 50;
   const int color_label_width = 18;
   mutable QSize button_size;
-  mutable QModelIndex hoverIndex;
+  mutable QPersistentModelIndex hoverIndex;
   mutable int hoverButton = -1; // -1: none, 0: plot, 1: remove
 
 private:
