@@ -2,7 +2,9 @@
 
 #include <QComboBox>
 #include <QLineEdit>
+#include <QScrollBar>
 #include <QTableView>
+#include <QWheelEvent>
 
 #include "common.h"
 #include "core/streams/abstract_stream.h"
@@ -29,7 +31,22 @@ private slots:
 private:
   void setupConnections();
 
-  QTableView *logs;
+  class HistoryTableView : public QTableView {
+   public:
+    using QTableView::QTableView;  // Inherit constructors
+
+   protected:
+    void wheelEvent(QWheelEvent* e) override {
+      if (e->modifiers() & Qt::ShiftModifier) {
+        int delta = e->angleDelta().y();
+        horizontalScrollBar()->setValue(horizontalScrollBar()->value() - delta);
+        return;
+      }
+      QTableView::wheelEvent(e);
+    }
+  };
+
+  HistoryTableView *logs;
   MessageHistoryModel *model;
   QComboBox *signals_cb, *comp_box, *display_type_cb;
   QLineEdit *value_edit;
