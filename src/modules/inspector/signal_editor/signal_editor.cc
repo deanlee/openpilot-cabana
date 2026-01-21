@@ -88,7 +88,6 @@ void SignalEditor::setupConnections(ChartsPanel *charts) {
   connect(tree, &SignalTree::highlightRequested, this, &SignalEditor::highlight);
   connect(tree->verticalScrollBar(), &QScrollBar::valueChanged, [this]() { updateState(); });
   connect(tree->verticalScrollBar(), &QScrollBar::rangeChanged, [this]() { updateState(); });
-  connect(&StreamManager::instance(), &StreamManager::snapshotsUpdated, this, &SignalEditor::updateState);
   connect(charts, &ChartsPanel::seriesChanged, model, [this, charts]() {
     model->updateChartedSignals(charts->getChartedSignals());
   });

@@ -23,6 +23,7 @@ public:
   void clearMessage();
   void signalHovered(const dbc::Signal *sig);
   void selectSignal(const dbc::Signal *sig, bool expand = false);
+  void updateState(const std::set<MessageId> *msgs = nullptr);
   SignalTreeModel *model = nullptr;
 
 signals:
@@ -38,7 +39,6 @@ private:
   void setSparklineRange(int value);
   void handleSignalAdded(MessageId id, const dbc::Signal *sig);
   void handleSignalUpdated(const dbc::Signal *sig);
-  void updateState(const std::set<MessageId> *msgs = nullptr);
   void updateColumnWidths();
   int getValueColumnWidth(const MessageState *msg);
   std::pair<QModelIndex, QModelIndex> visibleSignalRange();
