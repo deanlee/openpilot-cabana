@@ -146,50 +146,44 @@ void SignalTreeDelegate::drawDataColumn(QPainter* p, QRect r, const QStyleOption
   drawButtons(p, opt, item, idx);
 }
 
-QWidget* SignalTreeDelegate::createEditor(QWidget* parent, const QStyleOptionViewItem& option, const QModelIndex& index) const {
-  auto item = (SignalTreeModel::Item*)index.internalPointer();
-  if (item->type == SignalTreeModel::Item::Name || item->type == SignalTreeModel::Item::Node || item->type == SignalTreeModel::Item::Offset ||
-      item->type == SignalTreeModel::Item::Factor || item->type == SignalTreeModel::Item::MultiplexValue ||
-      item->type == SignalTreeModel::Item::Min || item->type == SignalTreeModel::Item::Max) {
-    QLineEdit* e = new QLineEdit(parent);
-    e->setFrame(false);
-    if (item->type == SignalTreeModel::Item::Name)
-      e->setValidator(name_validator);
-    else if (item->type == SignalTreeModel::Item::Node)
-      e->setValidator(node_validator);
-    else
-      e->setValidator(double_validator);
+QWidget* SignalTreeDelegate::createEditor(QWidget* parent, const QStyleOptionViewItem& option, const QModelIndex& idx) const {
+  auto item = (SignalTreeModel::Item*)idx.internalPointer();
+  using T = SignalTreeModel::Item::Type;
 
-    if (item->type == SignalTreeModel::Item::Name) {
-      QCompleter* completer = new QCompleter(GetDBC()->signalNames(), e);
-      completer->setCaseSensitivity(Qt::CaseInsensitive);
-      completer->setFilterMode(Qt::MatchContains);
-      e->setCompleter(completer);
-    }
-    return e;
-  } else if (item->type == SignalTreeModel::Item::Size) {
-    QSpinBox* spin = new QSpinBox(parent);
-    spin->setFrame(false);
-    spin->setRange(1, CAN_MAX_DATA_BYTES);
-    return spin;
-  } else if (item->type == SignalTreeModel::Item::SignalType) {
-    QComboBox* c = new QComboBox(parent);
-    c->addItem(signalTypeToString(dbc::Signal::Type::Normal), (int)dbc::Signal::Type::Normal);
-    if (!GetDBC()->msg(((SignalTreeModel*)index.model())->msg_id)->multiplexor) {
-      c->addItem(signalTypeToString(dbc::Signal::Type::Multiplexor), (int)dbc::Signal::Type::Multiplexor);
-    } else if (item->sig->type != dbc::Signal::Type::Multiplexor) {
-      c->addItem(signalTypeToString(dbc::Signal::Type::Multiplexed), (int)dbc::Signal::Type::Multiplexed);
-    }
-    return c;
-  } else if (item->type == SignalTreeModel::Item::ValueTable) {
+  if (item->type == T::ValueTable) {
     ValueTableEditor dlg(item->sig->value_table, parent);
     dlg.setWindowTitle(item->sig->name);
-    if (dlg.exec()) {
-      ((QAbstractItemModel*)index.model())->setData(index, QVariant::fromValue(dlg.value_table));
-    }
+    if (dlg.exec()) const_cast<QAbstractItemModel*>(idx.model())->setData(idx, QVariant::fromValue(dlg.value_table));
     return nullptr;
   }
-  return QStyledItemDelegate::createEditor(parent, option, index);
+
+  if (item->type == T::SignalType) {
+    auto* c = new QComboBox(parent);
+    c->addItem(signalTypeToString(dbc::Signal::Type::Normal), (int)dbc::Signal::Type::Normal);
+    auto* msg = GetDBC()->msg(((SignalTreeModel*)idx.model())->msg_id);
+    if (!msg->multiplexor) c->addItem(signalTypeToString(dbc::Signal::Type::Multiplexor), (int)dbc::Signal::Type::Multiplexor);
+    else if (item->sig->type != dbc::Signal::Type::Multiplexor) c->addItem(signalTypeToString(dbc::Signal::Type::Multiplexed), (int)dbc::Signal::Type::Multiplexed);
+    return c;
+  }
+
+  if (item->type == T::Size) {
+    auto* s = new QSpinBox(parent);
+    s->setFrame(false);
+    s->setRange(1, CAN_MAX_DATA_BYTES);
+    return s;
+  }
+
+  auto* e = new QLineEdit(parent);
+  e->setFrame(false);
+  if (item->type == T::Name) {
+    e->setValidator(name_validator);
+    auto* comp = new QCompleter(GetDBC()->signalNames(), e);
+    comp->setCaseSensitivity(Qt::CaseInsensitive);
+    e->setCompleter(comp);
+  } else {
+    e->setValidator(item->type == T::Node ? node_validator : double_validator);
+  }
+  return e;
 }
 
 void SignalTreeDelegate::setModelData(QWidget* editor, QAbstractItemModel* model, const QModelIndex& index) const {
