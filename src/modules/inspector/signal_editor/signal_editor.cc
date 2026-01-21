@@ -81,6 +81,8 @@ void SignalEditor::setupConnections(ChartsPanel *charts) {
   connect(model, &QAbstractItemModel::modelReset, this, &SignalEditor::rowsChanged);
   connect(model, &QAbstractItemModel::rowsRemoved, this, &SignalEditor::rowsChanged);
   connect(model, &QAbstractItemModel::rowsInserted, this, &SignalEditor::rowsChanged);
+  connect(model, &QAbstractItemModel::modelAboutToBeReset, delegate, &SignalTreeDelegate::clearHoverState);
+  connect(model, &QAbstractItemModel::rowsAboutToBeRemoved, delegate, &SignalTreeDelegate::clearHoverState);
   connect(GetDBC(), &dbc::Manager::signalAdded, this, &SignalEditor::handleSignalAdded);
   connect(GetDBC(), &dbc::Manager::signalUpdated, this, &SignalEditor::handleSignalUpdated);
   connect(tree, &SignalTree::highlightRequested, this, &SignalEditor::highlight);
@@ -91,13 +93,11 @@ void SignalEditor::setupConnections(ChartsPanel *charts) {
     model->updateChartedSignals(charts->getChartedSignals());
   });
 
-  connect(delegate, &SignalTreeDelegate::removeRequested, this, [this](const QModelIndex& index) {
-    auto item = (SignalTreeModel::Item*)index.internalPointer();
-    UndoStack::push(new RemoveSigCommand(model->msg_id, item->sig));
+  connect(delegate, &SignalTreeDelegate::removeRequested, this, [this](const dbc::Signal* sig) {
+    UndoStack::push(new RemoveSigCommand(model->msg_id, sig));
   });
-  connect(delegate, &SignalTreeDelegate::plotRequested, this, [this](const QModelIndex& index, bool merge) {
-    auto item = (SignalTreeModel::Item*)index.internalPointer();
-    emit showChart(model->msg_id, item->sig, !index.data(IsChartedRole).toBool(), merge);
+  connect(delegate, &SignalTreeDelegate::plotRequested, this, [this](const dbc::Signal* sig, bool show, bool merge) {
+    emit showChart(model->msg_id, sig, show, merge);
   });
 }
 

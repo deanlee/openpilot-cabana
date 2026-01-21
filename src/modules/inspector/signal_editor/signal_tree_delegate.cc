@@ -299,13 +299,13 @@ bool SignalTreeDelegate::editorEvent(QEvent* event, QAbstractItemModel* model, c
   if (type == QEvent::MouseMove) {
     int btn = buttonAt(e->pos(), opt.rect);
     if (hoverIndex != idx || hoverButton != btn) {
-      QModelIndex oldIdx = hoverIndex;
+      QPersistentModelIndex oldIdx = hoverIndex;
       hoverIndex = idx;
       hoverButton = btn;
 
       if (auto* view = qobject_cast<QAbstractItemView*>(const_cast<QWidget*>(opt.widget))) {
         if (oldIdx.isValid()) view->update(oldIdx);
-        view->update(idx);
+        if (hoverIndex.isValid()) view->update(hoverIndex);
       }
     }
   } else if (type == QEvent::Leave) {
@@ -316,12 +316,15 @@ bool SignalTreeDelegate::editorEvent(QEvent* event, QAbstractItemModel* model, c
   if (type == QEvent::MouseButtonRelease && item->type == SignalTreeModel::Item::Sig) {
     int btn = buttonAt(e->pos(), opt.rect);
     if (btn != -1) {
+      auto* sig = item->sig;
+      bool isCharted = idx.data(IsChartedRole).toBool();
+
       if (btn == 1) {  // Plot Button
-        emit plotRequested(idx, e->modifiers() & Qt::ShiftModifier);
+        emit plotRequested(sig, !isCharted, e->modifiers() & Qt::ShiftModifier);
       } else {  // Remove Button
-        hoverIndex = QModelIndex();
-        hoverButton = -1;
-        emit removeRequested(idx);
+        // Force reset hover state before the model deletion begins
+        clearHoverState();
+        emit removeRequested(sig);
       }
       return true;  // Prevent base class from handling the click
     }
@@ -353,11 +356,14 @@ int SignalTreeDelegate::nameColumnWidth(const dbc::Signal* sig) const {
 
 void SignalTreeDelegate::clearHoverState() {
   if (hoverIndex.isValid()) {
-    QModelIndex old = hoverIndex;
-    hoverIndex = QModelIndex();
+    QPersistentModelIndex old = hoverIndex;
+    hoverIndex = QPersistentModelIndex();
     hoverButton = -1;
     if (auto* view = qobject_cast<QAbstractItemView*>(parent())) {
       view->update(old);
     }
+  } else {
+    hoverIndex = QPersistentModelIndex();
+    hoverButton = -1;
   }
 }
