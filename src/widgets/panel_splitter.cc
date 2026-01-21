@@ -19,13 +19,18 @@ void PanelSplitter::Handle::paintEvent(QPaintEvent* e) {
   QPainter p(this);
   if (underMouse() || is_dragging) {
     p.fillRect(rect(), palette().highlight());
+    return;
+  }
+
+  p.setPen(QPen(palette().dark().color(), 1));
+  const QRect r = rect();
+
+  if (orientation() == Qt::Horizontal) {
+    int x = r.center().x();
+    p.drawLine(x, r.top(), x, r.bottom());
   } else {
-    p.setPen(QPen(palette().dark().color(), 1));
-    if (orientation() == Qt::Horizontal) {
-      p.drawLine(rect().center().x(), 0, rect().center().x(), height());
-    } else {
-      p.drawLine(0, rect().center().y(), width(), rect().center().y());
-    }
+    int y = r.center().y();
+    p.drawLine(r.left(), y, r.right(), y);
   }
 }
 
