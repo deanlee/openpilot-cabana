@@ -1,6 +1,7 @@
 #include "message_history.h"
 
 #include <QFileDialog>
+#include <QMessageBox>
 #include <QVBoxLayout>
 
 #include "core/commands/commands.h"
@@ -116,5 +117,7 @@ void MessageHistory::exportToCSV() {
   if (!fn.isEmpty()) {
     model->isHexMode() ? exportMessagesToCSV(fn, model->msg_id)
                        : exportSignalsToCSV(fn, model->msg_id);
+    QMessageBox::information(this, tr("Export Success"),
+                             tr("Successfully exported to:\n%1").arg(fn));
   }
 }
