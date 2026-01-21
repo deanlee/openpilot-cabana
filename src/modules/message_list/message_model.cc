@@ -5,6 +5,7 @@
 #include <cmath>
 #include <unordered_set>
 
+#include "message_delegate.h"
 #include "modules/settings/settings.h"
 #include "modules/system/stream_manager.h"
 
@@ -58,6 +59,10 @@ QVariant MessageModel::data(const QModelIndex &index, int role) const {
 
   if (role == Qt::ForegroundRole) {
     return (item.data && item.data->is_active) ? QVariant() : disabled_color_;
+  }
+
+  if (role == ColumnTypeRole::IsHexColumn) {
+    return index.column() == Column::DATA;
   }
 
   return {};

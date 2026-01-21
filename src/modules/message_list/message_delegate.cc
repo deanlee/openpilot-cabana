@@ -47,6 +47,9 @@ QSize MessageDelegate::sizeForBytes(int n) const {
 }
 
 QSize MessageDelegate::sizeHint(const QStyleOptionViewItem& option, const QModelIndex& index) const {
+  if (!index.data(ColumnTypeRole::IsHexColumn).toBool()) {
+    return QStyledItemDelegate::sizeHint(option, index);
+  }
   MessageDataRef ref = getDataRef(caller_type_, index);
   return sizeForBytes(ref.bytes ? ref.bytes->size() : 0);
 }
@@ -57,8 +60,7 @@ void MessageDelegate::paint(QPainter* painter, const QStyleOptionViewItem& optio
     painter->fillRect(option.rect, option.palette.highlight());
   }
 
-  bool is_data_col = (caller_type_ == CallerType::MessageList && index.column() == MessageModel::Column::DATA) ||
-                     (caller_type_ == CallerType::HistoryView && index.column() == 1);
+  bool is_data_col = index.data(ColumnTypeRole::IsHexColumn).toBool();
   if (!is_data_col) {
     QString text = index.data(Qt::DisplayRole).toString();
     if (!text.isEmpty()) {

@@ -46,6 +46,7 @@ MessageHistory::MessageHistory(QWidget *parent) : QFrame(parent) {
   main_layout->addWidget(logs = new HistoryTableView(this));
   logs->setModel(model = new MessageHistoryModel(this));
   delegate = new MessageDelegate(this, CallerType::HistoryView);
+  logs->setItemDelegate(delegate);
 
   logs->setHorizontalHeader(new HistoryHeader(Qt::Horizontal, this));
   logs->horizontalHeader()->setDefaultAlignment(Qt::AlignRight | (Qt::Alignment)Qt::TextWordWrap);
@@ -74,11 +75,6 @@ void MessageHistory::setupConnections() {
 }
 
 void MessageHistory::handleDisplayTypeChange(int index) {
-  if (index == 0) { // Signal values
-    logs->setItemDelegate(nullptr);
-  } else {
-    logs->setItemDelegate(delegate);
-  }
   model->setHexMode(index);
 }
 

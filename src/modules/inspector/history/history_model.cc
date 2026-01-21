@@ -23,6 +23,8 @@ QVariant MessageHistoryModel::data(const QModelIndex& index, int role) const {
     };
   } else if (role == Qt::TextAlignmentRole) {
     return (uint32_t)(Qt::AlignRight | Qt::AlignVCenter);
+  } else if (role == ColumnTypeRole::IsHexColumn) {
+    return isHexMode() && index.column() == 1;
   }
   return {};
 }
