@@ -60,18 +60,31 @@ void MessageHistoryModel::reset() {
 }
 
 QVariant MessageHistoryModel::headerData(int section, Qt::Orientation orientation, int role) const {
-  if (orientation == Qt::Horizontal) {
-    if (role == Qt::DisplayRole || role == Qt::ToolTipRole) {
-      if (section == 0) return "Time";
-      if (isHexMode()) return "Data";
+  if (orientation != Qt::Horizontal) return {};
 
-      QString name = sigs[section - 1]->name;
-      QString unit = sigs[section - 1]->unit;
-      return unit.isEmpty() ? name : QString("%1 (%2)").arg(name, unit);
-    } else if (role == Qt::BackgroundRole && section > 0 && !isHexMode()) {
-      return sigs[section - 1]->color;
-    }
+  if (role == Qt::BackgroundRole) {
+    if (section > 0 && !isHexMode()) return sigs[section - 1]->color;
+    return {};
   }
+
+  const bool is_time = (section == 0);
+  const bool hex = isHexMode();
+
+  if (role == Qt::DisplayRole) {
+    if (is_time) return "Time";
+    if (hex) return "Data";
+    return sigs[section - 1]->name;
+  }
+
+  if (role == Qt::ToolTipRole) {
+    if (is_time) return tr("Arrival time in seconds");
+    if (hex) return tr("Raw message data (Hex)");
+
+    const auto* sig = sigs[section - 1];
+    if (sig->unit.isEmpty()) return sig->name;
+    return QString("%1 (%2)").arg(sig->name, sig->unit);
+  }
+
   return {};
 }
 
