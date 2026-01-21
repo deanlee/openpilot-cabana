@@ -156,9 +156,12 @@ void MessageList::selectMessage(const MessageId &msg_id) {
     int row = std::distance(model->items_.cbegin(), it);
     QModelIndex index = model->index(row, 0);
 
+    view->setUpdatesEnabled(false);
     QSignalBlocker blocker(view->selectionModel());
-    view->setCurrentIndex(index);
     view->scrollTo(index, QAbstractItemView::PositionAtCenter);
+    view->setCurrentIndex(index);
+    view->setUpdatesEnabled(true);
+    view->viewport()->update();
   }
 }
 
