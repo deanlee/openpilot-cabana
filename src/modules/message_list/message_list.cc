@@ -125,9 +125,10 @@ void MessageList::resetState() {
 void MessageList::updateTitle() {
   size_t dbc_msg_count = 0;
   size_t signal_count = 0;
+  auto* dbc = GetDBC();
 
   for (const auto& item : model->items_) {
-    if (auto m = GetDBC()->msg(item.id)) {
+    if (auto m = dbc->msg(item.id)) {
       dbc_msg_count++;
       signal_count += m->sigs.size();
     }
