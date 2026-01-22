@@ -106,8 +106,11 @@ QWidget* MessageView::createToolBar() {
   QComboBox* heatmap_mode = new QComboBox(this);
   heatmap_mode->setFocusPolicy(Qt::NoFocus);
   heatmap_mode->addItem(tr("Live Heatmap"), true);
-  heatmap_mode->addItem(tr("All Heatmap"), false);
-  heatmap_mode->setFixedWidth(120);
+  heatmap_mode->addItem(tr("Timeline Heatmap"), false);
+  QString live_desc = tr("• <b>Live:</b> Total flips since last seek or stream start.");
+  QString time_desc = tr("• <b>Timeline:</b> Bit flips within the current zoom or full range.");
+  heatmap_mode->setToolTip(tr("<b>Heatmap Mode</b><br/>%1<br/>%2").arg(live_desc, time_desc));
+
   connect(heatmap_mode, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this, heatmap_mode](int index) {
     binary_view->setHeatmapLiveMode(heatmap_mode->itemData(index).toBool());
   });
