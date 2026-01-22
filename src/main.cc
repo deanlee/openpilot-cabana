@@ -66,7 +66,7 @@ int main(int argc, char* argv[]) {
   initApp(argc, argv, false);
   QApplication app(argc, argv);
   app.setApplicationDisplayName("Cabana");
-  QPixmap appIcon = utils::icon("binary", QSize(64, 64), QColor(59, 130, 246));
+  QPixmap appIcon = utils::icon("activity", QSize(64, 64), QColor(59, 130, 246));
   app.setWindowIcon(appIcon);
   app.setStyle(new CabanaStyle);
 
