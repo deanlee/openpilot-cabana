@@ -37,7 +37,7 @@ void SignalTreeModel::setMessage(const MessageId &id) {
   refresh();
 }
 
-void SignalTreeModel::updateChartedSignals(const QSet<const dbc::Signal*>& opened) {
+void SignalTreeModel::updateChartedSignals(const QMap<MessageId, QSet<const dbc::Signal*>> &opened) {
   charted_signals_ = opened;
   if (rowCount() > 0) {
     emit dataChanged(index(0, 0), index(rowCount() - 1, 1), {IsChartedRole});
@@ -196,7 +196,8 @@ QVariant SignalTreeModel::data(const QModelIndex &index, int role) const {
   } else if (role == Qt::ToolTipRole && item->type == Item::Sig) {
     return (index.column() == 0) ? signalToolTip(item->sig) : QString();
   } else if (role == IsChartedRole && item->type == Item::Sig) {
-    return charted_signals_.contains(item->sig);
+    auto it = charted_signals_.find(msg_id);
+    return (it != charted_signals_.end()) && it.value().contains(item->sig);
   }
   return {};
 }

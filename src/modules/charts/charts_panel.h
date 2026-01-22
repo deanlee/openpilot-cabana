@@ -25,7 +25,7 @@ class ChartsPanel : public QFrame {
   void showChart(const MessageId& id, const dbc::Signal* sig, bool show, bool merge);
   void mergeCharts(ChartView* chart, ChartView* target);
   void moveChart(ChartView* chart, ChartView* target, DropMode mode);
-  const QSet<const dbc::Signal*> getChartedSignals() const;
+  const QMap<MessageId, QSet<const dbc::Signal*>> getChartedSignals() const;
   inline bool hasSignal(const MessageId& id, const dbc::Signal* sig) { return findChart(id, sig) != nullptr; }
   QStringList serializeChartIds() const;
   void restoreChartsFromIds(const QStringList& chart_ids);

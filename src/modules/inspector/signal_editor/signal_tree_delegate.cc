@@ -215,18 +215,27 @@ void SignalTreeDelegate::drawButtons(QPainter* p, const QStyleOptionViewItem& op
   auto drawBtn = [&](int btnIdx, const QString& iconName, bool active) {
     QRect rect = getButtonRect(opt.rect, btnIdx);
     bool hovered = (hoverIndex == idx && hoverButton == btnIdx);
+    bool selected = opt.state & QStyle::State_Selected;
 
     if (hovered || active) {
       // Background: Highlight if active, light overlay if hovered
       QColor bg = active ? opt.palette.color(QPalette::Highlight) : opt.palette.color(QPalette::Button);
       bg.setAlpha(active ? 255 : 100);
       p->setBrush(bg);
-      p->setPen(opt.palette.color(active ? QPalette::Highlight : QPalette::Mid));
+      QPen borderPen;
+      if (active && selected) {
+        // Bright white/light border for dark themes, or a distinct edge
+        borderPen = QPen(opt.palette.color(QPalette::Base), 1.5);
+      } else if (active) {
+        borderPen = QPen(opt.palette.color(QPalette::Highlight).darker(150), 1);
+      } else {
+        borderPen = QPen(opt.palette.color(QPalette::Mid), 1);
+      }
+      p->setPen(borderPen);
       p->drawRoundedRect(rect.adjusted(1, 1, -1, -1), 4, 4);
     }
 
     // Icon rendering logic
-    // Padding inside the button for the icon
     int iconPadding = 4;
     QSize iconSize = QSize(kBtnSize - (iconPadding * 2), kBtnSize - (iconPadding * 2));
 
@@ -234,7 +243,7 @@ void SignalTreeDelegate::drawButtons(QPainter* p, const QStyleOptionViewItem& op
     if (btnIdx == 0 && hovered) {
       icon_color = QColor(220, 53, 69);  // Soft Red
     } else {
-      icon_color = (active || (opt.state & QStyle::State_Selected))
+      icon_color = (active || selected)
                        ? opt.palette.color(QPalette::HighlightedText)
                        : opt.palette.color(QPalette::Text);
     }

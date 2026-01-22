@@ -207,11 +207,11 @@ ChartView *ChartsPanel::findChart(const MessageId &id, const dbc::Signal *sig) {
   return nullptr;
 }
 
-const QSet<const dbc::Signal*> ChartsPanel::getChartedSignals() const {
-  QSet<const dbc::Signal*> charted_signals;
+const QMap<MessageId, QSet<const dbc::Signal*>> ChartsPanel::getChartedSignals() const {
+  QMap<MessageId, QSet<const dbc::Signal*>> charted_signals;
   for (auto* c : charts) {
     for (const auto& s : c->chart_->sigs_) {
-      charted_signals.insert(const_cast<const dbc::Signal*>(s.sig));
+      charted_signals[s.msg_id].insert(s.sig);
     }
   }
   return charted_signals;

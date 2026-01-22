@@ -47,7 +47,7 @@ public:
   bool saveSignal(const dbc::Signal *origin_s, dbc::Signal &s);
   Item *getItem(const QModelIndex &index) const;
   int signalRow(const dbc::Signal *sig) const;
-  void updateChartedSignals(const QSet<const dbc::Signal*>& opened);
+  void updateChartedSignals(const QMap<MessageId, QSet<const dbc::Signal*>> &opened);
   void fetchMore(const QModelIndex &parent) override;
   bool canFetchMore(const QModelIndex &parent) const override;
 
@@ -62,7 +62,7 @@ private:
 
   MessageId msg_id;
   QString filter_str;
-  QSet<const dbc::Signal *> charted_signals_;
+  QMap<MessageId, QSet<const dbc::Signal*>> charted_signals_;
   std::unique_ptr<Item> root;
   friend class SignalEditor;
   friend class SignalTreeDelegate;
