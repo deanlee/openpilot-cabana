@@ -1,9 +1,11 @@
 #pragma once
+
 #include <QLabel>
 #include <QPainter>
 #include <QSlider>
 #include <QTabBar>
 #include <QToolButton>
+#include <optional>
 
 class ToolButton : public QToolButton {
   Q_OBJECT
@@ -16,7 +18,7 @@ class ToolButton : public QToolButton {
   void enterEvent(QEvent* event) override;
   void leaveEvent(QEvent* event) override;
   void onSettingsChanged();
-  void refreshIcon(const QColor& tint_color = QColor());
+  void refreshIcon(std::optional<QColor> tint_color = std::nullopt);
 
   QColor hover_color;
   QString icon_str;
