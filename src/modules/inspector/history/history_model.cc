@@ -22,7 +22,7 @@ QVariant MessageHistoryModel::data(const QModelIndex& index, int role) const {
       return sigs[col - 1].sig->formatValue(m.sig_values[col - 1], false);
     };
   } else if (role == ColumnTypeRole::IsHexColumn) {
-    return isHexMode() && index.column() == 1;
+    return isHexMode() && col == 1;
   }
   return {};
 }
@@ -51,12 +51,9 @@ void MessageHistoryModel::reset() {
   beginResetModel();
   sigs.clear();
   if (auto dbc_msg = GetDBC()->msg(msg_id)) {
-    auto &dbc_sigs = dbc_msg->getSignals();
-    sigs.reserve(dbc_sigs.size());
-    for (auto *s : dbc_sigs) {
-      SignalColumn col = {s->name, s};
-      col.display_name = col.display_name.replace('_', ' ');
-      sigs.emplace_back(col);
+    for (auto* s : dbc_msg->getSignals()) {
+      QString display_name = QString(s->name).replace('_', ' ');
+      sigs.push_back({display_name, s});
     }
   }
   messages.clear();
@@ -142,7 +139,8 @@ void MessageHistoryModel::fetchMore(const QModelIndex &parent) {
 }
 
 void MessageHistoryModel::fetchData(std::deque<Message>::iterator insert_pos, uint64_t from_time, uint64_t min_time) {
-  const auto &events = StreamManager::stream()->events(msg_id);
+  auto* stream = StreamManager::stream();
+  const auto &events = stream->events(msg_id);
   if (events.empty()) return;
 
   auto first = std::upper_bound(events.rbegin(), events.rend(), from_time, [](uint64_t ts, auto e) {
@@ -167,16 +165,16 @@ void MessageHistoryModel::fetchData(std::deque<Message>::iterator insert_pos, ui
 
   if (!msgs.empty()) {
     if (isHexMode() && (min_time > 0 || messages.empty())) {
-      const auto freq = StreamManager::stream()->snapshot(msg_id)->freq;
+      const auto freq = stream->snapshot(msg_id)->freq;
       for (auto &m : msgs) {
-        hex_colors.update(msg_id, m.data.data(), m.data.size(), m.mono_time / (double)1e9, StreamManager::stream()->getSpeed(), freq);
+        hex_colors.update(msg_id, m.data.data(), m.data.size(), m.mono_time / (double)1e9, stream->getSpeed(), freq);
         hex_colors.updateAllPatternColors(m.mono_time / (double)1e9);
         m.colors = hex_colors.colors;
       }
     }
     int pos = std::distance(messages.begin(), insert_pos);
     beginInsertRows({}, pos , pos + msgs.size() - 1);
-    messages.insert(insert_pos, std::move_iterator(msgs.begin()), std::move_iterator(msgs.end()));
+    messages.insert(insert_pos, std::make_move_iterator(msgs.begin()), std::make_move_iterator(msgs.end()));
     endInsertRows();
   }
 }
