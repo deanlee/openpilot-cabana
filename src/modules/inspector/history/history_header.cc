@@ -9,8 +9,6 @@ QSize HistoryHeader::sectionSizeFromContents(int logicalIndex) const {
   if (logicalIndex == 0) return time_col_size;
 
   QString text = model()->headerData(logicalIndex, orientation(), Qt::DisplayRole).toString();
-  if (text.contains('_')) text.replace('_', ' ');
-
   int w = fontMetrics().horizontalAdvance(text) + 20;
   return QSize(qBound(100, w, 300), fontMetrics().height() + 10);
 }
@@ -22,8 +20,6 @@ void HistoryHeader::paintSection(QPainter* painter, const QRect& rect, int logic
   if (bg.isValid()) painter->fillRect(rect, bg.value<QColor>());
 
   QString text = model()->headerData(logicalIndex, orientation(), Qt::DisplayRole).toString();
-  if (text.contains('_')) text.replace('_', ' ');
-
   painter->setPen(palette().color(utils::isDarkTheme() ? QPalette::BrightText : QPalette::Text));
 
   QRect text_rect = rect.adjusted(5, 0, -5, 0);

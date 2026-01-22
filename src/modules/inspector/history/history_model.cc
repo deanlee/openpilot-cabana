@@ -19,7 +19,7 @@ QVariant MessageHistoryModel::data(const QModelIndex& index, int role) const {
     if (isHexMode()) return {};  // Handled by delegate
 
     if (col - 1 < (int)m.sig_values.size()) {
-      return sigs[col - 1]->formatValue(m.sig_values[col - 1], false);
+      return sigs[col - 1].sig->formatValue(m.sig_values[col - 1], false);
     };
   } else if (role == ColumnTypeRole::IsHexColumn) {
     return isHexMode() && index.column() == 1;
@@ -51,7 +51,13 @@ void MessageHistoryModel::reset() {
   beginResetModel();
   sigs.clear();
   if (auto dbc_msg = GetDBC()->msg(msg_id)) {
-    sigs = dbc_msg->getSignals();
+    auto &dbc_sigs = dbc_msg->getSignals();
+    sigs.reserve(dbc_sigs.size());
+    for (auto *s : dbc_sigs) {
+      SignalColumn col = {s->name, s};
+      col.display_name = col.display_name.replace('_', ' ');
+      sigs.emplace_back(col);
+    }
   }
   messages.clear();
   hex_colors = {};
@@ -60,32 +66,27 @@ void MessageHistoryModel::reset() {
 }
 
 QVariant MessageHistoryModel::headerData(int section, Qt::Orientation orientation, int role) const {
-  if (orientation != Qt::Horizontal) return {};
+  if (orientation != Qt::Horizontal || section < 0) return {};
 
-  if (role == Qt::BackgroundRole) {
-    if (section > 0 && !isHexMode()) return sigs[section - 1]->color;
+  if (section == 0) {
+    if (role == Qt::DisplayRole) return "Time";
+    if (role == Qt::ToolTipRole) return tr("Arrival time in seconds");
     return {};
   }
 
-  const bool is_time = (section == 0);
+  if (section - 1 >= static_cast<int>(sigs.size())) return {};
+  const auto& col = sigs[section - 1];
   const bool hex = isHexMode();
 
-  if (role == Qt::DisplayRole) {
-    if (is_time) return "Time";
-    if (hex) return "Data";
-    return sigs[section - 1]->name;
+  switch (role) {
+    case Qt::DisplayRole: return hex ? "Data" : col.display_name;
+    case Qt::BackgroundRole: return (!hex) ? col.sig->color : QVariant();
+    case Qt::ToolTipRole:
+      if (hex) return tr("Raw message data (Hex)");
+      return col.sig->unit.isEmpty() ? col.sig->name
+                                     : QString("%1 (%2)").arg(col.sig->name, col.sig->unit);
+    default: return {};
   }
-
-  if (role == Qt::ToolTipRole) {
-    if (is_time) return tr("Arrival time in seconds");
-    if (hex) return tr("Raw message data (Hex)");
-
-    const auto* sig = sigs[section - 1];
-    if (sig->unit.isEmpty()) return sig->name;
-    return QString("%1 (%2)").arg(sig->name, sig->unit);
-  }
-
-  return {};
 }
 
 void MessageHistoryModel::setHexMode(bool hex) {
@@ -154,7 +155,7 @@ void MessageHistoryModel::fetchData(std::deque<Message>::iterator insert_pos, ui
   for (; first != events.rend() && (*first)->mono_time > min_time; ++first) {
     const CanEvent *e = *first;
     for (int i = 0; i < sigs.size(); ++i) {
-      sigs[i]->getValue(e->dat, e->size, &values[i]);
+      sigs[i].sig->getValue(e->dat, e->size, &values[i]);
     }
     if (!filter_cmp || filter_cmp(values[filter_sig_idx], filter_value)) {
        msgs.emplace_back(Message{e->mono_time, values, {e->dat, e->dat + e->size}});

@@ -39,6 +39,11 @@ public:
     std::vector<QColor> colors;
   };
 
+  struct SignalColumn {
+    QString display_name;
+    dbc::Signal *sig;
+  };
+
   void fetchData(std::deque<Message>::iterator insert_pos, uint64_t from_time, uint64_t min_time);
 
   MessageId msg_id;
@@ -48,7 +53,7 @@ public:
   double filter_value = 0;
   std::function<bool(double, double)> filter_cmp = nullptr;
   std::deque<Message> messages;
-  std::vector<dbc::Signal *> sigs;
+  std::vector<SignalColumn> sigs;
   bool hex_mode = false;
   bool is_paused = false;
 };

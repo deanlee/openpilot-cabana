@@ -84,8 +84,8 @@ void MessageHistory::clearMessage() {
 
 void MessageHistory::modelReset() {
   signals_cb->clear();
-  for (auto s : model->sigs) {
-    signals_cb->addItem(s->name);
+  for (auto &s : model->sigs) {
+    signals_cb->addItem(s.sig->name);
   }
   export_btn->setEnabled(false);
   value_edit->clear();
