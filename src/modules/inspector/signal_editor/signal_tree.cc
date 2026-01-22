@@ -56,3 +56,23 @@ void SignalTree::updateHighlight(const dbc::Signal* sig) {
     emit highlightRequested(sig);
   }
 }
+
+void SignalTree::paintEvent(QPaintEvent* event) {
+  QTreeView::paintEvent(event);
+
+  if (!model() || model()->rowCount(rootIndex()) > 0) return;
+
+  QPainter p(viewport());
+  p.setPen(palette().color(QPalette::PlaceholderText));
+
+  QFont font = p.font();
+  font.setBold(true);
+  p.setFont(font);
+  p.drawText(viewport()->rect().adjusted(0, -15, 0, -15), Qt::AlignCenter, tr("No Signals Defined"));
+
+  font.setBold(false);
+  p.setFont(font);
+  p.drawText(viewport()->rect().adjusted(20, 15, -20, 15),
+             Qt::AlignCenter | Qt::TextWordWrap,
+             tr("Drag bits in the binary view above to create a signal."));
+}

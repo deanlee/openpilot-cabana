@@ -16,6 +16,7 @@ struct SignalTree : public QTreeView {
   void highlightRequested(const dbc::Signal* sig);
 
  private:
+  void paintEvent(QPaintEvent* event) override;
   void updateHighlight(const dbc::Signal* sig);
 
  private:
