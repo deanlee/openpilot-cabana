@@ -29,6 +29,7 @@ private slots:
   void handleDisplayTypeChange(int index);
 
 private:
+  QWidget* createToolbar();
   void setupConnections();
 
   class HistoryTableView : public QTableView {

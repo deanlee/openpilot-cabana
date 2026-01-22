@@ -10,58 +10,78 @@
 #include "modules/system/stream_manager.h"
 #include "widgets/validators.h"
 
-MessageHistory::MessageHistory(QWidget *parent) : QFrame(parent) {
-  setFrameStyle(QFrame::StyledPanel | QFrame::Plain);
+MessageHistory::MessageHistory(QWidget* parent) : QFrame(parent) {
   setFrameStyle(QFrame::NoFrame);
-  QVBoxLayout *main_layout = new QVBoxLayout(this);
+
+  QVBoxLayout* main_layout = new QVBoxLayout(this);
   main_layout->setContentsMargins(0, 0, 0, 0);
   main_layout->setSpacing(0);
 
-  QWidget *toolbar = new QWidget(this);
-  QHBoxLayout *h = new QHBoxLayout(toolbar);
+  // 1. Initialize logic and views
+  model = new MessageHistoryModel(this);
+  delegate = new MessageDelegate(this, CallerType::HistoryView);
+  logs = new HistoryTableView(this);
+
+  // 2. Setup UI Components
+  main_layout->addWidget(createToolbar());
+
+  QFrame* line = new QFrame(this);
+  line->setFrameStyle(QFrame::HLine | QFrame::Sunken);
+  main_layout->addWidget(line);
+
+  // 3. Configure Table
+  logs->setModel(model);
+  logs->setItemDelegate(delegate);
+  logs->setHorizontalHeader(new HistoryHeader(Qt::Horizontal, this));
+  logs->setFrameShape(QFrame::NoFrame);
+
+  auto* header = logs->horizontalHeader();
+  header->setResizeContentsPrecision(100);
+  header->setHighlightSections(false);
+
+  logs->verticalHeader()->setDefaultSectionSize(delegate->sizeForBytes(8).height());
+  logs->verticalHeader()->setVisible(false);
+
+  main_layout->addWidget(logs);
+
+  setupConnections();
+}
+
+QWidget* MessageHistory::createToolbar() {
+  QWidget* toolbar = new QWidget(this);
+  QHBoxLayout* h = new QHBoxLayout(toolbar);
   h->setContentsMargins(4, 4, 4, 4);
 
+  // Filter group
   filters_widget = new QWidget(this);
-  QHBoxLayout *filter_layout = new QHBoxLayout(filters_widget);
+  QHBoxLayout* filter_layout = new QHBoxLayout(filters_widget);
   filter_layout->setContentsMargins(0, 0, 0, 0);
+
   filter_layout->addWidget(display_type_cb = new QComboBox(this));
   filter_layout->addWidget(signals_cb = new QComboBox(this));
   filter_layout->addWidget(comp_box = new QComboBox(this));
   filter_layout->addWidget(value_edit = new QLineEdit(this));
 
-  signals_cb->setToolTip(tr("Select a signal to filter by its value"));
-  comp_box->setToolTip(tr("Comparison operator for filtering"));
-  value_edit->setPlaceholderText(tr("Filter value..."));
-
-  h->addWidget(filters_widget);
-  h->addStretch(0);
-  export_btn = new ToolButton("file-spreadsheet", tr("Export to CSV file..."));
-  h->addWidget(export_btn, 0, Qt::AlignRight);
-
-  display_type_cb->addItems({"Signal", "Hex"});
-  display_type_cb->setToolTip(tr("Display signal value or raw hex value"));
+  // Configure widgets
+  display_type_cb->addItems({tr("Signal"), tr("Hex")});
   comp_box->addItems({">", "=", "!=", "<"});
+
+  value_edit->setPlaceholderText(tr("Filter value..."));
   value_edit->setClearButtonEnabled(true);
   value_edit->setValidator(new DoubleValidator(this));
 
-  main_layout->addWidget(toolbar);
-  QFrame *line = new QFrame(this);
-  line->setFrameStyle(QFrame::HLine | QFrame::Sunken);
-  main_layout->addWidget(line);
-  main_layout->addWidget(logs = new HistoryTableView(this));
-  logs->setModel(model = new MessageHistoryModel(this));
-  delegate = new MessageDelegate(this, CallerType::HistoryView);
-  logs->setItemDelegate(delegate);
+  signals_cb->setToolTip(tr("Select a signal to filter by its value"));
+  comp_box->setToolTip(tr("Comparison operator for filtering"));
+  display_type_cb->setToolTip(tr("Display signal value or raw hex value"));
 
-  logs->setHorizontalHeader(new HistoryHeader(Qt::Horizontal, this));
-  auto* header = logs->horizontalHeader();
-  header->setResizeContentsPrecision(100);
-  header->setHighlightSections(false);
-  logs->verticalHeader()->setDefaultSectionSize(delegate->sizeForBytes(8).height());
-  logs->verticalHeader()->setVisible(false);
-  logs->setFrameShape(QFrame::NoFrame);
+  // Toolbar assembly
+  h->addWidget(filters_widget);
+  h->addStretch(1);
 
-  setupConnections();
+  export_btn = new ToolButton("file-spreadsheet", tr("Export to CSV file..."));
+  h->addWidget(export_btn);
+
+  return toolbar;
 }
 
 void MessageHistory::setupConnections() {
