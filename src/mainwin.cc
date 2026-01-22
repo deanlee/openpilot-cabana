@@ -4,6 +4,7 @@
 #include <QDesktopWidget>
 #include <QFileDialog>
 #include <QMenuBar>
+#include <QMessageBox>
 #include <QProgressDialog>
 #include <QScreen>
 #include <QShortcut>
@@ -262,6 +263,7 @@ void MainWindow::exportToCSV() {
   QString fn = QFileDialog::getSaveFileName(this, "Export stream to CSV file", dir, tr("csv (*.csv)"));
   if (!fn.isEmpty()) {
     exportMessagesToCSV(fn);
+    QMessageBox::information(this, tr("Export"), tr("Data successfully exported to:\n%1").arg(fn));
   }
 }
 
