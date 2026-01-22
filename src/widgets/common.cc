@@ -54,6 +54,13 @@ void ToolButton::leaveEvent(QEvent* event) {
   refreshIcon(); // Reverts to default theme color
 }
 
+void ToolButton::changeEvent(QEvent* event) {
+  if (event->type() == QEvent::PaletteChange || event->type() == QEvent::StyleChange) {
+    refreshIcon();
+  }
+  QToolButton::changeEvent(event);
+}
+
 // TabBar
 
 int TabBar::addTab(const QString &text) {

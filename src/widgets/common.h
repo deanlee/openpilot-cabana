@@ -19,6 +19,7 @@ class ToolButton : public QToolButton {
   void leaveEvent(QEvent* event) override;
   void onSettingsChanged();
   void refreshIcon(std::optional<QColor> tint_color = std::nullopt);
+  void changeEvent(QEvent* event) override;
 
   QColor hover_color;
   QString icon_str;
