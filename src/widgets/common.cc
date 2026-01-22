@@ -2,6 +2,7 @@
 
 #include <QApplication>
 #include <QStyle>
+
 #include <cmath>
 
 #include "utils/util.h"
@@ -27,7 +28,7 @@ void ToolButton::setIcon(const QString& icon) {
   refreshIcon();
 }
 
-void ToolButton::refreshIcon(const QColor& tint_color) {
+void ToolButton::refreshIcon(std::optional<QColor> tint_color) {
   if (icon_str.isEmpty()) return;
 
   QIcon new_icon = utils::icon(icon_str, iconSize(), tint_color);
