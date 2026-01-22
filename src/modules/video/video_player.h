@@ -15,6 +15,8 @@
 #include "timeline_slider.h"
 #include "utils/util.h"
 
+class ToolButton;
+
 class VideoPlayer : public QFrame {
   Q_OBJECT
 
@@ -31,7 +33,7 @@ protected:
   QWidget *createCameraWidget();
   void createPlaybackController();
   void createSpeedDropdown();
-  QToolButton* createToolButton(const QString &icon, const QString &tip, std::function<void()> cb);
+  ToolButton* createToolButton(const QString &icon, const QString &tip, std::function<void()> cb);
   void loopPlaybackClicked();
   void vipcAvailableStreamsUpdated(std::set<VisionStreamType> streams);
   void showRouteInfo();
@@ -44,9 +46,9 @@ protected:
   TimelineSlider *slider = nullptr;
 
 // Toolbar Buttons
-  QToolButton *play_toggle_btn = nullptr;
+  ToolButton *play_toggle_btn = nullptr;
+  ToolButton *loop_btn = nullptr;
+  ToolButton *skip_to_end_btn = nullptr;
+  ToolButton *route_info_btn = nullptr;
   QToolButton *speed_btn = nullptr;
-  QToolButton *loop_btn = nullptr;
-  QToolButton *skip_to_end_btn = nullptr;
-  QToolButton *route_info_btn = nullptr;
 };

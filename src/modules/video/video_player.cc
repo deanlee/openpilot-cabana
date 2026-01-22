@@ -124,7 +124,7 @@ void VideoPlayer::createPlaybackController() {
   layout()->addWidget(bar);
 }
 
-QToolButton* VideoPlayer::createToolButton(const QString &icon, const QString &tip, std::function<void()> cb) {
+ToolButton* VideoPlayer::createToolButton(const QString &icon, const QString &tip, std::function<void()> cb) {
   auto *btn = new ToolButton(icon, tip);
   if (cb) connect(btn, &QToolButton::clicked, this, cb);
   return btn;
@@ -213,7 +213,7 @@ void VideoPlayer::vipcAvailableStreamsUpdated(std::set<VisionStreamType> streams
 void VideoPlayer::loopPlaybackClicked() {
   bool is_looping = getReplay()->loop();
   getReplay()->setLoop(!is_looping);
-  loop_btn->setIcon(utils::icon(!is_looping ? "repeat" : "repeat-1"));
+  loop_btn->setIcon(!is_looping ? "repeat" : "repeat-1");
 }
 
 void VideoPlayer::timeRangeChanged() {
@@ -254,8 +254,10 @@ void VideoPlayer::updateState() {
 }
 
 void VideoPlayer::updatePlayBtnState() {
-  play_toggle_btn->setIcon(utils::icon(StreamManager::stream()->isPaused() ? "play" : "pause"));
-  play_toggle_btn->setToolTip(StreamManager::stream()->isPaused() ? tr("Play") : tr("Pause"));
+  bool is_paused = StreamManager::stream()->isPaused();
+  play_toggle_btn->setIcon(is_paused ? "play" : "pause");
+  QString play_tip = is_paused ? tr("Play") : tr("Pause");
+  play_toggle_btn->setToolTip(play_tip + "\nPress 'Space' to toggle");
 }
 
 void VideoPlayer::showThumbnail(double seconds) {
