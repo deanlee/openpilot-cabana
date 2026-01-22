@@ -28,6 +28,11 @@ MessageHistory::MessageHistory(QWidget *parent) : QFrame(parent) {
   filter_layout->addWidget(signals_cb = new QComboBox(this));
   filter_layout->addWidget(comp_box = new QComboBox(this));
   filter_layout->addWidget(value_edit = new QLineEdit(this));
+
+  signals_cb->setToolTip(tr("Select a signal to filter by its value"));
+  comp_box->setToolTip(tr("Comparison operator for filtering"));
+  value_edit->setPlaceholderText(tr("Filter value..."));
+
   h->addWidget(filters_widget);
   h->addStretch(0);
   export_btn = new ToolButton("file-spreadsheet", tr("Export to CSV file..."));
