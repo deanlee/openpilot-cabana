@@ -48,7 +48,7 @@ MessageView::MessageView(ChartsPanel* charts, QWidget* parent) : charts(charts),
   tab_widget->setTabPosition(QTabWidget::South);
   tab_widget->setStyleSheet("QTabWidget::pane { border: none; margin-bottom: -2px; padding:0}");
   tab_widget->addTab(signal_editor, utils::icon("binary"), tr("&Signals"));
-  tab_widget->addTab(message_history, utils::icon("scroll-text"), tr("&Trace"));
+  tab_widget->addTab(message_history, utils::icon("history"), tr("&Trace"));
   tab_widget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 
   splitter->addWidget(binary_view);
