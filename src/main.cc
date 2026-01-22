@@ -59,13 +59,14 @@ class CabanaStyle : public QProxyStyle {
 
 int main(int argc, char* argv[]) {
   QCoreApplication::setApplicationName("Cabana");
+  QCoreApplication::setApplicationVersion("1.1.0");
   QCoreApplication::setAttribute(Qt::AA_ShareOpenGLContexts);
   QCoreApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
   QCoreApplication::setAttribute(Qt::AA_UseHighDpiPixmaps);
 
   initApp(argc, argv, false);
   QApplication app(argc, argv);
-  app.setApplicationDisplayName("Cabana");
+  app.setApplicationDisplayName(QString("Cabana v%1").arg(app.applicationVersion()));
   QPixmap appIcon = utils::icon("activity", QSize(64, 64), QColor(59, 130, 246));
   app.setWindowIcon(appIcon);
   app.setStyle(new CabanaStyle);

@@ -79,17 +79,17 @@ jobs:
       - name: Package binary
         run: |
           REL_NAME="cabana-linux-x86_64"
-          mkdir -p "$REL_NAME/opendbc"
-          if [ -f "src/cabana" ]; then
-            cp src/cabana "$REL_NAME/cabana"
+          mkdir -p "$REL_NAME/data/opendbc"
+          if [ -f "cabana" ]; then
+            cp cabana "$REL_NAME/cabana"
             strip "$REL_NAME/cabana"
             chmod +x "$REL_NAME/cabana"
           else
-            echo "Error: Binary not found at src/cabana"
+            echo "Error: Binary not found at cabana"
             exit 1
           fi
-          cp -L src/opendbc/*.dbc "$REL_NAME/opendbc/" 2>/dev/null || true
-          cp -L src/opendbc/*.json "$REL_NAME/opendbc/" 2>/dev/null || true
+          cp -L data/opendbc/*.dbc "$REL_NAME/data/opendbc/" 2>/dev/null || true
+          cp -L data/opendbc/*.json "$REL_NAME/data/opendbc/" 2>/dev/null || true
 
           cp README.md LICENSE "$REL_NAME/" 2>/dev/null || true
           tar -czvf "$REL_NAME.tar.gz" "$REL_NAME"
