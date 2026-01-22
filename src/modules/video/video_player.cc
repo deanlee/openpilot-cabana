@@ -125,12 +125,7 @@ void VideoPlayer::createPlaybackController() {
 }
 
 QToolButton* VideoPlayer::createToolButton(const QString &icon, const QString &tip, std::function<void()> cb) {
-  int icon_size = style()->pixelMetric(QStyle::PM_SmallIconSize);
-  auto *btn = new QToolButton(this);
-  btn->setIcon(utils::icon(icon, QSize(icon_size, icon_size)));
-  btn->setToolTip(tip);
-  btn->setAutoRaise(true);
-  btn->setIconSize(QSize(icon_size, icon_size));
+  auto *btn = new ToolButton(icon, tip);
   if (cb) connect(btn, &QToolButton::clicked, this, cb);
   return btn;
 }
