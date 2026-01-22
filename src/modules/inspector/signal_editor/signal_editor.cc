@@ -52,7 +52,8 @@ QWidget *SignalEditor::createToolbar() {
   QRegularExpression re("\\S+");
   filter_edit->setValidator(new QRegularExpressionValidator(re, this));
   filter_edit->setClearButtonEnabled(true);
-  filter_edit->setPlaceholderText(tr("Filter Signal"));
+  filter_edit->setPlaceholderText(tr("Filter signal..."));
+  filter_edit->setToolTip(tr("Filter signals by name"));
   hl->addWidget(filter_edit, 0, Qt::AlignCenter);
   hl->addStretch(1);
 
@@ -65,7 +66,7 @@ QWidget *SignalEditor::createToolbar() {
   sparkline_range_slider->setMinimumWidth(100);
   sparkline_range_slider->setRange(1, max_range);
   sparkline_range_slider->setValue(settings.sparkline_range);
-  sparkline_range_slider->setToolTip(tr("Sparkline time range"));
+  sparkline_range_slider->setToolTip(tr("Adjust sparkline history duration"));
 
   collapse_btn = new ToolButton("fold-vertical", tr("Collapse All"));
   collapse_btn->setIconSize({12, 12});
