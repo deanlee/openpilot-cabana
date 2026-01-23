@@ -1,7 +1,6 @@
 #pragma once
 
 #include <QLabel>
-#include <QLineEdit>
 #include <QMouseEvent>
 #include <QSlider>
 #include <memory>
@@ -13,6 +12,7 @@
 #include "signal_tree.h"
 #include "signal_tree_delegate.h"
 #include "signal_tree_model.h"
+#include "widgets/debounced_line_edit.h"
 
 class SignalEditor : public QFrame {
   Q_OBJECT
@@ -47,7 +47,7 @@ private:
   SignalTree *tree;
   QLabel *sparkline_label;
   QSlider *sparkline_range_slider;
-  QLineEdit *filter_edit;
+  DebouncedLineEdit *filter_edit;
   QLabel *signal_count_lb;
   SignalTreeDelegate *delegate;
   ToolButton *collapse_btn;

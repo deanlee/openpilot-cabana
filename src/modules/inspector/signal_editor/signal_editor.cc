@@ -47,7 +47,7 @@ QWidget *SignalEditor::createToolbar() {
   hl->setContentsMargins(4, 4, 4, 4);
 
   hl->addWidget(signal_count_lb = new QLabel());
-  filter_edit = new QLineEdit(this);
+  filter_edit = new DebouncedLineEdit(this);
 
   QRegularExpression re("\\S+");
   filter_edit->setValidator(new QRegularExpressionValidator(re, this));
@@ -76,7 +76,7 @@ QWidget *SignalEditor::createToolbar() {
 }
 
 void SignalEditor::setupConnections(ChartsPanel *charts) {
-  connect(filter_edit, &QLineEdit::textEdited, model, &SignalTreeModel::setFilter);
+  connect(filter_edit, &DebouncedLineEdit::debouncedTextEdited, model, &SignalTreeModel::setFilter);
   connect(sparkline_range_slider, &QSlider::valueChanged, this, &SignalEditor::setSparklineRange);
   connect(collapse_btn, &QPushButton::clicked, tree, &QTreeView::collapseAll);
   connect(model, &QAbstractItemModel::modelReset, this, &SignalEditor::rowsChanged);

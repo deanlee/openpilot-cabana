@@ -1,7 +1,6 @@
 #pragma once
 
 #include <QComboBox>
-#include <QLineEdit>
 #include <QScrollBar>
 #include <QTableView>
 #include <QWheelEvent>
@@ -11,6 +10,7 @@
 #include "history_header.h"
 #include "history_model.h"
 #include "modules/message_list/message_delegate.h"
+#include "widgets/debounced_line_edit.h"
 
 class MessageHistory : public QFrame {
   Q_OBJECT
@@ -50,7 +50,7 @@ private:
   HistoryTableView *logs;
   MessageHistoryModel *model;
   QComboBox *signals_cb, *comp_box, *display_type_cb;
-  QLineEdit *value_edit;
+  DebouncedLineEdit *value_edit;
   QWidget *filters_widget;
   ToolButton *export_btn;
   MessageDelegate *delegate;
