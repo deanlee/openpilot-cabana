@@ -19,7 +19,7 @@ public:
   MessageList(QWidget *parent);
   QByteArray saveHeaderState() const { return view->header()->saveState(); }
   bool restoreHeaderState(const QByteArray &state) const { return view->header()->restoreState(state); }
-  void suppressHighlighted();
+  void suppressHighlighted(bool suppress);
   void selectMessage(const MessageId &message_id) { selectMessageForced(message_id, false); }
 
 signals:
