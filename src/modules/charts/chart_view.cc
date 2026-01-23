@@ -384,8 +384,11 @@ void ChartView::drawRubberBandTimeRange(QPainter *painter) {
 
 void ChartView::drawTimeline(QPainter *painter) {
   const auto plot_area = chart_->plotArea();
-  // draw vertical time line
-  qreal x = std::clamp(chart_->mapToPosition(QPointF{cur_sec, 0}).x(), plot_area.left(), plot_area.right());
+  qreal x = chart_->mapToPosition({cur_sec, 0}).x();
+  // Snap to the physical pixel grid
+  qreal dpr = devicePixelRatioF();
+  x = std::round(x * dpr) / dpr;
+  x = std::clamp(x, plot_area.left(), plot_area.right());
   painter->setPen(QPen(chart_->titleBrush().color(), 1));
   painter->drawLine(QPointF{x, plot_area.top() - 1}, QPointF{x, plot_area.bottom() + 1});
 
