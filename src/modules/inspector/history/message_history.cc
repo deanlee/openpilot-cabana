@@ -60,7 +60,7 @@ QWidget* MessageHistory::createToolbar() {
   filter_layout->addWidget(display_type_cb = new QComboBox(this));
   filter_layout->addWidget(signals_cb = new QComboBox(this));
   filter_layout->addWidget(comp_box = new QComboBox(this));
-  filter_layout->addWidget(value_edit = new QLineEdit(this));
+  filter_layout->addWidget(value_edit = new DebouncedLineEdit(this));
 
   // Configure widgets
   display_type_cb->addItems({tr("Signal"), tr("Hex")});
@@ -88,7 +88,7 @@ void MessageHistory::setupConnections() {
   connect(display_type_cb, qOverload<int>(&QComboBox::activated), this, &MessageHistory::handleDisplayTypeChange);
   connect(signals_cb, SIGNAL(activated(int)), this, SLOT(filterChanged()));
   connect(comp_box, SIGNAL(activated(int)), this, SLOT(filterChanged()));
-  connect(value_edit, &QLineEdit::textEdited, this, &MessageHistory::filterChanged);
+  connect(value_edit, &DebouncedLineEdit::debouncedTextEdited, this, &MessageHistory::filterChanged);
   connect(export_btn, &QToolButton::clicked, this, &MessageHistory::exportToCSV);
   connect(&StreamManager::instance(), &StreamManager::seekedTo, model, &MessageHistoryModel::reset);
   connect(&StreamManager::instance(), &StreamManager::paused, model, &MessageHistoryModel::setPaused);
