@@ -292,15 +292,19 @@ bool SignalTreeDelegate::helpEvent(QHelpEvent* event, QAbstractItemView* view, c
   return QStyledItemDelegate::helpEvent(event, view, option, index);
 }
 
-bool SignalTreeDelegate::editorEvent(QEvent* event, QAbstractItemModel* model, const QStyleOptionViewItem& opt, const QModelIndex& idx) {
+bool SignalTreeDelegate::editorEvent(QEvent* event, QAbstractItemModel* model,
+                                     const QStyleOptionViewItem& opt, const QModelIndex& idx) {
   auto item = static_cast<SignalTreeModel::Item*>(idx.internalPointer());
-  if (!item || idx.column() != 1) return QStyledItemDelegate::editorEvent(event, model, opt, idx);
 
-  const QMouseEvent* e = static_cast<QMouseEvent*>(event);
+  if (!item || idx.column() != 1 || item->type != SignalTreeModel::Item::Sig) {
+    return QStyledItemDelegate::editorEvent(event, model, opt, idx);
+  }
+
   const auto type = event->type();
+  const auto* mouseEvent = static_cast<QMouseEvent*>(event);
+  const int btn = buttonAt(mouseEvent->pos(), opt.rect);
 
   if (type == QEvent::MouseMove) {
-    int btn = buttonAt(e->pos(), opt.rect);
     if (hoverIndex != idx || hoverButton != btn) {
       QPersistentModelIndex oldIdx = hoverIndex;
       hoverIndex = idx;
@@ -311,31 +315,23 @@ bool SignalTreeDelegate::editorEvent(QEvent* event, QAbstractItemModel* model, c
         if (hoverIndex.isValid()) view->update(hoverIndex);
       }
     }
-  } else if (type == QEvent::Leave) {
-    clearHoverState();
+    return false;
   }
 
-  if (type == QEvent::MouseButtonPress || type == QEvent::MouseButtonDblClick) {
-    if (buttonAt(e->pos(), opt.rect) != -1) {
-      return true;  // Block tree expansion/selection
+  if (btn != -1) {
+    if (type == QEvent::MouseButtonPress || type == QEvent::MouseButtonDblClick) {
+      return true;  // Stop event propagation to prevent selection/expansion
     }
-  }
 
-  // 2. Handle Button Clicks
-  if (type == QEvent::MouseButtonRelease && item->type == SignalTreeModel::Item::Sig) {
-    int btn = buttonAt(e->pos(), opt.rect);
-    if (btn != -1) {
-      auto* sig = item->sig;
-      bool isCharted = idx.data(IsChartedRole).toBool();
-
+    if (type == QEvent::MouseButtonRelease) {
       if (btn == 1) {  // Plot Button
-        emit plotRequested(sig, !isCharted, e->modifiers() & Qt::ShiftModifier);
-      } else {  // Remove Button
-        // Force reset hover state before the model deletion begins
-        clearHoverState();
-        emit removeRequested(sig);
+        bool isCharted = idx.data(IsChartedRole).toBool();
+        emit plotRequested(item->sig, !isCharted, mouseEvent->modifiers() & Qt::ShiftModifier);
+      } else if (btn == 0) {  // Remove Button
+        clearHoverState();    // Reset before model potentially deletes 'item'
+        emit removeRequested(item->sig);
       }
-      return true;  // Prevent base class from handling the click
+      return true;
     }
   }
 
