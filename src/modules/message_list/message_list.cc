@@ -96,13 +96,13 @@ QWidget *MessageList::createToolBar() {
   view_button->setStyleSheet("QToolButton::menu-indicator { image: none; }");
   layout->addWidget(view_button);
 
-  connect(suppress_add, &ToolButton::clicked, this, &MessageList::suppressHighlighted);
-  connect(suppress_clear, &ToolButton::clicked, this, &MessageList::suppressHighlighted);
+  connect(suppress_add, &ToolButton::clicked, this, [this]() { suppressHighlighted(true); });
+  connect(suppress_clear, &ToolButton::clicked, this, [this]() { suppressHighlighted(false); });
   connect(suppress_defined_signals, &QCheckBox::stateChanged, this , [this]() {
     StreamManager::stream()->suppressDefinedSignals(suppress_defined_signals->isChecked());
   });
 
-  suppressHighlighted();
+  suppressHighlighted(false);
   return toolbar;
 }
 
@@ -168,9 +168,13 @@ void MessageList::selectMessageForced(const MessageId &msg_id, bool force) {
   }
 }
 
-void MessageList::suppressHighlighted() {
-  auto *can = StreamManager::stream();
-  int n = sender() == suppress_add ? can->suppressHighlighted() : (can->clearSuppressed(), 0);
+void MessageList::suppressHighlighted(bool suppress) {
+  int n = 0;
+  if (suppress) {
+    n = StreamManager::stream()->suppressHighlighted();
+  } else {
+    StreamManager::stream()->clearSuppressed();
+  }
   suppress_clear->setText(n > 0 ? tr("Reset Activity (%1)").arg(n) : tr("Reset Activity"));
   suppress_clear->setEnabled(n > 0);
 }
