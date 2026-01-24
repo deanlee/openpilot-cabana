@@ -87,16 +87,19 @@ void LiveStream::handleEvent(kj::ArrayPtr<capnp::word> data) {
   }
 }
 
-void LiveStream::timerEvent(QTimerEvent *event) {
+void LiveStream::timerEvent(QTimerEvent* event) {
   if (event->timerId() == timer_id) {
+    std::vector<const CanEvent*> local_queue;
     {
-      // merge events received from live stream thread.
       std::lock_guard lk(lock);
-      mergeEvents(received_events_);
-      uint64_t last_received_ts = !received_events_.empty() ? received_events_.back()->mono_time : 0;
-      lastest_event_ts = std::max(lastest_event_ts, last_received_ts);
-      received_events_.clear();
+      local_queue.swap(received_events_);
     }
+
+    if (!local_queue.empty()) {
+      mergeEvents(local_queue);
+      lastest_event_ts = std::max(lastest_event_ts, local_queue.back()->mono_time);
+    }
+
     if (!all_events_.empty()) {
       begin_event_ts = all_events_.front()->mono_time;
       processNewMessages();
