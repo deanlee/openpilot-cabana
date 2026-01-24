@@ -45,7 +45,7 @@ public:
   void setMessage(const MessageId &id);
   void setFilter(const QString &txt);
   bool saveSignal(const dbc::Signal *origin_s, dbc::Signal &s);
-  Item *getItem(const QModelIndex &index) const;
+  Item *itemFromIndex(const QModelIndex &index) const;
   int signalRow(const dbc::Signal *sig) const;
   void updateChartedSignals(const QMap<MessageId, QSet<const dbc::Signal*>> &opened);
   void fetchMore(const QModelIndex &parent) override;

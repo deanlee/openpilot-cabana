@@ -211,7 +211,7 @@ void SignalEditor::updateState(const std::set<MessageId>* msgs) {
 
   QVector<SignalTreeModel::Item*> items;
   for (int i = first_v.row(); i <= last_v.row(); ++i) {
-    items << model->getItem(model->index(i, 1));
+    items << model->itemFromIndex(model->index(i, 1));
   }
 
   QtConcurrent::blockingMap(items, [&](SignalTreeModel::Item* item) {
@@ -228,7 +228,7 @@ int SignalEditor::getValueColumnWidth(const MessageState* msg) {
   int global_minmax_w = minmax_digit_w * 4;  // initial width for Min/Max
   int global_value_w = 0;
   for (int i = 0; i < model->rowCount(); ++i) {
-    auto* item = model->getItem(model->index(i, 1));
+    auto* item = model->itemFromIndex(model->index(i, 1));
     double val = 0;
     if (item->sig->getValue(msg->dat.data(), msg->dat.size(), &val)) {
       item->sig_val = item->sig->formatValue(val);

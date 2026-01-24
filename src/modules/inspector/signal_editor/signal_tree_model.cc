@@ -64,32 +64,32 @@ void SignalTreeModel::refresh() {
   endResetModel();
 }
 
-SignalTreeModel::Item *SignalTreeModel::getItem(const QModelIndex &index) const {
+SignalTreeModel::Item *SignalTreeModel::itemFromIndex(const QModelIndex &index) const {
   auto item = index.isValid() ? (SignalTreeModel::Item *)index.internalPointer() : nullptr;
   return item ? item : root.get();
 }
 
 int SignalTreeModel::rowCount(const QModelIndex &parent) const {
   if (parent.column() > 0) return 0;
-  return getItem(parent)->children.size();
+  return itemFromIndex(parent)->children.size();
 }
 
 bool SignalTreeModel::hasChildren(const QModelIndex &parent) const {
   if (!parent.isValid()) return true;
-  Item *item = getItem(parent);
+  Item *item = itemFromIndex(parent);
   return item->type == Item::Sig || item->type == Item::ExtraInfo;
 }
 
 bool SignalTreeModel::canFetchMore(const QModelIndex &parent) const {
   if (!parent.isValid()) return false;
-  Item *item = getItem(parent);
+  Item *item = itemFromIndex(parent);
 
   return (item->type == Item::Sig || item->type == Item::ExtraInfo) && item->children.isEmpty();
 }
 
 void SignalTreeModel::fetchMore(const QModelIndex& parent) {
   if (!parent.isValid()) return;
-  Item* item = getItem(parent);
+  Item* item = itemFromIndex(parent);
 
   QList<Item::Type> types;
   if (item->type == Item::Sig) {
@@ -113,7 +113,7 @@ void SignalTreeModel::fetchMore(const QModelIndex& parent) {
 Qt::ItemFlags SignalTreeModel::flags(const QModelIndex& index) const {
   if (!index.isValid()) return Qt::NoItemFlags;
 
-  const Item* item = getItem(index);
+  const Item* item = itemFromIndex(index);
   Qt::ItemFlags f = Qt::ItemIsEnabled | Qt::ItemIsSelectable;
 
   // Only the second column for non-parent nodes is interactive
@@ -143,7 +143,7 @@ int SignalTreeModel::signalRow(const dbc::Signal *sig) const {
 QModelIndex SignalTreeModel::index(int row, int column, const QModelIndex &parent) const {
   if (parent.isValid() && parent.column() != 0) return {};
 
-  auto parent_item = getItem(parent);
+  auto parent_item = itemFromIndex(parent);
   if (parent_item && row < parent_item->children.size()) {
     return createIndex(row, column, parent_item->children[row]);
   }
@@ -152,14 +152,14 @@ QModelIndex SignalTreeModel::index(int row, int column, const QModelIndex &paren
 
 QModelIndex SignalTreeModel::parent(const QModelIndex &index) const {
   if (!index.isValid()) return {};
-  Item *parent_item = getItem(index)->parent;
+  Item *parent_item = itemFromIndex(index)->parent;
   return !parent_item || parent_item == root.get() ? QModelIndex() : createIndex(parent_item->row(), 0, parent_item);
 }
 
 QVariant SignalTreeModel::data(const QModelIndex &index, int role) const {
   if (!index.isValid()) return {};
 
-  const Item *item = getItem(index);
+  const Item *item = itemFromIndex(index);
   if (role == Qt::DisplayRole || role == Qt::EditRole) {
     if (index.column() == 0) {
       return item->type == Item::Sig ? item->sig->name : item->title;
@@ -205,7 +205,7 @@ QVariant SignalTreeModel::data(const QModelIndex &index, int role) const {
 bool SignalTreeModel::setData(const QModelIndex &index, const QVariant &value, int role) {
   if (role != Qt::EditRole && role != Qt::CheckStateRole) return false;
 
-  Item *item = getItem(index);
+  Item *item = itemFromIndex(index);
   dbc::Signal s = *item->sig;
   switch (item->type) {
     case Item::Name: s.name = value.toString(); break;

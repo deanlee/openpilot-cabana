@@ -39,7 +39,7 @@ void SignalTree::mouseMoveEvent(QMouseEvent* event) {
 
   if (idx.isValid()) {
     if (auto m = qobject_cast<SignalTreeModel*>(model())) {
-      if (auto item = m->getItem(idx)) {
+      if (auto item = m->itemFromIndex(idx)) {
         current_sig = item->sig;
       }
     }
