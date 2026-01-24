@@ -15,7 +15,7 @@ class BinaryView : public QTableView {
 public:
   BinaryView(QWidget *parent = nullptr);
   void setMessage(const MessageId &message_id);
-  void clearMessage();
+  void clearMessage() { setMessage(MessageId()); }
   void highlight(const dbc::Signal *sig);
   QSet<const dbc::Signal*> getOverlappingSignals() const;
   void updateState() { model->updateState(); }
@@ -33,6 +33,7 @@ signals:
   void showChart(const MessageId &id, const dbc::Signal *sig, bool show, bool merge);
 
 private:
+  void resetInternalState();
   void addShortcuts();
   void refresh();
   std::tuple<int, int, bool> getSelection(QModelIndex index);

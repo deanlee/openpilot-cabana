@@ -36,6 +36,7 @@ BinaryView::BinaryView(QWidget *parent) : QTableView(parent) {
 
   connect(GetDBC(), &dbc::Manager::DBCFileChanged, this, &BinaryView::refresh);
   connect(UndoStack::instance(), &QUndoStack::indexChanged, this, &BinaryView::refresh);
+  connect(model, &QAbstractItemModel::modelReset, this, &BinaryView::resetInternalState);
 
   addShortcuts();
   setWhatsThis(R"(
@@ -96,13 +97,16 @@ void BinaryView::addShortcuts() {
 }
 
 QSize BinaryView::minimumSizeHint() const {
-
   // (9 columns * width) + the vertical header + 2px buffer for the frame
   int totalWidth = (CELL_WIDTH * 9) + CELL_WIDTH + 2;
-
   // Show at least 4 rows, at most 10
   int totalHeight = CELL_HEIGHT * std::min(model->rowCount(), 10) + 2;
   return {totalWidth, totalHeight};
+}
+
+void BinaryView::setMessage(const MessageId &message_id) {
+  model->msg_id = message_id;
+  refresh();
 }
 
 void BinaryView::highlight(const dbc::Signal *sig) {
@@ -191,28 +195,16 @@ void BinaryView::leaveEvent(QEvent *event) {
   QTableView::leaveEvent(event);
 }
 
-void BinaryView::setMessage(const MessageId &message_id) {
-  model->msg_id = message_id;
-  verticalScrollBar()->setValue(0);
-  refresh();
-}
-
 void BinaryView::refresh() {
-  clearSelection();
-  anchor_index = QModelIndex();
-  resize_sig = nullptr;
-  hovered_sig = nullptr;
   model->refresh();
   highlightPosition(QCursor::pos());
 }
 
-void BinaryView::clearMessage() {
-  model->msg_id = MessageId();
-  clearSelection();
+void BinaryView::resetInternalState() {
   anchor_index = QModelIndex();
   resize_sig = nullptr;
   hovered_sig = nullptr;
-  model->refresh();
+  verticalScrollBar()->setValue(0);
 }
 
 QSet<const dbc::Signal *> BinaryView::getOverlappingSignals() const {
