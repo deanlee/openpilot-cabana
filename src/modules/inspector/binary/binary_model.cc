@@ -69,15 +69,15 @@ void BinaryModel::updateBorders() {
   }
 }
 
-void BinaryModel::updateItem(int row, int col, uint8_t val, const QColor &color) {
+bool BinaryModel::updateItem(int row, int col, uint8_t val, const QColor &color) {
   auto &item = items[row * column_count + col];
   item.valid = true;
   if (item.val != val || item.bg_color != color) {
     item.val = val;
     item.bg_color = color;
-    auto idx = index(row, col);
-    emit dataChanged(idx, idx, {Qt::DisplayRole});
+    return true;
   }
+  return false;
 }
 
 void BinaryModel::updateState() {
@@ -103,19 +103,31 @@ void BinaryModel::updateState() {
 
   const double current_sec = StreamManager::stream()->currentSec();
   const bool is_light_theme = !utils::isDarkTheme();
+  int first_dirty = -1, last_dirty = -1;
 
   for (size_t i = 0; i < binary.size(); ++i) {
+    bool row_changed = false;
+    const uint8_t byte_val = (uint8_t)binary[i];
     for (int j = 0; j < 8; ++j) {
       auto& item = items[i * column_count + j];
-      int bit_val = (binary[i] >> (7 - j)) & 1;
+      int bit_val = (byte_val >> (7 - j)) & 1;
 
       // Calculate color based on heat
       QColor bit_color = calculateBitHeatColor(item, bit_flips[i][j], max_bit_flip_count, is_light_theme);
-      updateItem(i, j, bit_val, bit_color);
+      row_changed |= updateItem(i, j, bit_val, bit_color);
     }
 
     // The 9th column (index 8) remains the Byte Value with the Trend Color
-    updateItem(i, 8, binary[i], last_msg->getPatternColor(i, current_sec));
+    row_changed |= updateItem(i, 8, byte_val, last_msg->getPatternColor(i, current_sec));
+
+    if (row_changed) {
+      if (first_dirty == -1) first_dirty = i;
+      last_dirty = i;
+    }
+  }
+
+  if (first_dirty != -1) {
+    emit dataChanged(index(first_dirty, 0), index(last_dirty, 8), {Qt::DisplayRole});
   }
 }
 

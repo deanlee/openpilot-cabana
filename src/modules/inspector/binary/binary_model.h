@@ -18,7 +18,6 @@ class BinaryModel : public QAbstractTableModel {
   void refresh();
   void updateBorders();
   void updateState();
-  void updateItem(int row, int col, uint8_t val, const QColor& color);
   QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const override;
   QVariant data(const QModelIndex& index, int role = Qt::DisplayRole) const override;
   int rowCount(const QModelIndex& parent = QModelIndex()) const override { return row_count; }
@@ -30,11 +29,6 @@ class BinaryModel : public QAbstractTableModel {
     return (index.column() == column_count - 1) ? Qt::ItemIsEnabled : Qt::ItemIsEnabled | Qt::ItemIsSelectable;
   }
   const std::vector<std::array<uint32_t, 8>>& getBitFlipChanges(size_t msg_size);
-
-  struct BitFlipTracker {
-    std::optional<std::pair<double, double>> time_range;
-    std::vector<std::array<uint32_t, 8>> flip_counts;
-  } bit_flip_tracker;
 
   struct Item {
     QColor bg_color = QColor(102, 86, 169, 255);
@@ -51,13 +45,22 @@ class BinaryModel : public QAbstractTableModel {
       uint8_t top_left : 1, top_right : 1, bottom_left : 1, bottom_right : 1;
     } borders;
   };
-  std::vector<Item> items;
-  bool heatmap_live_mode = true;
+
   MessageId msg_id;
+  bool heatmap_live_mode = true;
+  std::vector<Item> items;
+
+ private:
+  struct BitFlipTracker {
+    std::optional<std::pair<double, double>> time_range;
+    std::vector<std::array<uint32_t, 8>> flip_counts;
+  } bit_flip_tracker;
+
   int row_count = 0;
   const int column_count = 9;
 
-  QColor calculateBitHeatColor(Item &item, uint32_t flips, uint32_t max_flips, bool is_light);
+  QColor calculateBitHeatColor(Item& item, uint32_t flips, uint32_t max_flips, bool is_light);
+  bool updateItem(int row, int col, uint8_t val, const QColor& color);
 };
 
 QString signalToolTip(const dbc::Signal *sig);
