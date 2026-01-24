@@ -85,21 +85,24 @@ QWidget* MessageHistory::createToolbar() {
 }
 
 void MessageHistory::setupConnections() {
-  connect(display_type_cb, qOverload<int>(&QComboBox::activated), this, &MessageHistory::handleDisplayTypeChange);
-  connect(signals_cb, SIGNAL(activated(int)), this, SLOT(filterChanged()));
-  connect(comp_box, SIGNAL(activated(int)), this, SLOT(filterChanged()));
+  connect(display_type_cb, qOverload<int>(&QComboBox::activated), this, &MessageHistory::setHexModel);
+  connect(signals_cb, qOverload<int>(&QComboBox::activated), this, &MessageHistory::filterChanged);
+  connect(comp_box, qOverload<int>(&QComboBox::activated), this, &MessageHistory::filterChanged);
   connect(value_edit, &DebouncedLineEdit::debouncedTextEdited, this, &MessageHistory::filterChanged);
   connect(export_btn, &QToolButton::clicked, this, &MessageHistory::exportToCSV);
+
   connect(&StreamManager::instance(), &StreamManager::seekedTo, model, &MessageHistoryModel::reset);
   connect(&StreamManager::instance(), &StreamManager::paused, model, &MessageHistoryModel::setPaused);
   connect(&StreamManager::instance(), &StreamManager::resume, model, &MessageHistoryModel::setResumed);
+
   connect(GetDBC(), &dbc::Manager::DBCFileChanged, model, &MessageHistoryModel::reset);
   connect(UndoStack::instance(), &QUndoStack::indexChanged, model, &MessageHistoryModel::reset);
-  connect(model, &MessageHistoryModel::modelReset, this, &MessageHistory::modelReset);
+
+  connect(model, &MessageHistoryModel::modelReset, this, &MessageHistory::resetInternalState);
   connect(model, &MessageHistoryModel::rowsInserted, [this]() { export_btn->setEnabled(true); });
 }
 
-void MessageHistory::handleDisplayTypeChange(int index) {
+void MessageHistory::setHexModel(int index) {
   model->setHexMode(index);
 }
 
@@ -107,7 +110,7 @@ void MessageHistory::clearMessage() {
   model->setMessage(MessageId());
 }
 
-void MessageHistory::modelReset() {
+void MessageHistory::resetInternalState() {
   signals_cb->clear();
   for (auto &s : model->sigs) {
     signals_cb->addItem(s.sig->name);
@@ -119,26 +122,34 @@ void MessageHistory::modelReset() {
 }
 
 void MessageHistory::filterChanged() {
+  // If empty and not modified, ignore to avoid unnecessary filtering
   if (value_edit->text().isEmpty() && !value_edit->isModified()) return;
 
-  std::function<bool(double, double)> cmp = nullptr;
-  switch (comp_box->currentIndex()) {
-    case 0: cmp = std::greater<double>{}; break;
-    case 1: cmp = std::equal_to<double>{}; break;
-    case 2: cmp = [](double l, double r) { return l != r; }; break; // not equal
-    case 3: cmp = std::less<double>{}; break;
+  static const std::vector<std::function<bool(double, double)>> ops = {
+    std::greater<double>{},
+    std::equal_to<double>{},
+    [](double l, double r) { return l != r; },
+    std::less<double>{}
+  };
+
+  int idx = comp_box->currentIndex();
+  if (idx >= 0 && idx < ops.size()) {
+    model->setFilter(signals_cb->currentIndex(), value_edit->text(), ops[idx]);
   }
-  model->setFilter(signals_cb->currentIndex(), value_edit->text(), cmp);
 }
 
 void MessageHistory::exportToCSV() {
-  QString dir = QString("%1/%2_%3.csv").arg(settings.last_dir).arg(StreamManager::stream()->routeName()).arg(msgName(model->msg_id));
-  QString fn = QFileDialog::getSaveFileName(this, QString("Export %1 to CSV file").arg(msgName(model->msg_id)),
-                                            dir, tr("csv (*.csv)"));
-  if (!fn.isEmpty()) {
-    model->isHexMode() ? exportMessagesToCSV(fn, model->msg_id)
-                       : exportSignalsToCSV(fn, model->msg_id);
-    QMessageBox::information(this, tr("Export Success"),
-                             tr("Successfully exported to:\n%1").arg(fn));
-  }
+  QString route = StreamManager::stream()->routeName();
+  QString msg = msgName(model->msg_id);
+  QString defaultPath = QString("%1/%2_%3.csv").arg(settings.last_dir, route, msg);
+
+  QString fn = QFileDialog::getSaveFileName(this, tr("Export %1 to CSV").arg(msg), defaultPath, tr("CSV (*.csv)"));
+  if (fn.isEmpty()) return;
+
+  if (model->isHexMode())
+    exportMessagesToCSV(fn, model->msg_id);
+  else
+    exportSignalsToCSV(fn, model->msg_id);
+
+  QMessageBox::information(this, tr("Export Success"), tr("Successfully exported to:\n%1").arg(fn));
 }

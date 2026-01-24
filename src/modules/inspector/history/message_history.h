@@ -20,13 +20,12 @@ public:
   void setMessage(const MessageId &message_id) { model->setMessage(message_id); }
   void clearMessage();
   void updateState() { model->updateState(); }
-  void showEvent(QShowEvent *event) override { model->updateState(true); }
 
 private slots:
   void filterChanged();
   void exportToCSV();
-  void modelReset();
-  void handleDisplayTypeChange(int index);
+  void resetInternalState();
+  void setHexModel(int index);
 
 private:
   QWidget* createToolbar();
