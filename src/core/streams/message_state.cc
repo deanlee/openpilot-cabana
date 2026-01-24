@@ -186,7 +186,7 @@ QColor colorFromDataPattern(DataPattern pattern, double current_ts, double last_
   };
 
   const int index = std::clamp(static_cast<int>(pattern), 0, 4);
-  const bool is_light = (settings.theme == LIGHT_THEME);
+  const bool is_light = !utils::isDarkTheme();
 
   QColor color = is_light ? palette[index].light : palette[index].dark;
   color.setAlpha(static_cast<int>(255 * decay));

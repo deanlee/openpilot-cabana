@@ -102,7 +102,7 @@ void BinaryModel::updateState() {
   }
 
   const double current_sec = StreamManager::stream()->currentSec();
-  const bool is_light_theme = (settings.theme == LIGHT_THEME);
+  const bool is_light_theme = !utils::isDarkTheme();
 
   for (size_t i = 0; i < binary.size(); ++i) {
     for (int j = 0; j < 8; ++j) {
