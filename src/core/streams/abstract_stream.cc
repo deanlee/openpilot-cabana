@@ -318,10 +318,14 @@ void AbstractStream::updateMessageMask(const MessageId& id, MessageState& state)
 
   const auto& dbc_mask = masks_[id];
   for (size_t i = 0; i < state.dat.size(); ++i) {
-    uint8_t m = (i < dbc_mask.size()) ? dbc_mask[i] : 0;
-    if (state.byte_states[i].is_suppressed) m = 0xFF;
+    uint8_t m = 0;
+    if (state.byte_states[i].is_suppressed) {
+      m = 0xFF;
+    } else if (i < dbc_mask.size()) {
+      m = dbc_mask[i];
+    }
 
-    state.ignore_bit_mask[i / 8] |= ((uint64_t)m << ((i % 8) * 8));
+    state.ignore_bit_mask[i / 8] |= (static_cast<uint64_t>(m) << ((i % 8) * 8));
 
     if (m == 0xFF) {
       state.bit_flips[i].fill(0);
