@@ -169,14 +169,19 @@ void MessageState::analyzeByteMutation(int i, uint8_t old_v, uint8_t new_v, uint
 
   // 4. Classification Hierarchy
   // Logic: Toggle > Trend > Noise > None
+  DataPattern new_pattern = DataPattern::None;
   if (is_toggle && s.trend_weight < LIMIT_TOGGLE) {
-    detected_patterns[i] = DataPattern::Toggle;
+    new_pattern = DataPattern::Toggle;
   } else if (s.trend_weight > LIMIT_TREND) {
-    detected_patterns[i] = (delta > 0) ? DataPattern::Increasing : DataPattern::Decreasing;
+    new_pattern = (delta > 0) ? DataPattern::Increasing : DataPattern::Decreasing;
   } else if (avg_entropy > ENTROPY_THRESHOLD || s.trend_weight > LIMIT_NOISY) {
-    detected_patterns[i] = DataPattern::RandomlyNoisy;
-  } else {
-    detected_patterns[i] = DataPattern::None;
+    new_pattern = DataPattern::RandomlyNoisy;
+  }
+
+  // If we found 'None', we keep the previous pattern so the color can
+  // fade out smoothly using the 'elapsed' timer.
+  if (new_pattern != DataPattern::None) {
+    detected_patterns[i] = new_pattern;
   }
 
   s.last_delta = delta;
@@ -193,7 +198,9 @@ void MessageState::updateAllPatternColors(double current_can_sec) {
 }
 
 uint32_t colorFromDataPattern(DataPattern pattern, double current_ts, double last_ts) {
-const double elapsed = std::max(0.0, current_ts - last_ts);
+  if (pattern == DataPattern::None) return 0x00000000;
+
+  const double elapsed = std::max(0.0, current_ts - last_ts);
   const double DECAY_TIME = 3.0;
 
   if (elapsed >= DECAY_TIME) return 0x00000000; // Fully transparent
