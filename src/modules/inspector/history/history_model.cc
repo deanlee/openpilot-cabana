@@ -18,9 +18,10 @@ QVariant MessageHistoryModel::data(const QModelIndex& index, int role) const {
     if (col == 0) return QString::number(StreamManager::stream()->toSeconds(m.mono_time), 'f', 3);
     if (isHexMode()) return {};  // Handled by delegate
 
-    if (col - 1 < (int)m.sig_values.size()) {
-      return sigs[col - 1].sig->formatValue(m.sig_values[col - 1], false);
-    };
+    const int sig_idx = col - 1;
+    if (sig_idx < (int)m.sig_values.size()) {
+      return sigs[sig_idx].sig->formatValue(m.sig_values[sig_idx], false);
+    }
   } else if (role == ColumnTypeRole::IsHexColumn) {
     return isHexMode() && col == 1;
   }
