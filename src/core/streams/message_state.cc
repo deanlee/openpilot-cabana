@@ -72,7 +72,7 @@ void MessageState::update(const MessageId& msg_id, const uint8_t* new_data, int 
     return;
   }
 
-  // 3. Process changes in 8-byte blocks (using bitwise shifts for speed/safety)
+  // 3. Sparse Byte Scanning (Jumps directly to changed bytes)
   const int num_blocks = (size + 7) / 8;
   for (int b = 0; b < num_blocks; ++b) {
     const int offset = b * 8;
@@ -81,18 +81,22 @@ void MessageState::update(const MessageId& msg_id, const uint8_t* new_data, int 
     uint64_t cur_64 = 0;
     std::memcpy(&cur_64, new_data + offset, bytes_in_block);
 
-    const uint64_t diff_64 = (cur_64 ^ last_data_64[b]) & ~ignore_bit_mask[b];
+    uint64_t diff_64 = (cur_64 ^ last_data_64[b]) & ~ignore_bit_mask[b];
 
-    if (diff_64 != 0) {
-      for (int i = 0; i < bytes_in_block; ++i) {
-        const uint8_t byte_diff = static_cast<uint8_t>((diff_64 >> (i * 8)) & 0xFF);
+    while (diff_64 != 0) {
+      // Hardware-accelerated "jump" to the next changed byte
+      int first_bit = __builtin_ctzll(diff_64);
+      int byte_offset = first_bit / 8;
+      int idx = offset + byte_offset;
 
-        if (byte_diff) {
-          const int idx = offset + i;
-          analyzeByteMutation(idx, dat[idx], new_data[idx], byte_diff, current_ts);
-          dat[idx] = new_data[idx];
-        }
+      if (byte_offset < bytes_in_block) {
+        uint8_t byte_diff = static_cast<uint8_t>((diff_64 >> (byte_offset * 8)) & 0xFF);
+        analyzeByteMutation(idx, dat[idx], new_data[idx], byte_diff, current_ts);
+        dat[idx] = new_data[idx];
       }
+
+      // Clear the processed byte's bits in the diff mask
+      diff_64 &= ~(0xFFULL << (byte_offset * 8));
     }
     last_data_64[b] = cur_64;
   }
@@ -113,11 +117,31 @@ void MessageState::analyzeByteMutation(int i, uint8_t old_v, uint8_t new_v, uint
   auto& s = byte_states[i];
   const int delta = static_cast<int>(new_v) - static_cast<int>(old_v);
 
-  // 1. Bit-level Analytics
-  for (int bit = 0; bit < 8; ++bit) {
-    if ((new_v >> bit) & 1) bit_high_counts[i][7 - bit]++;
-    if ((diff >> bit) & 1) bit_flips[i][7 - bit]++;
-  }
+  auto* const h_ptr = &bit_high_counts[i][0];
+  auto* const f_ptr = &bit_flips[i][0];
+
+  // Use local variables to allow the compiler to use registers instead of
+  // hitting the cache 16 times in a row.
+  uint8_t nv = new_v;
+  uint8_t df = diff;
+
+  h_ptr[7] += (nv >> 0) & 1;
+  h_ptr[6] += (nv >> 1) & 1;
+  h_ptr[5] += (nv >> 2) & 1;
+  h_ptr[4] += (nv >> 3) & 1;
+  h_ptr[3] += (nv >> 4) & 1;
+  h_ptr[2] += (nv >> 5) & 1;
+  h_ptr[1] += (nv >> 6) & 1;
+  h_ptr[0] += (nv >> 7) & 1;
+
+  f_ptr[7] += (df >> 0) & 1;
+  f_ptr[6] += (df >> 1) & 1;
+  f_ptr[5] += (df >> 2) & 1;
+  f_ptr[4] += (df >> 3) & 1;
+  f_ptr[3] += (df >> 4) & 1;
+  f_ptr[2] += (df >> 5) & 1;
+  f_ptr[1] += (df >> 6) & 1;
+  f_ptr[0] += (df >> 7) & 1;
 
   // 2. Entropy Analysis (Shannon Entropy)
   double total_entropy = 0.0;
