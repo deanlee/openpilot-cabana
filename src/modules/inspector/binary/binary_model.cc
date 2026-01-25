@@ -1,8 +1,10 @@
 #include "binary_model.h"
 
+#include <QApplication>
+#include <QDebug>
+#include <QPalette>
 #include <algorithm>
 #include <cmath>
-#include <QDebug>
 
 #include "core/streams/message_state.h"
 #include "modules/settings/settings.h"
@@ -103,6 +105,8 @@ void BinaryModel::updateState() {
 
   const double current_sec = StreamManager::stream()->currentSec();
   const bool is_light_theme = !utils::isDarkTheme();
+  const QColor base_bg = qApp->palette().color(QPalette::Base);
+  const float log_max = std::log2(static_cast<float>(max_bit_flip_count) + 1.0f);
   int first_dirty = -1, last_dirty = -1;
 
   for (size_t i = 0; i < binary.size(); ++i) {
@@ -113,7 +117,7 @@ void BinaryModel::updateState() {
       int bit_val = (byte_val >> (7 - j)) & 1;
 
       // Calculate color based on heat
-      QColor bit_color = calculateBitHeatColor(item, bit_flips[i][j], max_bit_flip_count, is_light_theme);
+      QColor bit_color = calculateBitHeatColor(item, bit_flips[i][j], log_max, is_light_theme, base_bg);
       row_changed |= updateItem(i, j, bit_val, bit_color);
     }
 
@@ -131,44 +135,49 @@ void BinaryModel::updateState() {
   }
 }
 
-QColor BinaryModel::calculateBitHeatColor(Item& item, uint32_t flips, uint32_t max_flips, bool is_light) {
+QColor BinaryModel::calculateBitHeatColor(Item& item, uint32_t flips, float log_max,
+                                          bool is_light, const QColor& base_bg) {
   const bool is_in_signal = !item.sigs.empty();
 
-  // 1. Static Case (No activity)
   if (flips == 0) {
     item.intensity = 0.0f;
+    item.last_flips = 0;
     if (!is_in_signal) return Qt::transparent;
-    return QColor(128, 128, 128, is_light ? 40 : 25);
+
+    QColor c = item.sigs.back()->color;
+    c.setAlpha(is_light ? 45 : 30);
+    return c;
   }
 
-  // 2. Update Intensity Cache (Log Scale)
-  // Only recalculate log if the flip count actually changed
+  // Calculate Heat using Log2 for a smooth UI transition
   if (flips != item.last_flips) {
-    const float log_max = std::log2(static_cast<float>(max_flips) + 1.0f);
     float target = std::clamp(std::log2(static_cast<float>(flips) + 1.0f) / log_max, 0.0f, 1.0f);
-
-    // Instant jump for new activity, or keep existing if higher
     item.intensity = std::max(item.intensity, target);
     item.last_flips = flips;
   } else {
-    // FADE EFFECT: Gradually reduce intensity if no new flips occurred
     item.intensity *= 0.95f;
   }
 
-  if (item.intensity < 0.01f) return is_in_signal ? QColor(128, 128, 128, is_light ? 40 : 25) : Qt::transparent;
+  float i = item.intensity;
 
-  // 3. Optimized RGB Blending (Avoids HSV conversion)
-  QColor start = is_in_signal ? item.sigs.back()->color : (is_light ? Qt::white : Qt::black);
-  QColor hot = is_light ? Qt::red : QColor(255, 100, 100);  // Bright red highlight
+  if (is_in_signal) {
+    // 100% Signal Color Respect: Only modify Alpha and Brightness
+    QColor c = item.sigs.back()->color;
+    c.setAlpha(static_cast<int>(100 + (155 * i)));
 
-  auto lerp = [](int a, int b, float i) { return static_cast<int>(a + (b - a) * i); };
+    // Use .lighter() for glow to avoid shifting hue to Red/White
+    return (i > 0.6f) ? c.lighter(100 + static_cast<int>(40 * (i - 0.6f))) : c;
+  } else {
+    // Standard Heatmap for empty space: Blend Window Background -> Red/Coral
+    QColor hot = is_light ? Qt::red : QColor(255, 100, 100);
+    float inv_i = 1.0f - i;
 
-  int r = lerp(start.red(), hot.red(), item.intensity);
-  int g = lerp(start.green(), hot.green(), item.intensity);
-  int b = lerp(start.blue(), hot.blue(), item.intensity);
-  int a = is_light ? lerp(100, 255, item.intensity) : lerp(140, 255, item.intensity);
-
-  return QColor(r, g, b, a);
+    return QColor(
+        static_cast<int>(base_bg.red() * inv_i + hot.red() * i),
+        static_cast<int>(base_bg.green() * inv_i + hot.green() * i),
+        static_cast<int>(base_bg.blue() * inv_i + hot.blue() * i),
+        static_cast<int>((is_light ? 40 : 60) * inv_i + 220 * i));
+  }
 }
 
 const std::vector<std::array<uint32_t, 8>> &BinaryModel::getBitFlipChanges(size_t msg_size) {

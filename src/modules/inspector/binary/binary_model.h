@@ -59,7 +59,8 @@ class BinaryModel : public QAbstractTableModel {
   int row_count = 0;
   const int column_count = 9;
 
-  QColor calculateBitHeatColor(Item& item, uint32_t flips, uint32_t max_flips, bool is_light);
+  QColor calculateBitHeatColor(Item& item, uint32_t flips, float log_max,
+                               bool is_light, const QColor& base_bg);
   bool updateItem(int row, int col, uint8_t val, const QColor& color);
 };
 

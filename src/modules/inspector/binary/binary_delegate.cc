@@ -95,10 +95,8 @@ void MessageBytesDelegate::drawSignalCell(QPainter* painter, const QStyleOptionV
   }
 
   // Fill and Borders
-  QColor fill = sig->color;
-  fill.setAlpha(item->bg_color.alpha());
   painter->fillRect(rc, option.palette.base());
-  painter->fillRect(rc, fill);
+  painter->fillRect(rc, item->bg_color);
 
   auto color = sig->color.darker(125);
   painter->setPen(QPen(color, 1));
