@@ -151,8 +151,10 @@ void MessageHistoryModel::fetchData(std::deque<Message>::iterator insert_pos, ui
   std::vector<MessageHistoryModel::Message> msgs;
   std::vector<double> values(sigs.size());
   msgs.reserve(batch_size);
-  for (; first != events.rend() && (*first)->mono_time > min_time; ++first) {
+  for (; first != events.rend(); ++first) {
     const CanEvent *e = *first;
+    if (e->mono_time <= min_time) break;
+
     for (int i = 0; i < sigs.size(); ++i) {
       sigs[i].sig->getValue(e->dat, e->size, &values[i]);
     }
