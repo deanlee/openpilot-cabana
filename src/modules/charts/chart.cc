@@ -8,6 +8,7 @@
 #include <QStyle>
 
 #include "widgets/common.h"
+#include "widgets/tool_button.h"
 
 Chart::Chart(QChartView* parent) : parent_(parent), QChart() {
   setBackgroundVisible(false);

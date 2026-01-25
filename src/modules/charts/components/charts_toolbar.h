@@ -9,6 +9,7 @@
 
 #include "modules/system/stream_manager.h"
 #include "widgets/common.h"
+#include "widgets/tool_button.h"
 
 constexpr int MAX_COLUMN_COUNT = 4;
 

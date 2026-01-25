@@ -14,6 +14,7 @@
 #include "modules/system/stream_manager.h"
 #include "tools/routeinfo.h"
 #include "widgets/common.h"
+#include "widgets/tool_button.h"
 
 static Replay *getReplay() {
   auto stream = qobject_cast<ReplayStream *>(StreamManager::stream());

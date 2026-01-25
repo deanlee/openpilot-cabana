@@ -11,7 +11,7 @@
 #include "core/commands/commands.h"
 #include "modules/settings/settings.h"
 #include "modules/system/stream_manager.h"
-#include "widgets/common.h"
+#include "widgets/tool_button.h"
 
 MessageList::MessageList(QWidget *parent) : menu(new QMenu(this)), QWidget(parent) {
   QVBoxLayout *main_layout = new QVBoxLayout(this);

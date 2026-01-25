@@ -5,12 +5,12 @@
 #include <QTableView>
 #include <QWheelEvent>
 
-#include "common.h"
 #include "core/streams/abstract_stream.h"
 #include "history_header.h"
 #include "history_model.h"
 #include "modules/message_list/message_delegate.h"
 #include "widgets/debounced_line_edit.h"
+#include "widgets/tool_button.h"
 
 class MessageHistory : public QFrame {
   Q_OBJECT
