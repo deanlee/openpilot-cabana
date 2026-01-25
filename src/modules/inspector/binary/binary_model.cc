@@ -121,7 +121,8 @@ void BinaryModel::updateState() {
     }
 
     // The 9th column (index 8) remains the Byte Value with the Trend Color
-    row_changed |= updateItem(i, 8, byte_val, QColor::fromRgba(last_msg->colors[i]));
+    QColor byte_color = i < last_msg->colors.size() ? QColor::fromRgba(last_msg->colors[i]) : base_bg;
+    row_changed |= updateItem(i, 8, byte_val, byte_color);
 
     if (row_changed) {
       if (first_dirty == -1) first_dirty = i;
