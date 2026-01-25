@@ -19,7 +19,7 @@ static constexpr int LIMIT_NOISY = 60;
 static constexpr int LIMIT_TOGGLE = 100;
 static constexpr int LIMIT_TREND = 160;
 
-static constexpr double ALPHA_DECAY_SECONDS = 1.5;
+// static constexpr double ALPHA_DECAY_SECONDS = 1.5;
 static constexpr double ENTROPY_THRESHOLD = 0.85;  // Above this, it's considered "Noisy"
 static constexpr int MIN_SAMPLES_FOR_ENTROPY = 16;
 
@@ -171,25 +171,29 @@ void MessageState::updateAllPatternColors(double current_can_sec) {
 }
 
 QColor colorFromDataPattern(DataPattern pattern, double current_ts, double last_ts) {
-  const double elapsed = current_ts - last_ts;
-  const double decay = 1.0 - (elapsed / ALPHA_DECAY_SECONDS);
+  const double elapsed = std::max(0.0, current_ts - last_ts);
+  const double DECAY_TIME = 3.0;
 
-  if (decay <= 0) return Qt::transparent;
+  if (elapsed >= DECAY_TIME) return Qt::transparent;
 
-  struct ThemeColors { QColor light, dark; };
+  // Use a non-linear decay so the color stays "bright" longer before fading
+  double intensity = std::cos((elapsed / DECAY_TIME) * (M_PI / 2.0));
+
+  struct ThemeColors {
+    QColor light, dark;
+  };
   static const ThemeColors palette[] = {
-    {{100, 100, 100}, {180, 180, 180}}, // Static/None (Index 0)
-    {{0, 120, 215},   {0, 180, 255}},   // Increasing
-    {{200, 0, 0},     {255, 60, 60}},    // Decreasing
-    {{190, 140, 0},   {255, 230, 0}},    // Toggle
-    {{120, 60, 200},  {170, 100, 255}}   // RandomlyNoisy
+      {{200, 200, 200}, {80, 80, 80}},   // None: Neutral grey
+      {{46, 204, 113}, {39, 174, 96}},   // Increasing: Vibrant Green
+      {{231, 76, 60}, {192, 57, 43}},    // Decreasing: Soft Red
+      {{241, 196, 15}, {243, 156, 18}},  // Toggle: Amber/Yellow
+      {{155, 89, 182}, {142, 68, 173}}   // Noisy: Deep Purple
   };
 
   const int index = std::clamp(static_cast<int>(pattern), 0, 4);
-  const bool is_light = !utils::isDarkTheme();
+  QColor color = utils::isDarkTheme() ? palette[index].dark : palette[index].light;
 
-  QColor color = is_light ? palette[index].light : palette[index].dark;
-  color.setAlpha(static_cast<int>(255 * decay));
-
+  // Set Alpha based on intensity
+  color.setAlpha(static_cast<int>(200 * intensity));  // Max alpha 200 for readability
   return color;
 }
