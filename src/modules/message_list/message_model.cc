@@ -187,7 +187,7 @@ bool MessageModel::rebuild() {
   snapshot_addrs.reserve(snapshots.size());
 
   // Helper: Builds item, matches against filters, and moves to vector
-  auto processItem = [&](const MessageId& id, const dbc::Msg *msg, const MessageState* data) {
+  auto processItem = [&](const MessageId& id, const dbc::Msg *msg, const MessageSnapshot* data) {
     Item item = {
         .id = id,
         .name = msg ? msg->name : DASH,

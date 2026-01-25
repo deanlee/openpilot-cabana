@@ -41,7 +41,7 @@ public:
     MessageId id;
     QString name;
     QString node;
-    const MessageState* data = nullptr;
+    const MessageSnapshot* data = nullptr;
     QString address_hex;
     mutable float last_freq = -1.0f;
     mutable QString freq_str;

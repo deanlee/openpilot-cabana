@@ -183,12 +183,6 @@ void MessageState::analyzeByteMutation(int i, uint8_t old_v, uint8_t new_v, uint
   s.last_change_ts = current_ts;
 }
 
-QColor MessageState::getPatternColor(int idx, double current_ts) const {
-  if (idx >= byte_states.size()) return QColor(0, 0, 0, 0);
-
-  return colorFromDataPattern(detected_patterns[idx], current_ts, byte_states[idx].last_change_ts);
-}
-
 void MessageState::updateAllPatternColors(double current_can_sec) {
   if (colors.size() != byte_states.size()) {
     colors.resize(byte_states.size());
@@ -198,30 +192,30 @@ void MessageState::updateAllPatternColors(double current_can_sec) {
   }
 }
 
-QColor colorFromDataPattern(DataPattern pattern, double current_ts, double last_ts) {
-  const double elapsed = std::max(0.0, current_ts - last_ts);
+uint32_t colorFromDataPattern(DataPattern pattern, double current_ts, double last_ts) {
+const double elapsed = std::max(0.0, current_ts - last_ts);
   const double DECAY_TIME = 3.0;
 
-  if (elapsed >= DECAY_TIME) return Qt::transparent;
+  if (elapsed >= DECAY_TIME) return 0x00000000; // Fully transparent
 
-  // Use a non-linear decay so the color stays "bright" longer before fading
-  double intensity = std::cos((elapsed / DECAY_TIME) * (M_PI / 2.0));
+  // Non-linear decay (Alpha stays higher for longer)
+  float intensity = static_cast<float>(std::cos((elapsed / DECAY_TIME) * (1.5707963))); // PI / 2
+  uint32_t alpha = static_cast<uint32_t>(200 * intensity);
 
-  struct ThemeColors {
-    QColor light, dark;
-  };
+  struct RGB { uint8_t r, g, b; };
+  struct ThemeColors { RGB light, dark; };
+
   static const ThemeColors palette[] = {
-      {{200, 200, 200}, {80, 80, 80}},   // None: Neutral grey
-      {{46, 204, 113}, {39, 174, 96}},   // Increasing: Vibrant Green
-      {{231, 76, 60}, {192, 57, 43}},    // Decreasing: Soft Red
-      {{241, 196, 15}, {243, 156, 18}},  // Toggle: Amber/Yellow
-      {{155, 89, 182}, {142, 68, 173}}   // Noisy: Deep Purple
+      {{200, 200, 200}, {80, 80, 80}},   // None
+      {{46, 204, 113}, {39, 174, 96}},   // Increasing
+      {{231, 76, 60}, {192, 57, 43}},    // Decreasing
+      {{241, 196, 15}, {243, 156, 18}},  // Toggle
+      {{155, 89, 182}, {142, 68, 173}}   // Noisy
   };
 
   const int index = std::clamp(static_cast<int>(pattern), 0, 4);
-  QColor color = utils::isDarkTheme() ? palette[index].dark : palette[index].light;
+  const RGB& rgb = utils::isDarkTheme() ? palette[index].dark : palette[index].light;
 
-  // Set Alpha based on intensity
-  color.setAlpha(static_cast<int>(200 * intensity));  // Max alpha 200 for readability
-  return color;
+  // Manual bit-shift construction: 0xAARRGGBB
+  return (alpha << 24) | (rgb.r << 16) | (rgb.g << 8) | rgb.b;
 }

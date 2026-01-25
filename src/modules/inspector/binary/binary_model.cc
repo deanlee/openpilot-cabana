@@ -103,7 +103,6 @@ void BinaryModel::updateState() {
     }
   }
 
-  const double current_sec = StreamManager::stream()->currentSec();
   const bool is_light_theme = !utils::isDarkTheme();
   const QColor base_bg = qApp->palette().color(QPalette::Base);
   const float log_max = std::log2(static_cast<float>(max_bit_flip_count) + 1.0f);
@@ -122,7 +121,7 @@ void BinaryModel::updateState() {
     }
 
     // The 9th column (index 8) remains the Byte Value with the Trend Color
-    row_changed |= updateItem(i, 8, byte_val, last_msg->getPatternColor(i, current_sec));
+    row_changed |= updateItem(i, 8, byte_val, QColor::fromRgba(last_msg->colors[i]));
 
     if (row_changed) {
       if (first_dirty == -1) first_dirty = i;

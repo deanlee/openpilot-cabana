@@ -37,6 +37,21 @@ struct CompareCanEvent {
   }
 };
 
+class MessageSnapshot {
+ public:
+  MessageSnapshot() = default;
+  MessageSnapshot(const MessageState& s)
+      : ts(s.ts), dat(s.dat), colors(s.colors), freq(s.freq), count(s.count), is_active(s.is_active), bit_flips(s.bit_flips) {}
+
+  double ts = 0.0;
+  double freq = 0.0;
+  uint32_t count = 0;
+  bool is_active = false;
+  std::vector<uint8_t> dat;
+  std::vector<uint32_t> colors;
+  std::vector<std::array<uint32_t, 8>> bit_flips;
+};
+
 using MessageEventsMap = std::unordered_map<MessageId, std::vector<const CanEvent *>>;
 using CanEventIter = std::vector<const CanEvent *>::const_iterator;
 
@@ -66,10 +81,10 @@ public:
   inline uint64_t toMonoTime(double sec) const { return beginMonoTime() + std::max(sec, 0.0) * 1e9; }
   inline double toSeconds(uint64_t mono_time) const { return std::max(0.0, (mono_time - beginMonoTime()) / 1e9); }
 
-  inline const std::unordered_map<MessageId, std::unique_ptr<MessageState>> &snapshots() const { return snapshot_map_; }
+  inline const std::unordered_map<MessageId, std::unique_ptr<MessageSnapshot>> &snapshots() const { return snapshot_map_; }
   inline const MessageEventsMap &eventsMap() const { return events_; }
   inline const std::vector<const CanEvent *> &allEvents() const { return all_events_; }
-  const MessageState* snapshot(const MessageId& id) const;
+  const MessageSnapshot* snapshot(const MessageId& id) const;
   const std::vector<const CanEvent *> &events(const MessageId &id) const;
   std::pair<CanEventIter, CanEventIter> eventsInRange(const MessageId &id, std::optional<std::pair<double, double>> time_range) const;
 
@@ -93,6 +108,7 @@ public:
   SourceSet sources;
 
 protected:
+  void notifyUpdateSnapshots();
   void mergeEvents(const std::vector<const CanEvent *> &events);
   const CanEvent *newEvent(uint64_t mono_time, const cereal::CanData::Reader &c);
   void processNewMessage(const MessageId &id, double sec, const uint8_t *data, uint8_t size);
@@ -109,7 +125,7 @@ private:
   void updateActiveStates();
 
   MessageEventsMap events_;
-  std::unordered_map<MessageId, std::unique_ptr<MessageState>> snapshot_map_;
+  std::unordered_map<MessageId, std::unique_ptr<MessageSnapshot>> snapshot_map_;
   std::unique_ptr<MonotonicBuffer> event_buffer_;
 
   // Members accessed in multiple threads. (mutex protected)

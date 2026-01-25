@@ -36,7 +36,7 @@ public:
     uint64_t mono_time = 0;
     std::vector<double> sig_values;
     std::vector<uint8_t> data;
-    std::vector<QColor> colors;
+    std::vector<uint32_t> colors;
   };
 
   struct SignalColumn {

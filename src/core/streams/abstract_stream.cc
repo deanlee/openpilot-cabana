@@ -75,16 +75,21 @@ void AbstractStream::clearSuppressed() {
 }
 
 void AbstractStream::commitSnapshots() {
-  std::vector<std::pair<MessageId, MessageState>> snapshots;
+  std::vector<std::pair<MessageId, MessageSnapshot>> snapshots;
   std::set<MessageId> msgs;
 
   {
     std::lock_guard lk(mutex_);
     if (dirty_ids_.empty()) return;
 
+    // Pass 2: Generate snapshots with the correct, synchronized time
     snapshots.reserve(dirty_ids_.size());
     for (const auto& id : dirty_ids_) {
-      snapshots.emplace_back(id, master_state_[id]);
+      auto& state = master_state_[id];
+        snapshots.emplace_back(
+            std::piecewise_construct,
+            std::forward_as_tuple(id),
+            std::forward_as_tuple(state));
     }
     msgs = std::move(dirty_ids_);
   }
@@ -92,14 +97,13 @@ void AbstractStream::commitSnapshots() {
   bool structure_changed = false;
   const size_t prev_src_count = sources.size();
 
-  for (auto& [id, data] : snapshots) {
-    current_sec_ = std::max(current_sec_, data.ts);
-    data.updateAllPatternColors(current_sec_);
+  for (auto& [id, snap] : snapshots) {
+    current_sec_ = std::max(current_sec_, snap.ts);
     auto& target = snapshot_map_[id];
     if (target) {
-      *target = std::move(data);
+      *target = std::move(snap);
     } else {
-      target = std::make_unique<MessageState>(std::move(data));
+      target = std::make_unique<MessageSnapshot>(std::move(snap));
       structure_changed = true;
     }
 
@@ -150,8 +154,8 @@ const std::vector<const CanEvent *> &AbstractStream::events(const MessageId &id)
   return it != events_.end() ? it->second : empty_events;
 }
 
-const MessageState *AbstractStream::snapshot(const MessageId &id) const {
-  static MessageState empty_data = {};
+const MessageSnapshot *AbstractStream::snapshot(const MessageId &id) const {
+  static MessageSnapshot empty_data = {};
   auto it = snapshot_map_.find(id);
   return it != snapshot_map_.end() ? it->second.get() : &empty_data;
 }
@@ -175,7 +179,6 @@ void AbstractStream::updateSnapshotsTo(double sec) {
   uint64_t last_ts = toMonoTime(sec);
   std::unordered_map<MessageId, MessageState> next_state;
   next_state.reserve(events_.size());
-
   bool id_changed = false;
 
   for (const auto& [id, ev] : events_) {
@@ -186,59 +189,53 @@ void AbstractStream::updateSnapshotsTo(double sec) {
     }
 
     auto it = std::upper_bound(ev.begin() + s_min, ev.begin() + s_max, last_ts, CompareCanEvent());
-
     if (it == ev.begin()) continue;
 
     auto& m = next_state[id];
     const CanEvent* prev_ev = *std::prev(it);
 
-    // Carry over suppression, frequency, and mask state from previous snapshot for this message ID.
-    // This ensures byte suppression and mask settings persist across timeline seeks.
     if (auto old_it = master_state_.find(id); old_it != master_state_.end()) {
       m.freq = old_it->second.freq;
       m.ignore_bit_mask = old_it->second.ignore_bit_mask;
-      const auto& old_bytes = old_it->second.byte_states;
-      m.byte_states.resize(old_bytes.size());
-      for (size_t i = 0; i < old_bytes.size(); ++i) {
-        m.byte_states[i].is_suppressed = old_bytes[i].is_suppressed;
+      m.byte_states.resize(old_it->second.byte_states.size());
+      for (size_t i = 0; i < m.byte_states.size(); ++i) {
+        m.byte_states[i].is_suppressed = old_it->second.byte_states[i].is_suppressed;
       }
     }
 
     m.update(id, prev_ev->dat, prev_ev->size, toSeconds(prev_ev->mono_time), getSpeed());
     m.count = std::distance(ev.begin(), it);
+    m.updateAllPatternColors(sec); // Important: Update colors before snapshotting
 
     auto& snap_ptr = snapshot_map_[id];
+    // Create snapshot from the updated MessageState 'm'
+    auto snap = std::make_unique<MessageSnapshot>(m);
+
     if (!snap_ptr) {
-      snap_ptr = std::make_unique<MessageState>(m);
+      snap_ptr = std::move(snap);
       id_changed = true;
     } else {
-      *snap_ptr = m;
+      *snap_ptr = std::move(*snap);
     }
   }
 
-  // Handle ID lifecycle (newly appeared or disappeared messages)
-  if (!id_changed && next_state.size() != snapshot_map_.size()) {
-    id_changed = true;
-  }
-
+  // Lifecycle cleanup for IDs that no longer exist in this timeframe
+  if (next_state.size() != snapshot_map_.size()) id_changed = true;
   if (id_changed) {
     for (auto it = snapshot_map_.begin(); it != snapshot_map_.end();) {
-      if (next_state.find(it->first) == next_state.end()) {
-        it = snapshot_map_.erase(it);
-      } else {
-        ++it;
-      }
+      if (next_state.find(it->first) == next_state.end()) it = snapshot_map_.erase(it);
+      else ++it;
     }
   }
 
   dirty_ids_.clear();
-  master_state_ = std::move(next_state);
-
-  emit snapshotsUpdated(nullptr, id_changed);
-
-  std::lock_guard lk(mutex_);
-  seek_finished_ = true;
+  {
+    std::lock_guard lk(mutex_);
+    master_state_ = std::move(next_state);
+    seek_finished_ = true;
+  }
   seek_finished_cv_.notify_one();
+  emit snapshotsUpdated(nullptr, id_changed);
 }
 
 void AbstractStream::waitForSeekFinshed() {
@@ -332,4 +329,15 @@ void AbstractStream::updateMessageMask(const MessageId& id, MessageState& state)
       state.bit_high_counts[i].fill(0);
     }
   }
+}
+
+void AbstractStream::notifyUpdateSnapshots() {
+  double latest_msg_ts = 0;
+  for (const auto &id : dirty_ids_) {
+    latest_msg_ts = std::max(latest_msg_ts, master_state_[id].ts);
+  }
+  for (const auto &id : dirty_ids_) {
+    master_state_[id].updateAllPatternColors(latest_msg_ts);
+  }
+  emit privateUpdateLastMsgsSignal();
 }

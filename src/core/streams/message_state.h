@@ -1,7 +1,6 @@
 
 #pragma once
 
-#include <QColor>
 #include <array>
 #include <vector>
 
@@ -27,7 +26,6 @@ class MessageState {
   void init(const uint8_t* new_data, int size, double current_ts);
   void update(const MessageId& msg_id, const uint8_t* new_data, int size,
               double current_ts, double playback_speed, double manual_freq = 0);
-  QColor getPatternColor(int idx, double current_ts) const;
   void updateAllPatternColors(double current_ts);
 
   double ts = 0.0;     // Latest message timestamp
@@ -40,7 +38,7 @@ class MessageState {
 
   std::vector<uint8_t> dat;                        // Raw payload
   std::vector<ByteState> byte_states;              // Per-byte activity tracking
-  mutable std::vector<QColor> colors;
+  mutable std::vector<uint32_t> colors;
   std::vector<std::array<uint32_t, 8>> bit_flips;  // Cumulative bit toggle counts
   std::vector<std::array<uint32_t, 8>> bit_high_counts;
   std::vector<DataPattern> detected_patterns;
@@ -50,4 +48,4 @@ class MessageState {
   double last_freq_ts = 0;
 };
 
-QColor colorFromDataPattern(DataPattern pattern, double current_ts, double last_ts);
+uint32_t colorFromDataPattern(DataPattern pattern, double current_ts, double last_ts);

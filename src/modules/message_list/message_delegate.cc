@@ -12,7 +12,7 @@
 namespace {
 struct MessageDataRef {
   const std::vector<uint8_t>* bytes = nullptr;
-  const std::vector<QColor>* colors = nullptr;
+  const std::vector<uint32_t>* colors = nullptr;
 };
 
 MessageDataRef getDataRef(CallerType type, const QModelIndex& index) {
@@ -86,10 +86,11 @@ void MessageDelegate::paint(QPainter* painter, const QStyleOptionViewItem& optio
     int row = !multiple_lines ? 0 : i / 8;
     int col = !multiple_lines ? i : i % 8;
     QRect r(pt.x() + (col * b_width), pt.y() + (row * b_height), b_width, b_height);
-
-    // Byte-specific background (e.g., green/red change indicators)
-    if (i < colors.size() && colors[i].alpha() > 1) {
-      painter->fillRect(r, colors[i]);
+    if (i < colors.size()) {
+      uint32_t argb = colors[i];
+      if ((argb >> 24) > 1) {
+        painter->fillRect(r, QColor::fromRgba(argb));
+      }
     }
     utils::drawStaticText(painter, r, hex_text_table[bytes[i]]);
   }

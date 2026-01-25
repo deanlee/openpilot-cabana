@@ -221,7 +221,7 @@ void SignalEditor::updateState(const std::set<MessageId>* msgs) {
   emit model->dataChanged(model->index(first_v.row(), 1), model->index(last_v.row(), 1), {Qt::DisplayRole});
 }
 
-int SignalEditor::getValueColumnWidth(const MessageState* msg) {
+int SignalEditor::getValueColumnWidth(const MessageSnapshot* msg) {
   static int digit_w = QFontMetrics(delegate->value_font).horizontalAdvance('0');
   static int minmax_digit_w = QFontMetrics(delegate->minmax_font).horizontalAdvance('0');
 
