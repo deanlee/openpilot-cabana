@@ -155,6 +155,17 @@ If you run Cabana without any arguments, a stream selector dialog will pop up, a
 cabana
 ```
 
+## Binary Activity Analysis
+
+Cabana performs real-time statistical analysis on every byte to help you identify data patterns at a glance.
+
+| Color | Pattern | Meaning |
+| :--- | :--- | :--- |
+| 🟩 **Green** | **Increasing** | Detected when a byte value is steadily climbing (e.g., a counter). |
+| 🟥 **Red** | **Decreasing** | Detected when a byte value is steadily dropping. |
+| 🟧 **Amber** | **Toggle** | Identifies bits flipping back and forth between states (e.g., flags). |
+| 🟪 **Purple** | **Noisy** | High-entropy data with no discernible trend (e.g., CRC/Encryption). |
+| ⬜ **Grey** | **Static** | Indicates data is currently inactive or hasn't changed recently. |
 
 ## Contributors
 
