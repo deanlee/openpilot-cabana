@@ -75,23 +75,23 @@ void MessageState::update(const MessageId& msg_id, const uint8_t* new_data, int 
   // 3. Process changes in 8-byte blocks (using bitwise shifts for speed/safety)
   const int num_blocks = (size + 7) / 8;
   for (int b = 0; b < num_blocks; ++b) {
-    uint64_t cur_64 = 0;
     const int offset = b * 8;
     const int bytes_in_block = std::min(8, size - offset);
+
+    uint64_t cur_64 = 0;
     std::memcpy(&cur_64, new_data + offset, bytes_in_block);
 
     const uint64_t diff_64 = (cur_64 ^ last_data_64[b]) & ~ignore_bit_mask[b];
 
     if (diff_64 != 0) {
       for (int i = 0; i < bytes_in_block; ++i) {
-        const int idx = offset + i;
         const uint8_t byte_diff = static_cast<uint8_t>((diff_64 >> (i * 8)) & 0xFF);
 
         if (byte_diff) {
-          const uint8_t old_v = static_cast<uint8_t>((last_data_64[b] >> (i * 8)) & 0xFF);
-          analyzeByteMutation(idx, old_v, new_data[idx], byte_diff, current_ts);
+          const int idx = offset + i;
+          analyzeByteMutation(idx, dat[idx], new_data[idx], byte_diff, current_ts);
+          dat[idx] = new_data[idx];
         }
-        dat[idx] = new_data[idx];
       }
     }
     last_data_64[b] = cur_64;
