@@ -128,24 +128,28 @@ void MessageState::analyzeByteMutation(int i, uint8_t old_v, uint8_t new_v, uint
 
   // 3. Behavior & Trend Detection
   const bool is_toggle = (delta == -s.last_delta) && (delta != 0);
+  const bool is_constant_step = (delta == s.last_delta) && (delta != 0);
   const bool same_direction = (delta > 0) == (s.last_delta > 0);
 
-  if (is_toggle) {
-    s.trend_weight = std::max(0, s.trend_weight - TOGGLE_DECAY);
+ if (is_constant_step) {
+    // Strongest indicator of a counter
+    s.trend_weight = std::min(TREND_MAX, s.trend_weight + (TREND_INC * 2));
   } else if (delta != 0 && same_direction) {
     s.trend_weight = std::min(TREND_MAX, s.trend_weight + TREND_INC);
+  } else if (is_toggle) {
+    // Toggles are distinct from trends; reduce trend weight to allow Toggle classification
+    s.trend_weight = std::max(0, s.trend_weight - TOGGLE_DECAY);
   } else {
     s.trend_weight = std::max(0, s.trend_weight - JITTER_DECAY);
   }
 
   // 4. Classification Hierarchy
-  if (avg_entropy > ENTROPY_THRESHOLD) {
-    detected_patterns[i] = DataPattern::RandomlyNoisy;
-  } else if (is_toggle && s.trend_weight < LIMIT_TOGGLE) {
+  // Logic: Toggle > Trend > Noise > None
+  if (is_toggle && s.trend_weight < LIMIT_TOGGLE) {
     detected_patterns[i] = DataPattern::Toggle;
   } else if (s.trend_weight > LIMIT_TREND) {
     detected_patterns[i] = (delta > 0) ? DataPattern::Increasing : DataPattern::Decreasing;
-  } else if (s.trend_weight > LIMIT_NOISY) {
+  } else if (avg_entropy > ENTROPY_THRESHOLD || s.trend_weight > LIMIT_NOISY) {
     detected_patterns[i] = DataPattern::RandomlyNoisy;
   } else {
     detected_patterns[i] = DataPattern::None;
