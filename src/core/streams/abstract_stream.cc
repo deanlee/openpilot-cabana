@@ -82,7 +82,6 @@ void AbstractStream::commitSnapshots() {
     std::lock_guard lk(mutex_);
     if (dirty_ids_.empty()) return;
 
-    // Pass 2: Generate snapshots with the correct, synchronized time
     snapshots.reserve(dirty_ids_.size());
     for (const auto& id : dirty_ids_) {
       auto& state = master_state_[id];
