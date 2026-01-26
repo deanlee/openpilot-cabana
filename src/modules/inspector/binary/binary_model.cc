@@ -93,6 +93,19 @@ void BinaryModel::updateState() {
     endInsertRows();
   }
 
+  // Adaptive Decay Calculation
+  float decay_factor = 0.95f;
+  if (heatmap_live_mode) {
+    // We want the 'heat' to last for ~1.5 seconds, or at least 2 message periods
+    float persistence_secs = 1.5f;
+    if (last_msg->freq > 0) {
+      persistence_secs = std::clamp(2.0f / (float)last_msg->freq, 0.5f, 2.0f);
+    }
+    // Convert time-based persistence to a per-frame decay factor based on current FPS
+    // Formula: factor = 0.1 ^ (1 / (FPS * duration))
+    decay_factor = std::pow(0.1f, 1.0f / (std::max(1, settings.fps) * persistence_secs));
+  }
+
   auto& bit_flips = heatmap_live_mode ? last_msg->bit_flips : getBitFlipChanges(binary.size());
 
   // Find max flips for relative scaling
@@ -116,7 +129,7 @@ void BinaryModel::updateState() {
       int bit_val = (byte_val >> (7 - j)) & 1;
 
       // Calculate color based on heat
-      QColor bit_color = calculateBitHeatColor(item, bit_flips[i][j], log_max, is_light_theme, base_bg);
+      QColor bit_color = calculateBitHeatColor(item, bit_flips[i][j], log_max, is_light_theme, base_bg, decay_factor);
       row_changed |= updateItem(i, j, bit_val, bit_color);
     }
 
@@ -136,10 +149,10 @@ void BinaryModel::updateState() {
 }
 
 QColor BinaryModel::calculateBitHeatColor(Item& item, uint32_t flips, float log_max,
-                                          bool is_light, const QColor& base_bg) {
+                                          bool is_light, const QColor& base_bg, float decay_factor) {
   const bool is_in_signal = !item.sigs.empty();
 
-  if (flips == 0) {
+  if (flips == 0 && item.intensity < 0.01f) {
     item.intensity = 0.0f;
     item.last_flips = 0;
     if (!is_in_signal) return Qt::transparent;
@@ -150,14 +163,14 @@ QColor BinaryModel::calculateBitHeatColor(Item& item, uint32_t flips, float log_
   }
 
   // Calculate Heat using Log2 for a smooth UI transition
-  const float target = std::clamp(std::log2(static_cast<float>(flips) + 1.0f) / log_max, 0.0f, 1.0f);
+  float target = std::clamp(std::log2(static_cast<float>(flips) + 1.0f) / log_max, 0.0f, 1.0f);
   if (heatmap_live_mode) {
     // Live Mode: Show recency. If flips increase, jump to target. Otherwise, decay.
     if (flips != item.last_flips) {
       item.intensity = std::max(item.intensity, target);
       item.last_flips = flips;
     } else {
-      item.intensity *= 0.95f;  // Decay rate
+      item.intensity *= decay_factor;  // Decay rate
     }
   } else {
     // Static/Range Mode: Direct representation. No decay.
@@ -166,6 +179,7 @@ QColor BinaryModel::calculateBitHeatColor(Item& item, uint32_t flips, float log_
   }
 
   float i = item.intensity;
+  if (i < 0.01f) return is_in_signal ? item.sigs.back()->color.lighter(is_light ? 150 : 50) : Qt::transparent;
 
   if (is_in_signal) {
     // 100% Signal Color Respect: Only modify Alpha and Brightness
