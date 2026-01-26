@@ -104,15 +104,15 @@ void SignalTreeDelegate::drawNameColumn(QPainter* p, QRect r, const QStyleOption
 
 void SignalTreeDelegate::drawDataColumn(QPainter* p, QRect r, const QStyleOptionViewItem& opt, SignalTreeModel::Item* item, const QModelIndex& idx) const {
   const bool sel = opt.state & QStyle::State_Selected;
-  const bool show_details = (sel || hoverIndex == idx) && !item->sparkline.isEmpty();
+  const bool show_details = (sel || hoverIndex == idx) && !item->sparkline->isEmpty();
   const QColor text_c = opt.palette.color(sel ? QPalette::HighlightedText : QPalette::Text);
 
   // Sparkline
   int sparkW = 0;
-  if (!item->sparkline.image.isNull()) {
-    const auto& img = item->sparkline.image;
+  if (!item->sparkline->image.isNull()) {
+    const auto& img = item->sparkline->image;
     sparkW = img.width() / img.devicePixelRatio();
-    item->sparkline.setHighlight(sel);
+    item->sparkline->setHighlight(sel);
     p->drawImage(r.left(), r.top() + (r.height() - img.height() / img.devicePixelRatio()) / 2, img);
   }
 
@@ -121,8 +121,8 @@ void SignalTreeDelegate::drawDataColumn(QPainter* p, QRect r, const QStyleOption
   int anchorX = r.left() + sparkW;
   if (show_details) {
     p->setFont(minmax_font);
-    QString maxS = utils::doubleToString(item->sparkline.max_val, item->sig->precision);
-    QString minS = utils::doubleToString(item->sparkline.min_val, item->sig->precision);
+    QString maxS = utils::doubleToString(item->sparkline->max_val, item->sig->precision);
+    QString minS = utils::doubleToString(item->sparkline->min_val, item->sig->precision);
     detailsW = std::max(p->fontMetrics().horizontalAdvance(maxS), p->fontMetrics().horizontalAdvance(minS)) + kPadding;
 
     p->setPen(sel ? text_c : opt.palette.mid().color());
@@ -281,8 +281,8 @@ bool SignalTreeDelegate::helpEvent(QHelpEvent* event, QAbstractItemView* view, c
     value_rect.setRight(right_edge);
     if (value_rect.contains(event->pos()) && item && !item->sig_val.isEmpty()) {
       QString tooltip = item->sig_val + "\n\n" +
-                        tr("Min: %1\nMax: %2").arg(QString::number(item->sparkline.min_val, 'f', 3),
-                                                 QString::number(item->sparkline.max_val, 'f', 3));
+                        tr("Min: %1\nMax: %2").arg(QString::number(item->sparkline->min_val, 'f', 3),
+                                                 QString::number(item->sparkline->max_val, 'f', 3));
       QToolTip::showText(event->globalPos(), tooltip, view);
       return true;
     }

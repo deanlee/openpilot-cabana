@@ -17,6 +17,9 @@ class SignalTreeModel : public QAbstractItemModel {
 public:
   struct Item {
     enum Type {Root, Sig, Name, Size, Node, Endian, Signed, Offset, Factor, SignalType, MultiplexValue, ExtraInfo, Unit, Comment, Min, Max, ValueTable };
+    explicit Item(Type t, const QString &title, const dbc::Signal *sig, Item* p) : type(t), title(title), sig(sig), parent(p) {
+      if (t == Type::Sig) sparkline = std::make_unique<Sparkline>();
+    }
     ~Item() { qDeleteAll(children); }
     inline int row() {
       if (parent) return parent->children.indexOf(this);
@@ -31,7 +34,7 @@ public:
     QString title;
     bool highlight = false;
     QString sig_val = "-";
-    Sparkline sparkline;
+    std::unique_ptr<Sparkline> sparkline;
   };
 
   SignalTreeModel(QObject *parent);

@@ -17,7 +17,7 @@ QString signalTypeToString(dbc::Signal::Type type) {
   else return "Normal Signal";
 }
 
-SignalTreeModel::SignalTreeModel(QObject *parent) : root(new Item), QAbstractItemModel(parent) {
+SignalTreeModel::SignalTreeModel(QObject *parent) : root(new Item(Item::Root, "", nullptr, nullptr)), QAbstractItemModel(parent) {
   connect(GetDBC(), &dbc::Manager::DBCFileChanged, this, &SignalTreeModel::refresh);
   connect(GetDBC(), &dbc::Manager::msgUpdated, this, &SignalTreeModel::handleMsgChanged);
   connect(GetDBC(), &dbc::Manager::msgRemoved, this, &SignalTreeModel::handleMsgChanged);
@@ -27,7 +27,7 @@ SignalTreeModel::SignalTreeModel(QObject *parent) : root(new Item), QAbstractIte
 }
 
 void SignalTreeModel::insertItem(SignalTreeModel::Item *root_item, int pos, const dbc::Signal *sig) {
-  Item *sig_item = new Item{.sig = sig, .parent = root_item, .title = sig->name, .type = Item::Sig};
+  Item *sig_item = new Item(Item::Sig, sig->name, sig, root_item);
   root_item->children.insert(pos, sig_item);
 }
 
@@ -51,7 +51,7 @@ void SignalTreeModel::setFilter(const QString &txt) {
 
 void SignalTreeModel::refresh() {
   beginResetModel();
-  root.reset(new SignalTreeModel::Item);
+  root.reset(new SignalTreeModel::Item(Item::Root, "", nullptr, nullptr));
   if (auto msg = GetDBC()->msg(msg_id)) {
     auto sigs = msg->getSignals();
     root->children.reserve(sigs.size());  // Pre-allocate memory
@@ -105,7 +105,7 @@ void SignalTreeModel::fetchMore(const QModelIndex& parent) {
   beginInsertRows(parent, 0, types.size() - 1);
   for (auto t : types) {
     QString label = SIGNAL_PROPERTY_LABELS[t - Item::Name];
-    item->children.push_back(new Item{.type = t, .parent = item, .sig = item->sig, .title = label});
+    item->children.push_back(new Item(t, label, item->sig, item));
   }
   endInsertRows();
 }

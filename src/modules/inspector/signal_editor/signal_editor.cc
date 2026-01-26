@@ -149,7 +149,7 @@ void SignalEditor::setSparklineRange(int value) {
   updateToolBar();
   // Clear history to prevent scaling artifacts when range changes drastically
   for (auto item : model->root->children) {
-    item->sparkline.clearHistory();
+    item->sparkline->clearHistory();
   }
   updateState();
 }
@@ -218,7 +218,7 @@ void SignalEditor::updateState(const std::set<MessageId>* msgs) {
   }
 
   QtConcurrent::blockingMap(items, [&](SignalTreeModel::Item* item) {
-    item->sparkline.update(item->sig, range.first, range.second, settings.sparkline_range, spark_sz);
+    item->sparkline->update(item->sig, range.first, range.second, settings.sparkline_range, spark_sz);
   });
 
   emit model->dataChanged(model->index(first_v.row(), 1), model->index(last_v.row(), 1), {Qt::DisplayRole});
