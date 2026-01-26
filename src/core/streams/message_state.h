@@ -25,7 +25,7 @@ class MessageState {
  public:
   void init(const uint8_t* new_data, int size, double current_ts);
   void update(const MessageId& msg_id, const uint8_t* new_data, int size,
-              double current_ts, double playback_speed, double manual_freq = 0);
+              double current_ts, double playback_speed, double manual_freq = 0, bool is_seek = false);
   void updateAllPatternColors(double current_ts);
 
   double ts = 0.0;     // Latest message timestamp
@@ -45,6 +45,7 @@ class MessageState {
 
  private:
   void analyzeByteMutation(int i, uint8_t old_val, uint8_t new_val, uint8_t diff, double current_ts);
+  void updateFrequency(double current_ts, double manual_freq, bool is_seek);
   double last_freq_ts = 0;
 };
 

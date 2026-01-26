@@ -4,9 +4,8 @@
 #include <cmath>
 #include <cstring>
 
-#include "abstract_stream.h"
 #include "modules/settings/settings.h"
-#include "modules/system/stream_manager.h"
+#include "utils/util.h"
 
 namespace {
 
@@ -41,30 +40,16 @@ double calculateBitEntropy(uint32_t highs, uint32_t total) {
   return ENTROPY_LOOKUP[(highs * 255) / total];
 }
 
-double calc_freq(const MessageId& msg_id, double current_ts) {
-  auto [first, last] = StreamManager::stream()->eventsInRange(msg_id, std::make_pair(current_ts - 59.0, current_ts));
-  const auto n = std::distance(first, last);
-  if (n <= 1) return 0.0;
-
-  const double duration = ((*std::prev(last))->mono_time - (*first)->mono_time) / 1e9;
-  return (duration > 1e-9) ? (n - 1) / duration : 0.0;
-}
-
 }  // namespace
 
 void MessageState::update(const MessageId& msg_id, const uint8_t* new_data, int size,
-                          double current_ts, double playback_speed, double manual_freq) {
+                          double current_ts, double playback_speed, double manual_freq, bool is_seek) {
   is_active = true;
   ts = current_ts;
   count++;
 
   // 1. Frequency Management
-  if (manual_freq > 0) {
-    freq = manual_freq;
-  } else if (std::abs(current_ts - last_freq_ts) >= 1.0) {
-    freq = calc_freq(msg_id, ts);
-    last_freq_ts = current_ts;
-  }
+  updateFrequency(current_ts, manual_freq, is_seek);
 
   // 2. Data Resizing
   if (dat.size() != static_cast<size_t>(size)) {
@@ -99,6 +84,27 @@ void MessageState::update(const MessageId& msg_id, const uint8_t* new_data, int 
       diff_64 &= ~(0xFFULL << (byte_offset * 8));
     }
     last_data_64[b] = cur_64;
+  }
+}
+
+void MessageState::updateFrequency(double current_ts, double manual_freq, bool is_seek) {
+  if (manual_freq > 0) {
+    freq = manual_freq;
+  } else if (is_seek || last_freq_ts == 0) {
+    last_freq_ts = current_ts;
+  } else {
+    double interval = current_ts - last_freq_ts;
+
+    // Skip interval math if it's too small (jitter)
+    if (interval > 0.0001) {
+      double instant_freq = 1.0 / interval;
+      // Adaptive Filter:
+      // High freq (interval < 0.1s) -> Alpha 0.1 (Heavy smoothing)
+      // Low freq (interval >= 0.1s) -> Alpha 0.6 (Fast response)
+      double alpha = (interval < 0.1) ? 0.1 : 0.6;
+      freq = (freq == 0.0) ? instant_freq : (freq * (1.0 - alpha)) + (instant_freq * alpha);
+    }
+    last_freq_ts = current_ts;
   }
 }
 

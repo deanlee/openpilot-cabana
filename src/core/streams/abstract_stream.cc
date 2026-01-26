@@ -202,7 +202,7 @@ void AbstractStream::updateSnapshotsTo(double sec) {
       }
     }
 
-    m.update(id, prev_ev->dat, prev_ev->size, toSeconds(prev_ev->mono_time), getSpeed());
+    m.update(id, prev_ev->dat, prev_ev->size, toSeconds(prev_ev->mono_time), getSpeed(), 0, true);
     m.count = std::distance(ev.begin(), it);
     m.updateAllPatternColors(sec); // Important: Update colors before snapshotting
 
