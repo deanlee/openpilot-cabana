@@ -44,7 +44,6 @@ double calculateBitEntropy(uint32_t highs, uint32_t total) {
 
 void MessageState::update(const MessageId& msg_id, const uint8_t* new_data, int size,
                           double current_ts, double playback_speed, double manual_freq, bool is_seek) {
-  is_active = true;
   ts = current_ts;
   count++;
 

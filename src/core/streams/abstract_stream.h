@@ -41,7 +41,7 @@ class MessageSnapshot {
  public:
   MessageSnapshot() = default;
   MessageSnapshot(const MessageState& s)
-      : ts(s.ts), dat(s.dat), colors(s.colors), freq(s.freq), count(s.count), is_active(s.is_active), bit_flips(s.bit_flips) {}
+      : ts(s.ts), dat(s.dat), colors(s.colors), freq(s.freq), count(s.count), bit_flips(s.bit_flips), is_active(true) {}
 
   double ts = 0.0;
   double freq = 0.0;
