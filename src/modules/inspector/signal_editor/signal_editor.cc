@@ -186,6 +186,9 @@ std::pair<QModelIndex, QModelIndex> SignalEditor::visibleSignalRange() {
 }
 
 void SignalEditor::updateState(const std::set<MessageId>* msgs) {
+  // Skip update if the widget is hidden or collapsed
+  if (!isVisible() || height() == 0 || width() == 0) return;
+
   const auto* last_msg = StreamManager::stream()->snapshot(model->msg_id);
   if (model->rowCount() == 0 || (msgs && !msgs->count(model->msg_id)) || last_msg->dat.size() == 0) return;
 
