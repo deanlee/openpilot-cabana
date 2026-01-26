@@ -97,6 +97,8 @@ void AbstractStream::commitSnapshots() {
   const size_t prev_src_count = sources.size();
 
   for (auto& [id, snap] : snapshots) {
+    snap.is_active = true;
+
     current_sec_ = std::max(current_sec_, snap.ts);
     auto& target = snapshot_map_[id];
     if (target) {
@@ -160,16 +162,25 @@ const MessageSnapshot *AbstractStream::snapshot(const MessageId &id) const {
 }
 
 void AbstractStream::updateActiveStates() {
-  double now = current_sec_;
-  const double fps_margin = 1.0 / std::max(1, settings.fps);
-  for (auto& [id, m] : snapshot_map_) { // Assuming a map or container of MessageStates
-    if (m->ts > 0) {
-      double elapsed = now - m->ts;
-      double threshold = (m->freq < 0.1) ? 1.5 : (5.0 / m->freq) + fps_margin;
-      m->is_active = (elapsed >= 0 && elapsed < threshold);
-    } else {
+  const double now = current_sec_;
+
+  for (auto& [id, m] : snapshot_map_) {
+    // If never received or timestamp is in the future (during seek), inactive.
+    if (m->ts <= 0 || m->ts > now) {
       m->is_active = false;
+      continue;
     }
+
+    const double elapsed = now - m->ts;
+
+    // Expected gap between messages. Default to 2s if freq is 0.
+    double expected_period = (m->freq > 0) ? (1.0 / m->freq) : 2.0;
+
+    // Threshold: Allow 3.5 missed cycles.
+    // Clamp between 2s (fast msgs) and 10s (slow heartbeats).
+    const double threshold = std::clamp(expected_period * 3.5, 2.0, 10.0);
+
+    m->is_active = (elapsed < threshold);
   }
 }
 

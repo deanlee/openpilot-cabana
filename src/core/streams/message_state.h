@@ -31,7 +31,6 @@ class MessageState {
   double ts = 0.0;     // Latest message timestamp
   double freq = 0.0;   // Message frequency (Hz)
   uint32_t count = 0;  // Total messages received
-  bool is_active = false;
 
   std::array<uint64_t, 8> last_data_64 = {0};
   std::array<uint64_t, 8> ignore_bit_mask = {0};
