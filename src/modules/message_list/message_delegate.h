@@ -8,7 +8,8 @@ enum class CallerType {
 };
 
 enum ColumnTypeRole {
-  IsHexColumn = Qt::UserRole + 11
+  IsHexColumn = Qt::UserRole + 11,
+  MsgActiveRole,
 };
 
 class MessageDelegate : public QStyledItemDelegate {

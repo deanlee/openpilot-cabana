@@ -57,8 +57,8 @@ QVariant MessageModel::data(const QModelIndex &index, int role) const {
     return item.name;
   }
 
-  if (role == Qt::ForegroundRole) {
-    return (item.data && item.data->is_active) ? QVariant() : disabled_color_;
+  if (role == ColumnTypeRole::MsgActiveRole) {
+    return bool(item.data && item.data->is_active);
   }
 
   if (role == ColumnTypeRole::IsHexColumn) {

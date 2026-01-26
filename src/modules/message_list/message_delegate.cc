@@ -60,6 +60,11 @@ void MessageDelegate::paint(QPainter* painter, const QStyleOptionViewItem& optio
     painter->fillRect(option.rect, option.palette.highlight());
   }
 
+  QVariant data = index.data(ColumnTypeRole::MsgActiveRole);
+  bool is_active = data.isValid() ? data.toBool() : true;
+  painter->setPen(option.palette.color(is_active ? QPalette::Normal : QPalette::Disabled,
+                                       is_selected ? QPalette::HighlightedText : QPalette::Text));
+
   bool is_data_col = index.data(ColumnTypeRole::IsHexColumn).toBool();
   if (!is_data_col) {
     QString text = index.data(Qt::DisplayRole).toString();
@@ -80,7 +85,6 @@ void MessageDelegate::paint(QPainter* painter, const QStyleOptionViewItem& optio
   const QPoint pt = item_rect.topLeft();
 
   painter->setFont(fixed_font);
-  painter->setPen(option.palette.color(is_selected ? QPalette::HighlightedText : QPalette::Text));
 
   for (int i = 0; i < bytes.size(); ++i) {
     int row = !multiple_lines ? 0 : i / 8;
@@ -99,13 +103,6 @@ void MessageDelegate::paint(QPainter* painter, const QStyleOptionViewItem& optio
 void MessageDelegate::drawItemText(QPainter* painter, const QStyleOptionViewItem& option,
                                    const QModelIndex& index, const QString& text, bool is_selected) const {
   painter->setFont(option.font);
-
-  if (is_selected) {
-    painter->setPen(option.palette.color(QPalette::HighlightedText));
-  } else {
-    QVariant fg = index.data(Qt::ForegroundRole);
-    painter->setPen(fg.isValid() ? fg.value<QColor>() : option.palette.color(QPalette::Text));
-  }
 
   QRect textRect = option.rect.adjusted(h_margin, 0, -h_margin, 0);
   const QFontMetrics &fm = option.fontMetrics;
