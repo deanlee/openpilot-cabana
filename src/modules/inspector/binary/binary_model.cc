@@ -150,12 +150,19 @@ QColor BinaryModel::calculateBitHeatColor(Item& item, uint32_t flips, float log_
   }
 
   // Calculate Heat using Log2 for a smooth UI transition
-  if (flips != item.last_flips) {
-    float target = std::clamp(std::log2(static_cast<float>(flips) + 1.0f) / log_max, 0.0f, 1.0f);
-    item.intensity = std::max(item.intensity, target);
-    item.last_flips = flips;
+  const float target = std::clamp(std::log2(static_cast<float>(flips) + 1.0f) / log_max, 0.0f, 1.0f);
+  if (heatmap_live_mode) {
+    // Live Mode: Show recency. If flips increase, jump to target. Otherwise, decay.
+    if (flips != item.last_flips) {
+      item.intensity = std::max(item.intensity, target);
+      item.last_flips = flips;
+    } else {
+      item.intensity *= 0.95f;  // Decay rate
+    }
   } else {
-    item.intensity *= 0.95f;
+    // Static/Range Mode: Direct representation. No decay.
+    item.intensity = target;
+    item.last_flips = flips;
   }
 
   float i = item.intensity;
