@@ -198,21 +198,32 @@ void MessageState::updateAllPatternColors(double current_can_sec) {
     colors.resize(byte_states.size());
   }
   for (size_t i = 0; i < byte_states.size(); ++i) {
-    colors[i] = colorFromDataPattern(detected_patterns[i], current_can_sec, byte_states[i].last_change_ts);
+    colors[i] = colorFromDataPattern(detected_patterns[i], current_can_sec, byte_states[i].last_change_ts, freq);
   }
 }
 
-uint32_t colorFromDataPattern(DataPattern pattern, double current_ts, double last_ts) {
+uint32_t colorFromDataPattern(DataPattern pattern, double current_ts, double last_ts, double freq) {
   if (pattern == DataPattern::None) return 0x00000000;
 
-  const double elapsed = std::max(0.0, current_ts - last_ts);
-  const double DECAY_TIME = 3.0;
+    const double elapsed = std::max(0.0, current_ts - last_ts);
 
-  if (elapsed >= DECAY_TIME) return 0x00000000; // Fully transparent
+  // Adaptive Decay Limit
+  // If a message comes in at 1Hz, we want the color to last ~2s so it doesn't blink.
+  // If it comes in at 100Hz, we want it to fade in 0.5s to show rapid changes.
+  double decay_limit = 1.5;
+  if (freq > 0) {
+    decay_limit = std::clamp(2.0 / freq, 0.4, 2.5);
+  }
 
-  // Non-linear decay (Alpha stays higher for longer)
-  float intensity = static_cast<float>(std::cos((elapsed / DECAY_TIME) * (1.5707963))); // PI / 2
-  uint32_t alpha = static_cast<uint32_t>(200 * intensity);
+  if (elapsed >= decay_limit) return 0x00000000;
+
+  // We want the alpha to hit near-zero at the decay_limit.
+  // Using tau = limit / 3.0 ensures e^-3 (~0.05) at the boundary.
+  float tau = static_cast<float>(decay_limit / 3.0);
+  float intensity = std::exp(-static_cast<float>(elapsed) / tau);
+
+  // Apply a slight "boost" to the initial flash
+  uint32_t alpha = static_cast<uint32_t>(230 * intensity);
 
   struct RGB { uint8_t r, g, b; };
   struct ThemeColors { RGB light, dark; };

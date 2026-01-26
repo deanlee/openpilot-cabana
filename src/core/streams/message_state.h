@@ -48,4 +48,4 @@ class MessageState {
   double last_freq_ts = 0;
 };
 
-uint32_t colorFromDataPattern(DataPattern pattern, double current_ts, double last_ts);
+uint32_t colorFromDataPattern(DataPattern pattern, double current_ts, double last_ts, double freq);
