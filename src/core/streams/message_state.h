@@ -6,6 +6,8 @@
 
 #include "core/dbc/dbc_message.h"
 
+constexpr int MAX_CAN_LEN = 64;
+
 enum class DataPattern : uint8_t {
   None = 0,
   Increasing,

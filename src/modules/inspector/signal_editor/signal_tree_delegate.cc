@@ -169,7 +169,7 @@ QWidget* SignalTreeDelegate::createEditor(QWidget* parent, const QStyleOptionVie
   if (item->type == T::Size) {
     auto* s = new QSpinBox(parent);
     s->setFrame(false);
-    s->setRange(1, CAN_MAX_DATA_BYTES);
+    s->setRange(1, MAX_CAN_LEN);
     return s;
   }
 

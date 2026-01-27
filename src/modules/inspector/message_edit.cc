@@ -7,6 +7,7 @@
 #include "core/dbc/dbc_manager.h"
 #include "utils/util.h"
 #include "widgets/validators.h"
+#include "core/streams/message_state.h"
 
 MessageEdit::MessageEdit(const MessageId& msg_id, const QString& title, int size, QWidget* parent)
     : original_name(title), msg_id(msg_id), QDialog(parent) {
@@ -19,7 +20,7 @@ MessageEdit::MessageEdit(const MessageId& msg_id, const QString& title, int size
   name_edit->setValidator(new NameValidator(name_edit));
 
   form_layout->addRow(tr("Size"), size_spin = new QSpinBox(this));
-  size_spin->setRange(1, CAN_MAX_DATA_BYTES);
+  size_spin->setRange(1, MAX_CAN_LEN);
   size_spin->setValue(size);
 
   form_layout->addRow(tr("Node"), node = new QLineEdit(this));

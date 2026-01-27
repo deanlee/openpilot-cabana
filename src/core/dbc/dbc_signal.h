@@ -6,7 +6,6 @@
 #include <vector>
 
 const QString DEFAULT_NODE_NAME = "XXX";
-constexpr int CAN_MAX_DATA_BYTES = 64;
 
 using ValueTable = std::vector<std::pair<double, QString>>;
 
