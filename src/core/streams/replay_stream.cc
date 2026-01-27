@@ -20,14 +20,12 @@ ReplayStream::ReplayStream(QObject *parent) : AbstractStream(parent) {
   ui_update_timer->setInterval(1000 / settings.fps);
 
   connect(&settings, &Settings::changed, this, [this]() {
+    if (replay) replay->setSegmentCacheLimit(settings.max_cached_minutes);
     if (ui_update_timer) {
       ui_update_timer->setInterval(1000 / settings.fps);
     }
   });
   connect(ui_update_timer, &QTimer::timeout, this, &ReplayStream::commitSnapshots);
-  connect(&settings, &Settings::changed, this, [this]() {
-    if (replay) replay->setSegmentCacheLimit(settings.max_cached_minutes);
-  });
 
   ui_update_timer->start();
 }
