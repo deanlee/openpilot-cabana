@@ -27,16 +27,16 @@ AbstractStream::AbstractStream(QObject *parent) : QObject(parent) {
 
 void AbstractStream::updateMasks() {
   std::lock_guard lk(mutex_);
-  masks_.clear();
+  shared_state_.masks.clear();
   if (settings.suppress_defined_signals) {
     for (const auto s : sources) {
       for (const auto &[address, m] : GetDBC()->getMessages(s)) {
-        masks_[{(uint8_t)s, address}] = m.mask;
+        shared_state_.masks[{(uint8_t)s, address}] = m.mask;
       }
     }
   }
 
-  for (auto &[id, state] : master_state_) {
+  for (auto &[id, state] : shared_state_.master_state) {
     updateMessageMask(id, state);
   }
 }
@@ -49,7 +49,7 @@ void AbstractStream::suppressDefinedSignals(bool suppress) {
 size_t AbstractStream::suppressHighlighted() {
   std::lock_guard lk(mutex_);
   size_t cnt = 0;
-  for (auto &[id, m] : master_state_) {
+  for (auto &[id, m] : shared_state_.master_state) {
     bool mod = false;
     for (auto &s : m.byte_states) {
       if (!s.is_suppressed && (current_sec_ - s.last_change_ts < 2.0)) {
@@ -64,7 +64,7 @@ size_t AbstractStream::suppressHighlighted() {
 
 void AbstractStream::clearSuppressed() {
   std::lock_guard lk(mutex_);
-  for (auto &[id, m] : master_state_) {
+  for (auto &[id, m] : shared_state_.master_state) {
     for (auto &state : m.byte_states) {
       state.is_suppressed = false;
     }
@@ -79,23 +79,20 @@ void AbstractStream::commitSnapshots() {
 
   {
     std::lock_guard lk(mutex_);
-    if (dirty_ids_.empty()) return;
+    if (shared_state_.dirty_ids.empty()) return;
 
-    snapshots.reserve(dirty_ids_.size());
+    snapshots.reserve(shared_state_.dirty_ids.size());
 
-    for (const auto &id : dirty_ids_) {
-      current_sec_ = std::max(current_sec_, master_state_[id].ts);
-    }
-
-    for (const auto& id : dirty_ids_) {
-      auto& state = master_state_[id];
+    current_sec_ = shared_state_.current_sec;
+    for (const auto& id : shared_state_.dirty_ids) {
+      auto& state = shared_state_.master_state[id];
       state.updateAllPatternColors(current_sec_);
       snapshots.emplace_back(
           std::piecewise_construct,
           std::forward_as_tuple(id),
           std::forward_as_tuple(state));
     }
-    msgs = std::move(dirty_ids_);
+    msgs = std::move(shared_state_.dirty_ids);
   }
 
   bool structure_changed = false;
@@ -144,13 +141,14 @@ void AbstractStream::setTimeRange(const std::optional<std::pair<double, double>>
 
 void AbstractStream::processNewMessage(const MessageId &id, double sec, const uint8_t *data, uint8_t size) {
   std::lock_guard lk(mutex_);
-  auto &state = master_state_[id];
+  shared_state_.current_sec = sec;
+  auto &state = shared_state_.master_state[id];
   if (state.dat.size() != (size_t)size) {
     state.init(data, size, sec);
     updateMessageMask(id, state);
   }
   state.update(id, data, size, sec, getSpeed());
-  dirty_ids_.insert(id);
+  shared_state_.dirty_ids.insert(id);
 }
 
 const std::vector<const CanEvent *> &AbstractStream::events(const MessageId &id) const {
@@ -208,7 +206,7 @@ void AbstractStream::updateSnapshotsTo(double sec) {
     auto& m = next_state[id];
     const CanEvent* prev_ev = *std::prev(it);
 
-    if (auto old_it = master_state_.find(id); old_it != master_state_.end()) {
+    if (auto old_it = shared_state_.master_state.find(id); old_it != shared_state_.master_state.end()) {
       m.freq = old_it->second.freq;
       m.ignore_bit_mask = old_it->second.ignore_bit_mask;
       m.byte_states.resize(old_it->second.byte_states.size());
@@ -242,11 +240,11 @@ void AbstractStream::updateSnapshotsTo(double sec) {
     }
   }
 
-  dirty_ids_.clear();
+  shared_state_.dirty_ids.clear();
   {
     std::lock_guard lk(mutex_);
-    master_state_ = std::move(next_state);
-    seek_finished_ = true;
+    shared_state_.master_state = std::move(next_state);
+    shared_state_.seek_finished = true;
   }
   seek_finished_cv_.notify_one();
   emit snapshotsUpdated(nullptr, id_changed);
@@ -254,8 +252,8 @@ void AbstractStream::updateSnapshotsTo(double sec) {
 
 void AbstractStream::waitForSeekFinshed() {
   std::unique_lock lock(mutex_);
-  seek_finished_cv_.wait(lock, [this]() { return seek_finished_; });
-  seek_finished_ = false;
+  seek_finished_cv_.wait(lock, [this]() { return shared_state_.seek_finished; });
+  shared_state_.seek_finished = false;
 }
 
 const CanEvent *AbstractStream::newEvent(uint64_t mono_time, const cereal::CanData::Reader &c) {
@@ -327,7 +325,7 @@ void AbstractStream::updateMessageMask(const MessageId& id, MessageState& state)
   state.ignore_bit_mask.fill(0);
   if (state.dat.empty()) return;
 
-  const auto& dbc_mask = masks_[id];
+  const auto& dbc_mask = shared_state_.masks[id];
   for (size_t i = 0; i < state.dat.size(); ++i) {
     uint8_t m = 0;
     if (state.byte_states[i].is_suppressed) {
