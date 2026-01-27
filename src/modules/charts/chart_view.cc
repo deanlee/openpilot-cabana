@@ -345,6 +345,7 @@ void ChartView::drawForeground(QPainter *painter, const QRectF &rect) {
       track_line_x = std::max(track_line_x, pos.x());
     }
   }
+
   if (track_line_x > 0) {
     auto plot_area = chart_->plotArea();
     painter->setPen(QPen(Qt::darkGray, 1, Qt::DashLine));

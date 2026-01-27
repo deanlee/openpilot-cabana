@@ -342,12 +342,15 @@ void AbstractStream::updateMessageMask(const MessageId& id, MessageState& state)
 }
 
 void AbstractStream::notifyUpdateSnapshots() {
-  double latest_msg_ts = 0;
-  for (const auto &id : dirty_ids_) {
-    latest_msg_ts = std::max(latest_msg_ts, master_state_[id].ts);
-  }
-  for (const auto &id : dirty_ids_) {
-    master_state_[id].updateAllPatternColors(latest_msg_ts);
+  {
+    std::lock_guard lk(mutex_);
+    double latest_msg_ts = 0;
+    for (const auto &id : dirty_ids_) {
+      latest_msg_ts = std::max(latest_msg_ts, master_state_[id].ts);
+    }
+    for (const auto &id : dirty_ids_) {
+      master_state_[id].updateAllPatternColors(latest_msg_ts);
+    }
   }
   emit privateUpdateLastMsgsSignal();
 }
