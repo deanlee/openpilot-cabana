@@ -11,17 +11,18 @@
 
 namespace {
 struct MessageDataRef {
-  const std::vector<uint8_t>* bytes = nullptr;
-  const std::vector<uint32_t>* colors = nullptr;
+  uint8_t len = 0;
+  const std::array<uint8_t, MAX_CAN_LEN>* bytes = nullptr;
+  const std::array<uint32_t, MAX_CAN_LEN>* colors = nullptr;
 };
 
 MessageDataRef getDataRef(CallerType type, const QModelIndex& index) {
   if (type == CallerType::MessageList) {
     auto* item = static_cast<MessageModel::Item*>(index.internalPointer());
-    return item->data ? MessageDataRef{&item->data->dat, &item->data->colors} : MessageDataRef{nullptr, nullptr};
+    return item->data ? MessageDataRef{item->data->size, &item->data->data, &item->data->colors} : MessageDataRef{0, nullptr, nullptr};
   } else {
     auto* msg = static_cast<MessageHistoryModel::Message*>(index.internalPointer());
-    return msg ? MessageDataRef{&msg->data, &msg->colors} : MessageDataRef{nullptr, nullptr};
+    return msg ? MessageDataRef{msg->size, &msg->data, &msg->colors} : MessageDataRef{0, nullptr, nullptr};
   }
 }
 
@@ -51,7 +52,7 @@ QSize MessageDelegate::sizeHint(const QStyleOptionViewItem& option, const QModel
     return QStyledItemDelegate::sizeHint(option, index);
   }
   MessageDataRef ref = getDataRef(caller_type_, index);
-  return sizeForBytes(ref.bytes ? ref.bytes->size() : 0);
+  return sizeForBytes(ref.len);
 }
 
 void MessageDelegate::paint(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const {
@@ -86,15 +87,13 @@ void MessageDelegate::paint(QPainter* painter, const QStyleOptionViewItem& optio
 
   painter->setFont(fixed_font);
 
-  for (int i = 0; i < bytes.size(); ++i) {
+  for (int i = 0; i < ref.len; ++i) {
     int row = !multiple_lines ? 0 : i / 8;
     int col = !multiple_lines ? i : i % 8;
     QRect r(pt.x() + (col * b_width), pt.y() + (row * b_height), b_width, b_height);
-    if (i < colors.size()) {
-      uint32_t argb = colors[i];
-      if ((argb >> 24) > 1) {
-        painter->fillRect(r, QColor::fromRgba(argb));
-      }
+    uint32_t argb = colors[i];
+    if ((argb >> 24) > 1) {
+      painter->fillRect(r, QColor::fromRgba(argb));
     }
     utils::drawStaticText(painter, r, hex_text_table[bytes[i]]);
   }

@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <array>
 #include <condition_variable>
+#include <cstring>
 #include <memory>
 #include <mutex>
 #include <optional>
@@ -40,16 +41,30 @@ struct CompareCanEvent {
 class MessageSnapshot {
  public:
   MessageSnapshot() = default;
-  MessageSnapshot(const MessageState& s)
-      : ts(s.ts), dat(s.dat), colors(s.colors), freq(s.freq), count(s.count), bit_flips(s.bit_flips), is_active(true) {}
+  MessageSnapshot(const MessageState& s) {
+    updateFrom(s);
+  }
+
+  void updateFrom(const MessageState& s) {
+    ts = s.ts;
+    freq = s.freq;
+    count = s.count;
+    size = s.size;
+    is_active = true;
+
+    std::memcpy(data.data(), s.data.data(), size);
+    std::memcpy(colors.data(), s.colors.data(), size * sizeof(uint32_t));
+    std::memcpy(bit_flips.data(), s.bit_flips.data(), size * sizeof(bit_flips[0]));
+  }
 
   double ts = 0.0;
   double freq = 0.0;
   uint32_t count = 0;
+  uint8_t size = 0;
   bool is_active = false;
-  std::vector<uint8_t> dat;
-  std::vector<uint32_t> colors;
-  std::vector<std::array<uint32_t, 8>> bit_flips;
+  std::array<uint8_t, MAX_CAN_LEN> data = {0};
+  std::array<uint32_t, MAX_CAN_LEN> colors = {0};
+  std::array<std::array<uint32_t, 8>, MAX_CAN_LEN> bit_flips = {{}};
 };
 
 using MessageEventsMap = std::unordered_map<MessageId, std::vector<const CanEvent *>>;

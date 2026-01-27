@@ -233,7 +233,7 @@ void FindSignalDlg::setInitialSignals() {
       const auto &events = can->events(id);
       auto e = std::lower_bound(events.cbegin(), events.cend(), first_time, CompareCanEvent());
       if (e != events.cend()) {
-        const int total_size = m->dat.size() * 8;
+        const int total_size = m->size * 8;
         for (int size = min_size->value(); size <= max_size->value(); ++size) {
           for (int start = 0; start <= total_size - size; ++start) {
             FindSignalModel::SearchSignal s{.id = id, .mono_time = first_time, .sig = sig};

@@ -51,11 +51,12 @@ size_t AbstractStream::suppressHighlighted() {
   size_t cnt = 0;
   for (auto &[id, m] : shared_state_.master_state) {
     bool mod = false;
-    for (auto &s : m.byte_states) {
-      if (!s.is_suppressed && (current_sec_ - s.last_change_ts < 2.0)) {
-        s.is_suppressed = mod = true;
+    for (size_t i = 0; i < m.size; ++i) {
+      if (!m.is_suppressed[i] && (current_sec_ - m.last_change_ts[i] < 2.0)) {
+        m.is_suppressed[i] = 1; // Mark as suppressed
+        mod = true;
       }
-      cnt += s.is_suppressed;
+      cnt += m.is_suppressed[i];
     }
     if (mod) updateMessageMask(id, m);
   }
@@ -65,8 +66,8 @@ size_t AbstractStream::suppressHighlighted() {
 void AbstractStream::clearSuppressed() {
   std::lock_guard lk(mutex_);
   for (auto &[id, m] : shared_state_.master_state) {
-    for (auto &state : m.byte_states) {
-      state.is_suppressed = false;
+    for (size_t i = 0; i < m.size; ++i) {
+      m.is_suppressed[i] = false;
     }
     // Refresh the mask (this will re-allow highlights for these bits)
     updateMessageMask(id, m);
@@ -74,42 +75,28 @@ void AbstractStream::clearSuppressed() {
 }
 
 void AbstractStream::commitSnapshots() {
-  std::vector<std::pair<MessageId, MessageSnapshot>> snapshots;
   std::set<MessageId> msgs;
+  bool structure_changed = false;
+  size_t prev_src_count = sources.size();
 
   {
     std::lock_guard lk(mutex_);
+    current_sec_ = shared_state_.current_sec;
     if (shared_state_.dirty_ids.empty()) return;
 
-    snapshots.reserve(shared_state_.dirty_ids.size());
-
-    current_sec_ = shared_state_.current_sec;
     for (const auto& id : shared_state_.dirty_ids) {
       auto& state = shared_state_.master_state[id];
       state.updateAllPatternColors(current_sec_);
-      snapshots.emplace_back(
-          std::piecewise_construct,
-          std::forward_as_tuple(id),
-          std::forward_as_tuple(state));
+      auto& target = snapshot_map_[id];
+      if (target) {
+        target->updateFrom(state);
+      } else {
+        target = std::make_unique<MessageSnapshot>(state);
+        structure_changed = true;
+        sources.insert(id.source);
+      }
     }
     msgs = std::move(shared_state_.dirty_ids);
-  }
-
-  bool structure_changed = false;
-  const size_t prev_src_count = sources.size();
-
-  for (auto& [id, snap] : snapshots) {
-    snap.is_active = true;
-
-    auto& target = snapshot_map_[id];
-    if (target) {
-      *target = std::move(snap);
-    } else {
-      target = std::make_unique<MessageSnapshot>(std::move(snap));
-      structure_changed = true;
-    }
-
-    if (sources.insert(id.source).second) structure_changed = true;
   }
 
   static double last_activity_update = 0;
@@ -143,7 +130,7 @@ void AbstractStream::processNewMessage(const MessageId &id, double sec, const ui
   std::lock_guard lk(mutex_);
   shared_state_.current_sec = sec;
   auto &state = shared_state_.master_state[id];
-  if (state.dat.size() != (size_t)size) {
+  if (state.size != (size_t)size) {
     state.init(data, size, sec);
     updateMessageMask(id, state);
   }
@@ -188,66 +175,38 @@ void AbstractStream::updateActiveStates() {
 
 void AbstractStream::updateSnapshotsTo(double sec) {
   current_sec_ = sec;
-  uint64_t last_ts = toMonoTime(sec);
-  std::unordered_map<MessageId, MessageState> next_state;
-  next_state.reserve(events_.size());
-  bool id_changed = false;
+
+  bool has_erased = false;
+  size_t origin_snapshot_size = snapshot_map_.size();
+  const uint64_t last_ts = toMonoTime(sec);
 
   for (const auto& [id, ev] : events_) {
-    auto it_idx = time_index_map_.find(id);
-    size_t s_min = 0, s_max = ev.size();
-    if (it_idx != time_index_map_.end()) {
-      std::tie(s_min, s_max) = it_idx->second.getBounds(ev.front()->mono_time, last_ts, ev.size());
-    }
-
+    auto[s_min, s_max] = time_index_map_[id].getBounds(ev.front()->mono_time, last_ts, ev.size());
     auto it = std::upper_bound(ev.begin() + s_min, ev.begin() + s_max, last_ts, CompareCanEvent());
-    if (it == ev.begin()) continue;
-
-    auto& m = next_state[id];
-    const CanEvent* prev_ev = *std::prev(it);
-
-    if (auto old_it = shared_state_.master_state.find(id); old_it != shared_state_.master_state.end()) {
-      m.freq = old_it->second.freq;
-      m.ignore_bit_mask = old_it->second.ignore_bit_mask;
-      m.byte_states.resize(old_it->second.byte_states.size());
-      for (size_t i = 0; i < m.byte_states.size(); ++i) {
-        m.byte_states[i].is_suppressed = old_it->second.byte_states[i].is_suppressed;
-      }
+    if (it == ev.begin()) {
+      has_erased |= (shared_state_.master_state.erase(id) > 0);
+      has_erased |= (snapshot_map_.erase(id) > 0);
+      continue;
     }
 
-    m.update(id, prev_ev->dat, prev_ev->size, toSeconds(prev_ev->mono_time), getSpeed(), 0, true);
+    const CanEvent* prev_ev = *std::prev(it);
+    auto& m = shared_state_.master_state[id];
+    m.init(prev_ev->dat, prev_ev->size, toSeconds(prev_ev->mono_time));
     m.count = std::distance(ev.begin(), it);
     m.updateAllPatternColors(sec); // Important: Update colors before snapshotting
 
     auto& snap_ptr = snapshot_map_[id];
-    // Create snapshot from the updated MessageState 'm'
-    auto snap = std::make_unique<MessageSnapshot>(m);
-
     if (!snap_ptr) {
-      snap_ptr = std::move(snap);
-      id_changed = true;
+      snap_ptr = std::make_unique<MessageSnapshot>(m);
     } else {
-      *snap_ptr = std::move(*snap);
-    }
-  }
-
-  // Lifecycle cleanup for IDs that no longer exist in this timeframe
-  if (next_state.size() != snapshot_map_.size()) id_changed = true;
-  if (id_changed) {
-    for (auto it = snapshot_map_.begin(); it != snapshot_map_.end();) {
-      if (next_state.find(it->first) == next_state.end()) it = snapshot_map_.erase(it);
-      else ++it;
+      snap_ptr->updateFrom(m);
     }
   }
 
   shared_state_.dirty_ids.clear();
-  {
-    std::lock_guard lk(mutex_);
-    shared_state_.master_state = std::move(next_state);
-    shared_state_.seek_finished = true;
-  }
+  shared_state_.seek_finished = true;
   seek_finished_cv_.notify_one();
-  emit snapshotsUpdated(nullptr, id_changed);
+  emit snapshotsUpdated(nullptr, origin_snapshot_size != snapshot_map_.size() || has_erased);
 }
 
 void AbstractStream::waitForSeekFinshed() {
@@ -323,12 +282,12 @@ std::pair<CanEventIter, CanEventIter> AbstractStream::eventsInRange(const Messag
 
 void AbstractStream::updateMessageMask(const MessageId& id, MessageState& state) {
   state.ignore_bit_mask.fill(0);
-  if (state.dat.empty()) return;
+  if (state.data.empty()) return;
 
   const auto& dbc_mask = shared_state_.masks[id];
-  for (size_t i = 0; i < state.dat.size(); ++i) {
+  for (size_t i = 0; i < state.size; ++i) {
     uint8_t m = 0;
-    if (state.byte_states[i].is_suppressed) {
+    if (state.is_suppressed[i]) {
       m = 0xFF;
     } else if (i < dbc_mask.size()) {
       m = dbc_mask[i];

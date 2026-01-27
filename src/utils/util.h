@@ -21,8 +21,8 @@ inline void drawStaticText(QPainter *p, const QRect &r, const QStaticText &text)
   auto size = (r.size() - text.size()) / 2;
   p->drawStaticText(r.left() + size.width(), r.top() + size.height(), text);
 }
-inline QString toHex(const std::vector<uint8_t> &dat, char separator = '\0') {
-  return QByteArray::fromRawData((const char *)dat.data(), dat.size()).toHex(separator).toUpper();
+inline QString toHex(const uint8_t *dat, int size, char separator = '\0') {
+  return QByteArray::fromRawData((const char *)dat, size).toHex(separator).toUpper();
 }
 
 }
