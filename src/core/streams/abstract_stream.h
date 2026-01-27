@@ -112,6 +112,15 @@ protected:
   const CanEvent *newEvent(uint64_t mono_time, const cereal::CanData::Reader &c);
   void processNewMessage(const MessageId &id, double sec, const uint8_t *data, uint8_t size);
   void waitForSeekFinshed();
+
+  struct SharedState {
+    double current_sec = 0;
+    std::set<MessageId> dirty_ids;
+    std::unordered_map<MessageId, MessageState> master_state;
+    std::unordered_map<MessageId, std::vector<uint8_t>> masks;
+    bool seek_finished = false;
+  };
+
   std::vector<const CanEvent *> all_events_;
   double current_sec_ = 0;
   std::optional<std::pair<double, double>> time_range_;
@@ -122,18 +131,15 @@ private:
   void updateMessageMask(const MessageId& id, MessageState& state);
   void updateActiveStates();
 
-  MessageEventsMap events_;
   std::unordered_map<MessageId, std::unique_ptr<MessageSnapshot>> snapshot_map_;
-  std::unique_ptr<MonotonicBuffer> event_buffer_;
 
-  // Members accessed in multiple threads. (mutex protected)
-  std::mutex mutex_;
-  std::condition_variable seek_finished_cv_;
-  bool seek_finished_ = false;
-  std::set<MessageId> dirty_ids_;
-  std::unordered_map<MessageId, MessageState> master_state_;
+  MessageEventsMap events_;
+  std::unique_ptr<MonotonicBuffer> event_buffer_;
   std::unordered_map<MessageId, TimeIndex<const CanEvent*>> time_index_map_;
-  std::unordered_map<MessageId, std::vector<uint8_t>> masks_;
+
+  std::mutex mutex_;
+  SharedState shared_state_;
+  std::condition_variable seek_finished_cv_;
 };
 
 class DummyStream : public AbstractStream {
