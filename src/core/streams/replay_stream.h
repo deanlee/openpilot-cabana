@@ -11,6 +11,8 @@
 
 Q_DECLARE_METATYPE(std::shared_ptr<LogReader>);
 
+class QTimer;
+
 class ReplayStream : public AbstractStream {
   Q_OBJECT
 
@@ -38,4 +40,5 @@ private:
   std::unique_ptr<Replay> replay = nullptr;
   std::set<int> processed_segments;
   std::unique_ptr<OpenpilotPrefix> op_prefix;
+  QTimer *ui_update_timer = nullptr;
 };

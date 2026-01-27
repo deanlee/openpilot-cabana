@@ -136,7 +136,8 @@ void LiveStream::processNewMessages() {
     processNewMessage(id, (e->mono_time - begin_event_ts) / 1e9, e->dat, e->size);
     current_event_ts = e->mono_time;
   }
-  notifyUpdateSnapshots();
+
+  commitSnapshots();
 }
 
 void LiveStream::seekTo(double sec) {

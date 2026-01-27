@@ -19,7 +19,6 @@ AbstractStream::AbstractStream(QObject *parent) : QObject(parent) {
   assert(parent != nullptr);
   event_buffer_ = std::make_unique<MonotonicBuffer>(EVENT_NEXT_BUFFER_SIZE);
 
-  connect(this, &AbstractStream::privateUpdateLastMsgsSignal, this, &AbstractStream::commitSnapshots, Qt::QueuedConnection);
   connect(this, &AbstractStream::seekedTo, this, &AbstractStream::updateSnapshotsTo);
   connect(this, &AbstractStream::seeking, this, [this](double sec) { current_sec_ = sec; });
   connect(GetDBC(), &dbc::Manager::DBCFileChanged, this, &AbstractStream::updateMasks);
@@ -83,12 +82,18 @@ void AbstractStream::commitSnapshots() {
     if (dirty_ids_.empty()) return;
 
     snapshots.reserve(dirty_ids_.size());
+
+    for (const auto &id : dirty_ids_) {
+      current_sec_ = std::max(current_sec_, master_state_[id].ts);
+    }
+
     for (const auto& id : dirty_ids_) {
       auto& state = master_state_[id];
-        snapshots.emplace_back(
-            std::piecewise_construct,
-            std::forward_as_tuple(id),
-            std::forward_as_tuple(state));
+      state.updateAllPatternColors(current_sec_);
+      snapshots.emplace_back(
+          std::piecewise_construct,
+          std::forward_as_tuple(id),
+          std::forward_as_tuple(state));
     }
     msgs = std::move(dirty_ids_);
   }
@@ -99,7 +104,6 @@ void AbstractStream::commitSnapshots() {
   for (auto& [id, snap] : snapshots) {
     snap.is_active = true;
 
-    current_sec_ = std::max(current_sec_, snap.ts);
     auto& target = snapshot_map_[id];
     if (target) {
       *target = std::move(snap);
@@ -339,18 +343,4 @@ void AbstractStream::updateMessageMask(const MessageId& id, MessageState& state)
       state.bit_high_counts[i].fill(0);
     }
   }
-}
-
-void AbstractStream::notifyUpdateSnapshots() {
-  {
-    std::lock_guard lk(mutex_);
-    double latest_msg_ts = 0;
-    for (const auto &id : dirty_ids_) {
-      latest_msg_ts = std::max(latest_msg_ts, master_state_[id].ts);
-    }
-    for (const auto &id : dirty_ids_) {
-      master_state_[id].updateAllPatternColors(latest_msg_ts);
-    }
-  }
-  emit privateUpdateLastMsgsSignal();
 }

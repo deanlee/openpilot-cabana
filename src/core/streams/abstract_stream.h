@@ -101,14 +101,13 @@ signals:
   void eventsMerged(const MessageEventsMap &events_map);
   void snapshotsUpdated(const std::set<MessageId> *ids, bool needs_rebuild);
   void sourcesUpdated(const SourceSet &s);
-  void privateUpdateLastMsgsSignal();
   void qLogLoaded(std::shared_ptr<LogReader> qlog);
 
 public:
   SourceSet sources;
 
 protected:
-  void notifyUpdateSnapshots();
+  void commitSnapshots();
   void mergeEvents(const std::vector<const CanEvent *> &events);
   const CanEvent *newEvent(uint64_t mono_time, const cereal::CanData::Reader &c);
   void processNewMessage(const MessageId &id, double sec, const uint8_t *data, uint8_t size);
@@ -118,7 +117,6 @@ protected:
   std::optional<std::pair<double, double>> time_range_;
 
 private:
-  void commitSnapshots();
   void updateSnapshotsTo(double sec);
   void updateMasks();
   void updateMessageMask(const MessageId& id, MessageState& state);
