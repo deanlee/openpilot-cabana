@@ -159,7 +159,8 @@ void MessageHistoryModel::fetchData(std::deque<Message>::iterator insert_pos, ui
       sigs[i].sig->getValue(e->dat, e->size, &values[i]);
     }
     if (!filter_cmp || filter_cmp(values[filter_sig_idx], filter_value)) {
-       msgs.emplace_back(Message{e->mono_time, values, {e->dat, e->dat + e->size}});
+      auto &m = msgs.emplace_back(Message{e->mono_time, values, e->size});
+      std::copy(e->dat, e->dat + e->size, m.data.begin());
       if (msgs.size() >= batch_size && min_time == 0) {
         break;
       }
@@ -170,7 +171,7 @@ void MessageHistoryModel::fetchData(std::deque<Message>::iterator insert_pos, ui
     if (isHexMode() && (min_time > 0 || messages.empty())) {
       const auto freq = stream->snapshot(msg_id)->freq;
       for (auto &m : msgs) {
-        hex_colors.update(msg_id, m.data.data(), m.data.size(), m.mono_time / (double)1e9, stream->getSpeed(), freq);
+        hex_colors.update(msg_id, m.data.data(), m.size, m.mono_time / (double)1e9, stream->getSpeed(), freq);
         hex_colors.updateAllPatternColors(m.mono_time / (double)1e9);
         m.colors = hex_colors.colors;
       }

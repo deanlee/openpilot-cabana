@@ -168,7 +168,7 @@ bool MessageModel::match(const MessageModel::Item &item) {
         match = item.data ? parseRange(txt, item.data->count) : false;
         break;
       case Column::DATA:
-        match = item.data ? utils::toHex(item.data->dat).contains(txt, Qt::CaseInsensitive) : false;
+        match = item.data ? utils::toHex(item.data->data.data(), item.data->size).contains(txt, Qt::CaseInsensitive) : false;
         break;
     }
   }

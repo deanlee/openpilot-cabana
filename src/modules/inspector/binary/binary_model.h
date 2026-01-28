@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "core/dbc/dbc_manager.h"
+#include "core/streams/message_state.h"
 
 // 32-32px is the "sweet spot" for technical touch interfaces
 const int CELL_WIDTH = 32;
@@ -28,7 +29,7 @@ class BinaryModel : public QAbstractTableModel {
   Qt::ItemFlags flags(const QModelIndex& index) const override {
     return (index.column() == column_count - 1) ? Qt::ItemIsEnabled : Qt::ItemIsEnabled | Qt::ItemIsSelectable;
   }
-  const std::vector<std::array<uint32_t, 8>>& getBitFlipChanges(size_t msg_size);
+  const std::array<std::array<uint32_t, 8>, MAX_CAN_LEN>& getBitFlipChanges(size_t msg_size);
 
   struct Item {
     QColor bg_color = QColor(102, 86, 169, 255);
@@ -53,7 +54,7 @@ class BinaryModel : public QAbstractTableModel {
  private:
   struct BitFlipTracker {
     std::optional<std::pair<double, double>> time_range;
-    std::vector<std::array<uint32_t, 8>> flip_counts;
+    std::array<std::array<uint32_t, 8>, MAX_CAN_LEN> flip_counts;
   } bit_flip_tracker;
 
   int row_count = 0;

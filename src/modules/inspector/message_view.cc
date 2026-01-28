@@ -223,7 +223,7 @@ void MessageView::refresh() {
   if (msg) {
     if (msg_id.source == INVALID_SOURCE) {
       warnings.push_back(tr("No messages received."));
-    } else if (can_msg->ts > 0 && msg->size != can_msg->dat.size()) {
+    } else if (can_msg->ts > 0 && msg->size != can_msg->size) {
       warnings.push_back(tr("Message size (%1) is incorrect.").arg(msg->size));
     }
     for (auto s : binary_view->getOverlappingSignals()) {
@@ -255,7 +255,7 @@ void MessageView::updateState(const std::set<MessageId>* msgs) {
 
 void MessageView::editMsg() {
   auto msg = GetDBC()->msg(msg_id);
-  int size = msg ? msg->size : StreamManager::stream()->snapshot(msg_id)->dat.size();
+  int size = msg ? msg->size : StreamManager::stream()->snapshot(msg_id)->size;
   MessageEdit dlg(msg_id, msgName(msg_id), size, this);
   if (dlg.exec()) {
     UndoStack::push(new EditMsgCommand(msg_id, dlg.name_edit->text().trimmed(), dlg.size_spin->value(),

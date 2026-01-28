@@ -36,7 +36,7 @@ void BinaryModel::refresh() {
       }
     }
   } else {
-    row_count = StreamManager::stream()->snapshot(msg_id)->dat.size();
+    row_count = StreamManager::stream()->snapshot(msg_id)->size;
     items.resize(row_count * column_count);
   }
   updateBorders();
@@ -84,11 +84,11 @@ bool BinaryModel::updateItem(int row, int col, uint8_t val, const QColor &color)
 
 void BinaryModel::updateState() {
   const auto* last_msg = StreamManager::stream()->snapshot(msg_id);
-  const auto& binary = last_msg->dat;
+  const auto& binary = last_msg->data;
 
-  if (binary.size() > row_count) {
-    beginInsertRows({}, row_count, binary.size() - 1);
-    row_count = binary.size();
+  if (last_msg->size > row_count) {
+    beginInsertRows({}, row_count, last_msg->size - 1);
+    row_count = last_msg->size;
     items.resize(row_count * column_count);
     endInsertRows();
   }
@@ -106,7 +106,7 @@ void BinaryModel::updateState() {
     decay_factor = std::pow(0.1f, 1.0f / (std::max(1, settings.fps) * persistence_secs));
   }
 
-  auto& bit_flips = heatmap_live_mode ? last_msg->bit_flips : getBitFlipChanges(binary.size());
+  const auto& bit_flips = heatmap_live_mode ? last_msg->bit_flips : getBitFlipChanges(last_msg->size);
 
   // Find max flips for relative scaling
   uint32_t max_bit_flip_count = 1;
@@ -121,7 +121,7 @@ void BinaryModel::updateState() {
   const float log_max = std::log2(static_cast<float>(max_bit_flip_count) + 1.0f);
   int first_dirty = -1, last_dirty = -1;
 
-  for (size_t i = 0; i < binary.size(); ++i) {
+  for (size_t i = 0; i < last_msg->size; ++i) {
     bool row_changed = false;
     const uint8_t byte_val = (uint8_t)binary[i];
     for (int j = 0; j < 8; ++j) {
@@ -201,14 +201,14 @@ QColor BinaryModel::calculateBitHeatColor(Item& item, uint32_t flips, float log_
   }
 }
 
-const std::vector<std::array<uint32_t, 8>> &BinaryModel::getBitFlipChanges(size_t msg_size) {
+const std::array<std::array<uint32_t, 8>, MAX_CAN_LEN>& BinaryModel::getBitFlipChanges(size_t msg_size) {
   // Return cached results if time range and data are unchanged
   auto time_range = StreamManager::stream()->timeRange();
   if (bit_flip_tracker.time_range == time_range && !bit_flip_tracker.flip_counts.empty())
     return bit_flip_tracker.flip_counts;
 
   bit_flip_tracker.time_range = time_range;
-  bit_flip_tracker.flip_counts.assign(msg_size, std::array<uint32_t, 8>{});
+  bit_flip_tracker.flip_counts.fill({});
 
   // Iterate over events within the specified time range and calculate bit flips
   auto [first, last] = StreamManager::stream()->eventsInRange(msg_id, time_range);

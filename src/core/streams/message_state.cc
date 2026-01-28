@@ -34,7 +34,7 @@ static const std::array<float, 256> ENTROPY_LOOKUP = [] {
 }();
 
 // Calculates Shannon Entropy for a single bit based on the probability 'p'
-double calculateBitEntropy(uint32_t highs, uint32_t total) {
+double getEntropy(uint32_t highs, uint32_t total) {
   if (total < MIN_SAMPLES_FOR_ENTROPY) return 0.0;
 
   return ENTROPY_LOOKUP[(highs * 255) / total];
@@ -42,46 +42,62 @@ double calculateBitEntropy(uint32_t highs, uint32_t total) {
 
 }  // namespace
 
-void MessageState::update(const MessageId& msg_id, const uint8_t* new_data, int size,
+void MessageState::init(const uint8_t* new_data, int data_size, double current_ts) {
+  size = std::min<int>(data_size, MAX_CAN_LEN);
+
+  ts = current_ts;
+  // Wipe arrays for the new message length
+  std::memset(data.data(), 0, MAX_CAN_LEN);
+  std::memcpy(data.data(), new_data, size);
+
+  last_change_ts.fill(current_ts);
+  last_delta.fill(0);
+  trend_weight.fill(0);
+  colors.fill(0);
+  detected_patterns.fill(DataPattern::None);
+
+  for (auto& f : bit_flips) f.fill(0);
+  for (auto& h : bit_high_counts) h.fill(0);
+
+  last_data_64.fill(0);
+  std::memcpy(last_data_64.data(), new_data, size);
+}
+
+void MessageState::update(const MessageId& msg_id, const uint8_t* new_data, int data_size,
                           double current_ts, double playback_speed, double manual_freq, bool is_seek) {
   ts = current_ts;
   count++;
 
-  // 1. Frequency Management
   updateFrequency(current_ts, manual_freq, is_seek);
 
-  // 2. Data Resizing
-  if (dat.size() != static_cast<size_t>(size)) {
-    init(new_data, size, current_ts);
+  if (size != data_size) {
+    init(new_data, data_size, current_ts);
     return;
   }
 
-  // 3. Sparse Byte Scanning (Jumps directly to changed bytes)
   const int num_blocks = (size + 7) / 8;
   for (int b = 0; b < num_blocks; ++b) {
     const int offset = b * 8;
-    const int bytes_in_block = std::min(8, size - offset);
+    const int block_len = std::min(8, size - offset);
 
     uint64_t cur_64 = 0;
-    std::memcpy(&cur_64, new_data + offset, bytes_in_block);
+    std::memcpy(&cur_64, new_data + offset, block_len);
 
+    // XOR bitmasking is the heart of the speed gain
     uint64_t diff_64 = (cur_64 ^ last_data_64[b]) & ~ignore_bit_mask[b];
 
     while (diff_64 != 0) {
-      // Hardware-accelerated "jump" to the next changed byte
       int first_bit = __builtin_ctzll(diff_64);
       int byte_offset = first_bit / 8;
       int idx = offset + byte_offset;
 
-      if (byte_offset < bytes_in_block) {
-        uint8_t byte_diff = static_cast<uint8_t>((diff_64 >> (byte_offset * 8)) & 0xFF);
-        analyzeByteMutation(idx, dat[idx], new_data[idx], byte_diff, current_ts);
-        dat[idx] = new_data[idx];
-      }
+      uint8_t byte_diff = static_cast<uint8_t>((diff_64 >> (byte_offset * 8)) & 0xFF);
+      analyzeByteMutation(idx, data[idx], new_data[idx], byte_diff, current_ts);
 
-      // Clear the processed byte's bits in the diff mask
+      data[idx] = new_data[idx];
       diff_64 &= ~(0xFFULL << (byte_offset * 8));
     }
+    std::memcpy(data.data() + offset, new_data + offset, block_len);
     last_data_64[b] = cur_64;
   }
 }
@@ -107,98 +123,59 @@ void MessageState::updateFrequency(double current_ts, double manual_freq, bool i
   }
 }
 
-void MessageState::init(const uint8_t* new_data, int size, double current_ts) {
-  dat.assign(new_data, new_data + size);
-  byte_states.assign(size, {current_ts, 0, 0, false});
-  bit_flips.assign(size, {0});
-  bit_high_counts.assign(size, {0});
-  detected_patterns.assign(size, DataPattern::None);
-  last_data_64.fill(0);
-  const int copy_size = std::min(size, (int)(last_data_64.size() * 8));
-  std::memcpy(last_data_64.data(), new_data, copy_size);
-}
-
 void MessageState::analyzeByteMutation(int i, uint8_t old_v, uint8_t new_v, uint8_t diff, double current_ts) {
-  auto& s = byte_states[i];
   const int delta = static_cast<int>(new_v) - static_cast<int>(old_v);
 
-  auto* const h_ptr = &bit_high_counts[i][0];
-  auto* const f_ptr = &bit_flips[i][0];
-
-  // Use local variables to allow the compiler to use registers instead of
-  // hitting the cache 16 times in a row.
-  uint8_t nv = new_v;
-  uint8_t df = diff;
-
-  h_ptr[7] += (nv >> 0) & 1;
-  h_ptr[6] += (nv >> 1) & 1;
-  h_ptr[5] += (nv >> 2) & 1;
-  h_ptr[4] += (nv >> 3) & 1;
-  h_ptr[3] += (nv >> 4) & 1;
-  h_ptr[2] += (nv >> 5) & 1;
-  h_ptr[1] += (nv >> 6) & 1;
-  h_ptr[0] += (nv >> 7) & 1;
-
-  f_ptr[7] += (df >> 0) & 1;
-  f_ptr[6] += (df >> 1) & 1;
-  f_ptr[5] += (df >> 2) & 1;
-  f_ptr[4] += (df >> 3) & 1;
-  f_ptr[3] += (df >> 4) & 1;
-  f_ptr[2] += (df >> 5) & 1;
-  f_ptr[1] += (df >> 6) & 1;
-  f_ptr[0] += (df >> 7) & 1;
-
-  // 2. Entropy Analysis (Shannon Entropy)
-  double total_entropy = 0.0;
+  // 1. Bit Stats (Now using SoA arrays directly)
   for (int bit = 0; bit < 8; ++bit) {
-    total_entropy += calculateBitEntropy(bit_high_counts[i][bit], count);
+    bit_high_counts[i][bit] += (new_v >> (7 - bit)) & 1;
+    bit_flips[i][bit] += (diff >> (7 - bit)) & 1;
   }
-  const double avg_entropy = total_entropy / 8.0;
 
-  // 3. Behavior & Trend Detection
-  const bool is_toggle = (delta == -s.last_delta) && (delta != 0);
-  const bool is_constant_step = (delta == s.last_delta) && (delta != 0);
-  const bool same_direction = (delta > 0) == (s.last_delta > 0);
+  // 2. Entropy
+  float total_entropy = 0.0f;
+  for (int bit = 0; bit < 8; ++bit) {
+    total_entropy += getEntropy(bit_high_counts[i][bit], count);
+  }
+  const float avg_entropy = total_entropy / 8.0;
 
- if (is_constant_step) {
-    // Strongest indicator of a counter
-    s.trend_weight = std::min(TREND_MAX, s.trend_weight + (TREND_INC * 2));
+  // 3. Trends (Using SoA arrays last_delta[i] and trend_weight[i])
+  const bool is_toggle = (delta == -last_delta[i]) && (delta != 0);
+  const bool is_constant_step = (delta == last_delta[i]) && (delta != 0);
+  const bool same_direction = (delta > 0) == (last_delta[i] > 0);
+
+  int& weight = trend_weight[i];
+  if (is_constant_step) {
+    weight = std::min(TREND_MAX, weight + (TREND_INC * 2));
   } else if (delta != 0 && same_direction) {
-    s.trend_weight = std::min(TREND_MAX, s.trend_weight + TREND_INC);
+    weight = std::min(TREND_MAX, weight + TREND_INC);
   } else if (is_toggle) {
-    // Toggles are distinct from trends; reduce trend weight to allow Toggle classification
-    s.trend_weight = std::max(0, s.trend_weight - TOGGLE_DECAY);
+    weight = std::max(0, weight - TOGGLE_DECAY);
   } else {
-    s.trend_weight = std::max(0, s.trend_weight - JITTER_DECAY);
+    weight = std::max(0, weight - JITTER_DECAY);
   }
 
-  // 4. Classification Hierarchy
-  // Logic: Toggle > Trend > Noise > None
-  DataPattern new_pattern = DataPattern::None;
-  if (is_toggle && s.trend_weight < LIMIT_TOGGLE) {
-    new_pattern = DataPattern::Toggle;
-  } else if (s.trend_weight > LIMIT_TREND) {
-    new_pattern = (delta > 0) ? DataPattern::Increasing : DataPattern::Decreasing;
-  } else if (avg_entropy > ENTROPY_THRESHOLD || s.trend_weight > LIMIT_NOISY) {
-    new_pattern = DataPattern::RandomlyNoisy;
+  // 4. Pattern logic
+  DataPattern new_p = DataPattern::None;
+  if (is_toggle && weight < LIMIT_TOGGLE) {
+    new_p = DataPattern::Toggle;
+  } else if (weight > LIMIT_TREND) {
+    new_p = (delta > 0) ? DataPattern::Increasing : DataPattern::Decreasing;
+  } else if (avg_entropy > ENTROPY_THRESHOLD || weight > LIMIT_NOISY) {
+    new_p = DataPattern::RandomlyNoisy;
   }
 
-  // If we found 'None', we keep the previous pattern so the color can
-  // fade out smoothly using the 'elapsed' timer.
-  if (new_pattern != DataPattern::None) {
-    detected_patterns[i] = new_pattern;
+  if (new_p != DataPattern::None) {
+    detected_patterns[i] = new_p;
   }
 
-  s.last_delta = delta;
-  s.last_change_ts = current_ts;
+  last_delta[i] = delta;
+  last_change_ts[i] = current_ts;
 }
 
 void MessageState::updateAllPatternColors(double current_can_sec) {
-  if (colors.size() != byte_states.size()) {
-    colors.resize(byte_states.size());
-  }
-  for (size_t i = 0; i < byte_states.size(); ++i) {
-    colors[i] = colorFromDataPattern(detected_patterns[i], current_can_sec, byte_states[i].last_change_ts, freq);
+  for (size_t i = 0; i < size; ++i) {
+    colors[i] = colorFromDataPattern(detected_patterns[i], current_can_sec, last_change_ts[i], freq);
   }
 }
 

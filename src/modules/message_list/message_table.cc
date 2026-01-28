@@ -38,7 +38,7 @@ void MessageTable::updateLayout() {
   int max_bytes = 8;
   if (!multi_line) {
     for (const auto& [_, m] : StreamManager::stream()->snapshots()) {
-      max_bytes = std::max<int>(max_bytes, m->dat.size());
+      max_bytes = std::max<int>(max_bytes, m->size);
     }
   }
 

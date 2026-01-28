@@ -16,13 +16,6 @@ enum class DataPattern : uint8_t {
   RandomlyNoisy
 };
 
-struct ByteState {
-  double last_change_ts = 0;  // Timestamp of last change
-  int last_delta = 0;        // Direction/magnitude of last change
-  int trend_weight = 0;             // Directional consistency counter
-  bool is_suppressed = false;   // User-defined noise filter
-};
-
 class MessageState {
  public:
   void init(const uint8_t* new_data, int size, double current_ts);
@@ -33,16 +26,23 @@ class MessageState {
   double ts = 0.0;     // Latest message timestamp
   double freq = 0.0;   // Message frequency (Hz)
   uint32_t count = 0;  // Total messages received
+  uint8_t size = 0;     // Message length in bytes
+
+  std::array<uint8_t, MAX_CAN_LEN> data = {0};                     // Raw payload
+  std::array<double, MAX_CAN_LEN> last_change_ts = {0};
+  std::array<int32_t, MAX_CAN_LEN> last_delta = {0};
+  std::array<int32_t, MAX_CAN_LEN> trend_weight = {0};
+  std::array<uint8_t, MAX_CAN_LEN> is_suppressed = {0}; // Use uint8 for better packing than bool
+  std::array<DataPattern, MAX_CAN_LEN> detected_patterns = {DataPattern::None};
+
+  std::array<uint32_t, MAX_CAN_LEN> colors = {0};
+
+  // Stats (only accessed on change, so we keep them slightly separate)
+  std::array<std::array<uint32_t, 8>, MAX_CAN_LEN> bit_flips = {};
+  std::array<std::array<uint32_t, 8>, MAX_CAN_LEN> bit_high_counts = {};
 
   std::array<uint64_t, 8> last_data_64 = {0};
   std::array<uint64_t, 8> ignore_bit_mask = {0};
-
-  std::vector<uint8_t> dat;                        // Raw payload
-  std::vector<ByteState> byte_states;              // Per-byte activity tracking
-  mutable std::vector<uint32_t> colors;
-  std::vector<std::array<uint32_t, 8>> bit_flips;  // Cumulative bit toggle counts
-  std::vector<std::array<uint32_t, 8>> bit_high_counts;
-  std::vector<DataPattern> detected_patterns;
 
  private:
   void analyzeByteMutation(int i, uint8_t old_val, uint8_t new_val, uint8_t diff, double current_ts);

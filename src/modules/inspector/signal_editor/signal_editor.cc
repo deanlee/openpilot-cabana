@@ -190,7 +190,7 @@ void SignalEditor::updateState(const std::set<MessageId>* msgs) {
   if (!isVisible() || height() == 0 || width() == 0) return;
 
   const auto* last_msg = StreamManager::stream()->snapshot(model->msg_id);
-  if (model->rowCount() == 0 || (msgs && !msgs->count(model->msg_id)) || last_msg->dat.size() == 0) return;
+  if (model->rowCount() == 0 || (msgs && !msgs->count(model->msg_id)) || last_msg->size == 0) return;
 
   auto [first_v, last_v] = visibleSignalRange();
   if (!first_v.isValid()) return;
@@ -233,7 +233,7 @@ int SignalEditor::getValueColumnWidth(const MessageSnapshot* msg) {
   for (int i = 0; i < model->rowCount(); ++i) {
     auto* item = model->itemFromIndex(model->index(i, 1));
     double val = 0;
-    if (item->sig->getValue(msg->dat.data(), msg->dat.size(), &val)) {
+    if (item->sig->getValue(msg->data.data(), msg->size, &val)) {
       item->sig_val = item->sig->formatValue(val);
       global_value_w = std::max(global_value_w, (item->sig_val.size() * digit_w));
     }
