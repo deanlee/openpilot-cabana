@@ -222,21 +222,24 @@ void AbstractStream::mergeEvents(const std::vector<const CanEvent*>& events) {
   msg_events.clear();
   for (auto e : events) msg_events[{e->src, e->address}].push_back(e);
 
+  // Helper lambda to insert events while maintaining time order
+  auto insert_ordered = [](std::vector<const CanEvent*>& target, const std::vector<const CanEvent*>& new_evs) {
+    bool is_append = target.empty() || new_evs.front()->mono_time >= target.back()->mono_time;
+    auto pos = is_append ? target.end()
+                         : std::upper_bound(target.begin(), target.end(), new_evs.front()->mono_time, CompareCanEvent());
+    target.insert(pos, new_evs.begin(), new_evs.end());
+    return is_append;
+  };
+
   // 2. Global list update (O(1) fast-path for live streams)
-  auto& all = all_events_;
-  bool is_global_append = all.empty() || events.front()->mono_time >= all.back()->mono_time;
-  auto g_pos = is_global_append ? all.end() : std::upper_bound(all.begin(), all.end(), events.front()->mono_time, CompareCanEvent());
-  all.insert(g_pos, events.begin(), events.end());
+  insert_ordered(all_events_, events);
 
   // 3. Per-ID list and Index update
   for (auto& [id, new_e] : msg_events) {
     auto& e = events_[id];
-    bool is_append = e.empty() || new_e.front()->mono_time >= e.back()->mono_time;
-
-    auto pos = is_append ? e.end() : std::upper_bound(e.begin(), e.end(), new_e.front()->mono_time, CompareCanEvent());
-    e.insert(pos, new_e.begin(), new_e.end());
-
-    time_index_map_[id].sync(e, e.front()->mono_time, e.back()->mono_time, !is_append);
+    bool was_append = insert_ordered(e, new_e);
+    // Sync the time index (rebuild only if it wasn't a simple append)
+    time_index_map_[id].sync(e, e.front()->mono_time, e.back()->mono_time, !was_append);
   }
   emit eventsMerged(msg_events);
 }
