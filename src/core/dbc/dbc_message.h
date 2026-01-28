@@ -11,43 +11,45 @@
 
 const QString UNDEFINED = "Undefined";
 
-#pragma pack(push, 1)
 struct MessageId {
-  union {
-    struct {
-      uint32_t address;
-      uint8_t source;
-    };
-    uint64_t raw;
-  };
+  uint32_t address;
+  uint8_t source;
 
-  MessageId(uint8_t s = 0, uint32_t a = 0) : raw(0) {
-    source = s;
-    address = a;
+  MessageId(uint8_t s = 0, uint32_t a = 0) : address(a), source(s) {}
+
+  inline uint64_t v() const noexcept {
+    return (static_cast<uint64_t>(source) << 32) | address;
   }
+
+  bool operator==(const MessageId &other) const noexcept { return v() == other.v(); }
+  bool operator!=(const MessageId &other) const noexcept { return v() != other.v(); }
+  bool operator<(const MessageId &other) const noexcept { return v() < other.v(); }
+  bool operator>(const MessageId &other) const noexcept { return v() > other.v(); }
 
   QString toString() const {
     return QString("%1:%2").arg(source).arg(address, 0, 16).toUpper();
   }
 
-  inline static MessageId fromString(const QString &str) {
+  static MessageId fromString(const QString &str) {
     auto parts = str.split(':');
     if (parts.size() != 2) return {};
     return MessageId(uint8_t(parts[0].toUInt()), parts[1].toUInt(nullptr, 16));
   }
-
-  bool operator==(const MessageId &other) const { return raw == other.raw; }
-  bool operator!=(const MessageId &other) const { return raw != other.raw; }
-  bool operator<(const MessageId &other) const { return raw < other.raw; }
-  bool operator>(const MessageId &other) const { return raw > other.raw; }
 };
-#pragma pack(pop)
 
 Q_DECLARE_METATYPE(MessageId);
 
 template <>
 struct std::hash<MessageId> {
-  std::size_t operator()(const MessageId &k) const noexcept { return std::hash<uint64_t>{}(k.raw); }
+  std::size_t operator()(const MessageId& k) const noexcept {
+    uint64_t x = k.v();
+    // SplitMix64 Finalizer: Constant time (~1ns), prevents O(N) lookup cliffs
+    x = (x ^ (x >> 30)) * 0xbf58476d1ce4e5b9ULL;
+    x = (x ^ (x >> 27)) * 0x94d049bb133111ebULL;
+    x = x ^ (x >> 31);
+
+    return static_cast<std::size_t>(x);
+  }
 };
 
 namespace dbc {
