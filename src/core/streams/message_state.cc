@@ -83,22 +83,28 @@ void MessageState::update(const uint8_t* new_data, int data_size,
     uint64_t cur_64 = 0;
     std::memcpy(&cur_64, new_data + offset, block_len);
 
-    // XOR bitmasking is the heart of the speed gain
-    uint64_t diff_64 = (cur_64 ^ last_data_64[b]) & ~ignore_bit_mask[b];
+    uint64_t raw_diff_64 = (cur_64 ^ last_data_64[b]);
+    if (raw_diff_64 != 0) {
+      uint64_t analysis_diff_64 = raw_diff_64 & ~ignore_bit_mask[b];
+      while (analysis_diff_64 != 0) {
+        // Find first byte with an unmasked change
+        int first_bit = __builtin_ctzll(analysis_diff_64);
+        int byte_in_block = first_bit / 8;
+        int global_idx = offset + byte_in_block;
 
-    while (diff_64 != 0) {
-      int first_bit = __builtin_ctzll(diff_64);
-      int byte_offset = first_bit / 8;
-      int idx = offset + byte_offset;
+        // Extract byte-level values for specific mutation analysis
+        uint8_t byte_diff = static_cast<uint8_t>((analysis_diff_64 >> (byte_in_block * 8)) & 0xFF);
+        uint8_t old_byte = static_cast<uint8_t>((last_data_64[b] >> (byte_in_block * 8)) & 0xFF);
+        uint8_t new_byte = new_data[global_idx];
 
-      uint8_t byte_diff = static_cast<uint8_t>((diff_64 >> (byte_offset * 8)) & 0xFF);
-      analyzeByteMutation(idx, data[idx], new_data[idx], byte_diff, current_ts);
+        analyzeByteMutation(global_idx, old_byte, new_byte, byte_diff, current_ts);
 
-      data[idx] = new_data[idx];
-      diff_64 &= ~(0xFFULL << (byte_offset * 8));
+        // Clear the entire byte from the analysis mask to find the next changed byte
+        analysis_diff_64 &= ~(0xFFULL << (byte_in_block * 8));
+      }
+      std::memcpy(data.data() + offset, new_data + offset, block_len);
+      last_data_64[b] = cur_64;
     }
-    std::memcpy(data.data() + offset, new_data + offset, block_len);
-    last_data_64[b] = cur_64;
   }
 }
 
