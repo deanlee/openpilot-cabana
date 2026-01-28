@@ -179,6 +179,49 @@ void MessageState::updateAllPatternColors(double current_can_sec) {
   }
 }
 
+void MessageState::applyMask(const std::vector<uint8_t>& mask) {
+  ignore_bit_mask.fill(0);
+
+  for (size_t i = 0; i < size; ++i) {
+    uint8_t m = 0;
+    if (is_suppressed[i]) {
+      m = 0xFF;
+    } else if (i < mask.size()) {
+      m = mask[i];
+    }
+
+    if (m != 0) {
+      ignore_bit_mask[i / 8] |= (static_cast<uint64_t>(m) << ((i % 8) * 8));
+      if (m == 0xFF) {
+        bit_flips[i].fill(0);
+        bit_high_counts[i].fill(0);
+      }
+    }
+  }
+}
+
+size_t MessageState::muteActiveBits(const std::vector<uint8_t>& mask) {
+  bool modified = false;
+  size_t cnt = 0;
+  for (size_t i = 0; i < size; ++i) {
+    if (!is_suppressed[i] && (ts - last_change_ts[i] < 2.0)) {
+      is_suppressed[i] = 1;  // Mark as suppressed
+      modified = true;
+    }
+    cnt += is_suppressed[i];
+  }
+  if (modified) {
+    applyMask(mask);
+  }
+  return cnt;
+}
+
+void MessageState::unmuteActiveBits(const std::vector<uint8_t>& mask) {
+  is_suppressed.fill(0);
+  // Refresh the mask (this will re-allow highlights for these bits)
+  applyMask(mask);
+}
+
 uint32_t colorFromDataPattern(DataPattern pattern, double current_ts, double last_ts, double freq) {
   if (pattern == DataPattern::None) return 0x00000000;
 

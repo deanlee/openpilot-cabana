@@ -143,7 +143,6 @@ protected:
 private:
   void updateSnapshotsTo(double sec);
   void updateMasks();
-  void updateMessageMask(const MessageId& id, MessageState& state);
   void updateActiveStates();
 
   std::unordered_map<MessageId, std::unique_ptr<MessageSnapshot>> snapshot_map_;

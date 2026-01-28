@@ -37,7 +37,7 @@ void AbstractStream::updateMasks() {
   }
 
   for (auto &[id, state] : shared_state_.master_state) {
-    updateMessageMask(id, state);
+    state.applyMask(shared_state_.masks.count(id) ? shared_state_.masks[id] : std::vector<uint8_t>{});
   }
 }
 
@@ -50,15 +50,7 @@ size_t AbstractStream::suppressHighlighted() {
   std::lock_guard lk(mutex_);
   size_t cnt = 0;
   for (auto &[id, m] : shared_state_.master_state) {
-    bool mod = false;
-    for (size_t i = 0; i < m.size; ++i) {
-      if (!m.is_suppressed[i] && (current_sec_ - m.last_change_ts[i] < 2.0)) {
-        m.is_suppressed[i] = 1; // Mark as suppressed
-        mod = true;
-      }
-      cnt += m.is_suppressed[i];
-    }
-    if (mod) updateMessageMask(id, m);
+    cnt += m.muteActiveBits(shared_state_.masks.count(id) ? shared_state_.masks[id] : std::vector<uint8_t>{});
   }
   return cnt;
 }
@@ -66,11 +58,7 @@ size_t AbstractStream::suppressHighlighted() {
 void AbstractStream::clearSuppressed() {
   std::lock_guard lk(mutex_);
   for (auto &[id, m] : shared_state_.master_state) {
-    for (size_t i = 0; i < m.size; ++i) {
-      m.is_suppressed[i] = false;
-    }
-    // Refresh the mask (this will re-allow highlights for these bits)
-    updateMessageMask(id, m);
+    m.unmuteActiveBits(shared_state_.masks.count(id) ? shared_state_.masks[id] : std::vector<uint8_t>{});
   }
 }
 
@@ -132,7 +120,7 @@ void AbstractStream::processNewMessage(const MessageId &id, double sec, const ui
   auto &state = shared_state_.master_state[id];
   if (state.size != (size_t)size) {
     state.init(data, size, sec);
-    updateMessageMask(id, state);
+    state.applyMask(shared_state_.masks.count(id) ? shared_state_.masks[id] : std::vector<uint8_t>{});
   }
   state.update(id, data, size, sec, getSpeed());
   shared_state_.dirty_ids.insert(id);
@@ -278,26 +266,4 @@ std::pair<CanEventIter, CanEventIter> AbstractStream::eventsInRange(const Messag
   auto last = std::upper_bound(std::max(first, evs.begin() + e_min), evs.begin() + e_max, t1, CompareCanEvent());
 
   return {first, last};
-}
-
-void AbstractStream::updateMessageMask(const MessageId& id, MessageState& state) {
-  state.ignore_bit_mask.fill(0);
-  if (state.data.empty()) return;
-
-  const auto& dbc_mask = shared_state_.masks[id];
-  for (size_t i = 0; i < state.size; ++i) {
-    uint8_t m = 0;
-    if (state.is_suppressed[i]) {
-      m = 0xFF;
-    } else if (i < dbc_mask.size()) {
-      m = dbc_mask[i];
-    }
-
-    state.ignore_bit_mask[i / 8] |= (static_cast<uint64_t>(m) << ((i % 8) * 8));
-
-    if (m == 0xFF) {
-      state.bit_flips[i].fill(0);
-      state.bit_high_counts[i].fill(0);
-    }
-  }
 }
