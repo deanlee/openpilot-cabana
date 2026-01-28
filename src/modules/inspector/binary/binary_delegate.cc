@@ -23,17 +23,19 @@ MessageBytesDelegate::MessageBytesDelegate(QObject *parent) : QStyledItemDelegat
 void MessageBytesDelegate::paint(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const {
   auto item = (const BinaryModel::Item *)index.internalPointer();
   BinaryView *bin_view = (BinaryView *)parent();
-  painter->save();
 
-  if (index.column() == 8) {
+  bool is_hex = (index.column() == 8);
+  bool is_selected = option.state & QStyle::State_Selected;
+  bool item_has_hovered = item->sigs.contains(bin_view->hovered_sig);
+
+  if (is_hex) {
     if (item->valid) {
       painter->setFont(hex_font);
       painter->fillRect(option.rect, item->bg_color);
     }
-  } else if (option.state & QStyle::State_Selected) {
+  } else if (is_selected) {
     auto color = bin_view->resize_sig ? bin_view->resize_sig->color : option.palette.color(QPalette::Active, QPalette::Highlight);
     painter->fillRect(option.rect, color);
-    painter->setPen(option.palette.color(QPalette::BrightText));
   } else if (!bin_view->selectionModel()->hasSelection() || !item->sigs.contains(bin_view->resize_sig)) {  // not resizing
     if (item->sigs.size() > 0) {
       for (auto &s : item->sigs) {
@@ -46,8 +48,6 @@ void MessageBytesDelegate::paint(QPainter *painter, const QStyleOptionViewItem &
     } else if (item->valid && item->bg_color.alpha() > 0) {
       painter->fillRect(option.rect, item->bg_color);
     }
-    auto color_role = item->sigs.contains(bin_view->hovered_sig) ? QPalette::BrightText : QPalette::Text;
-    painter->setPen(option.palette.color(bin_view->is_message_active ? QPalette::Normal : QPalette::Disabled, color_role));
   }
 
   if (item->sigs.size() > 1) {
@@ -56,59 +56,80 @@ void MessageBytesDelegate::paint(QPainter *painter, const QStyleOptionViewItem &
     painter->fillRect(option.rect, QBrush(Qt::darkGray, Qt::BDiagPattern));
   }
   if (item->valid) {
+    auto color_role = (item_has_hovered || is_selected) ? QPalette::BrightText : QPalette::Text;
+    auto group = bin_view->is_message_active ? QPalette::Normal : QPalette::Disabled;
+    painter->setPen(option.palette.color(group, color_role));
+    painter->setFont(is_hex ? hex_font : option.font);
     utils::drawStaticText(painter, option.rect, index.column() == 8 ? hex_text_table[item->val] : bin_text_table[item->val]);
   }
   if ((item->is_msb || item->is_lsb) && item->sigs.size() == 1 && item->sigs[0]->size > 1) {
     painter->setFont(small_font);
     painter->drawText(option.rect.adjusted(8, 0, -8, -3), Qt::AlignRight | Qt::AlignBottom, item->is_msb ? "M" : "L");
   }
-  painter->restore();
 }
 
 void MessageBytesDelegate::drawSignalCell(QPainter* painter, const QStyleOptionViewItem& option,
                                           const QModelIndex& index, const dbc::Signal* sig) const {
-  auto item = static_cast<const BinaryModel::Item*>(index.internalPointer());
+  const auto *item = static_cast<const BinaryModel::Item*>(index.internalPointer());
   const auto& b = item->borders;
-  const int h_space = 3, v_space = 2;
+  constexpr int h_space = 3, v_space = 2;
 
-  QRect rc = option.rect.adjusted(b.left * h_space, b.top * v_space,
-                                  b.right * -h_space, b.bottom * -v_space);
+  const QRect rc = option.rect.adjusted(b.left * h_space, b.top * v_space,
+                                        b.right * -h_space, b.bottom * -v_space);
 
-  // Corner Correction using cached diagonals
-  QRegion subtract;
+  // Logic: Fill center, then fill top/bottom rows with calculated widths to "carve" corners
+  if (b.top_left || b.top_right || b.bottom_left || b.bottom_right) {
+    // Fill vertical center (area between top and bottom padding rows)
+    painter->fillRect(rc.left(), rc.top() + v_space, rc.width(), rc.height() - (2 * v_space), item->bg_color);
+
+    // Top padding row
+    int tx = rc.left() + ((!b.top && !b.left && b.top_left) ? h_space : 0);
+    int tw = rc.width() - (tx - rc.left()) - ((!b.top && !b.right && b.top_right) ? h_space : 0);
+    painter->fillRect(tx, rc.top(), tw, v_space, item->bg_color);
+
+    // Bottom padding row
+    int bx = rc.left() + ((!b.bottom && !b.left && b.bottom_left) ? h_space : 0);
+    int bw = rc.width() - (bx - rc.left()) - ((!b.bottom && !b.right && b.bottom_right) ? h_space : 0);
+    painter->fillRect(bx, rc.bottom() - v_space + 1, bw, v_space, item->bg_color);
+  } else {
+    painter->fillRect(rc, item->bg_color);
+  }
+
+  // Batched Border Drawing
+  const QColor borderColor = sig->color.darker(125);
+  painter->setPen(borderColor);
+
+  QLine lines[8]; // Max 4 borders + 4 corner pieces
+  int l_idx = 0;
+
+  if (b.left)   lines[l_idx++] = QLine(rc.topLeft(), rc.bottomLeft());
+  if (b.right)  lines[l_idx++] = QLine(rc.topRight(), rc.bottomRight());
+  if (b.top)    lines[l_idx++] = QLine(rc.topLeft(), rc.topRight());
+  if (b.bottom) lines[l_idx++] = QLine(rc.bottomLeft(), rc.bottomRight());
+
+  // L-Shaped Corner Borders (only if no main border exists)
   if (!b.top) {
-    if (!b.left && b.top_left)
-      subtract += QRect{rc.left(), rc.top(), h_space, v_space};
-    else if (!b.right && b.top_right)
-      subtract += QRect{rc.right() - (h_space - 1), rc.top(), h_space, v_space};
+    if (!b.left && b.top_left) {
+      lines[l_idx++] = QLine(rc.left(), rc.top() + v_space, rc.left() + h_space, rc.top() + v_space);
+      lines[l_idx++] = QLine(rc.left() + h_space, rc.top(), rc.left() + h_space, rc.top() + v_space);
+    }
+    if (!b.right && b.top_right) {
+      lines[l_idx++] = QLine(rc.right() - h_space, rc.top(), rc.right() - h_space, rc.top() + v_space);
+      lines[l_idx++] = QLine(rc.right() - h_space, rc.top() + v_space, rc.right(), rc.top() + v_space);
+    }
   }
   if (!b.bottom) {
-    if (!b.left && b.bottom_left)
-      subtract += QRect{rc.left(), rc.bottom() - (v_space - 1), h_space, v_space};
-    else if (!b.right && b.bottom_right)
-      subtract += QRect{rc.right() - (h_space - 1), rc.bottom() - (v_space - 1), h_space, v_space};
-  }
-
-  bool has_clip = !subtract.isEmpty();
-  if (has_clip) {
-    painter->setClipRegion(QRegion(rc).subtracted(subtract));
-  }
-
-  // Fill and Borders
-  painter->fillRect(rc, option.palette.base());
-  painter->fillRect(rc, item->bg_color);
-
-  auto color = sig->color.darker(125);
-  painter->setPen(QPen(color, 1));
-  if (b.left) painter->drawLine(rc.topLeft(), rc.bottomLeft());
-  if (b.right) painter->drawLine(rc.topRight(), rc.bottomRight());
-  if (b.top) painter->drawLine(rc.topLeft(), rc.topRight());
-  if (b.bottom) painter->drawLine(rc.bottomLeft(), rc.bottomRight());
-
-  if (has_clip) {
-    painter->setPen(QPen(color, 2, Qt::SolidLine, Qt::SquareCap, Qt::MiterJoin));
-    for (auto& r : subtract) {
-      painter->drawRect(r);
+    if (!b.left && b.bottom_left) {
+      lines[l_idx++] = QLine(rc.left(), rc.bottom() - v_space, rc.left() + h_space, rc.bottom() - v_space);
+      lines[l_idx++] = QLine(rc.left() + h_space, rc.bottom() - v_space, rc.left() + h_space, rc.bottom());
     }
+    if (!b.right && b.bottom_right) {
+      lines[l_idx++] = QLine(rc.right() - h_space, rc.bottom() - v_space, rc.right(), rc.bottom() - v_space);
+      lines[l_idx++] = QLine(rc.right() - h_space, rc.bottom() - v_space, rc.right() - h_space, rc.bottom());
+    }
+  }
+
+  if (l_idx > 0) {
+    painter->drawLines(lines, l_idx);
   }
 }
