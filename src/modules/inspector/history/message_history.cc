@@ -35,10 +35,6 @@ MessageHistory::MessageHistory(QWidget* parent) : QFrame(parent) {
   logs->setHorizontalHeader(new HistoryHeader(Qt::Horizontal, this));
   logs->setFrameShape(QFrame::NoFrame);
 
-  auto* header = logs->horizontalHeader();
-  header->setResizeContentsPrecision(100);
-  header->setHighlightSections(false);
-
   logs->verticalHeader()->setDefaultSectionSize(delegate->sizeForBytes(8).height());
   logs->verticalHeader()->setVisible(false);
 

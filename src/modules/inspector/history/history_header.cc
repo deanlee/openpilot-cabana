@@ -4,6 +4,12 @@
 
 #include "utils/util.h"
 
+HistoryHeader::HistoryHeader(Qt::Orientation orientation, QWidget *parent) : QHeaderView(orientation, parent) {
+  setResizeContentsPrecision(100);
+  setHighlightSections(false);
+  setStretchLastSection(true);
+}
+
 QSize HistoryHeader::sectionSizeFromContents(int logicalIndex) const {
   static const QSize time_col_size = fontMetrics().size(0, "000000.000") + QSize(20, 10);
   if (logicalIndex == 0) return time_col_size;
