@@ -63,8 +63,8 @@ void MessageState::init(const uint8_t* new_data, int data_size, double current_t
   std::memcpy(last_data_64.data(), new_data, size);
 }
 
-void MessageState::update(const MessageId& msg_id, const uint8_t* new_data, int data_size,
-                          double current_ts, double playback_speed, double manual_freq, bool is_seek) {
+void MessageState::update(const uint8_t* new_data, int data_size,
+                          double current_ts, double manual_freq, bool is_seek) {
   ts = current_ts;
   count++;
 

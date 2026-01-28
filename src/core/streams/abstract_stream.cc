@@ -122,7 +122,7 @@ void AbstractStream::processNewMessage(const MessageId &id, double sec, const ui
     state.init(data, size, sec);
     state.applyMask(shared_state_.masks.count(id) ? shared_state_.masks[id] : std::vector<uint8_t>{});
   }
-  state.update(id, data, size, sec, getSpeed());
+  state.update(data, size, sec);
   shared_state_.dirty_ids.insert(id);
 }
 

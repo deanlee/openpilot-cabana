@@ -19,8 +19,8 @@ enum class DataPattern : uint8_t {
 class MessageState {
  public:
   void init(const uint8_t* new_data, int size, double current_ts);
-  void update(const MessageId& msg_id, const uint8_t* new_data, int size,
-              double current_ts, double playback_speed, double manual_freq = 0, bool is_seek = false);
+  void update(const uint8_t* new_data, int size, double current_ts,
+              double manual_freq = 0, bool is_seek = false);
   void updateAllPatternColors(double current_ts);
   void applyMask(const std::vector<uint8_t>& mask);
   size_t muteActiveBits(const std::vector<uint8_t>& mask);
@@ -42,6 +42,7 @@ class MessageState {
  private:
   void analyzeByteMutation(int i, uint8_t old_val, uint8_t new_val, uint8_t diff, double current_ts);
   void updateFrequency(double current_ts, double manual_freq, bool is_seek);
+
   double last_freq_ts = 0;
   std::array<double, MAX_CAN_LEN> last_change_ts = {0};
   std::array<int32_t, MAX_CAN_LEN> last_delta = {0};

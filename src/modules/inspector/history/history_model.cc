@@ -171,7 +171,7 @@ void MessageHistoryModel::fetchData(std::deque<Message>::iterator insert_pos, ui
     if (isHexMode() && (min_time > 0 || messages.empty())) {
       const auto freq = stream->snapshot(msg_id)->freq;
       for (auto &m : msgs) {
-        hex_colors.update(msg_id, m.data.data(), m.size, m.mono_time / (double)1e9, stream->getSpeed(), freq);
+        hex_colors.update(m.data.data(), m.size, m.mono_time / (double)1e9, freq);
         hex_colors.updateAllPatternColors(m.mono_time / (double)1e9);
         m.colors = hex_colors.colors;
       }
