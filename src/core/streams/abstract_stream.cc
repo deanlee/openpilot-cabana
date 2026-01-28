@@ -214,7 +214,6 @@ const CanEvent *AbstractStream::newEvent(uint64_t mono_time, const cereal::CanDa
   return e;
 }
 
-
 void AbstractStream::mergeEvents(const std::vector<const CanEvent*>& events) {
   if (events.empty()) return;
 

@@ -262,3 +262,17 @@ uint32_t colorFromDataPattern(DataPattern pattern, double current_ts, double las
   // Manual bit-shift construction: 0xAARRGGBB
   return (alpha << 24) | (rgb.r << 16) | (rgb.g << 8) | rgb.b;
 }
+
+// MessageSnapshot
+
+void MessageSnapshot::updateFrom(const MessageState& s) {
+  ts = s.ts;
+  freq = s.freq;
+  count = s.count;
+  size = s.size;
+  is_active = true;
+
+  std::memcpy(data.data(), s.data.data(), size);
+  std::memcpy(colors.data(), s.colors.data(), size * sizeof(uint32_t));
+  std::memcpy(bit_flips.data(), s.bit_flips.data(), size * sizeof(bit_flips[0]));
+}
