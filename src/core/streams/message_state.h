@@ -60,6 +60,8 @@ class MessageSnapshot {
     updateFrom(s);
   }
   void updateFrom(const MessageState& s);
+  void updateActiveState(double now);
+
 
   double ts = 0.0;
   double freq = 0.0;

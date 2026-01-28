@@ -139,25 +139,8 @@ const MessageSnapshot *AbstractStream::snapshot(const MessageId &id) const {
 }
 
 void AbstractStream::updateActiveStates() {
-  const double now = current_sec_;
-
-  for (auto& [id, m] : snapshot_map_) {
-    // If never received or timestamp is in the future (during seek), inactive.
-    if (m->ts <= 0 || m->ts > now) {
-      m->is_active = false;
-      continue;
-    }
-
-    const double elapsed = now - m->ts;
-
-    // Expected gap between messages. Default to 2s if freq is 0.
-    double expected_period = (m->freq > 0) ? (1.0 / m->freq) : 2.0;
-
-    // Threshold: Allow 3.5 missed cycles.
-    // Clamp between 2s (fast msgs) and 10s (slow heartbeats).
-    const double threshold = std::clamp(expected_period * 3.5, 2.0, 10.0);
-
-    m->is_active = (elapsed < threshold);
+  for (auto& [_, m] : snapshot_map_) {
+    m->updateActiveState(current_sec_);
   }
 }
 

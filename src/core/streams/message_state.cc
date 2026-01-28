@@ -276,3 +276,19 @@ void MessageSnapshot::updateFrom(const MessageState& s) {
   std::memcpy(colors.data(), s.colors.data(), size * sizeof(uint32_t));
   std::memcpy(bit_flips.data(), s.bit_flips.data(), size * sizeof(bit_flips[0]));
 }
+
+void MessageSnapshot::updateActiveState(double now) {
+  // If never received or timestamp is in the future (during seek), inactive.
+  if (ts <= 0 || ts > now) {
+    is_active = false;
+    return;
+  }
+
+  const double elapsed = now - ts;
+  // Expected gap between messages. Default to 2s if freq is 0.
+  double expected_period = (freq > 0) ? (1.0 / freq) : 2.0;
+  // Threshold: Allow 3.5 missed cycles.
+  // Clamp between 2s (fast msgs) and 10s (slow heartbeats).
+  const double threshold = std::clamp(expected_period * 3.5, 2.0, 10.0);
+  is_active = (elapsed < threshold);
+}
