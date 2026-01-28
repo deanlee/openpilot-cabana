@@ -52,4 +52,22 @@ class MessageState {
   std::array<uint64_t, 8> ignore_bit_mask = {0};
 };
 
+class MessageSnapshot {
+ public:
+  MessageSnapshot() = default;
+  MessageSnapshot(const MessageState& s) {
+    updateFrom(s);
+  }
+  void updateFrom(const MessageState& s);
+
+  double ts = 0.0;
+  double freq = 0.0;
+  uint32_t count = 0;
+  uint8_t size = 0;
+  bool is_active = false;
+  std::array<uint8_t, MAX_CAN_LEN> data = {0};
+  std::array<uint32_t, MAX_CAN_LEN> colors = {0};
+  std::array<std::array<uint32_t, 8>, MAX_CAN_LEN> bit_flips = {{}};
+};
+
 uint32_t colorFromDataPattern(DataPattern pattern, double current_ts, double last_ts, double freq);
