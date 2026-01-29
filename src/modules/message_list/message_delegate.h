@@ -1,5 +1,6 @@
 #pragma once
-#include <QStaticText>
+
+#include <QPixmap>
 #include <QStyledItemDelegate>
 
 enum class CallerType {
@@ -23,13 +24,17 @@ class MessageDelegate : public QStyledItemDelegate {
   QSize sizeForBytes(int n) const;
 
  private:
+  void updatePixmapCache(const QPalette& palette) const;
   void drawItemText(QPainter* painter, const QStyleOptionViewItem& option,
                     const QModelIndex& index, const QString& text, bool is_selected) const;
 
-  std::array<QStaticText, 256> hex_text_table;
   QFont fixed_font;
   QSize byte_size = {};
   CallerType caller_type_;
   bool multiple_lines = false;
   int h_margin, v_margin;
+
+  mutable QPixmap hex_pixmap_table[256][3];
+  mutable QPalette cached_palette;
+  enum RenderState { StateNormal = 0, StateSelected = 1, StateDisabled = 2 };
 };
