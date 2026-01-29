@@ -114,8 +114,9 @@ void AbstractStream::setTimeRange(const std::optional<std::pair<double, double>>
   emit timeRangeChanged(time_range_);
 }
 
-void AbstractStream::processNewMessage(const MessageId &id, double sec, const uint8_t *data, uint8_t size) {
+void AbstractStream::processNewMessage(const MessageId &id, uint64_t mono_time, const uint8_t *data, uint8_t size) {
   std::lock_guard lk(mutex_);
+  double sec = toSeconds(mono_time);
   shared_state_.current_sec = sec;
   auto &state = shared_state_.master_state[id];
   if (state.size != (size_t)size) {

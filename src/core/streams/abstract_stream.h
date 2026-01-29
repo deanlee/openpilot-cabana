@@ -96,7 +96,7 @@ protected:
   void commitSnapshots();
   void mergeEvents(const std::vector<const CanEvent *> &events);
   const CanEvent *newEvent(uint64_t mono_time, const cereal::CanData::Reader &c);
-  void processNewMessage(const MessageId &id, double sec, const uint8_t *data, uint8_t size);
+  void processNewMessage(const MessageId &id, uint64_t mono_time, const uint8_t *data, uint8_t size);
   void waitForSeekFinshed();
 
   struct SharedState {

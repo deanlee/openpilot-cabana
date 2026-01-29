@@ -102,13 +102,12 @@ bool ReplayStream::loadRoute(const QString &route, const QString &data_dir, uint
 
 bool ReplayStream::eventFilter(const Event *event) {
   if (event->which == cereal::Event::Which::CAN) {
-    double current_sec = toSeconds(event->mono_time);
     capnp::FlatArrayMessageReader reader(event->data);
     auto e = reader.getRoot<cereal::Event>();
     for (const auto &c : e.getCan()) {
       MessageId id(c.getSrc(), c.getAddress());
       const auto dat = c.getDat();
-      processNewMessage(id, current_sec, (const uint8_t*)dat.begin(), dat.size());
+      processNewMessage(id, event->mono_time, (const uint8_t*)dat.begin(), dat.size());
     }
   }
   return true;
