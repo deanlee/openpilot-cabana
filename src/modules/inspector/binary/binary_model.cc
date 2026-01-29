@@ -206,7 +206,12 @@ QColor BinaryModel::calculateBitHeatColor(Item& item, uint32_t flips, float log_
 
 const std::array<std::array<uint32_t, 8>, MAX_CAN_LEN>& BinaryModel::getBitFlipChanges(size_t msg_size) {
   // Return cached results if time range and data are unchanged
-  auto time_range = StreamManager::stream()->timeRange();
+  auto *stream = StreamManager::stream();
+  auto time_range = stream->timeRange();
+  if (!time_range) {
+    time_range = {stream->minSeconds(), stream->maxSeconds()};
+  }
+
   if (bit_flip_tracker.time_range == time_range && !bit_flip_tracker.flip_counts.empty())
     return bit_flip_tracker.flip_counts;
 
@@ -214,7 +219,7 @@ const std::array<std::array<uint32_t, 8>, MAX_CAN_LEN>& BinaryModel::getBitFlipC
   bit_flip_tracker.flip_counts.fill({});
 
   // Iterate over events within the specified time range and calculate bit flips
-  auto [first, last] = StreamManager::stream()->eventsInRange(msg_id, time_range);
+  auto [first, last] = stream->eventsInRange(msg_id, time_range);
   if (std::distance(first, last) <= 1) return bit_flip_tracker.flip_counts;
 
   std::vector<uint8_t> prev_values((*first)->dat, (*first)->dat + (*first)->size);
