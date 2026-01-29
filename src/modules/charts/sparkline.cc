@@ -22,11 +22,11 @@ void Sparkline::update(const dbc::Signal* sig, CanEventIter first, CanEventIter 
 void Sparkline::updateDataPoints(const dbc::Signal* sig, CanEventIter first, CanEventIter last) {
 if (first == last) return;
 
-  uint64_t first_ts = (*first)->mono_time;
-  uint64_t last_ts = (*(last - 1))->mono_time;
+  uint64_t first_ts = (*first)->mono_ns;
+  uint64_t last_ts = (*(last - 1))->mono_ns;
 
-  bool is_backwards = !history_.empty() && last_ts < history_.back().mono_time;
-  bool is_far_forward = !history_.empty() && first_ts > (history_.back().mono_time + 1000000000ULL);
+  bool is_backwards = !history_.empty() && last_ts < history_.back().mono_ns;
+  bool is_far_forward = !history_.empty() && first_ts > (history_.back().mono_ns + 1000000000ULL);
 
   if (history_.empty() || is_backwards || is_far_forward) {
     clearHistory();
@@ -35,19 +35,19 @@ if (first == last) return;
   // Incremental update
   double val = 0.0;
   for (auto it = first; it != last; ++it) {
-    uint64_t ts = (*it)->mono_time;
+    uint64_t ts = (*it)->mono_ns;
 
     // Skip data we already have if we are just appending
-    if (ts <= last_processed_mono_time_) continue;
+    if (ts <= last_processed_mono_ns_) continue;
 
     if (sig->getValue((*it)->dat, (*it)->size, &val)) {
       history_.push_back({ts, val});
     }
-    last_processed_mono_time_ = ts;
+    last_processed_mono_ns_ = ts;
   }
 
   // Purge data older than the window
-  while (!history_.empty() && history_.front().mono_time < first_ts) {
+  while (!history_.empty() && history_.front().mono_ns < first_ts) {
     history_.pop_front();
   }
   current_window_max_ts_ = last_ts;
@@ -119,13 +119,13 @@ void Sparkline::updateRenderPoints(int time_range, QSize size) {
   // 3. Main Loop
   for (size_t i = 0; i < history_.size(); ++i) {
     const auto& p = history_[i];
-    if (p.mono_time < window_start_ts) continue;
+    if (p.mono_ns < window_start_ts) continue;
 
     int x;
-    if (p.mono_time >= window_end_ts) {
+    if (p.mono_ns >= window_end_ts) {
       x = width - 1; // Latest points stay at the edge
     } else {
-      uint64_t diff = window_end_ts - p.mono_time;
+      uint64_t diff = window_end_ts - p.mono_ns;
       x = (width - 1) - static_cast<int>(diff / ns_per_pixel);
     }
     x = std::clamp(x, 0, width - 1);
@@ -134,14 +134,14 @@ void Sparkline::updateRenderPoints(int time_range, QSize size) {
       flush_bucket(current_x);
       current_x = x;
       b_entry = b_exit = b_min = b_max = toY(p.value);
-      b_min_ts = b_max_ts = p.mono_time;
+      b_min_ts = b_max_ts = p.mono_ns;
     } else {
       double y = toY(p.value);
       b_exit = y;
       // In screen coords, higher value = lower Y.
       // b_min (visual min) is actually the largest Y value.
-      if (y > b_min) { b_min = y; b_min_ts = p.mono_time; }
-      if (y < b_max) { b_max = y; b_max_ts = p.mono_time; }
+      if (y > b_min) { b_min = y; b_min_ts = p.mono_ns; }
+      if (y < b_max) { b_max = y; b_max_ts = p.mono_ns; }
     }
   }
   flush_bucket(current_x);
@@ -176,7 +176,7 @@ void Sparkline::setHighlight(bool highlight) {
 }
 
 void Sparkline::clearHistory() {
-  last_processed_mono_time_ = 0;
+  last_processed_mono_ns_ = 0;
   history_.clear();
   render_pts_.clear();
   current_window_max_ts_ = 0;

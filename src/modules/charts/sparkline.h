@@ -41,7 +41,7 @@ class RingBuffer {
 class Sparkline {
  public:
   struct DataPoint {
-    uint64_t mono_time;
+    uint64_t mono_ns;
     double value;
   };
   void update(const dbc::Signal* sig, CanEventIter first, CanEventIter last, int time_range, QSize size);
@@ -61,7 +61,7 @@ class Sparkline {
   void render();
 
   RingBuffer<DataPoint> history_;
-  uint64_t last_processed_mono_time_ = 0;
+  uint64_t last_processed_mono_ns_ = 0;
 
   std::vector<QPointF> render_points_;
   uint64_t current_window_max_ts_ = 0;

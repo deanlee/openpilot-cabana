@@ -40,7 +40,7 @@ void FindSignalModel::search(std::function<bool(double)> cmp) {
   filtered_signals.reserve(prev_sigs.size());
   QtConcurrent::blockingMap(prev_sigs, [&](auto &s) {
     const auto &events = StreamManager::stream()->events(s.id);
-    auto first = std::upper_bound(events.cbegin(), events.cend(), s.mono_time, CompareCanEvent());
+    auto first = std::upper_bound(events.cbegin(), events.cend(), s.mono_ns, CompareCanEvent());
     auto last = events.cend();
     if (last_time < std::numeric_limits<uint64_t>::max()) {
       last = std::upper_bound(events.cbegin(), events.cend(), last_time, CompareCanEvent());
@@ -49,9 +49,9 @@ void FindSignalModel::search(std::function<bool(double)> cmp) {
     auto it = std::find_if(first, last, [&](const CanEvent *e) { return cmp(decodeSignal(e->dat, e->size, s.sig)); });
     if (it != last) {
       auto values = s.values;
-      values += QString("(%1, %2)").arg(StreamManager::stream()->toSeconds((*it)->mono_time), 0, 'f', 3).arg(decodeSignal((*it)->dat, (*it)->size, s.sig));
+      values += QString("(%1, %2)").arg(StreamManager::stream()->toSeconds((*it)->mono_ns), 0, 'f', 3).arg(decodeSignal((*it)->dat, (*it)->size, s.sig));
       std::lock_guard lk(lock);
-      filtered_signals.push_back({.id = s.id, .mono_time = (*it)->mono_time, .sig = s.sig, .values = values});
+      filtered_signals.push_back({.id = s.id, .mono_ns = (*it)->mono_ns, .sig = s.sig, .values = values});
     }
   });
   histories.push_back(filtered_signals);
@@ -221,10 +221,10 @@ void FindSignalDlg::setInitialSignals() {
   double first_time_val = first_time_edit->text().toDouble();
   double last_time_val = last_time_edit->text().toDouble();
   auto [first_sec, last_sec] = std::minmax(first_time_val, last_time_val);
-  uint64_t first_time = can->toMonoTime(first_sec);
+  uint64_t first_time = can->toMonoNs(first_sec);
   model->last_time = std::numeric_limits<uint64_t>::max();
   if (last_sec > 0) {
-    model->last_time = can->toMonoTime(last_sec);
+    model->last_time = can->toMonoNs(last_sec);
   }
   model->initial_signals.clear();
 
@@ -236,7 +236,7 @@ void FindSignalDlg::setInitialSignals() {
         const int total_size = m->size * 8;
         for (int size = min_size->value(); size <= max_size->value(); ++size) {
           for (int start = 0; start <= total_size - size; ++start) {
-            FindSignalModel::SearchSignal s{.id = id, .mono_time = first_time, .sig = sig};
+            FindSignalModel::SearchSignal s{.id = id, .mono_ns = first_time, .sig = sig};
             s.sig.start_bit = start;
             s.sig.size = size;
             updateMsbLsb(s.sig);

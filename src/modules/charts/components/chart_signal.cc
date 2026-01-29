@@ -12,7 +12,7 @@ static void appendCanEvents(const dbc::Signal* sig, const std::vector<const CanE
   auto* can = StreamManager::stream();
   for (const CanEvent* e : events) {
     if (sig->getValue(e->dat, e->size, &value)) {
-      const double ts = can->toSeconds(e->mono_time);
+      const double ts = can->toSeconds(e->mono_ns);
       vals.emplace_back(ts, value);
 
       series_bounds.addPoint(value);
@@ -37,7 +37,7 @@ void ChartSignal::prepareData(const MessageEventsMap* msg_new_events, double min
   auto it = events->find(msg_id);
   if (it == events->end() || it->second.empty()) return;
 
-  if (vals.empty() || can->toSeconds(it->second.back()->mono_time) > vals.back().x()) {
+  if (vals.empty() || can->toSeconds(it->second.back()->mono_ns) > vals.back().x()) {
     appendCanEvents(sig, it->second, vals, step_vals, series_bounds);
   } else {
     std::vector<QPointF> tmp_vals, tmp_step_vals;

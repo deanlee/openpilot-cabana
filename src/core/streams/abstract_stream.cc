@@ -12,7 +12,7 @@ static const int EVENT_NEXT_BUFFER_SIZE = 6 * 1024 * 1024;  // 6MB
 
 template <>
 uint64_t TimeIndex<const CanEvent*>::get_timestamp(const CanEvent* const& e) {
-  return e->mono_time;
+  return e->mono_ns;
 }
 
 AbstractStream::AbstractStream(QObject *parent) : QObject(parent) {
@@ -114,9 +114,9 @@ void AbstractStream::setTimeRange(const std::optional<std::pair<double, double>>
   emit timeRangeChanged(time_range_);
 }
 
-void AbstractStream::processNewMessage(const MessageId &id, uint64_t mono_time, const uint8_t *data, uint8_t size) {
+void AbstractStream::processNewMessage(const MessageId &id, uint64_t mono_ns, const uint8_t *data, uint8_t size) {
   std::lock_guard lk(mutex_);
-  double sec = toSeconds(mono_time);
+  double sec = toSeconds(mono_ns);
   shared_state_.current_sec = sec;
   auto &state = shared_state_.master_state[id];
   if (state.size != (size_t)size) {
@@ -150,10 +150,10 @@ void AbstractStream::updateSnapshotsTo(double sec) {
 
   bool has_erased = false;
   size_t origin_snapshot_size = snapshot_map_.size();
-  const uint64_t last_ts = toMonoTime(sec);
+  const uint64_t last_ts = toMonoNs(sec);
 
   for (const auto& [id, ev] : events_) {
-    auto[s_min, s_max] = time_index_map_[id].getBounds(ev.front()->mono_time, last_ts, ev.size());
+    auto[s_min, s_max] = time_index_map_[id].getBounds(ev.front()->mono_ns, last_ts, ev.size());
     auto it = std::upper_bound(ev.begin() + s_min, ev.begin() + s_max, last_ts, CompareCanEvent());
     if (it == ev.begin()) {
       has_erased |= (shared_state_.master_state.erase(id) > 0);
@@ -163,7 +163,7 @@ void AbstractStream::updateSnapshotsTo(double sec) {
 
     const CanEvent* prev_ev = *std::prev(it);
     auto& m = shared_state_.master_state[id];
-    m.init(prev_ev->dat, prev_ev->size, toSeconds(prev_ev->mono_time));
+    m.init(prev_ev->dat, prev_ev->size, toSeconds(prev_ev->mono_ns));
     m.count = std::distance(ev.begin(), it);
     m.updateAllPatternColors(sec); // Important: Update colors before snapshotting
 
@@ -187,12 +187,12 @@ void AbstractStream::waitForSeekFinshed() {
   shared_state_.seek_finished = false;
 }
 
-const CanEvent *AbstractStream::newEvent(uint64_t mono_time, const cereal::CanData::Reader &c) {
+const CanEvent *AbstractStream::newEvent(uint64_t mono_ns, const cereal::CanData::Reader &c) {
   auto dat = c.getDat();
   CanEvent *e = (CanEvent *)event_buffer_->allocate(sizeof(CanEvent) + sizeof(uint8_t) * dat.size());
   e->src = c.getSrc();
   e->address = c.getAddress();
-  e->mono_time = mono_time;
+  e->mono_ns = mono_ns;
   e->size = dat.size();
   memcpy(e->dat, (uint8_t *)dat.begin(), e->size);
   return e;
@@ -208,11 +208,11 @@ void AbstractStream::mergeEvents(const std::vector<const CanEvent*>& events) {
 
   // Helper lambda to insert events while maintaining time order
   auto insert_ordered = [](std::vector<const CanEvent*>& target, const std::vector<const CanEvent*>& new_evs) {
-    bool is_append = target.empty() || new_evs.front()->mono_time >= target.back()->mono_time;
+    bool is_append = target.empty() || new_evs.front()->mono_ns >= target.back()->mono_ns;
     target.reserve(target.size() + new_evs.size());
 
     auto pos = is_append ? target.end()
-                         : std::upper_bound(target.begin(), target.end(), new_evs.front()->mono_time, CompareCanEvent());
+                         : std::upper_bound(target.begin(), target.end(), new_evs.front()->mono_ns, CompareCanEvent());
     target.insert(pos, new_evs.begin(), new_evs.end());
     return is_append;
   };
@@ -225,7 +225,7 @@ void AbstractStream::mergeEvents(const std::vector<const CanEvent*>& events) {
     auto& e = events_[id];
     bool was_append = insert_ordered(e, new_e);
     // Sync the time index (rebuild only if it wasn't a simple append)
-    time_index_map_[id].sync(e, e.front()->mono_time, e.back()->mono_time, !was_append);
+    time_index_map_[id].sync(e, e.front()->mono_ns, e.back()->mono_ns, !was_append);
   }
   emit eventsMerged(msg_events);
 }
@@ -234,8 +234,8 @@ std::pair<CanEventIter, CanEventIter> AbstractStream::eventsInRange(const Messag
   const auto& evs = events(id);
   if (evs.empty() || !range) return {evs.begin(), evs.end()};
 
-  uint64_t t0 = toMonoTime(range->first), t1 = toMonoTime(range->second);
-  uint64_t start_ts = evs.front()->mono_time;
+  uint64_t t0 = toMonoNs(range->first), t1 = toMonoNs(range->second);
+  uint64_t start_ts = evs.front()->mono_ns;
 
   auto it_index = time_index_map_.find(id);
   if (it_index == time_index_map_.end()) {

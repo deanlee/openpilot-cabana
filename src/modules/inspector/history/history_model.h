@@ -33,7 +33,7 @@ public:
   void setPauseState(bool paused);
 
   struct Message {
-    uint64_t mono_time = 0;
+    uint64_t mono_ns = 0;
     std::vector<double> sig_values;
     uint8_t size = 0;
     std::array<uint8_t, MAX_CAN_LEN> data;

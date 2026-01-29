@@ -82,7 +82,7 @@ QPixmap PlaybackCameraView::generateThumbnail(QPixmap thumb, double seconds) {
 
 void PlaybackCameraView::drawScrubThumbnail(QPainter& p) {
   p.fillRect(rect(), Qt::black);
-  auto it = big_thumbnails.lowerBound(StreamManager::stream()->toMonoTime(thumbnail_dispaly_time));
+  auto it = big_thumbnails.lowerBound(StreamManager::stream()->toMonoNs(thumbnail_dispaly_time));
   if (it != big_thumbnails.end()) {
     QPixmap scaled_thumb = it.value().scaled(rect().size(), Qt::KeepAspectRatio, Qt::SmoothTransformation);
     QRect thumb_rect(rect().center() - scaled_thumb.rect().center(), scaled_thumb.size());
@@ -92,7 +92,7 @@ void PlaybackCameraView::drawScrubThumbnail(QPainter& p) {
 }
 
 void PlaybackCameraView::drawThumbnail(QPainter& p) {
-  auto it = thumbnails.lowerBound(StreamManager::stream()->toMonoTime(thumbnail_dispaly_time));
+  auto it = thumbnails.lowerBound(StreamManager::stream()->toMonoNs(thumbnail_dispaly_time));
   if (it != thumbnails.end()) {
     const QPixmap& thumb = it.value();
     auto [min_sec, max_sec] = StreamManager::stream()->timeRange().value_or(std::make_pair(StreamManager::stream()->minSeconds(), StreamManager::stream()->maxSeconds()));

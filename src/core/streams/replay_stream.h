@@ -28,7 +28,7 @@ public:
   double minSeconds() const override { return replay->minSeconds(); }
   double maxSeconds() const { return replay->maxSeconds(); }
   inline QDateTime beginDateTime() const { return QDateTime::fromSecsSinceEpoch(replay->routeDateTime()); }
-  inline uint64_t beginMonoTime() const override { return replay->routeStartNanos(); }
+  inline uint64_t beginMonoNs() const override { return replay->routeStartNanos(); }
   inline void setSpeed(float speed) override { replay->setSpeed(speed); }
   inline float getSpeed() const { return replay->getSpeed(); }
   inline Replay *getReplay() const { return replay.get(); }

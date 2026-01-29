@@ -15,7 +15,7 @@ QVariant MessageHistoryModel::data(const QModelIndex& index, int role) const {
   const int col = index.column();
 
   if (role == Qt::DisplayRole) {
-    if (col == 0) return QString::number(StreamManager::stream()->toSeconds(m.mono_time), 'f', 3);
+    if (col == 0) return QString::number(StreamManager::stream()->toSeconds(m.mono_ns), 'f', 3);
     if (isHexMode()) return {};  // Handled by delegate
 
     const int sig_idx = col - 1;
@@ -108,8 +108,8 @@ void MessageHistoryModel::updateState(bool clear) {
   }
 
   auto *stream = StreamManager::stream();
-  uint64_t current_time = stream->toMonoTime(stream->snapshot(msg_id)->ts) + 1;
-  uint64_t last_time = messages.empty() ? 0 : messages.front().mono_time;
+  uint64_t current_time = stream->toMonoNs(stream->snapshot(msg_id)->ts) + 1;
+  uint64_t last_time = messages.empty() ? 0 : messages.front().mono_ns;
 
   // Insert at index 0 (top of the list)
   fetchData(0, current_time, last_time);
@@ -128,13 +128,13 @@ bool MessageHistoryModel::canFetchMore(const QModelIndex& parent) const {
   const auto& events = StreamManager::stream()->events(msg_id);
   if (events.empty()) return false;
 
-  return messages.back().mono_time > events.front()->mono_time;
+  return messages.back().mono_ns > events.front()->mono_ns;
 }
 
 void MessageHistoryModel::fetchMore(const QModelIndex &parent) {
   if (messages.empty()) return;
   // Fetch older data at the end (Infinite Scroll)
-  fetchData((int)messages.size(), messages.back().mono_time, 0);
+  fetchData((int)messages.size(), messages.back().mono_ns, 0);
 }
 
 void MessageHistoryModel::fetchData(int insert_pos_idx, uint64_t from_time, uint64_t min_time) {
@@ -143,7 +143,7 @@ void MessageHistoryModel::fetchData(int insert_pos_idx, uint64_t from_time, uint
   if (events.empty()) return;
 
   auto first = std::lower_bound(events.rbegin(), events.rend(), from_time, [](auto e, uint64_t ts) {
-    return e->mono_time > ts;
+    return e->mono_ns > ts;
   });
 
   std::vector<MessageHistoryModel::Message> msgs;
@@ -151,13 +151,13 @@ void MessageHistoryModel::fetchData(int insert_pos_idx, uint64_t from_time, uint
   msgs.reserve(batch_size);
   for (; first != events.rend(); ++first) {
     const CanEvent *e = *first;
-    if (e->mono_time <= min_time) break;
+    if (e->mono_ns <= min_time) break;
 
     for (int i = 0; i < sigs.size(); ++i) {
       sigs[i].sig->getValue(e->dat, e->size, &values[i]);
     }
     if (!filter_cmp || filter_cmp(values[filter_sig_idx], filter_value)) {
-      auto &m = msgs.emplace_back(Message{e->mono_time, values, e->size});
+      auto &m = msgs.emplace_back(Message{e->mono_ns, values, e->size});
       std::copy_n(e->dat, std::min<int>(e->size, MAX_CAN_LEN), m.data.begin());
       if (msgs.size() >= batch_size && min_time == 0) {
         break;
@@ -170,8 +170,8 @@ void MessageHistoryModel::fetchData(int insert_pos_idx, uint64_t from_time, uint
       const auto freq = stream->snapshot(msg_id)->freq;
        for (auto it = msgs.rbegin(); it != msgs.rend(); ++it) {
         auto &m = *it;
-        hex_colors.update(m.data.data(), m.size, m.mono_time / (double)1e9, freq);
-        hex_colors.updateAllPatternColors(m.mono_time / (double)1e9);
+        hex_colors.update(m.data.data(), m.size, m.mono_ns / (double)1e9, freq);
+        hex_colors.updateAllPatternColors(m.mono_ns / (double)1e9);
         m.colors = hex_colors.colors;
       }
     }

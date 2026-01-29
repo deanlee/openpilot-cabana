@@ -24,17 +24,17 @@
 struct CanEvent {
   uint8_t src;
   uint32_t address;
-  uint64_t mono_time;
+  uint64_t mono_ns;
   uint8_t size;
   uint8_t dat[];
 };
 
 struct CompareCanEvent {
   constexpr bool operator()(const CanEvent* e, uint64_t ts) const noexcept {
-    return e->mono_time < ts;
+    return e->mono_ns < ts;
   }
   constexpr bool operator()(uint64_t ts, const CanEvent* e) const noexcept {
-    return ts < e->mono_time;
+    return ts < e->mono_ns;
   }
 };
 
@@ -53,7 +53,7 @@ public:
   virtual QString routeName() const = 0;
   virtual QString carFingerprint() const { return ""; }
   virtual QDateTime beginDateTime() const { return {}; }
-  virtual uint64_t beginMonoTime() const { return 0; }
+  virtual uint64_t beginMonoNs() const { return 0; }
   virtual double minSeconds() const { return 0; }
   virtual double maxSeconds() const { return 0; }
   virtual void setSpeed(float speed) {}
@@ -64,8 +64,8 @@ public:
   const std::optional<std::pair<double, double>> &timeRange() const { return time_range_; }
 
   inline double currentSec() const { return current_sec_; }
-  inline uint64_t toMonoTime(double sec) const { return beginMonoTime() + std::max(sec, 0.0) * 1e9; }
-  inline double toSeconds(uint64_t mono_time) const { return std::max(0.0, (mono_time - beginMonoTime()) / 1e9); }
+  inline uint64_t toMonoNs(double sec) const { return beginMonoNs() + std::max(sec, 0.0) * 1e9; }
+  inline double toSeconds(uint64_t mono_ns) const { return std::max(0.0, (mono_ns - beginMonoNs()) / 1e9); }
 
   inline const std::unordered_map<MessageId, std::unique_ptr<MessageSnapshot>> &snapshots() const { return snapshot_map_; }
   inline const MessageEventsMap &eventsMap() const { return events_; }
@@ -95,8 +95,8 @@ public:
 protected:
   void commitSnapshots();
   void mergeEvents(const std::vector<const CanEvent *> &events);
-  const CanEvent *newEvent(uint64_t mono_time, const cereal::CanData::Reader &c);
-  void processNewMessage(const MessageId &id, uint64_t mono_time, const uint8_t *data, uint8_t size);
+  const CanEvent *newEvent(uint64_t mono_ns, const cereal::CanData::Reader &c);
+  void processNewMessage(const MessageId &id, uint64_t mono_ns, const uint8_t *data, uint8_t size);
   void waitForSeekFinshed();
 
   struct SharedState {

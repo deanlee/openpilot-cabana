@@ -12,7 +12,7 @@ void exportMessagesToCSV(const QString &file_name, std::optional<MessageId> msg_
     stream << "time,addr,bus,data\n";
     auto *can = StreamManager::stream();
     for (auto e : msg_id ? can->events(*msg_id) : can->allEvents()) {
-      stream << QString::number(can->toSeconds(e->mono_time), 'f', 3) << ","
+      stream << QString::number(can->toSeconds(e->mono_ns), 'f', 3) << ","
              << "0x" << QString::number(e->address, 16) << "," << e->src << ","
              << "0x" << QByteArray::fromRawData((const char *)e->dat, e->size).toHex().toUpper() << "\n";
     }
@@ -30,7 +30,7 @@ void exportSignalsToCSV(const QString &file_name, const MessageId &msg_id) {
 
     auto *can = StreamManager::stream();
     for (auto e : can->events(msg_id)) {
-      stream << QString::number(can->toSeconds(e->mono_time), 'f', 3) << ","
+      stream << QString::number(can->toSeconds(e->mono_ns), 'f', 3) << ","
              << "0x" << QString::number(e->address, 16) << "," << e->src;
       for (auto s : msg->sigs) {
         double value = 0;

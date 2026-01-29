@@ -79,10 +79,10 @@ void LiveStream::handleEvent(kj::ArrayPtr<capnp::word> data) {
   capnp::FlatArrayMessageReader reader(data);
   auto event = reader.getRoot<cereal::Event>();
   if (event.which() == cereal::Event::Which::CAN) {
-    const uint64_t mono_time = event.getLogMonoTime();
+    const uint64_t mono_ns = event.getLogMonoTime();
     std::lock_guard lk(lock);
     for (const auto &c : event.getCan()) {
-      received_events_.push_back(newEvent(mono_time, c));
+      received_events_.push_back(newEvent(mono_ns, c));
     }
   }
 }
@@ -97,11 +97,11 @@ void LiveStream::timerEvent(QTimerEvent* event) {
 
     if (!local_queue.empty()) {
       mergeEvents(local_queue);
-      lastest_event_ts = std::max(lastest_event_ts, local_queue.back()->mono_time);
+      lastest_event_ts = std::max(lastest_event_ts, local_queue.back()->mono_ns);
     }
 
     if (!all_events_.empty()) {
-      begin_event_ts = all_events_.front()->mono_time;
+      begin_event_ts = all_events_.front()->mono_ns;
       processNewMessages();
       return;
     }
@@ -114,7 +114,7 @@ void LiveStream::processNewMessages() {
 
   if (first_update_ts == 0) {
     first_update_ts = nanos_since_boot();
-    first_event_ts = current_event_ts = all_events_.back()->mono_time;
+    first_event_ts = current_event_ts = all_events_.back()->mono_ns;
   }
 
   if (paused_ || prev_speed != speed_) {
@@ -125,7 +125,7 @@ void LiveStream::processNewMessages() {
   }
 
   uint64_t last_ts = post_last_event && speed_ == 1.0
-                       ? all_events_.back()->mono_time
+                       ? all_events_.back()->mono_ns
                        : first_event_ts + (nanos_since_boot() - first_update_ts) * speed_;
   auto first = std::upper_bound(all_events_.cbegin(), all_events_.cend(), current_event_ts, CompareCanEvent());
   auto last = std::upper_bound(first, all_events_.cend(), last_ts, CompareCanEvent());
@@ -133,8 +133,8 @@ void LiveStream::processNewMessages() {
   for (auto it = first; it != last; ++it) {
     const CanEvent *e = *it;
     MessageId id(e->src, e->address);
-    processNewMessage(id, e->mono_time, e->dat, e->size);
-    current_event_ts = e->mono_time;
+    processNewMessage(id, e->mono_ns, e->dat, e->size);
+    current_event_ts = e->mono_ns;
   }
 
   commitSnapshots();
