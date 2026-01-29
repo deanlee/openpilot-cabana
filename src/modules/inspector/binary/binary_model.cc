@@ -97,32 +97,30 @@ void BinaryModel::updateState() {
     endInsertRows();
   }
 
+  const bool is_light_theme = !utils::isDarkTheme();
+  const QColor base_bg = qApp->palette().color(QPalette::Base);
+  const float fps = std::max(1.0f, static_cast<float>(settings.fps));
+
   // Adaptive Decay Calculation
   float decay_factor = 0.95f;
-  if (heatmap_live_mode) {
-    // We want the 'heat' to last for ~1.5 seconds, or at least 2 message periods
-    float persistence_secs = 1.5f;
-    if (last_msg->freq > 0) {
-      persistence_secs = std::clamp(2.0f / (float)last_msg->freq, 0.5f, 2.0f);
-    }
-    // Convert time-based persistence to a per-frame decay factor based on current FPS
-    // Formula: factor = 0.1 ^ (1 / (FPS * duration))
-    decay_factor = std::pow(0.1f, 1.0f / (std::max(1, settings.fps) * persistence_secs));
+  if (heatmap_live_mode && last_msg->freq > 0) {
+    // Calculate per-frame decay to maintain "heat" for ~2 message periods (capped 0.5s–2.0s)
+    // factor = 0.1 ^ (1 / (FPS * duration))
+    float persistence = std::clamp(2.0f / static_cast<float>(last_msg->freq), 0.5f, 2.0f);
+    decay_factor = std::pow(0.1f, 1.0f / (fps * persistence));
   }
 
   const auto& bit_flips = heatmap_live_mode ? last_msg->bit_flips : getBitFlipChanges(msg_size);
 
   // Find max flips for relative scaling
-  uint32_t max_bit_flip_count = 1;
+  uint32_t max_flips = 1;
   for (size_t i = 0; i < msg_size; ++i) {
     for (uint32_t count : bit_flips[i]) {
-      max_bit_flip_count = std::max(max_bit_flip_count, count);
+      max_flips = std::max(max_flips, count);
     }
   }
 
-  const bool is_light_theme = !utils::isDarkTheme();
-  const QColor base_bg = qApp->palette().color(QPalette::Base);
-  const float log_max = std::log2(static_cast<float>(max_bit_flip_count) + 1.0f);
+  const float log_max = std::log2(static_cast<float>(max_flips) + 1.0f);
   int first_dirty = -1, last_dirty = -1;
 
   for (size_t i = 0; i < msg_size; ++i) {
@@ -140,7 +138,7 @@ void BinaryModel::updateState() {
     }
 
     // The 9th column (index 8) remains the Byte Value with the Trend Color
-    QColor byte_color = (i < last_msg->colors.size()) ? QColor::fromRgba(last_msg->colors[i]) : base_bg;
+    QColor byte_color = QColor::fromRgba(last_msg->colors[i]);
     row_changed |= updateItem(i, 8, byte_val, byte_color);
 
     if (row_changed) {
