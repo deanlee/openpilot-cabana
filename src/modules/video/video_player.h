@@ -26,7 +26,6 @@ public:
 
 protected:
   void setupConnections();
-  QString formatTime(double sec, bool include_milliseconds = false);
   void timeRangeChanged();
   void updateState();
   void updatePlayBtnState();

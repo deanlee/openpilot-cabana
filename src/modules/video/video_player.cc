@@ -106,11 +106,6 @@ void VideoPlayer::createPlaybackController() {
   time_label = new TimeLabel();
   time_label->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
   h_layout->addWidget(time_label);
-  connect(time_label, &TimeLabel::clicked, this, [this]() {
-    settings.absolute_time = !settings.absolute_time;
-    time_label->setToolTip(settings.absolute_time ? tr("Elapsed time") : tr("Absolute time"));
-    updateState();
-  });
 
   // Right: Settings & Info
   loop_btn = createToolButton("repeat", tr("Loop playback"), [this]() { loopPlaybackClicked(); });
@@ -229,14 +224,6 @@ void VideoPlayer::timeRangeChanged() {
   updateState();
 }
 
-QString VideoPlayer::formatTime(double sec, bool include_milliseconds) {
-  const bool abs = settings.absolute_time;
-  if (abs) {
-    sec = StreamManager::stream()->beginDateTime().addMSecs(sec * 1000).toMSecsSinceEpoch() / 1000.0;
-  }
-  return utils::formatSeconds(sec, include_milliseconds, abs);
-}
-
 void VideoPlayer::updateState() {
   auto* stream = StreamManager::stream();
   auto current_sec = stream->currentSec();
@@ -247,10 +234,9 @@ void VideoPlayer::updateState() {
     if (camera_tab->count() == 0) {
       cam_widget->update();
     }
-    time_label->setText(QString("%1 / %2").arg(formatTime(current_sec, true),
-                                               formatTime(slider->maximum())));
+    time_label->setTime(current_sec, slider->maximum());
   } else {
-    time_label->setText(formatTime(current_sec, true));
+    time_label->setTime(current_sec);
   }
 }
 
