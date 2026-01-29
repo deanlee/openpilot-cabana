@@ -259,13 +259,13 @@ void SignalTreeDelegate::drawButtons(QPainter* p, const QStyleOptionViewItem& op
 }
 
 bool SignalTreeDelegate::helpEvent(QHelpEvent* event, QAbstractItemView* view, const QStyleOptionViewItem& option, const QModelIndex& index) {
-  if (index.column() == 0) {
+  auto item = static_cast<SignalTreeModel::Item*>(index.internalPointer());
+  if (index.column() != 1 || !item || item->type != SignalTreeModel::Item::Sig) {
    return QStyledItemDelegate::helpEvent(event, view, option, index);
   }
 
-  auto item = static_cast<SignalTreeModel::Item*>(index.internalPointer());
-  int btnIdx = (index.column() == 1 && item->type == SignalTreeModel::Item::Sig) ? buttonAt(event->pos(), option.rect) : -1;
-
+  // Button Hit-Testing
+  int btnIdx = buttonAt(event->pos(), option.rect);
   if (btnIdx != -1) {
     if (btnIdx == 1) {  // Plot Button
       bool opened = index.data(IsChartedRole).toBool();
@@ -274,21 +274,22 @@ bool SignalTreeDelegate::helpEvent(QHelpEvent* event, QAbstractItemView* view, c
       QToolTip::showText(event->globalPos(), tr("Remove Signal"), view);
     }
     return true;
-  } else {
-    int right_edge = option.rect.right() - getButtonsWidth();
-    QRect value_rect = option.rect;
-    value_rect.setLeft(right_edge - value_width);
-    value_rect.setRight(right_edge);
-    if (value_rect.contains(event->pos()) && item && !item->sig_val.isEmpty()) {
-      QString tooltip = item->sig_val + "\n\n" +
-                        tr("Min: %1\nMax: %2").arg(QString::number(item->sparkline->min_val, 'f', 3),
-                                                 QString::number(item->sparkline->max_val, 'f', 3));
-      QToolTip::showText(event->globalPos(), tooltip, view);
-      return true;
-    }
   }
 
-  QToolTip::hideText();
+  // Value & Sparkline Area Hit-Testing
+  int right_edge = option.rect.right() - getButtonsWidth();
+  QRect value_rect = option.rect;
+  value_rect.setLeft(right_edge - value_width);
+  value_rect.setRight(right_edge);
+
+  if (value_rect.contains(event->pos()) && !item->sig_val.isEmpty()) {
+    QString tooltip = item->sig_val + "\n" +
+                      tr("Session Min: %1\nSession Max: %2").arg(QString::number(item->sparkline->min_val, 'f', 3),
+                                                QString::number(item->sparkline->max_val, 'f', 3));
+    QToolTip::showText(event->globalPos(), tooltip, view);
+    return true;
+  }
+
   return QStyledItemDelegate::helpEvent(event, view, option, index);
 }
 
