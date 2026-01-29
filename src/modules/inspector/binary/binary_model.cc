@@ -33,6 +33,7 @@ void BinaryModel::refresh() {
         if (sigs.size() > 1) {
           std::sort(sigs.begin(), sigs.end(), [](auto l, auto r) { return l->size > r->size; });
         }
+        items[idx].bg_color = sig->color;
       }
     }
   } else {
@@ -84,6 +85,8 @@ bool BinaryModel::updateItem(int row, int col, uint8_t val, const QColor &color)
 
 void BinaryModel::updateState() {
   const auto* last_msg = StreamManager::stream()->snapshot(msg_id);
+  if (last_msg->size == 0) return;
+
   const auto& binary = last_msg->data;
 
   if (last_msg->size > row_count) {
