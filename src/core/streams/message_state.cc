@@ -22,7 +22,7 @@ static constexpr int LIMIT_TREND = 160;
 static constexpr double ENTROPY_THRESHOLD = 0.85;  // Above this, it's considered "Noisy"
 static constexpr int MIN_SAMPLES_FOR_ENTROPY = 16;
 
-// Precomputed table
+// Precomputed Shannon Entropy Table: H(p) = -p*log2(p) - (1-p)*log2(1-p)
 static const std::array<float, 256> ENTROPY_LOOKUP = [] {
   std::array<float, 256> table;
   for (int i = 0; i < 256; ++i) {
@@ -37,7 +37,8 @@ static const std::array<float, 256> ENTROPY_LOOKUP = [] {
 double getEntropy(uint32_t highs, uint32_t total) {
   if (total < MIN_SAMPLES_FOR_ENTROPY) return 0.0;
 
-  return ENTROPY_LOOKUP[(highs * 255) / total];
+  int index = std::clamp(static_cast<int>((static_cast<float>(highs) / total) * 255.0f), 0, 255);
+  return ENTROPY_LOOKUP[index];
 }
 
 }  // namespace
