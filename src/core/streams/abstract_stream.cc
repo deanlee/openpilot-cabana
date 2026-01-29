@@ -37,7 +37,7 @@ void AbstractStream::updateMasks() {
   }
 
   for (auto &[id, state] : shared_state_.master_state) {
-    state.applyMask(shared_state_.masks.count(id) ? shared_state_.masks[id] : std::vector<uint8_t>{});
+    state.applyMask(shared_state_.masks[id]);
   }
 }
 
@@ -50,7 +50,7 @@ size_t AbstractStream::suppressHighlighted() {
   std::lock_guard lk(mutex_);
   size_t cnt = 0;
   for (auto &[id, m] : shared_state_.master_state) {
-    cnt += m.muteActiveBits(shared_state_.masks.count(id) ? shared_state_.masks[id] : std::vector<uint8_t>{});
+    cnt += m.muteActiveBits(shared_state_.masks[id]);
   }
   return cnt;
 }
@@ -58,7 +58,7 @@ size_t AbstractStream::suppressHighlighted() {
 void AbstractStream::clearSuppressed() {
   std::lock_guard lk(mutex_);
   for (auto &[id, m] : shared_state_.master_state) {
-    m.unmuteActiveBits(shared_state_.masks.count(id) ? shared_state_.masks[id] : std::vector<uint8_t>{});
+    m.unmuteActiveBits(shared_state_.masks[id]);
   }
 }
 
@@ -121,7 +121,7 @@ void AbstractStream::processNewMessage(const MessageId &id, uint64_t mono_ns, co
   auto &state = shared_state_.master_state[id];
   if (state.size != (size_t)size) {
     state.init(data, size, sec);
-    state.applyMask(shared_state_.masks.count(id) ? shared_state_.masks[id] : std::vector<uint8_t>{});
+    state.applyMask(shared_state_.masks[id]);
   }
   state.update(data, size, sec);
   shared_state_.dirty_ids.insert(id);
