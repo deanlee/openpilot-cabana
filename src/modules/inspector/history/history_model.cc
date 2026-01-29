@@ -107,14 +107,12 @@ void MessageHistoryModel::updateState(bool clear) {
     endRemoveRows();
   }
 
-  if (is_paused && !clear) return;
-
   auto *stream = StreamManager::stream();
   uint64_t current_time = stream->toMonoTime(stream->snapshot(msg_id)->ts) + 1;
   uint64_t last_time = messages.empty() ? 0 : messages.front().mono_time;
 
-  // Fetch new messages at the front (Live Tail)
-  fetchData(messages.begin(), current_time, last_time);
+  // Insert at index 0 (top of the list)
+  fetchData(0, current_time, last_time);
 
   if (!is_paused && messages.size() > LIVE_VIEW_LIMIT) {
     beginRemoveRows({}, LIVE_VIEW_LIMIT, messages.size() - 1);
@@ -136,10 +134,10 @@ bool MessageHistoryModel::canFetchMore(const QModelIndex& parent) const {
 void MessageHistoryModel::fetchMore(const QModelIndex &parent) {
   if (messages.empty()) return;
   // Fetch older data at the end (Infinite Scroll)
-  fetchData(messages.end(), messages.back().mono_time, 0);
+  fetchData((int)messages.size(), messages.back().mono_time, 0);
 }
 
-void MessageHistoryModel::fetchData(std::deque<Message>::iterator insert_pos, uint64_t from_time, uint64_t min_time) {
+void MessageHistoryModel::fetchData(int insert_pos_idx, uint64_t from_time, uint64_t min_time) {
   auto* stream = StreamManager::stream();
   const auto &events = stream->events(msg_id);
   if (events.empty()) return;
@@ -177,9 +175,11 @@ void MessageHistoryModel::fetchData(std::deque<Message>::iterator insert_pos, ui
         m.colors = hex_colors.colors;
       }
     }
-    int pos = std::distance(messages.begin(), insert_pos);
-    beginInsertRows({}, pos , pos + msgs.size() - 1);
-    messages.insert(insert_pos, std::make_move_iterator(msgs.begin()), std::make_move_iterator(msgs.end()));
+
+    beginInsertRows({}, insert_pos_idx, insert_pos_idx + msgs.size() - 1);
+    messages.insert(messages.begin() + insert_pos_idx,
+                    std::make_move_iterator(msgs.begin()),
+                    std::make_move_iterator(msgs.end()));
     endInsertRows();
   }
 }

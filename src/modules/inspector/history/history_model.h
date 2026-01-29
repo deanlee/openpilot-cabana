@@ -45,7 +45,7 @@ public:
     dbc::Signal *sig;
   };
 
-  void fetchData(std::deque<Message>::iterator insert_pos, uint64_t from_time, uint64_t min_time);
+  void fetchData(int insert_pos_idx, uint64_t from_time, uint64_t min_time);
 
   MessageId msg_id;
   MessageState hex_colors;
