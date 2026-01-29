@@ -70,7 +70,7 @@ void MessageDelegate::paint(QPainter* painter, const QStyleOptionViewItem& optio
   if (!is_data_col) {
     QString text = index.data(Qt::DisplayRole).toString();
     if (!text.isEmpty()) {
-      drawItemText(painter, option, index, index.data(Qt::DisplayRole).toString(), is_selected);
+      drawItemText(painter, option, index, text, is_selected);
     }
     return;
   }
