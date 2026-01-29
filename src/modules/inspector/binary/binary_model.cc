@@ -85,13 +85,14 @@ bool BinaryModel::updateItem(int row, int col, uint8_t val, const QColor &color)
 
 void BinaryModel::updateState() {
   const auto* last_msg = StreamManager::stream()->snapshot(msg_id);
-  if (last_msg->size == 0) return;
+  const size_t msg_size = last_msg->size;
+  if (msg_size == 0) return;
 
   const auto& binary = last_msg->data;
 
-  if (last_msg->size > row_count) {
-    beginInsertRows({}, row_count, last_msg->size - 1);
-    row_count = last_msg->size;
+  if (msg_size > row_count) {
+    beginInsertRows({}, row_count, msg_size - 1);
+    row_count = msg_size;
     items.resize(row_count * column_count);
     endInsertRows();
   }
@@ -109,12 +110,12 @@ void BinaryModel::updateState() {
     decay_factor = std::pow(0.1f, 1.0f / (std::max(1, settings.fps) * persistence_secs));
   }
 
-  const auto& bit_flips = heatmap_live_mode ? last_msg->bit_flips : getBitFlipChanges(last_msg->size);
+  const auto& bit_flips = heatmap_live_mode ? last_msg->bit_flips : getBitFlipChanges(msg_size);
 
   // Find max flips for relative scaling
   uint32_t max_bit_flip_count = 1;
-  for (const auto& row : bit_flips) {
-    for (uint32_t count : row) {
+  for (size_t i = 0; i < msg_size; ++i) {
+    for (uint32_t count : bit_flips[i]) {
       max_bit_flip_count = std::max(max_bit_flip_count, count);
     }
   }
@@ -124,11 +125,13 @@ void BinaryModel::updateState() {
   const float log_max = std::log2(static_cast<float>(max_bit_flip_count) + 1.0f);
   int first_dirty = -1, last_dirty = -1;
 
-  for (size_t i = 0; i < last_msg->size; ++i) {
+  for (size_t i = 0; i < msg_size; ++i) {
     bool row_changed = false;
     const uint8_t byte_val = (uint8_t)binary[i];
+    const size_t row_offset = i * column_count;
+
     for (int j = 0; j < 8; ++j) {
-      auto& item = items[i * column_count + j];
+      auto& item = items[row_offset + j];
       int bit_val = (byte_val >> (7 - j)) & 1;
 
       // Calculate color based on heat
@@ -137,7 +140,7 @@ void BinaryModel::updateState() {
     }
 
     // The 9th column (index 8) remains the Byte Value with the Trend Color
-    QColor byte_color = i < last_msg->colors.size() ? QColor::fromRgba(last_msg->colors[i]) : base_bg;
+    QColor byte_color = (i < last_msg->colors.size()) ? QColor::fromRgba(last_msg->colors[i]) : base_bg;
     row_changed |= updateItem(i, 8, byte_val, byte_color);
 
     if (row_changed) {
