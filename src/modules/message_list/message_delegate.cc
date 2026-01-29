@@ -33,7 +33,9 @@ MessageDelegate::MessageDelegate(QObject *parent, CallerType caller_type, bool m
   fixed_font = QFontDatabase::systemFont(QFontDatabase::FixedFont);
 
   QFontMetrics fm(fixed_font);
-  byte_size = fm.size(Qt::TextSingleLine, "00 ") + QSize(0, 2);
+  int hex_width = fm.horizontalAdvance("FF");
+  int gap = 6;
+  byte_size = QSize(hex_width + gap, fm.height() + 2);
 
   h_margin = QApplication::style()->pixelMetric(QStyle::PM_FocusFrameHMargin) + 1;
   v_margin = QApplication::style()->pixelMetric(QStyle::PM_FocusFrameVMargin) + 1;
