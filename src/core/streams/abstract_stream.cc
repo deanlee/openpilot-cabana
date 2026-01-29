@@ -153,6 +153,8 @@ void AbstractStream::updateSnapshotsTo(double sec) {
   const uint64_t last_ts = toMonoNs(sec);
 
   for (const auto& [id, ev] : events_) {
+    if (ev.empty()) continue;
+
     auto[s_min, s_max] = time_index_map_[id].getBounds(ev.front()->mono_ns, last_ts, ev.size());
     auto it = std::upper_bound(ev.begin() + s_min, ev.begin() + s_max, last_ts, CompareCanEvent());
     if (it == ev.begin()) {
