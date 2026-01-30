@@ -188,12 +188,14 @@ bool MessageModel::rebuild() {
 
   // Helper: Builds item, matches against filters, and moves to vector
   auto processItem = [&](const MessageId& id, const dbc::Msg *msg, const MessageSnapshot* data) {
+    QString address_hex = getHexCached(id.address);
+    QString display_name = msg ? msg->name : QString("[%1]").arg(address_hex);
     Item item = {
         .id = id,
-        .name = msg ? msg->name : DASH,
+        .name = display_name,
         .node = msg ? msg->transmitter : QString(),
         .data = data,
-        .address_hex = getHexCached(id.address),
+        .address_hex = address_hex,
     };
 
     if (match(item)) {
