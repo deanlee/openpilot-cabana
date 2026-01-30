@@ -20,11 +20,11 @@ struct MessageDataRef {
 MessageDataRef getDataRef(CallerType type, const QModelIndex& index) {
   if (type == CallerType::MessageList) {
     auto* item = static_cast<MessageModel::Item*>(index.internalPointer());
-    return item->data ? MessageDataRef{item->data->size, &item->data->data, &item->data->colors} 
+    return item->data ? MessageDataRef{item->data->size, &item->data->data, &item->data->colors}
                       : MessageDataRef{0, nullptr, nullptr};
   } else {
     auto* msg = static_cast<MessageHistoryModel::Message*>(index.internalPointer());
-    return msg ? MessageDataRef{msg->size, &msg->data, &msg->colors} 
+    return msg ? MessageDataRef{msg->size, &msg->data, &msg->colors}
                : MessageDataRef{0, nullptr, nullptr};
   }
 }
@@ -72,82 +72,60 @@ QSize MessageDelegate::sizeHint(const QStyleOptionViewItem& option, const QModel
 void MessageDelegate::paint(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const {
   const bool is_selected = option.state & QStyle::State_Selected;
 
-  // 1. Draw Background
   if (is_selected) {
     painter->fillRect(option.rect, option.palette.highlight());
   }
 
-  const bool is_data_col = index.data(ColumnTypeRole::IsHexColumn).toBool();
   QVariant active_data = index.data(ColumnTypeRole::MsgActiveRole);
   const bool is_active = active_data.isValid() ? active_data.toBool() : true;
 
-  // 2. Handle Non-Hex Columns (Standard text)
+  const bool is_data_col = index.data(ColumnTypeRole::IsHexColumn).toBool();
   if (!is_data_col) {
-    painter->setPen(option.palette.color(is_active ? QPalette::Normal : QPalette::Disabled,
-                                         is_selected ? QPalette::HighlightedText : QPalette::Text));
-    QString text = index.data(Qt::DisplayRole).toString();
-    if (!text.isEmpty()) {
-      drawItemText(painter, option, index, text, is_selected);
-    }
-    return;
+    drawItemText(painter, option, index, is_selected, is_active);
+  } else {
+    drawHexData(painter, option, index, is_selected, is_active);
   }
-
-  // 3. Handle Hex Column (CAN FD Data)
-  MessageDataRef ref = getDataRef(caller_type_, index);
-  if (!ref.bytes || ref.len == 0) return;
-
-  const QRect content_rect = option.rect.adjusted(h_margin, v_margin, -h_margin, -v_margin);
-  const int b_width = byte_size.width();
-  const QPoint pt = content_rect.topLeft();
-
-  // Cache boundaries to avoid repeated function calls in loop
-  const int rect_left = option.rect.left();
-  const int rect_right = option.rect.right();
-
-  // Mathematical start: Jump directly to the first visible byte
-  // We use a slightly conservative estimate to account for gaps
-  int start_i = std::max(0, (rect_left - pt.x()) / (b_width + 1));
-
-  const int state_idx = is_selected ? StateSelected : (!is_active ? StateDisabled : StateNormal);
-
-  painter->save();
-  painter->setClipRect(option.rect);  // Hard boundary to prevent overlap
-  painter->setRenderHint(QPainter::Antialiasing, false);
-
-  for (int i = start_i; i < ref.len; ++i) {
-    // Calculate X: Byte width + 8px gap every 8 bytes
-    const int x_pos = pt.x() + (i * b_width) + ((i / 8) * GAP_WIDTH);
-
-    if (x_pos >= rect_right) break;
-    if (x_pos + b_width < rect_left) continue;
-
-    const QRect r(x_pos, pt.y(), b_width, byte_size.height());
-
-    // Paint background highlight
-    const uint32_t argb = (*ref.colors)[i];
-    if (argb > 0x00FFFFFF) {  // Direct alpha check is faster than bit-shifting
-      painter->fillRect(r, QColor::fromRgba(argb));
-    }
-
-    painter->drawPixmap(r.topLeft(), hex_pixmap_table[(*ref.bytes)[i]][state_idx]);
-  }
-
-  painter->restore();
 }
 
-void MessageDelegate::drawItemText(QPainter* painter, const QStyleOptionViewItem& option,
-                                   const QModelIndex& index, const QString& text, bool is_selected) const {
-  painter->setFont(option.font);
+void MessageDelegate::drawItemText(QPainter* p, const QStyleOptionViewItem& opt, const QModelIndex& idx, bool sel, bool active) const {
+  QString text = idx.data(Qt::DisplayRole).toString();
+  if (text.isEmpty()) return;
 
-  QRect textRect = option.rect.adjusted(h_margin, 0, -h_margin, 0);
-  const QFontMetrics &fm = option.fontMetrics;
+  p->setFont(opt.font);
+  p->setPen(opt.palette.color(active ? QPalette::Normal : QPalette::Disabled,
+                                    sel ? QPalette::HighlightedText : QPalette::Text));
+
+  QRect textRect = opt.rect.adjusted(h_margin, 0, -h_margin, 0);
+  const QFontMetrics &fm = opt.fontMetrics;
   const int y_baseline = textRect.top() + (textRect.height() - fm.height()) / 2 + fm.ascent();
 
   if (fm.horizontalAdvance(text) <= textRect.width()) {
-    painter->drawText(textRect.left(), y_baseline, text);
+    p->drawText(textRect.left(), y_baseline, text);
   } else {
     QString elided = fm.elidedText(text, Qt::ElideRight, textRect.width());
-    painter->drawText(textRect.left(), y_baseline, elided);
+    p->drawText(textRect.left(), y_baseline, elided);
+  }
+}
+
+void MessageDelegate::drawHexData(QPainter* p, const QStyleOptionViewItem& opt, const QModelIndex& idx, bool sel, bool active) const {
+  MessageDataRef ref = getDataRef(caller_type_, idx);
+  if (!ref.bytes || ref.len == 0) return;
+
+  const int x_start = opt.rect.left() + h_margin;
+  const int y = opt.rect.top() + v_margin;
+  const int state = sel ? StateSelected : (active ? StateNormal : StateDisabled);
+
+  p->setRenderHint(QPainter::Antialiasing, false);
+
+  for (int i = 0; i < ref.len; ++i) {
+    const int x = x_start + (i * byte_size.width()) + ((i >> 3) * GAP_WIDTH);
+    if (x + byte_size.width() > opt.rect.right()) break;
+
+    const uint32_t argb = (*ref.colors)[i];
+    if (argb > 0x00FFFFFF) {
+      p->fillRect(x, y, byte_size.width(), byte_size.height(), QColor::fromRgba(argb));
+    }
+    p->drawPixmap(x, y, hex_pixmap_table[(*ref.bytes)[i]][state]);
   }
 }
 

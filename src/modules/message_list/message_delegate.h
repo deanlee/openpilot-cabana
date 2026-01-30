@@ -23,8 +23,8 @@ class MessageDelegate : public QStyledItemDelegate {
 
  private:
   void updatePixmapCache(const QPalette& palette) const;
-  void drawItemText(QPainter* painter, const QStyleOptionViewItem& option,
-                    const QModelIndex& index, const QString& text, bool is_selected) const;
+  void drawItemText(QPainter* p, const QStyleOptionViewItem& opt, const QModelIndex& idx, bool sel, bool active) const;
+  void drawHexData(QPainter* p, const QStyleOptionViewItem& opt, const QModelIndex& idx, bool sel, bool active) const;
 
   QFont fixed_font;
   QSize byte_size = {};
