@@ -7,7 +7,6 @@ class MessageTable : public QTreeView {
   Q_OBJECT
 public:
   MessageTable(QWidget *parent);
-  void updateLayout();
 
 protected:
   void drawBranches(QPainter *painter, const QRect &rect, const QModelIndex &index) const override {}
