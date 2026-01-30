@@ -47,6 +47,8 @@ class Sparkline {
   void update(const dbc::Signal* sig, CanEventIter first, CanEventIter last, int time_range, QSize size);
   inline double freq() const { return freq_; }
   bool isEmpty() const { return image.isNull(); }
+  void mapHistoryToPoints(uint64_t start_ts, uint64_t end_ts, uint64_t ns_per_px,
+                          float pad, float x_end, std::function<float(double)> toY);
   void setHighlight(bool highlight);
   void clearHistory();
 
@@ -55,10 +57,26 @@ class Sparkline {
   double max_val = 0;
 
  private:
+  struct Bucket {
+    double entry, exit, min, max;
+    uint64_t min_ts, max_ts;
+
+    void init(double y, uint64_t ts) {
+      entry = exit = min = max = y;
+      min_ts = max_ts = ts;
+    }
+
+    void update(double y, uint64_t ts) {
+      exit = y;
+      if (y > min) { min = y; min_ts = ts; } // Y increases downwards
+      if (y < max) { max = y; max_ts = ts; }
+    }
+  };
 
   void updateDataPoints(const dbc::Signal* sig, CanEventIter first, CanEventIter last);
   void updateRenderPoints(int time_range, QSize size);
   void calculateValueBounds();
+  void flushBucket(int x, const Bucket& b);
   void render();
 
   RingBuffer<DataPoint> history_;

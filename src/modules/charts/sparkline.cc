@@ -63,83 +63,23 @@ void Sparkline::updateRenderPoints(int time_range, QSize size) {
 
   if (history_.empty()) return;
 
-  const int width = size.width();
-  const int height = size.height();
-  const uint64_t range_ns = static_cast<uint64_t>(time_range) * 1000000000ULL;
+ const uint64_t range_ns = static_cast<uint64_t>(time_range) * 1000000000ULL;
+  const float pad = 2.0f;
+  const float effective_w = std::max(1.0f, (float)size.width() - (2.0f * pad));
+  const float effective_h = std::max(1.0f, (float)size.height() - (2.0f * pad));
 
-  // 1. Efficiency & Clipping Constants
-  const float pad = 2.0f; // Padding to prevent 3px head dot from clipping
-  const float effective_w = std::max(1.0f, (float)width - (2.0f * pad));
-  const float effective_h = std::max(1.0f, (float)height - (2.0f * pad));
-
-  // 2. Padding-Aware ns_per_pixel
+  // 1. Time Synchronization
   const uint64_t ns_per_pixel = std::max<uint64_t>(1, range_ns / static_cast<uint64_t>(effective_w));
   const uint64_t window_end_ts = (current_window_max_ts_ / ns_per_pixel) * ns_per_pixel;
   const uint64_t window_start_ts = (window_end_ts > range_ns) ? (window_end_ts - range_ns) : 0;
 
-  // 3. Min/Max Calculation
+  // 2. Value Scaling
   calculateValueBounds();
-
   const float y_scale = effective_h / static_cast<float>(max_val - min_val);
-  auto toY = [&](double v) {
-    return (float)height - pad - (float)((v - min_val) * y_scale);
-  };
+  auto toY = [&](double v) { return (float)size.height() - pad - (float)((v - min_val) * y_scale); };
 
-  render_pts_.clear();
-  render_pts_.reserve(width * 4);
-
-  int current_x = -1;
-  double b_entry, b_exit, b_min, b_max;
-  uint64_t b_min_ts, b_max_ts;
-  constexpr float VISUAL_EPS = 0.01f;
-
-  auto flush_bucket = [&](int x) {
-    if (x == -1) return;
-    if (std::abs(b_min - b_max) < VISUAL_EPS) {
-      if (!render_pts_.empty() && std::abs(render_pts_.back().y() - (float)b_min) > VISUAL_EPS) {
-        render_pts_.emplace_back(x, render_pts_.back().y());
-      }
-      render_pts_.emplace_back(x, (float)b_min);
-    } else {
-      render_pts_.emplace_back(x, (float)b_entry);
-      if (b_min_ts < b_max_ts) {
-        render_pts_.emplace_back(x, (float)b_min); render_pts_.emplace_back(x, (float)b_max);
-      } else {
-        render_pts_.emplace_back(x, (float)b_max); render_pts_.emplace_back(x, (float)b_min);
-      }
-      render_pts_.emplace_back(x, (float)b_exit);
-    }
-  };
-
-  // 4. Main Mapping Loop
-  const float x_end = (float)width - pad;
-
-  for (int i = 0; i < history_.size(); ++i) {
-    const auto& p = history_[i];
-    if (p.mono_ns < window_start_ts) continue;
-
-    int x;
-    if (p.mono_ns >= window_end_ts) {
-      x = static_cast<int>(x_end);
-    } else {
-      uint64_t diff = window_end_ts - p.mono_ns;
-      x = static_cast<int>(x_end - (static_cast<float>(diff) / ns_per_pixel));
-    }
-    x = std::clamp(x, (int)pad, (int)x_end);
-
-    if (x != current_x) {
-      flush_bucket(current_x);
-      current_x = x;
-      b_entry = b_exit = b_min = b_max = toY(p.value);
-      b_min_ts = b_max_ts = p.mono_ns;
-    } else {
-      double y = toY(p.value);
-      b_exit = y;
-      if (y > b_min) { b_min = y; b_min_ts = p.mono_ns; }
-      if (y < b_max) { b_max = y; b_max_ts = p.mono_ns; }
-    }
-  }
-  flush_bucket(current_x);
+  // 3. Point Generation (M4 Algorithm)
+  mapHistoryToPoints(window_start_ts, window_end_ts, ns_per_pixel, pad, (float)size.width() - pad, toY);
 }
 
 void Sparkline::render() {
@@ -192,4 +132,53 @@ void Sparkline::clearHistory() {
   render_pts_.clear();
   current_window_max_ts_ = 0;
   image = QImage();
+}
+
+void Sparkline::mapHistoryToPoints(uint64_t start_ts, uint64_t end_ts, uint64_t ns_per_px,
+                                   float pad, float x_end, std::function<float(double)> toY) {
+  render_pts_.clear();
+  render_pts_.reserve(history_.size() / 2);  // Heuristic allocation
+
+  int current_x = -1;
+  Bucket bucket;
+
+  for (int i = 0; i < history_.size(); ++i) {
+    const auto& p = history_[i];
+    if (p.mono_ns < start_ts) continue;
+
+    int x = (p.mono_ns >= end_ts) ? static_cast<int>(x_end)
+                                  : static_cast<int>(x_end - ((end_ts - p.mono_ns) / ns_per_px));
+    x = std::clamp(x, (int)pad, (int)x_end);
+
+    if (x != current_x) {
+      flushBucket(current_x, bucket);
+      current_x = x;
+      bucket.init(toY(p.value), p.mono_ns);
+    } else {
+      bucket.update(toY(p.value), p.mono_ns);
+    }
+  }
+  flushBucket(current_x, bucket);
+}
+
+void Sparkline::flushBucket(int x, const Bucket& b) {
+  if (x == -1) return;
+  constexpr float VISUAL_EPS = 0.01f;
+
+  if (std::abs(b.min - b.max) < VISUAL_EPS) {
+    if (!render_pts_.empty() && std::abs(render_pts_.back().y() - (float)b.min) > VISUAL_EPS) {
+      render_pts_.emplace_back(x, render_pts_.back().y());
+    }
+    render_pts_.emplace_back(x, (float)b.min);
+  } else {
+    render_pts_.emplace_back(x, (float)b.entry);
+    if (b.min_ts < b.max_ts) {
+      render_pts_.emplace_back(x, (float)b.min);
+      render_pts_.emplace_back(x, (float)b.max);
+    } else {
+      render_pts_.emplace_back(x, (float)b.max);
+      render_pts_.emplace_back(x, (float)b.min);
+    }
+    render_pts_.emplace_back(x, (float)b.exit);
+  }
 }
