@@ -169,10 +169,10 @@ void MessageHistoryModel::fetchData(int insert_pos_idx, uint64_t from_time, uint
     if (isHexMode() && (min_time > 0 || messages.empty())) {
       const auto freq = stream->snapshot(msg_id)->freq;
        for (auto it = msgs.rbegin(); it != msgs.rend(); ++it) {
-        auto &m = *it;
-        hex_colors.update(m.data.data(), m.size, m.mono_ns / (double)1e9, freq);
-        hex_colors.updateAllPatternColors(m.mono_ns / (double)1e9);
-        m.colors = hex_colors.colors;
+        double ts = it->mono_ns / 1e9;
+        hex_colors.update(it->data.data(), it->size, ts, freq);
+        hex_colors.updateAllPatternColors(ts);
+        it->colors = hex_colors.colors;
       }
     }
 
