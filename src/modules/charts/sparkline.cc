@@ -67,25 +67,22 @@ void Sparkline::updateRenderPoints(int time_range, QSize size) {
   const int height = size.height();
   const uint64_t range_ns = static_cast<uint64_t>(time_range) * 1000000000ULL;
 
-  // --- PIXEL LOCKING (Prevents "Jetty" Width) ---
-  const uint64_t ns_per_pixel = std::max<uint64_t>(1, range_ns / width);
+  // 1. Efficiency & Clipping Constants
+  const float pad = 2.0f; // Padding to prevent 3px head dot from clipping
+  const float effective_w = std::max(1.0f, (float)width - (2.0f * pad));
+  const float effective_h = std::max(1.0f, (float)height - (2.0f * pad));
+
+  // 2. Padding-Aware ns_per_pixel
+  const uint64_t ns_per_pixel = std::max<uint64_t>(1, range_ns / static_cast<uint64_t>(effective_w));
   const uint64_t window_end_ts = (current_window_max_ts_ / ns_per_pixel) * ns_per_pixel;
   const uint64_t window_start_ts = (window_end_ts > range_ns) ? (window_end_ts - range_ns) : 0;
 
-  // 1. Min/Max Calculation
-  min_val = std::numeric_limits<double>::max();
-  max_val = std::numeric_limits<double>::lowest();
-  for (size_t i = 0; i < history_.size(); ++i) {
-    const double v = history_[i].value;
-    if (v < min_val) min_val = v;
-    if (v > max_val) max_val = v;
-  }
-  if (std::abs(max_val - min_val) < 1e-9) { min_val -= 1.0; max_val += 1.0; }
+  // 3. Min/Max Calculation
+  calculateValueBounds();
 
-  const float margin = 1.0f;
-  const float y_scale = (height - 2.0f * margin) / static_cast<float>(max_val - min_val);
+  const float y_scale = effective_h / static_cast<float>(max_val - min_val);
   auto toY = [&](double v) {
-    return (float)height - margin - (float)((v - min_val) * y_scale);
+    return (float)height - pad - (float)((v - min_val) * y_scale);
   };
 
   render_pts_.clear();
@@ -96,7 +93,6 @@ void Sparkline::updateRenderPoints(int time_range, QSize size) {
   uint64_t b_min_ts, b_max_ts;
   constexpr float VISUAL_EPS = 0.01f;
 
-  // 2. M4 Bucket Flush Logic
   auto flush_bucket = [&](int x) {
     if (x == -1) return;
     if (std::abs(b_min - b_max) < VISUAL_EPS) {
@@ -106,7 +102,6 @@ void Sparkline::updateRenderPoints(int time_range, QSize size) {
       render_pts_.emplace_back(x, (float)b_min);
     } else {
       render_pts_.emplace_back(x, (float)b_entry);
-      // M4: Draw points in chronological order of their occurrence
       if (b_min_ts < b_max_ts) {
         render_pts_.emplace_back(x, (float)b_min); render_pts_.emplace_back(x, (float)b_max);
       } else {
@@ -116,19 +111,21 @@ void Sparkline::updateRenderPoints(int time_range, QSize size) {
     }
   };
 
-  // 3. Main Loop
-  for (size_t i = 0; i < history_.size(); ++i) {
+  // 4. Main Mapping Loop
+  const float x_end = (float)width - pad;
+
+  for (int i = 0; i < history_.size(); ++i) {
     const auto& p = history_[i];
     if (p.mono_ns < window_start_ts) continue;
 
     int x;
     if (p.mono_ns >= window_end_ts) {
-      x = width - 1; // Latest points stay at the edge
+      x = static_cast<int>(x_end);
     } else {
       uint64_t diff = window_end_ts - p.mono_ns;
-      x = (width - 1) - static_cast<int>(diff / ns_per_pixel);
+      x = static_cast<int>(x_end - (static_cast<float>(diff) / ns_per_pixel));
     }
-    x = std::clamp(x, 0, width - 1);
+    x = std::clamp(x, (int)pad, (int)x_end);
 
     if (x != current_x) {
       flush_bucket(current_x);
@@ -138,8 +135,6 @@ void Sparkline::updateRenderPoints(int time_range, QSize size) {
     } else {
       double y = toY(p.value);
       b_exit = y;
-      // In screen coords, higher value = lower Y.
-      // b_min (visual min) is actually the largest Y value.
       if (y > b_min) { b_min = y; b_min_ts = p.mono_ns; }
       if (y < b_max) { b_max = y; b_max_ts = p.mono_ns; }
     }
@@ -163,9 +158,25 @@ void Sparkline::render() {
     painter.drawPolyline(render_pts_.data(), (int)render_pts_.size());
   }
 
-  // Draw the "head" (current value) dot
-  painter.setPen(QPen(color, 3, Qt::SolidLine, Qt::RoundCap));
-  painter.drawPoint(render_pts_.back());
+  // 4. Use Antialiasing for the dot to prevent "jagged" clipping
+  painter.setRenderHint(QPainter::Antialiasing, true);
+  painter.setBrush(color);
+  painter.drawEllipse(render_pts_.back(), 1.5f, 1.5f);
+}
+
+void Sparkline::calculateValueBounds() {
+  min_val = std::numeric_limits<double>::max();
+  max_val = std::numeric_limits<double>::lowest();
+  for (int i = 0; i < history_.size(); ++i) {
+    const auto& v = history_[i].value;
+    if (v < min_val) min_val = v;
+    if (v > max_val) max_val = v;
+  }
+  // Ensure we don't divide by zero for flat signals
+  if (std::abs(max_val - min_val) < 1e-9) {
+    min_val -= 1.0;
+    max_val += 1.0;
+  }
 }
 
 void Sparkline::setHighlight(bool highlight) {
