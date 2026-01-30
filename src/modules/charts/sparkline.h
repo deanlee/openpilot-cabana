@@ -58,8 +58,10 @@ class Sparkline {
 
  private:
   struct Bucket {
-    double entry, exit, min, max;
-    uint64_t min_ts, max_ts;
+    double entry = 0.0, exit = 0.0;
+    double min = std::numeric_limits<double>::max();
+    double max = std::numeric_limits<double>::lowest();
+    uint64_t min_ts = 0, max_ts = 0;
 
     void init(double y, uint64_t ts) {
       entry = exit = min = max = y;
