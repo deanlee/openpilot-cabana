@@ -16,11 +16,9 @@ enum ColumnTypeRole {
 class MessageDelegate : public QStyledItemDelegate {
   Q_OBJECT
  public:
-  MessageDelegate(QObject* parent, CallerType caller_type, bool multiple_lines = false);
+  MessageDelegate(QObject* parent, CallerType caller_type);
   void paint(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const override;
   QSize sizeHint(const QStyleOptionViewItem& option, const QModelIndex& index) const override;
-  bool multipleLines() const { return multiple_lines; }
-  void setMultipleLines(bool v) { multiple_lines = v; }
   QSize sizeForBytes(int n) const;
 
  private:
@@ -31,7 +29,6 @@ class MessageDelegate : public QStyledItemDelegate {
   QFont fixed_font;
   QSize byte_size = {};
   CallerType caller_type_;
-  bool multiple_lines = false;
   int h_margin, v_margin;
 
   mutable QPixmap hex_pixmap_table[256][3];

@@ -13,24 +13,33 @@
 #include "modules/system/stream_manager.h"
 #include "widgets/tool_button.h"
 
-MessageList::MessageList(QWidget *parent) : menu(new QMenu(this)), QWidget(parent) {
-  QVBoxLayout *main_layout = new QVBoxLayout(this);
+MessageList::MessageList(QWidget* parent) : QWidget(parent) {
+  QVBoxLayout* main_layout = new QVBoxLayout(this);
   main_layout->setContentsMargins(0, 0, 0, 0);
-  // toolbar
-  main_layout->addWidget(createToolBar());
-  // message table
-  main_layout->addWidget(view = new MessageTable(this));
-  delegate = new MessageDelegate(view, CallerType::MessageList, settings.multiple_lines_hex);
-  view->setItemDelegate(delegate);
-  view->setModel(model = new MessageModel(this));
-  view->setHeader(header = new MessageHeader(this));
 
-  // Must be called before setting any header parameters to avoid overriding
-  restoreHeaderState(settings.message_header_state);
+  view = new MessageTable(this);
+  model = new MessageModel(this);
+  header = new MessageHeader(this);
+  delegate = new MessageDelegate(view, CallerType::MessageList);
+  menu = new QMenu(this);
+
+  view->setItemDelegate(delegate);
+  view->setModel(model);  // Set model before configuring header sections
+  view->setHeader(header);
+
+  header->blockSignals(true);
   header->setSectionsMovable(true);
-  header->setSectionResizeMode(MessageModel::Column::DATA, QHeaderView::Fixed);
-  header->setStretchLastSection(true);
   header->setContextMenuPolicy(Qt::CustomContextMenu);
+  header->setDefaultAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+  header->setStretchLastSection(true);
+
+  header->blockSignals(false);
+  header->setSortIndicator(MessageModel::Column::NAME, Qt::AscendingOrder);
+
+  restoreHeaderState(settings.message_header_state);
+
+  main_layout->addWidget(createToolBar());
+  main_layout->addWidget(view);
 
   setWhatsThis(tr(R"(
     <b>Message View</b><br/>
@@ -44,7 +53,6 @@ MessageList::MessageList(QWidget *parent) : menu(new QMenu(this)), QWidget(paren
   )"));
 
   setupConnections();
-  view->updateLayout();
 }
 
 void MessageList::setupConnections() {
@@ -195,16 +203,8 @@ void MessageList::menuAboutToShow() {
     action->setEnabled(logical_index > 0);
   }
   menu->addSeparator();
-  auto action = menu->addAction(tr("Multi-Line bytes"), this, &MessageList::setMultiLineBytes);
-  action->setCheckable(true);
-  action->setChecked(settings.multiple_lines_hex);
 
-  action = menu->addAction(tr("Show inactive Messages"), model, &MessageModel::setInactiveMessagesVisible);
+  auto *action = menu->addAction(tr("Show inactive Messages"), model, &MessageModel::setInactiveMessagesVisible);
   action->setCheckable(true);
   action->setChecked(model->show_inactive_);
-}
-
-void MessageList::setMultiLineBytes(bool multi) {
-  settings.multiple_lines_hex = multi;
-  view->updateLayout();
 }
