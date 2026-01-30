@@ -78,7 +78,7 @@ void MessageModel::setInactiveMessagesVisible(bool show) {
   rebuild();
 }
 
-void MessageModel::sortItems(std::vector<MessageModel::Item> &items) {
+void MessageModel::sortItems(std::vector<MessageModel::Item> &items) const {
   if (items.empty()) return;
 
   auto do_sort = [this, &items](auto compare) {
@@ -134,7 +134,7 @@ static bool parseRange(const QString &filter, uint32_t value, int base = 10) {
   return ok && value >= min && value <= max;
 }
 
-bool MessageModel::match(const MessageModel::Item &item) {
+bool MessageModel::match(const MessageModel::Item &item) const {
   if (filters_.isEmpty())
     return true;
 
@@ -175,27 +175,25 @@ bool MessageModel::match(const MessageModel::Item &item) {
   return match;
 }
 
-bool MessageModel::rebuild() {
+std::vector<MessageModel::Item> MessageModel::fetchItems() const {
   const auto& snapshots = StreamManager::stream()->snapshots();
-  const auto &dbc_messages = GetDBC()->getMessages();
+  const auto& dbc_messages = GetDBC()->getMessages();
+  auto* dbc = GetDBC();
 
   std::vector<Item> new_items;
   new_items.reserve(snapshots.size() + dbc_messages.size());
 
-  // Set to track addresses already handled by snapshots
   std::unordered_set<uint32_t> snapshot_addrs;
   snapshot_addrs.reserve(snapshots.size());
 
-  // Helper: Builds item, matches against filters, and moves to vector
-  auto processItem = [&](const MessageId& id, const dbc::Msg *msg, const MessageSnapshot* data) {
-    QString address_hex = getHexCached(id.address);
-    QString display_name = msg ? msg->name : QString("[%1]").arg(address_hex);
+  auto processItem = [&](const MessageId& id, const dbc::Msg* msg, const MessageSnapshot* data) {
+    QString addr_hex = getHexCached(id.address);
     Item item = {
         .id = id,
-        .name = display_name,
-        .node = msg ? msg->transmitter : QString(),
+        .name = msg ? msg->name : QString("[%1]").arg(addr_hex),
+        .node = (msg && !msg->transmitter.isEmpty()) ? msg->transmitter : QStringLiteral("—"),
         .data = data,
-        .address_hex = address_hex,
+        .address_hex = addr_hex,
     };
 
     if (match(item)) {
@@ -204,7 +202,6 @@ bool MessageModel::rebuild() {
   };
 
   // Process Live Snapshots
-  auto *dbc = GetDBC();
   for (const auto& [id, data] : snapshots) {
     snapshot_addrs.insert(id.address);
     if (show_inactive_ || (data && data->is_active)) {
@@ -212,20 +209,26 @@ bool MessageModel::rebuild() {
     }
   }
 
-  // Process DBC placeholders (only if address not on live bus)
+  // Process DBC placeholders
   if (show_inactive_) {
     for (const auto& [address, msg] : dbc_messages) {
       if (snapshot_addrs.find(address) == snapshot_addrs.end()) {
-        processItem(MessageId{INVALID_SOURCE, address}, &msg, nullptr);
+        processItem({INVALID_SOURCE, address}, &msg, nullptr);
       }
     }
   }
 
   sortItems(new_items);
+  return new_items;
+}
 
+void MessageModel::rebuild() {
+  std::vector<Item> new_items = fetchItems();
+
+  // Check if the IDs or count changed (affects UI structure)
   bool structureChanged = (items_.size() != new_items.size()) ||
                           !std::equal(items_.begin(), items_.end(), new_items.begin(),
-                                      [](const auto& a, const auto& b) { return a.id == b.id; });
+                                      [](const Item& a, const Item& b) { return a.id == b.id; });
   if (structureChanged) {
     // IDs changed or items added/removed: Reset is necessary
     beginResetModel();
@@ -237,14 +240,14 @@ bool MessageModel::rebuild() {
     emit dataChanged(index(0, 0), index(rowCount() - 1, columnCount() - 1));
     emit layoutChanged();
   }
-  return false;
 }
 
 void MessageModel::onSnapshotsUpdated(const std::set<MessageId> *ids, bool needs_rebuild) {
   if (needs_rebuild || ((filters_.count(Column::FREQ) || filters_.count(Column::COUNT) || filters_.count(Column::DATA)) &&
                       ++sort_threshold_ == settings.fps)) {
     sort_threshold_ = 0;
-    if (rebuild()) return;
+    rebuild();
+    return;
   }
 
   emit uiUpdateRequired();

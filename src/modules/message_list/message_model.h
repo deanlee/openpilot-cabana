@@ -35,7 +35,7 @@ public:
   void setFilterStrings(const QMap<int, QString> &filters);
   void setInactiveMessagesVisible(bool show);
   void onSnapshotsUpdated(const std::set<MessageId> *ids, bool needs_rebuild);
-  bool rebuild();
+  void rebuild();
 
   struct Item {
     MessageId id;
@@ -53,8 +53,9 @@ signals:
   void uiUpdateRequired();
 
 private:
-  void sortItems(std::vector<MessageModel::Item> &items);
-  bool match(const MessageModel::Item &id);
+  std::vector<Item> fetchItems() const;
+  void sortItems(std::vector<MessageModel::Item> &items) const;
+  bool match(const MessageModel::Item &id) const;
   QString formatFreq(const Item &item) const;
 
   QMap<int, QString> filters_;
