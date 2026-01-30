@@ -58,6 +58,7 @@ class Sparkline {
 
   void updateDataPoints(const dbc::Signal* sig, CanEventIter first, CanEventIter last);
   void updateRenderPoints(int time_range, QSize size);
+  void calculateValueBounds();
   void render();
 
   RingBuffer<DataPoint> history_;
