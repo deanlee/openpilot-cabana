@@ -23,7 +23,7 @@ MessageDataRef getDataRef(CallerType type, const QModelIndex& index) {
     return item->data ? MessageDataRef{item->data->size, &item->data->data, &item->data->colors}
                       : MessageDataRef{0, nullptr, nullptr};
   } else {
-    auto* msg = static_cast<MessageHistoryModel::Message*>(index.internalPointer());
+    auto* msg = static_cast<MessageHistoryModel::LogEntry*>(index.internalPointer());
     return msg ? MessageDataRef{msg->size, &msg->data, &msg->colors}
                : MessageDataRef{0, nullptr, nullptr};
   }

@@ -108,13 +108,13 @@ void MessageHistory::clearMessage() {
 
 void MessageHistory::resetInternalState() {
   signals_cb->clear();
-  for (auto &s : model->sigs) {
+  for (auto &s : model->messageSignals()) {
     signals_cb->addItem(s.sig->name);
   }
   export_btn->setEnabled(false);
   value_edit->clear();
   comp_box->setCurrentIndex(0);
-  filters_widget->setVisible(!model->sigs.empty());
+  filters_widget->setVisible(!model->messageSignals().empty());
 }
 
 void MessageHistory::filterChanged() {

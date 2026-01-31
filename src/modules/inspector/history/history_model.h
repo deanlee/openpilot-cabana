@@ -11,6 +11,19 @@ class MessageHistoryModel : public QAbstractTableModel {
   Q_OBJECT
 
 public:
+  struct SignalColumn {
+    QString display_name;
+    dbc::Signal *sig;
+  };
+
+  struct LogEntry {
+    uint64_t mono_ns = 0;
+    std::vector<double> sig_values;
+    uint8_t size = 0;
+    std::array<uint8_t, MAX_CAN_LEN> data;
+    std::array<uint32_t, MAX_CAN_LEN> colors;
+  };
+
   MessageHistoryModel(QObject *parent) : QAbstractTableModel(parent) {}
   void setMessage(const MessageId &message_id);
   void updateState(bool clear = false);
@@ -30,30 +43,19 @@ public:
   void setHexMode(bool hex_mode);
   void setPaused() { setPauseState(true); }
   void setResumed() { setPauseState(false); }
+  const std::vector<SignalColumn> &messageSignals() const { return sigs; }
   void setPauseState(bool paused);
-
-  struct Message {
-    uint64_t mono_ns = 0;
-    std::vector<double> sig_values;
-    uint8_t size = 0;
-    std::array<uint8_t, MAX_CAN_LEN> data;
-    std::array<uint32_t, MAX_CAN_LEN> colors;
-  };
-
-  struct SignalColumn {
-    QString display_name;
-    dbc::Signal *sig;
-  };
-
   void fetchData(int insert_pos_idx, uint64_t from_time, uint64_t min_time);
 
   MessageId msg_id;
+
+private:
   MessageState hex_colors;
   const int batch_size = 50;
   int filter_sig_idx = -1;
   double filter_value = 0;
   std::function<bool(double, double)> filter_cmp = nullptr;
-  std::deque<Message> messages;
+  std::deque<LogEntry> messages;
   std::vector<SignalColumn> sigs;
   bool hex_mode = false;
   bool is_paused = false;

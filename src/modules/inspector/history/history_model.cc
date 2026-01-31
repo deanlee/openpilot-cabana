@@ -146,7 +146,7 @@ void MessageHistoryModel::fetchData(int insert_pos_idx, uint64_t from_time, uint
     return e->mono_ns > ts;
   });
 
-  std::vector<MessageHistoryModel::Message> msgs;
+  std::vector<MessageHistoryModel::LogEntry> msgs;
   std::vector<double> values(sigs.size());
   msgs.reserve(batch_size);
   for (; first != events.rend(); ++first) {
@@ -157,7 +157,7 @@ void MessageHistoryModel::fetchData(int insert_pos_idx, uint64_t from_time, uint
       sigs[i].sig->getValue(e->dat, e->size, &values[i]);
     }
     if (!filter_cmp || filter_cmp(values[filter_sig_idx], filter_value)) {
-      auto &m = msgs.emplace_back(Message{e->mono_ns, values, e->size});
+      auto &m = msgs.emplace_back(LogEntry{e->mono_ns, values, e->size});
       std::copy_n(e->dat, std::min<int>(e->size, MAX_CAN_LEN), m.data.begin());
       if (msgs.size() >= batch_size && min_time == 0) {
         break;
