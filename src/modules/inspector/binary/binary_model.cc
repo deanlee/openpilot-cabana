@@ -88,8 +88,6 @@ void BinaryModel::updateState() {
   const size_t msg_size = last_msg->size;
   if (msg_size == 0) return;
 
-  const auto& binary = last_msg->data;
-
   if (msg_size > row_count) {
     beginInsertRows({}, row_count, msg_size - 1);
     row_count = msg_size;
@@ -124,24 +122,7 @@ void BinaryModel::updateState() {
   int first_dirty = -1, last_dirty = -1;
 
   for (size_t i = 0; i < msg_size; ++i) {
-    bool row_changed = false;
-    const uint8_t byte_val = (uint8_t)binary[i];
-    const size_t row_offset = i * column_count;
-
-    for (int j = 0; j < 8; ++j) {
-      auto& item = items[row_offset + j];
-      int bit_val = (byte_val >> (7 - j)) & 1;
-
-      // Calculate color based on heat
-      QColor bit_color = calculateBitHeatColor(item, bit_flips[i][j], log_max, is_light_theme, base_bg, decay_factor);
-      row_changed |= updateItem(i, j, bit_val, bit_color);
-    }
-
-    // The 9th column (index 8) remains the Byte Value with the Trend Color
-    QColor byte_color = QColor::fromRgba(last_msg->colors[i]);
-    row_changed |= updateItem(i, 8, byte_val, byte_color);
-
-    if (row_changed) {
+    if (syncRowItems(i, last_msg, bit_flips[i], log_max, is_light_theme, base_bg, decay_factor)) {
       if (first_dirty == -1) first_dirty = i;
       last_dirty = i;
     }
@@ -152,57 +133,79 @@ void BinaryModel::updateState() {
   }
 }
 
-QColor BinaryModel::calculateBitHeatColor(Item& item, uint32_t flips, float log_max,
-                                          bool is_light, const QColor& base_bg, float decay_factor) {
-  const bool is_in_signal = !item.sigs.empty();
+bool BinaryModel::syncRowItems(int row, const MessageSnapshot* msg, const std::array<uint32_t, 8>& row_flips,
+                               float log_max, bool is_light, const QColor& base_bg, float decay) {
+  bool row_dirty = false;
+  const uint8_t byte_val = msg->data[row];
+  const size_t row_offset = row * column_count;
 
-  if (flips == 0 && item.intensity < 0.01f) {
-    item.intensity = 0.0f;
-    item.last_flips = 0;
-    if (!is_in_signal) return Qt::transparent;
+  // Update 8 Bit Columns
+  for (int j = 0; j < 8; ++j) {
+    auto& item = items[row_offset + j];
+    const int bit_val = (byte_val >> (7 - j)) & 1;
 
-    QColor c = item.sigs.back()->color;
-    c.setAlpha(is_light ? 45 : 30);
-    return c;
+    QColor heat_color = calculateBitHeatColor(item, row_flips[j], log_max, is_light, base_bg, decay);
+    row_dirty |= updateItem(row, j, bit_val, heat_color);
   }
 
-  // Calculate Heat using Log2 for a smooth UI transition
+  // Update 9th Column (Hex Value)
+  QColor byte_color = QColor::fromRgba(msg->colors[row]);
+  row_dirty |= updateItem(row, 8, byte_val, byte_color);
+
+  return row_dirty;
+}
+
+QColor BinaryModel::calculateBitHeatColor(Item& item, uint32_t flips, float log_max,
+                                          bool is_light, const QColor& base_bg, float decay_factor) {
   float target = std::clamp(std::log2(static_cast<float>(flips) + 1.0f) / log_max, 0.0f, 1.0f);
   if (heatmap_live_mode) {
-    // Live Mode: Show recency. If flips increase, jump to target. Otherwise, decay.
     if (flips != item.last_flips) {
       item.intensity = std::max(item.intensity, target);
       item.last_flips = flips;
     } else {
-      item.intensity *= decay_factor;  // Decay rate
+      item.intensity *= decay_factor;  // Smoothly fade out
     }
   } else {
-    // Static/Range Mode: Direct representation. No decay.
-    item.intensity = target;
-    item.last_flips = flips;
+    item.intensity = target;  // Direct mapping for static range view
   }
 
-  float i = item.intensity;
-  if (i < 0.01f) return is_in_signal ? item.sigs.back()->color.lighter(is_light ? 150 : 50) : Qt::transparent;
+  const float i = item.intensity;
+  const bool is_in_signal = !item.sigs.empty();
 
+  // 2. Signal Coloring Logic (Hue Preservation)
   if (is_in_signal) {
-    // 100% Signal Color Respect: Only modify Alpha and Brightness
     QColor c = item.sigs.back()->color;
-    c.setAlpha(static_cast<int>(100 + (155 * i)));
 
-    // Use .lighter() for glow to avoid shifting hue to Red/White
-    return (i > 0.6f) ? c.lighter(100 + static_cast<int>(40 * (i - 0.6f))) : c;
-  } else {
-    // Standard Heatmap for empty space: Blend Window Background -> Red/Coral
-    QColor hot = is_light ? Qt::red : QColor(255, 100, 100);
-    float inv_i = 1.0f - i;
+    // Minimum Alpha Floor (100) so signals are always identifiable
+    // Maximum Alpha (255) for high activity
+    int alpha = static_cast<int>(100 + (155 * i));
 
-    return QColor(
-        static_cast<int>(base_bg.red() * inv_i + hot.red() * i),
-        static_cast<int>(base_bg.green() * inv_i + hot.green() * i),
-        static_cast<int>(base_bg.blue() * inv_i + hot.blue() * i),
-        static_cast<int>((is_light ? 40 : 60) * inv_i + 220 * i));
+    if (i > 0.05f) {
+      int h, s, v, a;
+      c.getHsv(&h, &s, &v, &a);
+      // Boost Value (Brightness) and Saturation slightly based on heat
+      // Using HSV prevents the "whitening" caused by HSL lighter()
+      v = std::min(255, v + static_cast<int>(50 * i));
+      s = std::min(255, s + static_cast<int>(20 * i));
+      c.setHsv(h, s, v, alpha);
+    } else {
+      c.setAlpha(alpha);
+    }
+    return c;
   }
+
+  // 3. Empty Space Heatmap Logic (Background -> Red)
+  if (i < 0.01f) return Qt::transparent;
+
+  QColor hot = is_light ? QColor(255, 0, 0) : QColor(255, 80, 80);
+  float inv_i = 1.0f - i;
+  int min_alpha = is_light ? 40 : 60;
+
+  return QColor(
+      static_cast<int>(base_bg.red() * inv_i + hot.red() * i),
+      static_cast<int>(base_bg.green() * inv_i + hot.green() * i),
+      static_cast<int>(base_bg.blue() * inv_i + hot.blue() * i),
+      static_cast<int>(min_alpha * inv_i + 220 * i));
 }
 
 const std::array<std::array<uint32_t, 8>, MAX_CAN_LEN>& BinaryModel::getBitFlipChanges(size_t msg_size) {
