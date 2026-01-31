@@ -47,8 +47,7 @@ class Sparkline {
   void update(const dbc::Signal* sig, CanEventIter first, CanEventIter last, int time_range, QSize size);
   inline double freq() const { return freq_; }
   bool isEmpty() const { return image.isNull(); }
-  void mapHistoryToPoints(uint64_t start_ts, uint64_t end_ts, uint64_t ns_per_px,
-                          float pad, float x_end, std::function<float(double)> toY);
+  void mapHistoryToPoints(int time_range, QSize size);
   void setHighlight(bool highlight);
   void clearHistory();
 
@@ -75,11 +74,25 @@ class Sparkline {
     }
   };
 
+  struct TransformParams {
+    float pad, w, h, base_x;
+    uint64_t win_start, win_end;
+    double px_per_ns;
+  };
+
+  size_t findFirstVisibleIdx(uint64_t start_ts);
   void updateDataPoints(const dbc::Signal* sig, CanEventIter first, CanEventIter last);
-  void updateRenderPoints(int time_range, QSize size);
-  void calculateValueBounds();
+  bool calculateValueBounds();
   void flushBucket(int x, const Bucket& b);
+  void addUniquePoint(int x, float y);
   void render();
+  TransformParams getTransformationParams(int time_range, QSize size);
+  void mapFlatPath(const TransformParams& p);
+  void mapNoisyPath(const TransformParams& p);
+  inline float getX(uint64_t ts, const TransformParams& p) {
+    if (ts >= p.win_end) return p.base_x;
+    return std::max(p.pad, p.base_x - (float)((double)(p.win_end - ts) * p.px_per_ns));
+  }
 
   RingBuffer<DataPoint> history_;
   uint64_t last_processed_mono_ns_ = 0;
