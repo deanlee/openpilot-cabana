@@ -3,31 +3,24 @@
 #include <QList>
 #include <QMap>
 #include <QObject>
+#include <QVariant>
 
 #include "widgets/common.h"
 
-class ChartView;
 class ChartsTabManager : public QObject {
   Q_OBJECT
  public:
-  ChartsTabManager(QWidget* parent);
-  QList<ChartView*>& currentCharts();
-  void addTab();
-  void clear();
-  void insertChart(int pos, ChartView* chart);
-  void removeChart(ChartView* chart);
-  void updateLabels();
-  QMap<int, QList<ChartView*>> tab_charts_;  // Stores associations, not ownership
+  TabBar* tabbar_;
+
+  explicit ChartsTabManager(QWidget* parent);
+  int addTab(const QString& name = "");
+  void setTabChartCount(int tabId, int count);
+  int currentTabId() const;
 
  signals:
-  void currentTabChanged(int index);
-  void tabAboutToBeRemoved(QList<ChartView*> charts);
-
- private slots:
-  void handleTabClose(int index);
+  void tabActivated(int tabId);
+  void tabDeleted(int tabId);
 
  private:
-  TabBar* tabbar_;
   int next_tab_id_ = 0;
-  friend class ChartsPanel;
 };

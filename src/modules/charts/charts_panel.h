@@ -1,5 +1,6 @@
 #pragma once
 
+#include <QHash>
 #include <QSet>
 #include <QStackedWidget>
 #include <QTimer>
@@ -34,7 +35,6 @@ class ChartsPanel : public QFrame {
  public slots:
   void setColumnCount(int n);
   void removeAll();
-  void timeRangeChanged(const std::optional<std::pair<double, double>>& time_range);
 
  signals:
   void toggleChartsDocking();
@@ -42,6 +42,8 @@ class ChartsPanel : public QFrame {
   void showCursor(double seconds);
 
  private:
+  void removeTab(int tab_id);
+  void handleSeriesChanged();
   void changeEvent(QEvent* ev) override;
   bool eventFilter(QObject* obj, QEvent* event) override;
   void setupConnections();
@@ -49,10 +51,10 @@ class ChartsPanel : public QFrame {
   bool event(QEvent* event) override;
   void alignCharts();
   void newChart();
+  void newTab();
   void handleChartDrop(ChartView* chart, ChartView* target, DropMode mode);
   ChartView* createChart(int pos = 0);
   void removeChart(ChartView* chart);
-  void removeCharts(QList<ChartView*> charts_to_remove);
   void splitChart(ChartView* src_view);
   void eventsMerged(const MessageEventsMap& new_events);
   void updateState();
@@ -63,6 +65,7 @@ class ChartsPanel : public QFrame {
   void updateHoverFromCursor();
   void hideHover();
   ChartView* findChart(const MessageId& id, const dbc::Signal* sig);
+  QList<ChartView*> &currentTabCharts() { return tab_charts_[tab_manager_->currentTabId()]; }
 
   // --- UI Components ---
   ChartsToolBar* toolbar = nullptr;
@@ -72,9 +75,10 @@ class ChartsPanel : public QFrame {
   ChartsEmptyView* empty_view_ = nullptr;
 
   // --- Data & State ---
-  QList<ChartView*> charts;  // Total ownership of all charts
+  QList<ChartView*> charts;                   // Master ownership for data processing
+  QHash<int, QList<ChartView*>> tab_charts_;  // Tab ID -> List of Charts in that tab
   uint32_t max_chart_range = 0;
-  std::pair<double, double> display_range;
+  std::pair<double, double> display_range = {0.0, 0.0};
 
   // --- Layout & Theme State ---
   int column_count = 1;

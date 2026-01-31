@@ -20,10 +20,10 @@ ChartsPanel::ChartsPanel(QWidget *parent) : QFrame(parent) {
 
   toolbar = new ChartsToolBar(this);
   tab_manager_ = new ChartsTabManager(this);
-
   stack_ = new QStackedWidget(this);
   scroll_area_ = new ChartsScrollArea(this);
   empty_view_ = new ChartsEmptyView(this);
+
   stack_->addWidget(empty_view_);
   stack_->addWidget(scroll_area_);
   scroll_area_->container_->installEventFilter(this);
@@ -36,8 +36,6 @@ ChartsPanel::ChartsPanel(QWidget *parent) : QFrame(parent) {
   current_theme = settings.theme;
   column_count = std::clamp(settings.chart_column_count, 1, MAX_COLUMN_COUNT);
   max_chart_range = std::clamp(settings.chart_range, 1, settings.max_cached_minutes * 60);
-  auto min_sec = StreamManager::stream()->minSeconds();
-  display_range = std::make_pair(min_sec, min_sec + max_chart_range);
 
   align_timer = new QTimer(this);
   align_timer->setSingleShot(true);
@@ -53,25 +51,30 @@ ChartsPanel::ChartsPanel(QWidget *parent) : QFrame(parent) {
 }
 
 void ChartsPanel::setupConnections() {
+  auto &stream = StreamManager::instance();
   connect(align_timer, &QTimer::timeout, this, &ChartsPanel::alignCharts);
   connect(GetDBC(), &dbc::Manager::DBCFileChanged, this, &ChartsPanel::removeAll);
-  connect(&StreamManager::instance(), &StreamManager::eventsMerged, this, &ChartsPanel::eventsMerged);
-  connect(&StreamManager::instance(), &StreamManager::snapshotsUpdated, this, &ChartsPanel::updateState);
-  connect(&StreamManager::instance(), &StreamManager::seeking, this, &ChartsPanel::updateState);
-  connect(&StreamManager::instance(), &StreamManager::timeRangeChanged, this, &ChartsPanel::timeRangeChanged);
+
+  // Stream events
+  connect(&stream, &StreamManager::eventsMerged, this, &ChartsPanel::eventsMerged);
+  connect(&stream, &StreamManager::snapshotsUpdated, this, &ChartsPanel::updateState);
+  connect(&stream, &StreamManager::seeking, this, &ChartsPanel::updateState);
+  connect(&stream, &StreamManager::timeRangeChanged, this, &ChartsPanel::updateState);
+
+  // Toolbar & Tabs
   connect(toolbar, &ChartsToolBar::rangeChanged, this, &ChartsPanel::setMaxChartRange);
+  connect(toolbar->new_tab_btn, &QToolButton::clicked, this, &ChartsPanel::newTab);
   connect(toolbar->new_plot_btn, &QToolButton::clicked, this, &ChartsPanel::newChart);
   connect(toolbar->remove_all_btn, &QToolButton::clicked, this, &ChartsPanel::removeAll);
-  connect(toolbar->new_tab_btn, &QToolButton::clicked, tab_manager_, &ChartsTabManager::addTab);
   connect(toolbar->dock_btn, &QToolButton::clicked, this, &ChartsPanel::toggleChartsDocking);
   connect(toolbar, &ChartsToolBar::columnCountChanged, this, &ChartsPanel::setColumnCount);
   connect(toolbar, &ChartsToolBar::seriesTypeChanged, this, &ChartsPanel::settingChanged);
+  connect(tab_manager_, &ChartsTabManager::tabActivated, this, [this]() { updateLayout(true); });
+  connect(tab_manager_, &ChartsTabManager::tabDeleted, this, &ChartsPanel::removeTab);
+
   connect(&settings, &Settings::changed, this, &ChartsPanel::settingChanged);
 
-  connect(this, &ChartsPanel::seriesChanged, tab_manager_, &ChartsTabManager::updateLabels);
-  connect(tab_manager_, &ChartsTabManager::tabAboutToBeRemoved, this, &ChartsPanel::removeCharts);
-  connect(tab_manager_, &ChartsTabManager::currentTabChanged, this, [this]() { updateLayout(true); });
-
+  // Hover & UI logic
   connect(scroll_area_->container_, &ChartsContainer::chartDropped, this, &ChartsPanel::handleChartDrop);
   connect(scroll_area_->verticalScrollBar(), &QScrollBar::valueChanged, this, &ChartsPanel::updateHoverFromCursor);
 }
@@ -90,31 +93,22 @@ void ChartsPanel::eventsMerged(const MessageEventsMap& new_events) {
   }
 }
 
-void ChartsPanel::timeRangeChanged(const std::optional<std::pair<double, double>> &time_range) {
-  toolbar->updateState(charts.size());
-  updateState();
-}
-
 void ChartsPanel::updateHover(double time) {
-  emit showCursor(time);
   hover_time_ = time;
+  emit showCursor(time);
 
-  int scroll_y = scroll_area_->verticalScrollBar()->value();
-  int view_h = scroll_area_->viewport()->height();
-  QRect visible_window(0, scroll_y, scroll_area_->widget()->width(), view_h);
+  QWidget* viewport = scroll_area_->viewport();
+  QWidget* container = scroll_area_->widget();
+  QRect visible_rect(container->mapFromGlobal(viewport->mapToGlobal({0, 0})), viewport->size());
 
-  for (auto* chart_view : charts) {
-    QPoint chart_pos = chart_view->mapTo(scroll_area_->widget(), QPoint(0, 0));
-    QRect plot_rect = chart_view->chart_->plotArea().toRect();
-    plot_rect.moveTopLeft(chart_pos + plot_rect.topLeft());
+  for (auto* view : currentTabCharts()) {
+    QRect plot_rect = view->chart_->plotArea().toRect();
+    QRect intersected = plot_rect.translated(view->pos()).intersected(visible_rect);
 
-    QRect intersected = plot_rect.intersected(visible_window);
-
-    if (hover_time_ >= 0 && !intersected.isEmpty()) {
-      intersected.moveTopLeft(intersected.topLeft() - chart_pos);
-      chart_view->showCursor(hover_time_, intersected);
+    if (hover_time_ >= 0 && intersected.height() > 30) {
+      view->showCursor(hover_time_, intersected.translated(-view->pos()));
     } else {
-      chart_view->hideCursor();
+      view->hideCursor();
     }
   }
 }
@@ -137,7 +131,7 @@ void ChartsPanel::updateHoverFromCursor() {
     return;
   }
 
-  for (auto* c : charts) {
+  for (auto* c : currentTabCharts()) {
     if (c->rect().contains(c->mapFromGlobal(global_mouse_pos))) {
       hover_time_ = c->secondsAtPoint(c->mapFromGlobal(global_mouse_pos));
       updateHover(hover_time_);
@@ -147,9 +141,21 @@ void ChartsPanel::updateHoverFromCursor() {
   hideHover();
 }
 
+void ChartsPanel::handleSeriesChanged() {
+  // Sync all Tab labels with current counts
+  for (auto it = tab_charts_.begin(); it != tab_charts_.end(); ++it) {
+    tab_manager_->setTabChartCount(it.key(), it.value().size());
+  }
+
+  stack_->setCurrentIndex(charts.isEmpty() ? 0 : 1);
+  toolbar->updateState(charts.size());
+  updateLayout(true);
+  alignCharts();
+  emit seriesChanged();
+}
+
 void ChartsPanel::updateState() {
   bool has_charts = !charts.isEmpty();
-  stack_->setCurrentIndex(has_charts ? 1 : 0);
 
   if (!has_charts) return;
 
@@ -218,21 +224,54 @@ const QMap<MessageId, QSet<const dbc::Signal*>> ChartsPanel::getChartedSignals()
 }
 
 ChartView *ChartsPanel::createChart(int pos) {
+  int tid = tab_manager_->currentTabId();
+  if (tid == -1) tid = tab_manager_->addTab();  // Ensure at least one tab exists
+
   auto chart = new ChartView(StreamManager::stream()->timeRange().value_or(display_range), this);
   charts.append(chart);
+
+  auto &list = tab_charts_[tid];
+  list.insert(std::clamp(pos, 0, list.size()), chart);
+
   chart->viewport()->installEventFilter(scroll_area_->container_);
   connect(chart, &ChartView::axisYLabelWidthChanged, align_timer, qOverload<>(&QTimer::start));
 
-  tab_manager_->insertChart(pos, chart);
   updateLayout(true);
-  toolbar->updateState(charts.size());
   return chart;
+}
+
+void ChartsPanel::removeChart(ChartView *chart) {
+  charts.removeOne(chart);
+  for (auto &list : tab_charts_) list.removeOne(chart);
+  chart->deleteLater();
+  handleSeriesChanged();
+}
+
+void ChartsPanel::removeTab(int tab_id) {
+  for (auto* c : tab_charts_.take(tab_id)) {
+    charts.removeOne(c);
+    c->deleteLater();
+  }
+  handleSeriesChanged();
+}
+
+void ChartsPanel::removeAll() {
+  const QSignalBlocker blocker(tab_manager_->tabbar_);
+
+  qDeleteAll(charts);
+  charts.clear();
+  tab_charts_.clear();
+  while (tab_manager_->tabbar_->count() > 1) tab_manager_->tabbar_->removeTab(0);
+
+  toolbar->zoomReset();
+  handleSeriesChanged();
 }
 
 void ChartsPanel::showChart(const MessageId &id, const dbc::Signal *sig, bool show, bool merge) {
   ChartView *c = findChart(id, sig);
   if (show && !c) {
-    c = merge && tab_manager_->currentCharts().size() > 0 ? tab_manager_->currentCharts().front() : createChart();
+    auto &current_tab_charts = currentTabCharts();
+    c = merge && current_tab_charts.size() > 0 ? current_tab_charts.front() : createChart();
     c->chart_->addSignal(id, sig);
     updateState();
   } else if (!show && c) {
@@ -252,9 +291,11 @@ void ChartsPanel::mergeCharts(ChartView* chart, ChartView* target) {
 }
 
 void ChartsPanel::moveChart(ChartView* chart, ChartView* target, DropMode mode) {
-  tab_manager_->removeChart(chart);
+  for (auto& charts_list : tab_charts_) {
+    charts_list.removeOne(chart);
+  }
 
-  auto& current_charts = tab_manager_->currentCharts();
+  auto& current_charts = currentTabCharts();
 
   int target_idx = current_charts.indexOf(target);
   if (target_idx == -1) return;  // Safety check
@@ -273,7 +314,7 @@ void ChartsPanel::splitChart(ChartView* src_view) {
   // 1. Transaction safety: disable updates
   src_view->setUpdatesEnabled(false);
 
-  int target_pos = tab_manager_->currentCharts().indexOf(src_view) + 1;
+  int target_pos = currentTabCharts().indexOf(src_view) + 1;
 
   // 2. Logic: Create one new chart for EVERY extra signal
   while (src_sigs.size() > 1) {
@@ -293,7 +334,7 @@ void ChartsPanel::splitChart(ChartView* src_view) {
 
 QStringList ChartsPanel::serializeChartIds() const {
   QStringList chart_ids;
-  for (auto c : charts) {
+  for (auto *c : charts) {
     QStringList ids;
     for (const auto& s : c->chart_->sigs_)
       ids += QString("%1|%2").arg(s.msg_id.toString(), s.sig->name);
@@ -326,11 +367,16 @@ void ChartsPanel::setColumnCount(int n) {
 }
 
 void ChartsPanel::updateLayout(bool force) {
-  scroll_area_->container_->updateLayout(tab_manager_->currentCharts(), column_count, force);
+  scroll_area_->container_->updateLayout(currentTabCharts(), column_count, force);
 }
 
 QSize ChartsPanel::minimumSizeHint() const {
   return QSize(CHART_MIN_WIDTH * 1.5, QWidget::minimumSizeHint().height());
+}
+
+void ChartsPanel::newTab() {
+  int new_id = tab_manager_->addTab();
+  tab_charts_[new_id] = QList<ChartView*>();
 }
 
 void ChartsPanel::newChart() {
@@ -344,42 +390,6 @@ void ChartsPanel::newChart() {
       }
     }
   }
-}
-
-void ChartsPanel::removeCharts(QList<ChartView*> charts_to_remove) {
-  for (auto chart : charts_to_remove) {
-    charts.removeOne(chart);
-    chart->deleteLater();
-  }
-  toolbar->updateState(charts.size());
-  updateLayout(true);
-  alignCharts();
-  emit seriesChanged();
-}
-
-void ChartsPanel::removeChart(ChartView *chart) {
-  charts.removeOne(chart);
-  chart->deleteLater();
-  tab_manager_->removeChart(chart);
-  toolbar->updateState(charts.size());
-  updateLayout(true);
-  alignCharts();
-  emit seriesChanged();
-}
-
-void ChartsPanel::removeAll() {
-  if (!charts.isEmpty()) {
-    for (auto c : charts) {
-      c->deleteLater();
-    }
-    charts.clear();
-    emit seriesChanged();
-  }
-
-  tab_manager_->clear();
-  toolbar->zoomReset();
-  toolbar->updateState(0);
-  updateLayout(true);
 }
 
 void ChartsPanel::alignCharts() {

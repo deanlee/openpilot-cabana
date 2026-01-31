@@ -48,8 +48,8 @@ ChartView::ChartView(const std::pair<double, double>& x_range, ChartsPanel* pare
 
 void ChartView::setupConnections() {
   connect(chart_, &Chart::axisYLabelWidthChanged, this, &ChartView::axisYLabelWidthChanged);
-  connect(chart_, &Chart::signalAdded, charts_panel, &ChartsPanel::seriesChanged);
-  connect(chart_, &Chart::signalRemoved, charts_panel, &ChartsPanel::seriesChanged);
+  connect(chart_, &Chart::signalAdded, charts_panel, &ChartsPanel::handleSeriesChanged);
+  connect(chart_, &Chart::signalRemoved, charts_panel, &ChartsPanel::handleSeriesChanged);
   connect(chart_, &Chart::manageSignals, this, &ChartView::manageSignals);
   connect(chart_, &Chart::splitSeries, [this]() { charts_panel->splitChart(this); });
   connect(chart_, &Chart::close, [this]() { charts_panel->removeChart(this); });
