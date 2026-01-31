@@ -3,6 +3,7 @@
 #include <QWidget>
 
 #include "modules/charts/charts_panel.h"
+#include "modules/inspector/binary/binary_model.h"
 #include "modules/inspector/binary/binary_view.h"
 #include "modules/inspector/history/message_history.h"
 #include "modules/inspector/signal_editor/signal_editor.h"
@@ -45,6 +46,7 @@ private:
   ToolButton *remove_msg_btn;
   MessageHistory *message_history;
   BinaryView *binary_view;
+  BinaryModel *binary_model;
   SignalEditor *signal_editor;
   ChartsPanel *charts;
   PanelSplitter *splitter;

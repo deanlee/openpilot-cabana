@@ -15,8 +15,9 @@ const int CELL_HEIGHT = 32;
 
 class BinaryModel : public QAbstractTableModel {
  public:
-  BinaryModel(QObject* parent) : QAbstractTableModel(parent) {}
-  void refresh();
+  BinaryModel(QObject* parent);
+  void setMessage(const MessageId& message_id);
+  void rebuild();
   void updateBorders();
   void updateState();
   QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const override;

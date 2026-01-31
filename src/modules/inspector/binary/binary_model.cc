@@ -6,11 +6,22 @@
 #include <algorithm>
 #include <cmath>
 
+#include "core/commands/commands.h"
 #include "core/streams/message_state.h"
 #include "modules/settings/settings.h"
 #include "modules/system/stream_manager.h"
 
-void BinaryModel::refresh() {
+BinaryModel::BinaryModel(QObject* parent) : QAbstractTableModel(parent) {
+  connect(GetDBC(), &dbc::Manager::DBCFileChanged, this, &BinaryModel::rebuild);
+  connect(UndoStack::instance(), &QUndoStack::indexChanged, this, &BinaryModel::rebuild);
+}
+
+void BinaryModel::setMessage(const MessageId& message_id) {
+  msg_id = message_id;
+  rebuild();
+}
+
+void BinaryModel::rebuild() {
   beginResetModel();
   bit_flip_tracker = {};
   items.clear();
