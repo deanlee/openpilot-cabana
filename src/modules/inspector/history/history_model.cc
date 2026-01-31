@@ -30,7 +30,7 @@ QVariant MessageHistoryModel::data(const QModelIndex& index, int role) const {
 
 void MessageHistoryModel::setMessage(const MessageId &message_id) {
   msg_id = message_id;
-  reset();
+  rebuild();
 }
 
 void MessageHistoryModel::setPauseState(bool paused) {
@@ -48,7 +48,7 @@ void MessageHistoryModel::setPauseState(bool paused) {
   }
 }
 
-void MessageHistoryModel::reset() {
+void MessageHistoryModel::rebuild() {
   beginResetModel();
   sigs.clear();
   if (auto dbc_msg = GetDBC()->msg(msg_id)) {
@@ -89,7 +89,7 @@ QVariant MessageHistoryModel::headerData(int section, Qt::Orientation orientatio
 
 void MessageHistoryModel::setHexMode(bool hex) {
   hex_mode = hex;
-  reset();
+  rebuild();
 }
 
 void MessageHistoryModel::setFilter(int sig_idx, const QString &value, std::function<bool(double, double)> cmp) {

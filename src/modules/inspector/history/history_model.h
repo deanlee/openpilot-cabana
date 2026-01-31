@@ -39,7 +39,7 @@ public:
   int rowCount(const QModelIndex &parent = QModelIndex()) const override { return messages.size(); }
   int columnCount(const QModelIndex &parent = QModelIndex()) const override { return !isHexMode() ? sigs.size() + 1 : 2; }
   inline bool isHexMode() const { return sigs.empty() || hex_mode; }
-  void reset();
+  void rebuild();
   void setHexMode(bool hex_mode);
   void setPaused() { setPauseState(true); }
   void setResumed() { setPauseState(false); }

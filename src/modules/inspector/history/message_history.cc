@@ -87,12 +87,12 @@ void MessageHistory::setupConnections() {
   connect(value_edit, &DebouncedLineEdit::debouncedTextEdited, this, &MessageHistory::filterChanged);
   connect(export_btn, &QToolButton::clicked, this, &MessageHistory::exportToCSV);
 
-  connect(&StreamManager::instance(), &StreamManager::seekedTo, model, &MessageHistoryModel::reset);
+  connect(&StreamManager::instance(), &StreamManager::seekedTo, model, &MessageHistoryModel::rebuild);
   connect(&StreamManager::instance(), &StreamManager::paused, model, &MessageHistoryModel::setPaused);
   connect(&StreamManager::instance(), &StreamManager::resume, model, &MessageHistoryModel::setResumed);
 
-  connect(GetDBC(), &dbc::Manager::DBCFileChanged, model, &MessageHistoryModel::reset);
-  connect(UndoStack::instance(), &QUndoStack::indexChanged, model, &MessageHistoryModel::reset);
+  connect(GetDBC(), &dbc::Manager::DBCFileChanged, model, &MessageHistoryModel::rebuild);
+  connect(UndoStack::instance(), &QUndoStack::indexChanged, model, &MessageHistoryModel::rebuild);
 
   connect(model, &MessageHistoryModel::modelReset, this, &MessageHistory::resetInternalState);
   connect(model, &MessageHistoryModel::rowsInserted, [this]() { export_btn->setEnabled(true); });
