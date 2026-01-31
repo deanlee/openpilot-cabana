@@ -218,6 +218,7 @@ void SignalTreeDelegate::drawButtons(QPainter* p, const QStyleOptionViewItem& op
     bool selected = opt.state & QStyle::State_Selected;
 
     if (hovered || active) {
+      p->setRenderHint(QPainter::Antialiasing, true);
       // Background: Highlight if active, light overlay if hovered
       QColor bg = active ? opt.palette.color(QPalette::Highlight) : opt.palette.color(QPalette::Button);
       bg.setAlpha(active ? 255 : 100);
@@ -233,6 +234,7 @@ void SignalTreeDelegate::drawButtons(QPainter* p, const QStyleOptionViewItem& op
       }
       p->setPen(borderPen);
       p->drawRoundedRect(rect.adjusted(1, 1, -1, -1), 4, 4);
+      p->setRenderHint(QPainter::Antialiasing, false);
     }
 
     // Icon rendering logic
@@ -251,11 +253,9 @@ void SignalTreeDelegate::drawButtons(QPainter* p, const QStyleOptionViewItem& op
     p->drawPixmap(rect.left() + iconPadding, rect.top() + iconPadding, pix);
   };
 
-  p->setRenderHint(QPainter::Antialiasing, true);
   // 0: Remove, 1: Plot
   drawBtn(0, "circle-minus", false);
   drawBtn(1, chart_opened ? "chart-area" : "chart-line", chart_opened);
-  p->setRenderHint(QPainter::Antialiasing, false);
 }
 
 bool SignalTreeDelegate::helpEvent(QHelpEvent* event, QAbstractItemView* view, const QStyleOptionViewItem& option, const QModelIndex& index) {
