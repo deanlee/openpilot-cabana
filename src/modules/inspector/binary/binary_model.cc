@@ -21,6 +21,11 @@ void BinaryModel::setMessage(const MessageId& message_id) {
   rebuild();
 }
 
+void BinaryModel::setHeatmapMode(bool live) {
+  heatmap_live_mode = live;
+  updateState();
+}
+
 void BinaryModel::rebuild() {
   beginResetModel();
   bit_flip_tracker = {};

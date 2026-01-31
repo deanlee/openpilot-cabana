@@ -17,6 +17,7 @@ class BinaryModel : public QAbstractTableModel {
  public:
   BinaryModel(QObject* parent);
   void setMessage(const MessageId& message_id);
+  void setHeatmapMode(bool live);
   void rebuild();
   void updateBorders();
   void updateState();

@@ -17,13 +17,11 @@ public:
   void setModel(QAbstractItemModel *newModel) override;
   void highlight(const dbc::Signal *sig);
   QSet<const dbc::Signal*> getOverlappingSignals() const;
-  void updateState() { model->updateState(); }
   void paintEvent(QPaintEvent *event) override {
     is_message_active = StreamManager::stream()->snapshot(model->msg_id)->is_active;
     QTableView::paintEvent(event);
   }
   QSize minimumSizeHint() const override;
-  void setHeatmapLiveMode(bool live) { model->heatmap_live_mode = live; updateState(); }
 
 signals:
   void signalClicked(const dbc::Signal *sig);

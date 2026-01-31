@@ -115,7 +115,7 @@ QWidget* MessageView::createToolBar() {
   heatmap_mode->setToolTip(tr("<b>Heatmap Mode</b><br/>%1<br/>%2").arg(live_desc, time_desc));
 
   connect(heatmap_mode, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this, heatmap_mode](int index) {
-    binary_view->setHeatmapLiveMode(heatmap_mode->itemData(index).toBool());
+    binary_model->setHeatmapMode(heatmap_mode->itemData(index).toBool());
   });
   hl->addWidget(heatmap_mode);
 
@@ -248,7 +248,7 @@ void MessageView::refresh() {
 void MessageView::updateState(const std::set<MessageId>* msgs) {
   if ((msgs && !msgs->count(msg_id))) return;
 
-  binary_view->updateState();
+  binary_model->updateState();
   if (tab_widget->currentIndex() == 0) {
     signal_editor->updateState();
   } else {
