@@ -13,8 +13,6 @@
 inline int get_bit_pos(const QModelIndex &index) { return flipBitPos(index.row() * 8 + index.column()); }
 
 BinaryView::BinaryView(QWidget *parent) : QTableView(parent) {
-  model = new BinaryModel(this);
-  setModel(model);
   delegate = new MessageBytesDelegate(this);
 
   setItemDelegate(delegate);
@@ -34,10 +32,6 @@ BinaryView::BinaryView(QWidget *parent) : QTableView(parent) {
   setMouseTracking(true);
   setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 
-  connect(GetDBC(), &dbc::Manager::DBCFileChanged, this, &BinaryView::refresh);
-  connect(UndoStack::instance(), &QUndoStack::indexChanged, this, &BinaryView::refresh);
-  connect(model, &QAbstractItemModel::modelReset, this, &BinaryView::resetInternalState);
-
   addShortcuts();
   setWhatsThis(R"(
     <b>Binary View</b><br/>
@@ -54,6 +48,14 @@ BinaryView::BinaryView(QWidget *parent) : QTableView(parent) {
       <span style="background-color:lightGray;color:gray">&nbsp;p&nbsp;</span>,
       <span style="background-color:lightGray;color:gray">&nbsp;g&nbsp;</span>
   )");
+}
+
+void BinaryView::setModel(QAbstractItemModel* newModel) {
+  model = static_cast<BinaryModel*>(newModel);
+  QTableView::setModel(model);
+  if (model) {
+    connect(model, &QAbstractItemModel::modelReset, this, &BinaryView::resetInternalState);
+  }
 }
 
 void BinaryView::addShortcuts() {
@@ -102,11 +104,6 @@ QSize BinaryView::minimumSizeHint() const {
   // Show at least 4 rows, at most 10
   int totalHeight = CELL_HEIGHT * std::min(model->rowCount(), 10) + 2;
   return {totalWidth, totalHeight};
-}
-
-void BinaryView::setMessage(const MessageId &message_id) {
-  model->msg_id = message_id;
-  refresh();
 }
 
 void BinaryView::highlight(const dbc::Signal *sig) {
@@ -195,16 +192,12 @@ void BinaryView::leaveEvent(QEvent *event) {
   QTableView::leaveEvent(event);
 }
 
-void BinaryView::refresh() {
-  model->refresh();
-  highlightPosition(QCursor::pos());
-}
-
 void BinaryView::resetInternalState() {
   anchor_index = QModelIndex();
   resize_sig = nullptr;
   hovered_sig = nullptr;
   verticalScrollBar()->setValue(0);
+  highlightPosition(QCursor::pos());
 }
 
 QSet<const dbc::Signal *> BinaryView::getOverlappingSignals() const {

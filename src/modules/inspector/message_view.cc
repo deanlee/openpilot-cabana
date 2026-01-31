@@ -44,6 +44,9 @@ MessageView::MessageView(ChartsPanel* charts, QWidget* parent) : charts(charts),
   signal_editor = new SignalEditor(charts, this);
   message_history = new MessageHistory(this);
 
+  binary_model = new BinaryModel(this);
+  binary_view->setModel(binary_model);
+
   tab_widget = new QTabWidget(this);
   tab_widget->setTabPosition(QTabWidget::South);
   tab_widget->setStyleSheet("QTabWidget::pane { border: none; margin-bottom: -2px; padding:0}");
@@ -171,7 +174,7 @@ void MessageView::setMessage(const MessageId& message_id) {
 
   setUpdatesEnabled(false);
   signal_editor->setMessage(msg_id);
-  binary_view->setMessage(msg_id);
+  binary_model->setMessage(msg_id);
   message_history->setMessage(msg_id);
   refresh();
   setUpdatesEnabled(true);
@@ -184,7 +187,7 @@ void MessageView::resetState() {
     tabbar->removeTab(i);
   }
   tabbar->blockSignals(false);
-  binary_view->clearMessage();
+  binary_model->setMessage({});
   signal_editor->clearMessage();
   message_history->clearMessage();
 }
