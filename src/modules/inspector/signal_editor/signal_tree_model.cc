@@ -1,10 +1,15 @@
 #include "signal_tree_model.h"
 
+#include <QApplication>
+#include <QFontDatabase>
 #include <QMessageBox>
+#include <QtConcurrent>
 
 #include "core/commands/commands.h"
 #include "core/dbc/dbc_manager.h"
 #include "modules/inspector/binary/binary_model.h"
+#include "modules/settings/settings.h"
+#include "modules/system/stream_manager.h"
 
 static const QStringList SIGNAL_PROPERTY_LABELS = {
     "Name", "Size", "Receiver Nodes", "Little Endian", "Signed", "Offset", "Factor", 
@@ -17,8 +22,11 @@ QString signalTypeToString(dbc::Signal::Type type) {
   else return "Normal Signal";
 }
 
-SignalTreeModel::SignalTreeModel(QObject *parent) : root(new Item(Item::Root, "", nullptr, nullptr)), QAbstractItemModel(parent) {
-  connect(GetDBC(), &dbc::Manager::DBCFileChanged, this, &SignalTreeModel::refresh);
+SignalTreeModel::SignalTreeModel(QObject* parent) : QAbstractItemModel(parent) {
+  value_font = qApp->font();
+  root = std::make_unique<Item>(Item::Root, "", nullptr, nullptr);
+
+  connect(GetDBC(), &dbc::Manager::DBCFileChanged, this, &SignalTreeModel::rebuild);
   connect(GetDBC(), &dbc::Manager::msgUpdated, this, &SignalTreeModel::handleMsgChanged);
   connect(GetDBC(), &dbc::Manager::msgRemoved, this, &SignalTreeModel::handleMsgChanged);
   connect(GetDBC(), &dbc::Manager::signalAdded, this, &SignalTreeModel::handleSignalAdded);
@@ -34,7 +42,43 @@ void SignalTreeModel::insertItem(SignalTreeModel::Item *root_item, int pos, cons
 void SignalTreeModel::setMessage(const MessageId &id) {
   msg_id = id;
   filter_str = "";
-  refresh();
+  rebuild();
+}
+
+void SignalTreeModel::updateValues(const MessageSnapshot* msg) {
+  QFontMetrics value_metrics(value_font);
+  int current_max = 0;
+  for (auto item : root->children) {
+    double val = 0;
+    if (item->sig->getValue(msg->data.data(), msg->size, &val)) {
+      item->sig_val = item->sig->formatValue(val);
+      item->value_width = value_metrics.horizontalAdvance(item->sig_val);
+      current_max = std::max(current_max, item->value_width);
+    }
+  }
+  current_max += 10; // Small buffer
+
+  if (current_max > max_value_width) {
+    max_value_width = current_max;
+  } else if (max_value_width - current_max > 40) {
+    max_value_width = current_max + 10; // Shrink to target + small buffer
+  }
+}
+
+void SignalTreeModel::updateSparklines(const MessageSnapshot* msg, int first_row, int last_row, const QSize& size) {
+  auto range = StreamManager::stream()->eventsInRange(
+      msg_id, std::make_pair(msg->ts - settings.sparkline_range, msg->ts));
+
+  QVector<SignalTreeModel::Item*> items;
+  for (int i = first_row; i <= last_row; ++i) {
+    items << itemFromIndex(index(i, 1));
+  }
+
+  QtConcurrent::blockingMap(items, [&](SignalTreeModel::Item* item) {
+    item->sparkline->update(item->sig, range.first, range.second, settings.sparkline_range, size);
+  });
+
+  emit dataChanged(index(first_row, 1), index(last_row, 1), {Qt::DisplayRole});
 }
 
 void SignalTreeModel::updateChartedSignals(const QMap<MessageId, QSet<const dbc::Signal*>> &opened) {
@@ -46,10 +90,10 @@ void SignalTreeModel::updateChartedSignals(const QMap<MessageId, QSet<const dbc:
 
 void SignalTreeModel::setFilter(const QString &txt) {
   filter_str = txt;
-  refresh();
+  rebuild();
 }
 
-void SignalTreeModel::refresh() {
+void SignalTreeModel::rebuild() {
   beginResetModel();
   root.reset(new SignalTreeModel::Item(Item::Root, "", nullptr, nullptr));
   if (auto msg = GetDBC()->msg(msg_id)) {
@@ -246,7 +290,7 @@ bool SignalTreeModel::saveSignal(const dbc::Signal *origin_s, dbc::Signal &s) {
 
 void SignalTreeModel::handleMsgChanged(MessageId id) {
   if (id.address == msg_id.address) {
-    refresh();
+    rebuild();
   }
 }
 
@@ -258,7 +302,7 @@ void SignalTreeModel::handleSignalAdded(MessageId id, const dbc::Signal *sig) {
       insertItem(root.get(), i, sig);
       endInsertRows();
     } else if (sig->name.contains(filter_str, Qt::CaseInsensitive)) {
-      refresh();
+      rebuild();
     }
   }
 }

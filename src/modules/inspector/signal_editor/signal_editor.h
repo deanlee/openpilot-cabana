@@ -40,10 +40,8 @@ private:
   void handleSignalAdded(MessageId id, const dbc::Signal *sig);
   void handleSignalUpdated(const dbc::Signal *sig);
   void updateColumnWidths();
-  int getValueColumnWidth(const MessageSnapshot *msg);
   std::pair<QModelIndex, QModelIndex> visibleSignalRange();
 
-  int value_column_width = 0;
   SignalTree *tree;
   QLabel *sparkline_label;
   QSlider *sparkline_range_slider;

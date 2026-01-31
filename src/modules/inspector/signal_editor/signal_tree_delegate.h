@@ -1,4 +1,5 @@
 #pragma once
+
 #include <QPainter>
 #include <QPersistentModelIndex>
 #include <QStyledItemDelegate>
@@ -25,8 +26,6 @@ public:
   bool editorEvent(QEvent *event, QAbstractItemModel *model, const QStyleOptionViewItem &option, const QModelIndex &index) override;
   bool helpEvent(QHelpEvent *event, QAbstractItemView *view, const QStyleOptionViewItem &option, const QModelIndex &index) override;
   int nameColumnWidth(const dbc::Signal* sig) const;
-  int valueTextWidth(const QString &text) const;
-  inline int signalRowHeight() const { return kBtnSize + 4; }
   inline int getButtonsWidth() const {
     // Calculate total space taken by buttons area on the right
     return (2 * kBtnSize) + kBtnSpacing + kPadding;
@@ -36,22 +35,17 @@ signals:
   void removeRequested(const dbc::Signal*);
   void plotRequested(const dbc::Signal*, bool show, bool merge);
 
-public:
-
-  QValidator *name_validator = nullptr;
-  QValidator *double_validator = nullptr;
-  QValidator *node_validator = nullptr;
-  QFont label_font, minmax_font, value_font;
-  int value_width = 50;
-  const int color_label_width = 18;
-  mutable QSize button_size;
-  mutable QPersistentModelIndex hoverIndex;
-  mutable int hoverButton = -1; // -1: none, 0: plot, 1: remove
-
 private:
   QRect getButtonRect(const QRect &columnRect, int buttonIndex) const;
   int buttonAt(const QPoint& pos, const QRect& rect) const;
   void drawNameColumn(QPainter* p, QRect r, const QStyleOptionViewItem& opt, SignalTreeModel::Item* item, const QModelIndex& idx) const;
   void drawDataColumn(QPainter* p, QRect r, const QStyleOptionViewItem& opt, SignalTreeModel::Item* item, const QModelIndex& idx) const;
   void drawButtons(QPainter *painter, const QStyleOptionViewItem &option, SignalTreeModel::Item *item, const QModelIndex &idx) const;
+
+  QValidator* name_validator = nullptr;
+  QValidator* double_validator = nullptr;
+  QValidator* node_validator = nullptr;
+  QFont label_font, minmax_font, value_font;
+  mutable QPersistentModelIndex hoverIndex;
+  mutable int hoverButton = -1;  // -1: none, 0: plot, 1: remove
 };

@@ -30,11 +30,6 @@ QSize SignalTreeDelegate::sizeHint(const QStyleOptionViewItem& option, const QMo
   return QSize(-1, height);
 }
 
-int SignalTreeDelegate::valueTextWidth(const QString& text) const {
-  QFontMetrics fm(value_font);
-  return fm.horizontalAdvance(text);
-}
-
 void SignalTreeDelegate::paint(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const {
   auto item = static_cast<SignalTreeModel::Item*>(index.internalPointer());
 
@@ -104,7 +99,7 @@ void SignalTreeDelegate::drawNameColumn(QPainter* p, QRect r, const QStyleOption
 
 void SignalTreeDelegate::drawDataColumn(QPainter* p, QRect r, const QStyleOptionViewItem& opt, SignalTreeModel::Item* item, const QModelIndex& idx) const {
   const bool sel = opt.state & QStyle::State_Selected;
-  const bool show_details = (sel || hoverIndex == idx) && !item->sparkline->isEmpty();
+  const bool show_details = (hoverIndex == idx) && !item->sparkline->isEmpty();
   const QColor text_c = opt.palette.color(sel ? QPalette::HighlightedText : QPalette::Text);
 
   // Sparkline
@@ -141,7 +136,10 @@ void SignalTreeDelegate::drawDataColumn(QPainter* p, QRect r, const QStyleOption
 
   p->setFont(value_font);
   p->setPen(text_c);
-  p->drawText(valR, Qt::AlignRight | Qt::AlignVCenter, QFontMetrics(value_font).elidedText(item->sig_val, Qt::ElideRight, valR.width()));
+  QString displayText = (item->value_width <= valR.width())
+                            ? item->sig_val
+                            : p->fontMetrics().elidedText(item->sig_val, Qt::ElideRight, valR.width());
+  p->drawText(valR, Qt::AlignRight | Qt::AlignVCenter, displayText);
 
   drawButtons(p, opt, item, idx);
 }
@@ -279,7 +277,7 @@ bool SignalTreeDelegate::helpEvent(QHelpEvent* event, QAbstractItemView* view, c
   // Value & Sparkline Area Hit-Testing
   int right_edge = option.rect.right() - getButtonsWidth();
   QRect value_rect = option.rect;
-  value_rect.setLeft(right_edge - value_width);
+  value_rect.setLeft(option.rect.left() + item->sparkline->image.width() / item->sparkline->image.devicePixelRatio() + kPadding * 2);
   value_rect.setRight(right_edge);
 
   if (value_rect.contains(event->pos()) && !item->sig_val.isEmpty()) {

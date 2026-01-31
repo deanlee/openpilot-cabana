@@ -34,6 +34,7 @@ public:
     QString title;
     bool highlight = false;
     QString sig_val = "-";
+    int value_width = 0;
     std::unique_ptr<Sparkline> sparkline;
   };
 
@@ -44,8 +45,13 @@ public:
   QModelIndex index(int row, int column, const QModelIndex &parent = QModelIndex()) const override;
   QModelIndex parent(const QModelIndex &index) const override;
   Qt::ItemFlags flags(const QModelIndex &index) const override;
+  int maxValueWidth() const { return max_value_width; }
   bool setData(const QModelIndex &index, const QVariant &value, int role = Qt::EditRole) override;
+
   void setMessage(const MessageId &id);
+  void updateValues(const MessageSnapshot* msg);
+  void updateSparklines(const MessageSnapshot* msg, int first_row, int last_row, const QSize& size);
+
   void setFilter(const QString &txt);
   bool saveSignal(const dbc::Signal *origin_s, dbc::Signal &s);
   Item *itemFromIndex(const QModelIndex &index) const;
@@ -61,10 +67,14 @@ private:
   void handleSignalUpdated(const dbc::Signal *sig);
   void handleSignalRemoved(const dbc::Signal *sig);
   void handleMsgChanged(MessageId id);
-  void refresh();
+  void rebuild();
 
   MessageId msg_id;
   QString filter_str;
+
+  QFont value_font;
+  int max_value_width = 0;
+
   QMap<MessageId, QSet<const dbc::Signal*>> charted_signals_;
   std::unique_ptr<Item> root;
   friend class SignalEditor;
