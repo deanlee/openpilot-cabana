@@ -54,12 +54,7 @@ void AbstractStream::commitSnapshots() {
     msgs = std::move(shared_state_.dirty_ids);
   }
 
-  static double last_activity_update = 0;
-  double now = millis_since_boot();
-  if (now - last_activity_update > 1000) {
-    updateActiveStates();
-    last_activity_update = now;
-  }
+  updateActiveStates();
 
   if (time_range_ && (current_sec_ < time_range_->first || current_sec_ >= time_range_->second)) {
     seekTo(time_range_->first);
@@ -146,8 +141,14 @@ void AbstractStream::updateSnapshotsTo(double sec) {
 }
 
 void AbstractStream::updateActiveStates() {
-  for (auto& [_, m] : snapshot_map_) {
-    m->updateActiveState(current_sec_);
+  static double last_activity_update = 0;
+  double now = millis_since_boot();
+
+  if (now - last_activity_update > 1000) {
+    for (auto& [_, m] : snapshot_map_) {
+      m->updateActiveState(current_sec_);
+    }
+    last_activity_update = now;
   }
 }
 
