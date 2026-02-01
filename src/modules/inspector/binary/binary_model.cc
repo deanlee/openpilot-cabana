@@ -28,42 +28,59 @@ void BinaryModel::setHeatmapMode(bool live) {
 
 void BinaryModel::rebuild() {
   beginResetModel();
-  bit_flip_tracker = {};
-  items.clear();
-  if (auto dbc_msg = GetDBC()->msg(msg_id)) {
-    row_count = dbc_msg->size;
-    items.resize(row_count * column_count);
-    for (auto sig : dbc_msg->getSignals()) {
-      for (int j = 0; j < sig->size; ++j) {
-        // Map logical bit j to absolute CAN bit index
-        int abs_bit = sig->getBitIndex(j);
-        int row = abs_bit / 8;
-        int col = 7 - (abs_bit % 8);  // Column 0 is Bit 7 (MSB)
-        int idx = row * column_count + col;
+  initializeItems();
 
-        if (idx >= items.size()) {
-          qWarning() << "signal " << sig->name << "out of bounds.start_bit:" << sig->start_bit << "size:" << sig->size;
-          break;
-        }
-
-        if (abs_bit == sig->lsb) items[idx].is_lsb = true;
-        if (abs_bit == sig->msb) items[idx].is_msb = true;
-
-        auto &sigs = items[idx].sigs;
-        sigs.push_back(sig);
-        if (sigs.size() > 1) {
-          std::sort(sigs.begin(), sigs.end(), [](auto l, auto r) { return l->size > r->size; });
-        }
-        items[idx].bg_color = sig->color;
-      }
-    }
-  } else {
-    row_count = StreamManager::stream()->snapshot(msg_id)->size;
-    items.resize(row_count * column_count);
+  auto dbc_msg = GetDBC()->msg(msg_id);
+  if (dbc_msg) {
+    mapSignalsToItems(dbc_msg);
   }
+
   updateBorders();
   endResetModel();
   updateState();
+}
+
+void BinaryModel::initializeItems() {
+  bit_flip_tracker = {};
+  items.clear();
+
+  auto snapshot = StreamManager::stream()->snapshot(msg_id);
+  auto dbc_msg = GetDBC()->msg(msg_id);
+
+  // Prefer DBC size, fallback to message snapshot size
+  row_count = dbc_msg ? dbc_msg->size : (snapshot ? snapshot->size : 8);
+  items.resize(row_count * column_count);
+}
+
+void BinaryModel::mapSignalsToItems(const dbc::Msg* msg) {
+  for (auto sig : msg->getSignals()) {
+    for (int j = 0; j < sig->size; ++j) {
+      int abs_bit = sig->getBitIndex(j);
+      int row = abs_bit / 8;
+      int col = 7 - (abs_bit % 8);  // Physical grid: Col 0 is Bit 7
+      int idx = row * column_count + col;
+
+      if (idx >= items.size()) {
+        qWarning() << "Signal" << sig->name << "out of bounds at bit" << abs_bit;
+        break;
+      }
+
+      auto& item = items[idx];
+      item.is_lsb |= (abs_bit == sig->lsb);
+      item.is_msb |= (abs_bit == sig->msb);
+      item.bg_color = sig->color;  // Last signal in list sets the primary color
+
+      item.sigs.push_back(sig);
+
+      // Sort overlapping signals: Smallest (inner) signals last
+      // so they are prioritized for hover/interaction
+      if (item.sigs.size() > 1) {
+        std::sort(item.sigs.begin(), item.sigs.end(), [](auto l, auto r) {
+          return l->size > r->size;
+        });
+      }
+    }
+  }
 }
 
 void BinaryModel::updateBorders() {
