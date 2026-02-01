@@ -35,14 +35,19 @@ void BinaryModel::rebuild() {
     items.resize(row_count * column_count);
     for (auto sig : dbc_msg->getSignals()) {
       for (int j = 0; j < sig->size; ++j) {
-        int pos = sig->is_little_endian ? flipBitPos(sig->start_bit + j) : flipBitPos(sig->start_bit) + j;
-        int idx = column_count * (pos / 8) + pos % 8;
+        // Map logical bit j to absolute CAN bit index
+        int abs_bit = sig->getBitIndex(j);
+        int row = abs_bit / 8;
+        int col = 7 - (abs_bit % 8);  // Column 0 is Bit 7 (MSB)
+        int idx = row * column_count + col;
+
         if (idx >= items.size()) {
           qWarning() << "signal " << sig->name << "out of bounds.start_bit:" << sig->start_bit << "size:" << sig->size;
           break;
         }
-        if (j == 0) sig->is_little_endian ? items[idx].is_lsb = true : items[idx].is_msb = true;
-        if (j == sig->size - 1) sig->is_little_endian ? items[idx].is_msb = true : items[idx].is_lsb = true;
+
+        if (abs_bit == sig->lsb) items[idx].is_lsb = true;
+        if (abs_bit == sig->msb) items[idx].is_msb = true;
 
         auto &sigs = items[idx].sigs;
         sigs.push_back(sig);

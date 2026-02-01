@@ -15,6 +15,7 @@ class Signal {
  public:
   Signal() = default;
   Signal(const Signal& other) = default;
+  int getBitIndex(int i) const;  // Logic-to-CAN mapping
   void update();
   bool getValue(const uint8_t* data, size_t data_size, double* val) const;
   QString formatValue(double value, bool with_unit = true) const;
@@ -51,4 +52,4 @@ class Signal {
 // Helper functions
 double decodeSignal(const uint8_t* data, size_t data_size, const dbc::Signal& sig);
 void updateMsbLsb(dbc::Signal& s);
-inline int flipBitPos(int start_bit) { return 8 * (start_bit / 8) + 7 - start_bit % 8; }
+inline int flipBitPos(int pos) { return (pos & ~7) | (7 - (pos & 7)); }
