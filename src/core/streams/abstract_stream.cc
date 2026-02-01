@@ -18,6 +18,9 @@ uint64_t TimeIndex<const CanEvent*>::get_timestamp(const CanEvent* const& e) {
 AbstractStream::AbstractStream(QObject *parent) : QObject(parent) {
   assert(parent != nullptr);
   event_buffer_ = std::make_unique<MonotonicBuffer>(EVENT_NEXT_BUFFER_SIZE);
+  snapshot_map_.reserve(1024);
+  time_index_map_.reserve(1024);
+  shared_state_.master_state.reserve(1024);
 
   connect(this, &AbstractStream::seekedTo, this, &AbstractStream::updateSnapshotsTo);
   connect(this, &AbstractStream::seeking, this, [this](double sec) { current_sec_ = sec; });
