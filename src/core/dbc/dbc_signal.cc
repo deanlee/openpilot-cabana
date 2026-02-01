@@ -30,6 +30,15 @@ void dbc::Signal::update() {
   precision = std::max(utils::num_decimals(factor), utils::num_decimals(offset));
 }
 
+int dbc::Signal::getBitIndex(int i) const {
+  if (is_little_endian) {
+    return start_bit + i;
+  } else {
+    // Motorola Big Endian Sawtooth
+    return flipBitPos(flipBitPos(start_bit) + i);
+  }
+}
+
 QString dbc::Signal::formatValue(double value, bool with_unit) const {
   // Show enum string
   if (!value_table.empty()) {
@@ -100,11 +109,12 @@ double decodeSignal(const uint8_t* data, size_t data_size, const dbc::Signal& si
 }
 
 void updateMsbLsb(dbc::Signal& s) {
+  int end_bit = s.getBitIndex(s.size - 1);
   if (s.is_little_endian) {
     s.lsb = s.start_bit;
-    s.msb = s.start_bit + s.size - 1;
+    s.msb = end_bit;
   } else {
-    s.lsb = flipBitPos(flipBitPos(s.start_bit) + s.size - 1);
     s.msb = s.start_bit;
+    s.lsb = end_bit;
   }
 }

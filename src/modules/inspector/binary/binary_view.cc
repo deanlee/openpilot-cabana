@@ -10,7 +10,9 @@
 #include "core/commands/commands.h"
 #include "modules/settings/settings.h"
 
-inline int get_bit_pos(const QModelIndex &index) { return flipBitPos(index.row() * 8 + index.column()); }
+inline int get_abs_bit(const QModelIndex& index) {
+  return index.row() * 8 + (7 - index.column());
+}
 
 BinaryView::BinaryView(QWidget *parent) : QTableView(parent) {
   delegate = new MessageBytesDelegate(this);
@@ -121,30 +123,16 @@ void BinaryView::highlight(const dbc::Signal *sig) {
   }
 }
 
-void BinaryView::setSelection(const QRect &rect, QItemSelectionModel::SelectionFlags flags) {
-  auto index = indexAt(viewport()->mapFromGlobal(QCursor::pos()));
-  if (!anchor_index.isValid() || !index.isValid())
-    return;
-
-  QItemSelection selection;
-  auto [start, size, is_lb] = getSelection(index);
-  for (int i = 0; i < size; ++i) {
-    int pos = is_lb ? flipBitPos(start + i) : flipBitPos(start) + i;
-    selection << QItemSelectionRange{model->index(pos / 8, pos % 8)};
-  }
-  selectionModel()->select(selection, flags);
-}
-
-void BinaryView::mousePressEvent(QMouseEvent *event) {
+void BinaryView::mousePressEvent(QMouseEvent* event) {
   resize_sig = nullptr;
   if (auto index = indexAt(event->pos()); index.isValid() && index.column() != 8) {
     anchor_index = index;
-    auto item = (const BinaryModel::Item *)anchor_index.internalPointer();
-    int bit_pos = get_bit_pos(anchor_index);
+    auto item = (const BinaryModel::Item*)anchor_index.internalPointer();
+    int clicked_bit = get_abs_bit(anchor_index);
     for (auto s : item->sigs) {
-      if (bit_pos == s->lsb || bit_pos == s->msb) {
-        int idx = flipBitPos(bit_pos == s->lsb ? s->msb : s->lsb);
-        anchor_index = model->index(idx / 8, idx % 8);
+      if (clicked_bit == s->lsb || clicked_bit == s->msb) {
+        int other_bit = (clicked_bit == s->lsb) ? s->msb : s->lsb;
+        anchor_index = model->index(other_bit / 8, 7 - (other_bit % 8));
         resize_sig = s;
         break;
       }
@@ -213,25 +201,53 @@ QSet<const dbc::Signal *> BinaryView::getOverlappingSignals() const {
 }
 
 std::tuple<int, int, bool> BinaryView::getSelection(QModelIndex index) {
-  if (index.column() == 8) {
-    index = model->index(index.row(), 7);
-  }
-  bool is_lb = true;
+  if (index.column() == 8) index = model->index(index.row(), 7);
+
+  bool is_le = true;
   if (resize_sig) {
-    is_lb = resize_sig->is_little_endian;
+    is_le = resize_sig->is_little_endian;
   } else if (settings.drag_direction == Settings::DragDirection::MsbFirst) {
-    is_lb = index < anchor_index;
+    is_le = index < anchor_index;
   } else if (settings.drag_direction == Settings::DragDirection::LsbFirst) {
-    is_lb = !(index < anchor_index);
+    is_le = !(index < anchor_index);
   } else if (settings.drag_direction == Settings::DragDirection::AlwaysLE) {
-    is_lb = true;
+    is_le = true;
   } else if (settings.drag_direction == Settings::DragDirection::AlwaysBE) {
-    is_lb = false;
+    is_le = false;
   }
 
-  int cur_bit_pos = get_bit_pos(index);
-  int anchor_bit_pos = get_bit_pos(anchor_index);
-  int start_bit = is_lb ? std::min(cur_bit_pos, anchor_bit_pos) : get_bit_pos(std::min(index, anchor_index));
-  int size = is_lb ? std::abs(cur_bit_pos - anchor_bit_pos) + 1 : std::abs(flipBitPos(cur_bit_pos) - flipBitPos(anchor_bit_pos)) + 1;
-  return {start_bit, size, is_lb};
+  int cur_bit = get_abs_bit(index);
+  int anchor_bit = get_abs_bit(anchor_index);
+
+  int start_bit, size;
+  if (is_le) {
+    // Intel: Start bit is numerically lowest
+    start_bit = std::min(cur_bit, anchor_bit);
+    size = std::abs(cur_bit - anchor_bit) + 1;
+  } else {
+    // Motorola: Start bit is "Visual Top-Left".
+    auto pos_cur = std::make_pair(index.row(), index.column());
+    auto pos_anchor = std::make_pair(anchor_index.row(), anchor_index.column());
+
+    QModelIndex topLeft = (pos_cur < pos_anchor) ? index : anchor_index;
+
+    start_bit = get_abs_bit(topLeft);
+    size = std::abs(flipBitPos(cur_bit) - flipBitPos(anchor_bit)) + 1;
+  }
+
+  return {start_bit, size, is_le};
+}
+
+void BinaryView::setSelection(const QRect& rect, QItemSelectionModel::SelectionFlags flags) {
+  auto cur_idx = indexAt(viewport()->mapFromGlobal(QCursor::pos()));
+  if (!anchor_index.isValid() || !cur_idx.isValid()) return;
+
+  auto [start, size, is_le] = getSelection(cur_idx);
+  QItemSelection selection;
+
+  for (int j = 0; j < size; ++j) {
+    int abs_bit = is_le ? (start + j) : flipBitPos(flipBitPos(start) + j);
+    selection << QItemSelectionRange{model->index(abs_bit / 8, 7 - (abs_bit % 8))};
+  }
+  selectionModel()->select(selection, flags);
 }
