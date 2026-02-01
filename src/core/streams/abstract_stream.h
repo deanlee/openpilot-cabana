@@ -104,6 +104,7 @@ protected:
     std::set<MessageId> dirty_ids;
     std::unordered_map<MessageId, MessageState> master_state;
     std::unordered_map<MessageId, std::vector<uint8_t>> masks;
+    bool mute_defined_signals = false;
     bool seek_finished = false;
   };
 
@@ -115,6 +116,9 @@ private:
   void updateSnapshotsTo(double sec);
   void updateMasks();
   void updateActiveStates();
+  void updateMessageMask(const MessageId &id);
+  void applyCurrentPolicy(MessageState& state, const MessageId& id);
+
 
   std::unordered_map<MessageId, std::unique_ptr<MessageSnapshot>> snapshot_map_;
 

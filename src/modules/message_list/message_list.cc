@@ -94,7 +94,6 @@ QWidget *MessageList::createToolBar() {
   suppress_defined_signals->setFocusPolicy(Qt::NoFocus);
   suppress_defined_signals->setToolTip(tr("Mute Defined Signals.\n"
                                         "Focus on unknown data by hiding activity for bits already assigned to a signal."));
-  suppress_defined_signals->setChecked(settings.suppress_defined_signals);
   layout->addWidget(suppress_defined_signals);
 
   layout->addStretch(1);
@@ -125,7 +124,6 @@ void MessageList::resetState() {
   suppress_clear->setText(tr("Reset Activity"));
   suppress_clear->setEnabled(false);
 
-  StreamManager::stream()->suppressDefinedSignals(settings.suppress_defined_signals);
   updateTitle();
   view->scrollToTop();
 }

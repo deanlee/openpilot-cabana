@@ -31,7 +31,6 @@ void settings_op(SettingOperation op) {
   op(s, "log_livestream", settings.log_livestream);
   op(s, "log_path", settings.log_path);
   op(s, "drag_direction", (int &)settings.drag_direction);
-  op(s, "suppress_defined_signals", settings.suppress_defined_signals);
   op(s, "recent_dbc_file", settings.recent_dbc_file);
   op(s, "active_msg_id", settings.active_msg_id);
   op(s, "selected_msg_ids", settings.selected_msg_ids);

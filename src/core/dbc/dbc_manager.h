@@ -59,7 +59,7 @@ signals:
   void msgUpdated(MessageId id);
   void msgRemoved(MessageId id);
   void DBCFileChanged();
-  void maskUpdated();
+  void maskUpdated(const MessageId &address);
 
 private:
   std::map<int, std::shared_ptr<File>> dbc_files;

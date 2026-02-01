@@ -65,7 +65,7 @@ void Manager::addSignal(const MessageId& id, const dbc::Signal& sig) {
   if (auto m = msg(id)) {
     if (auto s = m->addSignal(sig)) {
       emit signalAdded(id, s);
-      emit maskUpdated();
+      emit maskUpdated(id);
     }
   }
 }
@@ -74,7 +74,7 @@ void Manager::updateSignal(const MessageId& id, const QString& sig_name, const d
   if (auto m = msg(id)) {
     if (auto s = m->updateSignal(sig_name, sig)) {
       emit signalUpdated(s);
-      emit maskUpdated();
+      emit maskUpdated(id);
     }
   }
 }
@@ -84,7 +84,7 @@ void Manager::removeSignal(const MessageId& id, const QString& sig_name) {
     if (auto s = m->sig(sig_name)) {
       emit signalRemoved(s);
       m->removeSignal(sig_name);
-      emit maskUpdated();
+      emit maskUpdated(id);
     }
   }
 }
@@ -101,7 +101,7 @@ void Manager::removeMsg(const MessageId& id) {
   assert(dbc_file);  // This should be impossible
   dbc_file->removeMsg(id);
   emit msgRemoved(id);
-  emit maskUpdated();
+  emit maskUpdated(id);
 }
 
 QString Manager::newMsgName(const MessageId& id) {

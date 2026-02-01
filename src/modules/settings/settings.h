@@ -32,7 +32,6 @@ public:
   int theme = 0;
   int sparkline_range = 15; // 15 seconds
   bool log_livestream = true;
-  bool suppress_defined_signals = false;
   QString log_path;
   QString last_dir;
   QString last_route_dir;
