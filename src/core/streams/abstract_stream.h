@@ -65,7 +65,10 @@ public:
 
   inline double currentSec() const { return current_sec_; }
   inline uint64_t toMonoNs(double sec) const { return beginMonoNs() + std::max(sec, 0.0) * 1e9; }
-  inline double toSeconds(uint64_t mono_ns) const { return std::max(0.0, (mono_ns - beginMonoNs()) / 1e9); }
+  inline double toSeconds(uint64_t mono_ns) const {
+    const uint64_t begin_ns = beginMonoNs();
+    return mono_ns > begin_ns ? (mono_ns - begin_ns) / 1e9 : 0.0;
+  }
 
   inline const std::unordered_map<MessageId, std::unique_ptr<MessageSnapshot>> &snapshots() const { return snapshot_map_; }
   inline const MessageEventsMap &eventsMap() const { return events_; }
