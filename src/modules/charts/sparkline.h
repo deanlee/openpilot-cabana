@@ -57,7 +57,7 @@ class SparklineContext {
   inline float getX(uint64_t ts) const {
     if (ts >= win_end_ns) return right_edge;
 
-    float x = right_edge - static_cast<float>(static_cast<double>(win_end_ns - ts) * px_per_ns);
+    float x = pad + static_cast<float>(static_cast<double>(ts - win_start_ns) * px_per_ns);
     return (x < pad) ? pad : x;
   }
 };

@@ -13,15 +13,9 @@ bool SparklineContext::update(const MessageId& msg_id, uint64_t current_ns, int 
   const float w = static_cast<float>(size.width());
   const float eff_w = std::max(1.0f, w - (2.0f * pad));
 
-  const double ns_per_px_dbl = std::max(1.0, static_cast<double>(range_ns) / eff_w);
-  const uint64_t step = static_cast<uint64_t>(ns_per_px_dbl);
-
-  // Snap win_end_ns to pixel boundaries
-  const uint64_t new_win_end_ns = (current_ns / step) * step;
-
   // If size hasn't changed and time hasn't crossed a pixel boundary, skip.
   bool size_changed = (size != widget_size);
-  bool time_shifted = (new_win_end_ns != win_end_ns);
+  bool time_shifted = (current_ns != win_end_ns);
 
   // Jump Detection
   jump_detected = (last_processed_mono_ns != 0) &&
@@ -34,8 +28,11 @@ bool SparklineContext::update(const MessageId& msg_id, uint64_t current_ns, int 
   }
 
   // Commit updates
-  win_end_ns = new_win_end_ns;
+  win_end_ns = current_ns;
   win_start_ns = (win_end_ns > range_ns) ? (win_end_ns - range_ns) : 0;
+  const double ns_per_px_dbl = std::max(1.0, static_cast<double>(range_ns) / eff_w);
+  const uint64_t step = static_cast<uint64_t>(ns_per_px_dbl);
+  win_start_ns = (win_start_ns / step) * step;
   widget_size = size;
   right_edge = w - pad;
   px_per_ns = 1.0 / ns_per_px_dbl;
