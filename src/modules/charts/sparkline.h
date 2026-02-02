@@ -38,16 +38,40 @@ class RingBuffer {
   size_t count = 0;
 };
 
+class SparklineContext {
+ public:
+  float pad = 2.0f;
+  uint64_t last_processed_mono_ns = 0;
+  uint64_t win_start_ns = 0;
+  uint64_t win_end_ns = 0;
+  bool jump_detected = false;
+  float right_edge = 0.0f;
+
+  CanEventIter first;
+  CanEventIter last;
+
+  QSize widget_size = {};
+  float px_per_ns = 0;
+
+  bool update(const MessageId &msg_id, uint64_t current_ns, int time_window, const QSize& size);
+  inline float getX(uint64_t ts) const {
+    if (ts >= win_end_ns) return right_edge;
+
+    float x = right_edge - static_cast<float>(static_cast<double>(win_end_ns - ts) * px_per_ns);
+    return (x < pad) ? pad : x;
+  }
+};
+
 class Sparkline {
  public:
   struct DataPoint {
     uint64_t mono_ns;
     double value;
   };
-  void update(const dbc::Signal* sig, CanEventIter first, CanEventIter last, int time_range, QSize size);
+  void update(const dbc::Signal* sig, const SparklineContext& params);
   inline double freq() const { return freq_; }
   bool isEmpty() const { return image.isNull(); }
-  void mapHistoryToPoints(int time_range, QSize size);
+  void mapHistoryToPoints(const SparklineContext& params);
   void setHighlight(bool highlight);
   void clearHistory();
 
@@ -74,31 +98,15 @@ class Sparkline {
     }
   };
 
-  struct TransformParams {
-    float pad, w, h, base_x;
-    uint64_t win_start, win_end;
-    double px_per_ns;
-  };
-
-  size_t findFirstVisibleIdx(uint64_t start_ts);
-  void updateDataPoints(const dbc::Signal* sig, CanEventIter first, CanEventIter last);
+  void updateDataPoints(const dbc::Signal* sig, const SparklineContext &ctx);
   bool calculateValueBounds();
   void flushBucket(int x, const Bucket& b);
   void addUniquePoint(int x, float y);
   void render();
-  TransformParams getTransformationParams(int time_range, QSize size);
-  void mapFlatPath(const TransformParams& p);
-  void mapNoisyPath(const TransformParams& p);
-  inline float getX(uint64_t ts, const TransformParams& p) {
-    if (ts >= p.win_end) return p.base_x;
-    return std::max(p.pad, p.base_x - (float)((double)(p.win_end - ts) * p.px_per_ns));
-  }
+  void mapFlatPath(const SparklineContext &ctx);
+  void mapNoisyPath(const SparklineContext& ctx);
 
   RingBuffer<DataPoint> history_;
-  uint64_t last_processed_mono_ns_ = 0;
-
-  std::vector<QPointF> render_points_;
-  uint64_t current_window_max_ts_ = 0;
   std::vector<QPointF> render_pts_;
   double freq_ = 0;
   bool is_highlighted_ = false;

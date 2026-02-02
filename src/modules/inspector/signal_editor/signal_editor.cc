@@ -161,10 +161,9 @@ void SignalEditor::updateToolBar() {
 void SignalEditor::setSparklineRange(int value) {
   settings.sparkline_range = value;
   updateToolBar();
+
   // Clear history to prevent scaling artifacts when range changes drastically
-  for (auto item : model->root->children) {
-    item->sparkline->clearHistory();
-  }
+  model->resetSparklines();
   updateState();
 }
 

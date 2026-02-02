@@ -6,16 +6,71 @@
 #include <algorithm>
 #include <limits>
 
-void Sparkline::update(const dbc::Signal* sig, CanEventIter first, CanEventIter last, int time_range, QSize size) {
-  signal_ = sig;
-  if (first == last || size.isEmpty()) {
-    clearHistory();
-    return;
+#include "modules/system/stream_manager.h"
+
+bool SparklineContext::update(const MessageId& msg_id, uint64_t current_ns, int time_window, const QSize& size) {
+  const uint64_t range_ns = static_cast<uint64_t>(time_window) * 1000000000ULL;
+  const float w = static_cast<float>(size.width());
+  const float eff_w = std::max(1.0f, w - (2.0f * pad));
+
+  const double ns_per_px_dbl = std::max(1.0, static_cast<double>(range_ns) / eff_w);
+  const uint64_t step = static_cast<uint64_t>(ns_per_px_dbl);
+
+  // Snap win_end_ns to pixel boundaries
+  const uint64_t new_win_end_ns = (current_ns / step) * step;
+
+  // If size hasn't changed and time hasn't crossed a pixel boundary, skip.
+  bool size_changed = (size != widget_size);
+  bool time_shifted = (new_win_end_ns != win_end_ns);
+
+  // Jump Detection
+  jump_detected = (last_processed_mono_ns != 0) &&
+                  ((current_ns < last_processed_mono_ns) ||
+                   (current_ns > last_processed_mono_ns + 1000000000ULL));
+
+  if (!size_changed && !time_shifted && !jump_detected) {
+    first = last; // Signals to the caller that no new processing is needed
+    return false;
   }
-  updateDataPoints(sig, first, last);
+
+  // Commit updates
+  win_end_ns = new_win_end_ns;
+  win_start_ns = (win_end_ns > range_ns) ? (win_end_ns - range_ns) : 0;
+  widget_size = size;
+  right_edge = w - pad;
+  px_per_ns = 1.0 / ns_per_px_dbl;
+
+  uint64_t fetch_start = jump_detected ? win_start_ns : (last_processed_mono_ns + 1);
+
+  // Safety check: if we are caught up
+  if (fetch_start > win_end_ns && !jump_detected) {
+    first = last;
+    return false;
+  }
+
+  auto* stream = StreamManager::stream();
+  auto range = stream->eventsInRange(msg_id, std::make_pair(stream->toSeconds(fetch_start), stream->toSeconds(win_end_ns)));
+
+  first = range.first;
+  last = range.second;
+
+  if (first != last) {
+    last_processed_mono_ns = (*(last - 1))->mono_ns;
+  } else if (jump_detected) {
+    last_processed_mono_ns = win_end_ns;
+  }
+  return true;
+}
+
+void Sparkline::update(const dbc::Signal* sig, const SparklineContext& ctx) {
+  signal_ = sig;
+  if (ctx.jump_detected) history_.clear();
+
+  updateDataPoints(sig, ctx);
+
   if (!history_.empty()) {
     const qreal dpr = qApp->devicePixelRatio();
-    QSize pixelSize = size * dpr;
+    QSize pixelSize = ctx.widget_size * dpr;
 
     if (image.size() != pixelSize) {
       image = QImage(pixelSize, QImage::Format_ARGB32_Premultiplied);
@@ -23,53 +78,36 @@ void Sparkline::update(const dbc::Signal* sig, CanEventIter first, CanEventIter 
     }
     image.fill(Qt::transparent);
 
-    mapHistoryToPoints(time_range, size);
+    mapHistoryToPoints(ctx);
     render();
   }
 }
 
-void Sparkline::updateDataPoints(const dbc::Signal* sig, CanEventIter first, CanEventIter last) {
-  uint64_t first_ts = (*first)->mono_ns;
-  uint64_t last_ts = (*(last - 1))->mono_ns;
-
-  bool is_backwards = !history_.empty() && last_ts < history_.back().mono_ns;
-  bool is_far_forward = !history_.empty() && first_ts > (history_.back().mono_ns + 1000000000ULL);
-
-  if (history_.empty() || is_backwards || is_far_forward) {
-    clearHistory();
-  }
-
+void Sparkline::updateDataPoints(const dbc::Signal* sig, const SparklineContext& ctx) {
   double val = 0.0;
-  for (auto it = first; it != last; ++it) {
-    uint64_t ts = (*it)->mono_ns;
-
-    // Skip data we already have if we are just appending
-    if (ts <= last_processed_mono_ns_) continue;
-
-    if (sig->getValue((*it)->dat, (*it)->size, &val)) {
-      history_.push_back({ts, val});
+  for (auto it = ctx.first; it != ctx.last; ++it) {
+    auto *e = *it;
+    if (sig->getValue(e->dat, e->size, &val)) {
+      history_.push_back({e->mono_ns, val});
     }
-    last_processed_mono_ns_ = ts;
   }
 
   // Purge data older than the window
-  while (!history_.empty() && history_.front().mono_ns < first_ts) {
+  // Keep ONE point just outside win_start_ns for smooth edge rendering
+  while (history_.size() > 1 && history_.front().mono_ns < ctx.win_start_ns) {
     history_.pop_front();
   }
-  current_window_max_ts_ = last_ts;
 }
 
-void Sparkline::mapHistoryToPoints(int time_range, QSize size) {
- render_pts_.clear();
-  if (history_.empty()) return;
+void Sparkline::mapHistoryToPoints(const SparklineContext& ctx) {
+  render_pts_.clear();
 
-  auto p = getTransformationParams(time_range, size);
   bool is_flat = calculateValueBounds();
 
   if (is_flat) {
-    mapFlatPath(p);
+    mapFlatPath(ctx);
   } else {
-    mapNoisyPath(p);
+    mapNoisyPath(ctx);
   }
 
   if (render_pts_.size() == 1) {
@@ -77,54 +115,36 @@ void Sparkline::mapHistoryToPoints(int time_range, QSize size) {
   }
 }
 
-Sparkline::TransformParams Sparkline::getTransformationParams(int time_range, QSize size) {
-  TransformParams p;
-  p.pad = 2.0f;
-  p.w = (float)size.width();
-  p.h = (float)size.height();
-
-  const float eff_w = std::max(1.0f, p.w - (2.0f * p.pad));
-  const uint64_t range_ns = static_cast<uint64_t>(time_range) * 1000000000ULL;
-  const uint64_t ns_per_pixel = std::max<uint64_t>(1, range_ns / static_cast<uint64_t>(eff_w));
-  p.win_end = (current_window_max_ts_ / ns_per_pixel) * ns_per_pixel;
-  p.win_start = (p.win_end > range_ns) ? (p.win_end - range_ns) : 0;
-
-  p.px_per_ns = 1.0 / ns_per_pixel;
-  p.base_x = p.w - p.pad;
-
-  return p;
-}
-
 // O(1) Path: Simply draws a centered line across the visible data range
-void Sparkline::mapFlatPath(const TransformParams& p) {
-  uint64_t draw_start = std::max(p.win_start, history_.front().mono_ns);
-  uint64_t draw_end   = std::min(p.win_end,   history_.back().mono_ns);
+void Sparkline::mapFlatPath(const SparklineContext& ctx) {
+  uint64_t draw_start = std::max(ctx.win_start_ns, history_.front().mono_ns);
+  uint64_t draw_end = std::min(ctx.win_end_ns, history_.back().mono_ns);
 
   if (draw_start <= draw_end) {
-    float y = p.h * 0.5f; // Explicitly centered
-    render_pts_.emplace_back(getX(draw_start, p), y);
+    float y = ctx.widget_size.height() * 0.5f;  // Explicitly centered
+    render_pts_.emplace_back(ctx.getX(draw_start), y);
     if (draw_start < draw_end) {
-      render_pts_.emplace_back(getX(draw_end, p), y);
+      render_pts_.emplace_back(ctx.getX(draw_end), y);
     }
   }
 }
 
 // O(N) Path: M4 Algorithm to reduce high-frequency data into pixel buckets
-void Sparkline::mapNoisyPath(const TransformParams& p) {
-  const float eff_h = std::max(1.0f, p.h - (2.0f * p.pad));
-  const float y_scale = eff_h / (float)(max_val - min_val);
-  const float base_y = p.h - p.pad;
+void Sparkline::mapNoisyPath(const SparklineContext& ctx) {
+  const float eff_h = std::max(1.0f, ctx.widget_size.height() - (2.0f * ctx.pad));
+  const double y_scale = static_cast<double>(eff_h) / (max_val - min_val);
+  const float base_y = ctx.widget_size.height() - ctx.pad;
 
-  render_pts_.reserve((size_t)std::max(1.0f, p.w) * 2);
+  size_t target_size = (size_t)ctx.widget_size.width() * 2;
+  if (render_pts_.capacity() < target_size) render_pts_.reserve(target_size);
 
-  size_t start_idx = findFirstVisibleIdx(p.win_start);
   int last_x = -1;
   Bucket b;
 
-  for (size_t i = start_idx; i < history_.size(); ++i) {
+  for (size_t i = 0; i < history_.size(); ++i) {
     const auto& pt = history_[i];
-    int x = (int)getX(pt.mono_ns, p);
-    float y = base_y - (float)((pt.value - min_val) * y_scale);
+    int x = static_cast<int>(ctx.getX(pt.mono_ns));
+    float y = base_y - static_cast<float>((pt.value - min_val) * y_scale);
 
     if (x != last_x) {
       if (last_x != -1) flushBucket(last_x, b);
@@ -203,7 +223,6 @@ void Sparkline::render() {
 bool Sparkline::calculateValueBounds() {
   if (history_.empty()) return true;
 
-  // Compiler-friendly min/max loop
   double current_min = history_[0].value;
   double current_max = history_[0].value;
 
@@ -226,29 +245,15 @@ bool Sparkline::calculateValueBounds() {
   return flat;
 }
 
+void Sparkline::clearHistory() {
+  history_.clear();
+  render_pts_.clear();
+  image = QImage();
+}
+
 void Sparkline::setHighlight(bool highlight) {
   if (is_highlighted_ != highlight) {
     is_highlighted_ = highlight;
     render();
   }
-}
-
-size_t Sparkline::findFirstVisibleIdx(uint64_t ts) {
-  size_t low = 0, high = history_.size();
-  while (low < high) {
-    size_t mid = low + (high - low) / 2;
-    if (history_[mid].mono_ns < ts)
-      low = mid + 1;
-    else
-      high = mid;
-  }
-  return low;
-}
-
-void Sparkline::clearHistory() {
-  last_processed_mono_ns_ = 0;
-  history_.clear();
-  render_pts_.clear();
-  current_window_max_ts_ = 0;
-  image = QImage();
 }

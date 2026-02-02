@@ -66,19 +66,18 @@ void SignalTreeModel::updateValues(const MessageSnapshot* msg) {
 }
 
 void SignalTreeModel::updateSparklines(const MessageSnapshot* msg, int first_row, int last_row, const QSize& size) {
-  auto range = StreamManager::stream()->eventsInRange(
-      msg_id, std::make_pair(msg->ts - settings.sparkline_range, msg->ts));
-
   QVector<SignalTreeModel::Item*> items;
   for (int i = first_row; i <= last_row; ++i) {
     items << itemFromIndex(index(i, 1));
   }
 
-  QtConcurrent::blockingMap(items, [&](SignalTreeModel::Item* item) {
-    item->sparkline->update(item->sig, range.first, range.second, settings.sparkline_range, size);
-  });
+  if (sparkline_context_.update(msg_id, StreamManager::stream()->toMonoNs(msg->ts), settings.sparkline_range, size)) {
+    QtConcurrent::blockingMap(items, [&](SignalTreeModel::Item* item) {
+      item->sparkline->update(item->sig, sparkline_context_);
+    });
 
-  emit dataChanged(index(first_row, 1), index(last_row, 1), {Qt::DisplayRole});
+    emit dataChanged(index(first_row, 1), index(last_row, 1), {Qt::DisplayRole});
+  }
 }
 
 void SignalTreeModel::updateChartedSignals(const QMap<MessageId, QSet<const dbc::Signal*>> &opened) {
@@ -94,6 +93,8 @@ void SignalTreeModel::setFilter(const QString &txt) {
 }
 
 void SignalTreeModel::rebuild() {
+  resetSparklines();
+
   beginResetModel();
   root.reset(new SignalTreeModel::Item(Item::Root, "", nullptr, nullptr));
   if (auto msg = GetDBC()->msg(msg_id)) {
@@ -328,5 +329,12 @@ void SignalTreeModel::handleSignalRemoved(const dbc::Signal *sig) {
     beginRemoveRows({}, row, row);
     delete root->children.takeAt(row);
     endRemoveRows();
+  }
+}
+
+void SignalTreeModel::resetSparklines() {
+  sparkline_context_ = {};
+  for (auto item : root->children) {
+    item->sparkline->clearHistory();
   }
 }

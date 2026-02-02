@@ -39,6 +39,7 @@ public:
   };
 
   SignalTreeModel(QObject *parent);
+  void resetSparklines();
   int rowCount(const QModelIndex &parent = QModelIndex()) const override;
   int columnCount(const QModelIndex &parent = QModelIndex()) const override { return 2; }
   QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
@@ -77,6 +78,9 @@ private:
 
   QMap<MessageId, QSet<const dbc::Signal*>> charted_signals_;
   std::unique_ptr<Item> root;
+
+  SparklineContext sparkline_context_;
+
   friend class SignalEditor;
   friend class SignalTreeDelegate;
 };
