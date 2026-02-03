@@ -81,7 +81,6 @@ void dbc::Msg::update() {
   // Align to 8-byte boundaries
   int aligned_size = ((size + 7) / 8) * 8;
   mask.assign(aligned_size, 0x00);
-
   multiplexor = nullptr;
 
   // sort signals
@@ -90,30 +89,20 @@ void dbc::Msg::update() {
            std::tie(l->type, r->multiplex_value, r->start_bit, r->name);
   });
 
-  for (auto sig : sigs) {
+  for (auto *sig : sigs) {
     if (sig->type == dbc::Signal::Type::Multiplexor) {
       multiplexor = sig;
     }
     sig->update();
 
     // update mask
-    int i = sig->msb / 8;
-    int bits = sig->size;
-    while (i >= 0 && i < size && bits > 0) {
-      int lsb = (int)(sig->lsb / 8) == i ? sig->lsb : i * 8;
-      int msb = (int)(sig->msb / 8) == i ? sig->msb : (i + 1) * 8 - 1;
-
-      int sz = msb - lsb + 1;
-      int shift = (lsb - (i * 8));
-
-      mask[i] |= ((1ULL << sz) - 1) << shift;
-
-      bits -= sz;
-      i = sig->is_little_endian ? i - 1 : i + 1;
+    for (int b = 0; b < sig->size; ++b) {
+      int bit_idx = sig->getBitIndex(b);
+      mask[bit_idx >> 3] |= (1 << (bit_idx & 7));
     }
   }
 
-  for (auto sig : sigs) {
+  for (auto *sig : sigs) {
     sig->multiplexor = sig->type == dbc::Signal::Type::Multiplexed ? multiplexor : nullptr;
     if (!sig->multiplexor) {
       if (sig->type == dbc::Signal::Type::Multiplexed) {
