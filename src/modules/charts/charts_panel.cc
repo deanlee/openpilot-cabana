@@ -299,7 +299,7 @@ QStringList ChartsPanel::serializeChartIds() const {
       ids += QString("%1|%2").arg(s.msg_id.toString(), s.sig->name);
     chart_ids += ids.join(',');
   }
-  std::reverse(chart_ids.begin(), chart_ids.end());
+  std::ranges::reverse(chart_ids);
   return chart_ids;
 }
 
