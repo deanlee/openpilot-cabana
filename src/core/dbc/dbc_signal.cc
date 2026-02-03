@@ -58,10 +58,10 @@ QString dbc::Signal::formatValue(double value, bool with_unit) const {
 }
 
 bool dbc::Signal::getValue(const uint8_t* data, size_t data_size, double* val) const {
-  if (multiplexor && decodeSignal(data, data_size, *multiplexor) != multiplex_value) {
+  if (multiplexor && multiplexor->getValue(data, data_size, val) != multiplex_value) {
     return false;
   }
-  *val = decodeSignal(data, data_size, *this);
+  *val = getValue(data, data_size);
   return true;
 }
 
@@ -75,37 +75,43 @@ bool dbc::Signal::operator==(const dbc::Signal& other) const {
          multiplex_value == other.multiplex_value && type == other.type && receiver_name == other.receiver_name;
 }
 
-double decodeSignal(const uint8_t* data, size_t data_size, const dbc::Signal& sig) {
-  const int msb_byte = sig.msb / 8;
+uint64_t dbc::Signal::getRawValue(const uint8_t* data, size_t data_size) const {
+  const int msb_byte = msb / 8;
   if (msb_byte >= (int)data_size) return 0;
 
-  const int lsb_byte = sig.lsb / 8;
+  const int lsb_byte = lsb / 8;
   uint64_t val = 0;
 
   // Fast path: signal fits in a single byte
   if (msb_byte == lsb_byte) {
-    val = (data[msb_byte] >> (sig.lsb & 7)) & ((1ULL << sig.size) - 1);
+    val = (data[msb_byte] >> (lsb & 7)) & ((1ULL << size) - 1);
   } else {
     // Multi-byte case: signal spans across multiple bytes
-    int bits = sig.size;
+    int bits = size;
     int i = msb_byte;
-    const int step = sig.is_little_endian ? -1 : 1;
+    const int step = is_little_endian ? -1 : 1;
     while (i >= 0 && i < (int)data_size && bits > 0) {
-      const int msb = (i == msb_byte) ? sig.msb & 7 : 7;
-      const int lsb = (i == lsb_byte) ? sig.lsb & 7 : 0;
-      const int nbits = msb - lsb + 1;
-      val = (val << nbits) | ((data[i] >> lsb) & ((1ULL << nbits) - 1));
+      const int cur_msb = (i == msb_byte) ? (msb & 7) : 7;
+      const int cur_lsb = (i == lsb_byte) ? (lsb & 7) : 0;
+      const int nbits = cur_msb - cur_lsb + 1;
+      val = (val << nbits) | ((data[i] >> cur_lsb) & ((1ULL << nbits) - 1));
       bits -= nbits;
       i += step;
     }
   }
+  return val;
+}
 
-  // Sign extension (if needed)
-  if (sig.is_signed && (val & (1ULL << (sig.size - 1)))) {
-    val |= ~((1ULL << sig.size) - 1);
+double dbc::Signal::getValue(const uint8_t* data, size_t data_size) const {
+  uint64_t val = getRawValue(data, data_size);
+
+  // Sign extension
+  if (is_signed && (val & (1ULL << (size - 1)))) {
+    val |= ~((1ULL << size) - 1);
+    return static_cast<int64_t>(val) * factor + offset;
   }
 
-  return static_cast<int64_t>(val) * sig.factor + sig.offset;
+  return val * factor + offset;
 }
 
 void updateMsbLsb(dbc::Signal& s) {
