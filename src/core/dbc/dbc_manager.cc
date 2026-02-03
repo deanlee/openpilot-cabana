@@ -12,8 +12,9 @@ Manager::Manager(QObject* parent) : QObject(parent) {
 
 bool Manager::open(const SourceSet& sources, const QString& dbc_file_name, QString* error) {
   try {
-    auto it = std::find_if(dbc_files.begin(), dbc_files.end(),
-                           [&](auto& f) { return f.second && f.second->filename == dbc_file_name; });
+    auto it = std::ranges::find_if(dbc_files, [&](auto& f) {
+      return f.second && f.second->filename == dbc_file_name;
+    });
     auto file = (it != dbc_files.end()) ? it->second : std::make_shared<File>(dbc_file_name);
     for (auto s : sources) {
       dbc_files[s] = file;
@@ -146,7 +147,7 @@ QStringList Manager::signalNames() {
 
 int Manager::nonEmptyDBCCount() {
   auto files = allDBCFiles();
-  return std::count_if(files.cbegin(), files.cend(), [](auto& f) { return !f->isEmpty(); });
+  return std::ranges::count_if(files, [](auto& f) { return !f->isEmpty(); });
 }
 
 File* Manager::findDBCFile(const uint8_t source) {

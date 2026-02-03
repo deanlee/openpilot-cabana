@@ -27,7 +27,7 @@ dbc::Signal *dbc::Msg::updateSignal(const QString &sig_name, const dbc::Signal &
 }
 
 void dbc::Msg::removeSignal(const QString &sig_name) {
-  auto it = std::find_if(sigs.begin(), sigs.end(), [&](auto &s) { return s->name == sig_name; });
+  auto it = std::ranges::find(sigs, sig_name, &dbc::Signal::name);
   if (it != sigs.end()) {
     delete *it;
     sigs.erase(it);
@@ -53,7 +53,7 @@ dbc::Msg &dbc::Msg::operator=(const dbc::Msg &other) {
 }
 
 dbc::Signal *dbc::Msg::sig(const QString &sig_name) const {
-  auto it = std::find_if(sigs.begin(), sigs.end(), [&](auto &s) { return s->name == sig_name; });
+  auto it = std::ranges::find(sigs, sig_name, &dbc::Signal::name);
   return it != sigs.end() ? *it : nullptr;
 }
 
@@ -85,7 +85,7 @@ void dbc::Msg::update() {
   multiplexor = nullptr;
 
   // sort signals
-  std::sort(sigs.begin(), sigs.end(), [](auto l, auto r) {
+  std::ranges::sort(sigs, [](const auto* l, const auto* r) {
     return std::tie(r->type, l->multiplex_value, l->start_bit, l->name) <
            std::tie(l->type, r->multiplex_value, r->start_bit, r->name);
   });

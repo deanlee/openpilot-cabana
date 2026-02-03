@@ -356,8 +356,8 @@ void ChartView::drawForeground(QPainter *painter, const QRectF &rect) {
   painter->setPen(Qt::NoPen);
   for (auto &s : chart_->sigs_) {
     if (s.series->useOpenGL() && s.series->isVisible() && s.series->pointsVisible()) {
-      auto first = std::lower_bound(s.vals.cbegin(), s.vals.cend(), chart_->axis_x_->min(), xLessThan);
-      auto last = std::lower_bound(first, s.vals.cend(), chart_->axis_x_->max(), xLessThan);
+      auto first = std::ranges::lower_bound(s.vals, chart_->axis_x_->min(), {}, &QPointF::x);
+      auto last = std::ranges::lower_bound(first, s.vals.end(), chart_->axis_x_->max(), {}, &QPointF::x);
       painter->setBrush(s.series->color());
       for (auto it = first; it != last; ++it) {
         painter->drawEllipse(chart_->mapToPosition(*it), 4, 4);

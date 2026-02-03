@@ -433,7 +433,7 @@ void Chart::updateSeries(const dbc::Signal* sig) {
 }
 
 void Chart::handleSignalChange(const dbc::Signal* sig) {
-  auto it = std::find_if(sigs_.begin(), sigs_.end(), [sig](auto& s) { return s.sig == sig; });
+  auto it = std::ranges::find(sigs_, sig, &ChartSignal::sig);
   if (it != sigs_.end()) {
     if (it->series->color() != sig->color) {
       setSeriesColor(it->series, sig->color);

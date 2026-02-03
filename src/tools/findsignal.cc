@@ -40,13 +40,15 @@ void FindSignalModel::search(std::function<bool(double)> cmp) {
   filtered_signals.reserve(prev_sigs.size());
   QtConcurrent::blockingMap(prev_sigs, [&](auto &s) {
     const auto &events = StreamManager::stream()->events(s.id);
-    auto first = std::upper_bound(events.cbegin(), events.cend(), s.mono_ns, CompareCanEvent());
+    auto first = std::ranges::upper_bound(events, s.mono_ns, {}, &CanEvent::mono_ns);
     auto last = events.cend();
     if (last_time < std::numeric_limits<uint64_t>::max()) {
-      last = std::upper_bound(events.cbegin(), events.cend(), last_time, CompareCanEvent());
+      last = std::ranges::upper_bound(events, last_time, {}, &CanEvent::mono_ns);
     }
 
-    auto it = std::find_if(first, last, [&](const CanEvent *e) { return cmp(s.sig.toPhysical(e->dat, e->size)); });
+    auto it = std::ranges::find_if(first, last, cmp, [&](const CanEvent* e) {
+      return s.sig.toPhysical(e->dat, e->size);
+    });
     if (it != last) {
       auto values = s.values;
       values += QString("(%1, %2)").arg(StreamManager::stream()->toSeconds((*it)->mono_ns), 0, 'f', 3).arg(s.sig.toPhysical((*it)->dat, (*it)->size));
@@ -231,7 +233,7 @@ void FindSignalDlg::setInitialSignals() {
   for (const auto &[id, m] : can->snapshots()) {
     if ((buses.isEmpty() || buses.contains(id.source)) && (addresses.isEmpty() || addresses.contains(id.address))) {
       const auto &events = can->events(id);
-      auto e = std::lower_bound(events.cbegin(), events.cend(), first_time, CompareCanEvent());
+      auto e = std::ranges::lower_bound(events, first_time, {}, &CanEvent::mono_ns);
       if (e != events.cend()) {
         const int total_size = m->size * 8;
         for (int size = min_size->value(); size <= max_size->value(); ++size) {

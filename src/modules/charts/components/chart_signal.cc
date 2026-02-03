@@ -42,10 +42,12 @@ void ChartSignal::prepareData(const MessageEventsMap* msg_new_events, double min
   } else {
     std::vector<QPointF> tmp_vals, tmp_step_vals;
     appendCanEvents(sig, it->second, tmp_vals, tmp_step_vals, series_bounds);
-    vals.insert(std::lower_bound(vals.begin(), vals.end(), tmp_vals.front().x(), xLessThan),
-                tmp_vals.begin(), tmp_vals.end());
-    step_vals.insert(std::lower_bound(step_vals.begin(), step_vals.end(), tmp_step_vals.front().x(), xLessThan),
-                     tmp_step_vals.begin(), tmp_step_vals.end());
+
+    auto insert_pos = std::ranges::lower_bound(vals, tmp_vals.front().x(), {}, &QPointF::x);
+    vals.insert(insert_pos, tmp_vals.begin(), tmp_vals.end());
+
+    auto step_insert_pos = std::ranges::lower_bound(step_vals, tmp_step_vals.front().x(), {}, &QPointF::x);
+    step_vals.insert(step_insert_pos, tmp_step_vals.begin(), tmp_step_vals.end());
 
     // Rebuild the bounds cache to ensure hierarchy is correct after insertion
     series_bounds.clear();
@@ -73,11 +75,11 @@ void ChartSignal::updateRange(double min_x, double max_x) {
     return;
   }
 
-  auto first = std::lower_bound(vals.cbegin(), vals.cend(), min_x, xLessThan);
-  auto last = std::lower_bound(first, vals.cend(), max_x, xLessThan);
+  auto first = std::ranges::lower_bound(vals, min_x, {}, &QPointF::x);
+  auto last = std::ranges::lower_bound(first, vals.end(), max_x, {}, &QPointF::x);
 
-  int l_idx = std::distance(vals.cbegin(), first);
-  int r_idx = std::distance(vals.cbegin(), last) - 1;
+  int l_idx = std::ranges::distance(vals.begin(), first);
+  int r_idx = std::ranges::distance(vals.begin(), last) - 1;
 
   if (l_idx <= r_idx) {
     // Hierarchical query is O(log N) for both Live and Log data

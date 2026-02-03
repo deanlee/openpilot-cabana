@@ -29,15 +29,6 @@ struct CanEvent {
   uint8_t dat[];
 };
 
-struct CompareCanEvent {
-  constexpr bool operator()(const CanEvent* e, uint64_t ts) const noexcept {
-    return e->mono_ns < ts;
-  }
-  constexpr bool operator()(uint64_t ts, const CanEvent* e) const noexcept {
-    return ts < e->mono_ns;
-  }
-};
-
 using MessageEventsMap = std::unordered_map<MessageId, std::vector<const CanEvent *>>;
 using CanEventIter = std::vector<const CanEvent *>::const_iterator;
 

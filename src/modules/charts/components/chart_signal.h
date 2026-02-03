@@ -40,6 +40,5 @@ private:
   std::pair<double, double> last_range_{0, 0};
 };
 
-inline bool xLessThan(const QPointF &p, float x) { return p.x() < (x - EPSILON); }
 qreal niceNumber(qreal x, bool ceiling);
 std::tuple<double, double, int> getNiceAxisNumbers(qreal min, qreal max, int tick_count);

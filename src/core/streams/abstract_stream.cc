@@ -113,7 +113,7 @@ void AbstractStream::updateSnapshotsTo(double sec) {
     if (ev.empty()) continue;
 
     auto [s_min, s_max] = time_index_map_[id].getBounds(ev.front()->mono_ns, last_ts, ev.size());
-    auto it = std::upper_bound(ev.begin() + s_min, ev.begin() + s_max, last_ts, CompareCanEvent());
+    auto it = std::ranges::upper_bound(ev.begin() + s_min, ev.begin() + s_max, last_ts, {}, &CanEvent::mono_ns);
     if (it == ev.begin()) {
       has_erased |= (shared_state_.master_state.erase(id) > 0);
       has_erased |= (snapshot_map_.erase(id) > 0);
@@ -183,7 +183,7 @@ void AbstractStream::mergeEvents(const std::vector<const CanEvent*>& events) {
     target.reserve(target.size() + new_evs.size());
 
     auto pos = is_append ? target.end()
-                         : std::upper_bound(target.begin(), target.end(), new_evs.front()->mono_ns, CompareCanEvent());
+                         : std::ranges::upper_bound(target, new_evs.front()->mono_ns, {}, &CanEvent::mono_ns);
     target.insert(pos, new_evs.begin(), new_evs.end());
     return is_append;
   };
@@ -210,20 +210,20 @@ std::pair<CanEventIter, CanEventIter> AbstractStream::eventsInRange(const Messag
 
   auto it_index = time_index_map_.find(id);
   if (it_index == time_index_map_.end()) {
-    return {std::lower_bound(evs.begin(), evs.end(), t0, CompareCanEvent()),
-            std::upper_bound(evs.begin(), evs.end(), t1, CompareCanEvent())};
+    return {std::ranges::lower_bound(evs, t0, {}, &CanEvent::mono_ns),
+            std::ranges::upper_bound(evs, t1, {}, &CanEvent::mono_ns)};
   }
 
   const auto& index = it_index->second;
 
   // Narrowed search for start
   auto [s_min, s_max] = index.getBounds(start_ts, t0, evs.size());
-  auto first = std::lower_bound(evs.begin() + s_min, evs.begin() + s_max, t0, CompareCanEvent());
+  auto first = std::ranges::lower_bound(evs.begin() + s_min, evs.begin() + s_max, t0, {}, &CanEvent::mono_ns);
 
   // Narrowed search for end
   auto [e_min, e_max] = index.getBounds(start_ts, t1, evs.size());
-  auto last = std::upper_bound(std::max(first, evs.begin() + e_min), evs.begin() + e_max, t1, CompareCanEvent());
-
+  auto search_start = std::max(first, evs.begin() + e_min);
+  auto last = std::ranges::upper_bound(search_start, evs.begin() + e_max, t1, {}, &CanEvent::mono_ns);
   return {first, last};
 }
 

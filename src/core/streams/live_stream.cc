@@ -127,8 +127,8 @@ void LiveStream::processNewMessages() {
   uint64_t last_ts = post_last_event && speed_ == 1.0
                        ? all_events_.back()->mono_ns
                        : first_event_ts + (nanos_since_boot() - first_update_ts) * speed_;
-  auto first = std::upper_bound(all_events_.cbegin(), all_events_.cend(), current_event_ts, CompareCanEvent());
-  auto last = std::upper_bound(first, all_events_.cend(), last_ts, CompareCanEvent());
+  auto first = std::ranges::upper_bound(all_events_, current_event_ts, {}, &CanEvent::mono_ns);
+  auto last = std::ranges::upper_bound(first, all_events_.end(), last_ts, {}, &CanEvent::mono_ns);
 
   for (auto it = first; it != last; ++it) {
     const CanEvent *e = *it;

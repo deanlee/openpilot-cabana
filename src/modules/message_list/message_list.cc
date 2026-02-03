@@ -155,11 +155,10 @@ void MessageList::handleSelectionChanged(const QModelIndex &current) {
 void MessageList::selectMessageForced(const MessageId &msg_id, bool force) {
   if (!force && current_msg_id && *current_msg_id == msg_id) return;
 
-  auto it = std::find_if(model->items_.cbegin(), model->items_.cend(),
-                         [&msg_id](auto &item) { return item.id == msg_id; });
+  auto it = std::ranges::find(model->items_, msg_id, &MessageModel::Item::id);
   if (it != model->items_.cend()) {
     current_msg_id = msg_id;
-    int row = std::distance(model->items_.cbegin(), it);
+    int row = std::ranges::distance(model->items_.begin(), it);
     QModelIndex index = model->index(row, 0);
 
     view->setUpdatesEnabled(false);

@@ -69,7 +69,7 @@ dbc::Msg *File::msg(uint32_t address) {
 }
 
 dbc::Msg *File::msg(const QString &name) {
-  auto it = std::find_if(msgs.begin(), msgs.end(), [&name](auto &m) { return m.second.name == name; });
+  auto it = std::ranges::find_if(msgs, [&name](auto &m) { return m.second.name == name; });
   return it != msgs.end() ? &(it->second) : nullptr;
 }
 
