@@ -132,8 +132,8 @@ void Sparkline::mapNoisyPath(const SparklineContext& ctx) {
   const double y_scale = static_cast<double>(eff_h) / (max_val - min_val);
   const float base_y = ctx.widget_size.height() - ctx.pad;
 
-  size_t target_size = (size_t)ctx.widget_size.width() * 2;
-  if (render_pts_.capacity() < target_size) render_pts_.reserve(target_size);
+  size_t max_expected_points = static_cast<size_t>(ctx.widget_size.width()) * 4;
+  if (render_pts_.capacity() < max_expected_points) render_pts_.reserve(max_expected_points);
 
   int last_x = -1;
   Bucket b;
@@ -144,7 +144,9 @@ void Sparkline::mapNoisyPath(const SparklineContext& ctx) {
     float y = base_y - static_cast<float>((pt.value - min_val) * y_scale);
 
     if (x != last_x) {
-      if (last_x != -1) flushBucket(last_x, b);
+      if (last_x != -1) {
+        flushBucket(last_x, b);
+      }
       b.init(y, pt.mono_ns);
       last_x = x;
     } else {
@@ -152,23 +154,31 @@ void Sparkline::mapNoisyPath(const SparklineContext& ctx) {
     }
   }
   flushBucket(last_x, b);
+
+  // IMPORTANT: Ensure the very last point in history is mapped to current_ns
+  // This prevents the line from "stopping" early due to bucket alignment.
+  if (!history_.empty()) {
+    float final_y = base_y - static_cast<float>((history_.back().value - min_val) * y_scale);
+    addUniquePoint(ctx.right_edge, final_y);
+  }
 }
 
 void Sparkline::flushBucket(int x, const Bucket& b) {
   if (x == -1) return;
 
-  // M4 Algorithm: Entry -> Min/Max -> Exit
-  // This preserves visual extrema within a single pixel column
+  // Always add the entry point
   addUniquePoint(x, b.entry);
-  if (b.min_ts != b.max_ts) {
-    if (b.min_ts < b.max_ts) {
-      addUniquePoint(x, b.min);
-      addUniquePoint(x, b.max);
-    } else {
-      addUniquePoint(x, b.max);
-      addUniquePoint(x, b.min);
-    }
+
+  // Determine the order of min/max based on their timestamps
+  if (b.min_ts < b.max_ts) {
+    if (b.min != b.entry && b.min != b.exit) addUniquePoint(x, b.min);
+    if (b.max != b.entry && b.max != b.exit) addUniquePoint(x, b.max);
+  } else {
+    if (b.max != b.entry && b.max != b.exit) addUniquePoint(x, b.max);
+    if (b.min != b.entry && b.min != b.exit) addUniquePoint(x, b.min);
   }
+
+  // Always add the exit point (addUniquePoint handles the x/y check)
   addUniquePoint(x, b.exit);
 }
 
