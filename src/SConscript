@@ -57,6 +57,7 @@ qt_flags = [
   "-DQT_CORE_LIB",
   "-DQT_SVG_LIB",
   "-DQT_MESSAGELOGCONTEXT",
+  "-Wno-deprecated-enum-enum-conversion",
 ]
 qt_env['CXXFLAGS'] += qt_flags
 qt_env['LIBS'] = qt_libs

@@ -60,14 +60,11 @@ env = Environment(
     "-Wno-vla-cxx-extension",
   ],
   CFLAGS=["-std=gnu11"],
-  CXXFLAGS=["-std=c++1z"],
+  CXXFLAGS=["-std=c++20"],
   CPPPATH=[
     "#",
     "#replay",
-    # "#include",
-    
     "#replay/msgq",
-    
     "#replay/include"
   ],
   LIBPATH=[
