@@ -6,8 +6,54 @@
 
 #include "utils/util.h"
 
+dbc::SignalDecodePlan buildBytePlan(const dbc::Signal& sig) {
+  dbc::SignalDecodePlan plan{};
+  plan.size = sig.size;
+  plan.is_signed = sig.is_signed;
+  plan.factor = sig.factor;
+  plan.offset = sig.offset;
+  plan.num_steps = 0;
+
+  int bits_remaining = sig.size;
+  // Normalized logic: start at the most significant byte
+  int current_byte = sig.is_little_endian ? (sig.msb / 8) : (sig.msb / 8);
+  int step_dir = sig.is_little_endian ? -1 : 1;
+
+  // Phase 1: Identify chunks
+  while (bits_remaining > 0 && plan.num_steps < 9) {
+    int byte_msb = (current_byte == (sig.msb / 8)) ? (sig.msb % 8) : 7;
+    int byte_lsb = (current_byte == (sig.lsb / 8)) ? (sig.lsb % 8) : 0;
+
+    int nbits = byte_msb - byte_lsb + 1;
+    if (nbits > bits_remaining) nbits = bits_remaining;
+
+    plan.steps[plan.num_steps++] = {
+        static_cast<uint16_t>(current_byte),
+        static_cast<uint8_t>(byte_lsb),
+        static_cast<uint8_t>((1U << nbits) - 1),
+        static_cast<uint8_t>(nbits),
+        0  // Calculated next
+    };
+
+    bits_remaining -= nbits;
+    current_byte += step_dir;
+  }
+
+  // Phase 2: Calculate Parallel Destination Shifts
+  int bits_placed = 0;
+  for (int i = 0; i < plan.num_steps; ++i) {
+    // The first step contains the MSB bits, so it shifts left the most
+    plan.steps[i].left_shift = plan.size - bits_placed - plan.steps[i].nbits;
+    bits_placed += plan.steps[i].nbits;
+  }
+
+  return plan;
+}
+
 void dbc::Signal::update() {
   updateMsbLsb(*this);
+  decode_plan = buildBytePlan(*this);
+
   if (receiver_name.isEmpty()) {
     receiver_name = DEFAULT_NODE_NAME;
   }
@@ -76,36 +122,25 @@ bool dbc::Signal::operator==(const dbc::Signal& other) const {
 }
 
 double decodeSignal(const uint8_t* data, size_t data_size, const dbc::Signal& sig) {
-  const int msb_byte = sig.msb / 8;
-  if (msb_byte >= (int)data_size) return 0;
-
-  const int lsb_byte = sig.lsb / 8;
   uint64_t val = 0;
 
-  // Fast path: signal fits in a single byte
-  if (msb_byte == lsb_byte) {
-    val = (data[msb_byte] >> (sig.lsb & 7)) & ((1ULL << sig.size) - 1);
-  } else {
-    // Multi-byte case: signal spans across multiple bytes
-    int bits = sig.size;
-    int i = msb_byte;
-    const int step = sig.is_little_endian ? -1 : 1;
-    while (i >= 0 && i < (int)data_size && bits > 0) {
-      const int msb = (i == msb_byte) ? sig.msb & 7 : 7;
-      const int lsb = (i == lsb_byte) ? sig.lsb & 7 : 0;
-      const int nbits = msb - lsb + 1;
-      val = (val << nbits) | ((data[i] >> lsb) & ((1ULL << nbits) - 1));
-      bits -= nbits;
-      i += step;
+  const auto& steps = sig.decode_plan.steps;
+  for (uint8_t i = 0; i < sig.decode_plan.num_steps; ++i) {
+    const auto& s = steps[i];
+
+    if (s.index < data_size) {
+      uint64_t chunk = (static_cast<uint64_t>(data[s.index]) >> s.right_shift) & s.mask;
+      val |= (chunk << s.left_shift);
     }
   }
 
-  // Sign extension (if needed)
-  if (sig.is_signed && (val & (1ULL << (sig.size - 1)))) {
-    val |= ~((1ULL << sig.size) - 1);
+  int64_t signed_val = static_cast<int64_t>(val);
+  if (sig.decode_plan.is_signed && sig.decode_plan.size < 64) {
+    const int shift = 64 - sig.decode_plan.size;
+    signed_val = (static_cast<int64_t>(val << shift)) >> shift;
   }
 
-  return static_cast<int64_t>(val) * sig.factor + sig.offset;
+  return (static_cast<double>(signed_val) * sig.decode_plan.factor) + sig.decode_plan.offset;
 }
 
 void updateMsbLsb(dbc::Signal& s) {
