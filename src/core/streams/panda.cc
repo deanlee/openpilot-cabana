@@ -273,7 +273,8 @@ void Panda::handle_usb_issue(int err, const char func[]) {
 
 int Panda::control_write(uint8_t bRequest, uint16_t wValue, uint16_t wIndex, unsigned int timeout) {
   int err;
-  const uint8_t bmRequestType = LIBUSB_ENDPOINT_OUT | LIBUSB_REQUEST_TYPE_VENDOR | LIBUSB_RECIPIENT_DEVICE;
+  const uint8_t bmRequestType = static_cast<uint8_t>(LIBUSB_ENDPOINT_OUT) |
+                                static_cast<uint8_t>(LIBUSB_REQUEST_TYPE_VENDOR) | static_cast<uint8_t>(LIBUSB_RECIPIENT_DEVICE);
 
   if (!connected_flag) {
     return LIBUSB_ERROR_NO_DEVICE;
@@ -289,7 +290,8 @@ int Panda::control_write(uint8_t bRequest, uint16_t wValue, uint16_t wIndex, uns
 
 int Panda::control_read(uint8_t bRequest, uint16_t wValue, uint16_t wIndex, unsigned char *data, uint16_t wLength, unsigned int timeout) {
   int err;
-  const uint8_t bmRequestType = LIBUSB_ENDPOINT_IN | LIBUSB_REQUEST_TYPE_VENDOR | LIBUSB_RECIPIENT_DEVICE;
+  const uint8_t bmRequestType = static_cast<uint8_t>(LIBUSB_ENDPOINT_IN) |
+                                static_cast<uint8_t>(LIBUSB_REQUEST_TYPE_VENDOR) | static_cast<uint8_t>(LIBUSB_RECIPIENT_DEVICE);
 
   if (!connected_flag) {
     return LIBUSB_ERROR_NO_DEVICE;
