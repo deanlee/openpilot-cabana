@@ -64,7 +64,6 @@ void MessageList::setupConnections() {
   connect(GetDBC(), &dbc::Manager::DBCFileChanged, model, &MessageModel::rebuild);
   connect(UndoStack::instance(), &QUndoStack::indexChanged, model, &MessageModel::rebuild);
   connect(view->selectionModel(), &QItemSelectionModel::currentChanged, this, &MessageList::handleSelectionChanged);
-  connect(model, &MessageModel::uiUpdateRequired, view->viewport(), qOverload<>(&QWidget::update));
   connect(model, &MessageModel::modelReset, [this]() {
     if (current_msg_id) {
       selectMessageForced(*current_msg_id, true);

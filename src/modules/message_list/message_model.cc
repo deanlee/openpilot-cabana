@@ -250,7 +250,13 @@ void MessageModel::onSnapshotsUpdated(const std::set<MessageId> *ids, bool needs
     return;
   }
 
-  emit uiUpdateRequired();
+  for (int i = 0; i < items_.size(); ++i) {
+    if (!ids || ids->find(items_[i].id) != ids->end()) {
+      for (int c = MessageModel::Column::FREQ; c <= MessageModel::Column::DATA; ++c) {
+        emit dataChanged(index(i, c), index(i, c));
+      }
+    }
+  }
 }
 
 void MessageModel::sort(int column, Qt::SortOrder order) {

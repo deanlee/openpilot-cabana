@@ -49,9 +49,6 @@ public:
   std::vector<Item> items_;
   bool show_inactive_ = true;
 
-signals:
-  void uiUpdateRequired();
-
 private:
   std::vector<Item> fetchItems() const;
   void sortItems(std::vector<MessageModel::Item> &items) const;
