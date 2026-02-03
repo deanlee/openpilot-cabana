@@ -84,7 +84,7 @@ void Sparkline::updateDataPoints(const dbc::Signal* sig, const SparklineContext&
   double val = 0.0;
   for (auto it = ctx.first; it != ctx.last; ++it) {
     auto *e = *it;
-    if (sig->getValue(e->dat, e->size, &val)) {
+    if (sig->parse(e->dat, e->size, &val)) {
       history_.push_back({e->mono_ns, val});
     }
   }

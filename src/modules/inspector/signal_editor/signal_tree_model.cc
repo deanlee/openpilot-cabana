@@ -50,7 +50,7 @@ void SignalTreeModel::updateValues(const MessageSnapshot* msg) {
   int current_max = 0;
   for (auto item : root->children) {
     double val = 0;
-    if (item->sig->getValue(msg->data.data(), msg->size, &val)) {
+    if (item->sig->parse(msg->data.data(), msg->size, &val)) {
       item->sig_val = item->sig->formatValue(val);
       item->value_width = value_metrics.horizontalAdvance(item->sig_val);
       current_max = std::max(current_max, item->value_width);

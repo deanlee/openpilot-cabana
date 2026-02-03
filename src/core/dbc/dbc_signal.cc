@@ -57,11 +57,11 @@ QString dbc::Signal::formatValue(double value, bool with_unit) const {
   return val_str;
 }
 
-bool dbc::Signal::getValue(const uint8_t* data, size_t data_size, double* val) const {
-  if (multiplexor && multiplexor->getValue(data, data_size, val) != multiplex_value) {
+bool dbc::Signal::parse(const uint8_t* data, size_t data_size, double* val) const {
+  if (multiplexor && multiplexor->decodeRaw(data, data_size) != multiplex_value) {
     return false;
   }
-  *val = getValue(data, data_size);
+  *val = toPhysical(data, data_size);
   return true;
 }
 
@@ -75,7 +75,7 @@ bool dbc::Signal::operator==(const dbc::Signal& other) const {
          multiplex_value == other.multiplex_value && type == other.type && receiver_name == other.receiver_name;
 }
 
-uint64_t dbc::Signal::getRawValue(const uint8_t* data, size_t data_size) const {
+uint64_t dbc::Signal::decodeRaw(const uint8_t* data, size_t data_size) const {
   const int msb_byte = msb / 8;
   if (msb_byte >= (int)data_size) return 0;
 
@@ -102,8 +102,8 @@ uint64_t dbc::Signal::getRawValue(const uint8_t* data, size_t data_size) const {
   return val;
 }
 
-double dbc::Signal::getValue(const uint8_t* data, size_t data_size) const {
-  uint64_t val = getRawValue(data, data_size);
+double dbc::Signal::toPhysical(const uint8_t* data, size_t data_size) const {
+  uint64_t val = decodeRaw(data, data_size);
 
   // Sign extension
   if (is_signed && (val & (1ULL << (size - 1)))) {

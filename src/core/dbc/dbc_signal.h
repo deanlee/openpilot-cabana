@@ -16,10 +16,10 @@ class Signal {
   Signal() = default;
   Signal(const Signal& other) = default;
   int getBitIndex(int i) const;  // Logic-to-CAN mapping
-  uint64_t getRawValue(const uint8_t* data, size_t data_size) const;
-  double getValue(const uint8_t* data, size_t data_size) const;
+  uint64_t decodeRaw(const uint8_t* data, size_t data_size) const;
+  double toPhysical(const uint8_t* data, size_t data_size) const;
   void update();
-  bool getValue(const uint8_t* data, size_t data_size, double* val) const;
+  bool parse(const uint8_t* data, size_t data_size, double* val) const;
   QString formatValue(double value, bool with_unit = true) const;
   bool operator==(const dbc::Signal& other) const;
   inline bool operator!=(const dbc::Signal& other) const { return !(*this == other); }
