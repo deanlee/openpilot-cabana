@@ -1,9 +1,6 @@
 #include "charts_tab_manager.h"
 
-#include "modules/charts/chart_view.h"
-
-ChartsTabManager::ChartsTabManager(QWidget* parent)
-    : QObject(parent) {
+ChartsTabManager::ChartsTabManager(QWidget* parent) : QObject(parent) {
   tabbar_ = new TabBar(parent);
   tabbar_->setAutoHide(true);
   tabbar_->setExpanding(false);
@@ -12,72 +9,33 @@ ChartsTabManager::ChartsTabManager(QWidget* parent)
   tabbar_->setChangeCurrentOnDrag(true);
   tabbar_->setUsesScrollButtons(true);
 
-  connect(tabbar_, &TabBar::tabCloseRequested, this, &ChartsTabManager::handleTabClose);
   connect(tabbar_, &QTabBar::currentChanged, this, [this](int index) {
-    if (index != -1) emit currentTabChanged(index);
+    if (index != -1) emit tabActivated(tabbar_->tabData(index).toInt());
   });
-
-  addTab();
+  connect(tabbar_, &QTabBar::tabCloseRequested, this, [this](int index) {
+    if (tabbar_->count() > 1) emit tabDeleted(tabbar_->tabData(index).toInt());
+    tabbar_->removeTab(index);
+  });
 }
 
-void ChartsTabManager::addTab() {
-  int idx = tabbar_->addTab("");
+int ChartsTabManager::addTab(const QString& name) {
   int id = next_tab_id_++;
+  QString title = name.isEmpty() ? tr("Tab %1").arg(tabbar_->count() + 1) : name;
+  int idx = tabbar_->addTab(title);
   tabbar_->setTabData(idx, id);
-  tab_charts_[id] = QList<ChartView*>();  // Initialize map entry
   tabbar_->setCurrentIndex(idx);
-  updateLabels();
+  return id;
 }
 
-void ChartsTabManager::handleTabClose(int index) {
-  if (tabbar_->count() <= 1) return;  // Keep at least one tab or handle empty state
-
-  int id = tabbar_->tabData(index).toInt();
-  QList<ChartView*> chartsToRemove = tab_charts_.take(id);
-
-  // NOTIFY the Panel. The Panel will iterate this list and call delete.
-  emit tabAboutToBeRemoved(chartsToRemove);
-
-  tabbar_->removeTab(index);
-  updateLabels();
-}
-
-void ChartsTabManager::insertChart(int pos, ChartView* chart) {
-  auto &current_charts = currentCharts();
-  pos = std::clamp(pos, 0, current_charts.size());
-  current_charts.insert(pos, chart);
-  updateLabels();
-}
-
-void ChartsTabManager::removeChart(ChartView* chart) {
-  for (auto& list : tab_charts_) {
-    if (list.removeOne(chart)) {
-      updateLabels();
+void ChartsTabManager::setTabChartCount(int tabId, int count) {
+  for (int i = 0; i < tabbar_->count(); ++i) {
+    if (tabbar_->tabData(i).toInt() == tabId) {
+      tabbar_->setTabText(i, tr("Tab %1").arg(count));
       break;
     }
   }
 }
-
-void ChartsTabManager::clear() {
-  tab_charts_.clear();
-  tabbar_->blockSignals(true);
-  while (tabbar_->count() > 1) tabbar_->removeTab(1);
-  tabbar_->setCurrentIndex(0);
-  tabbar_->blockSignals(false);
-  updateLabels();
-}
-
-QList<ChartView*>& ChartsTabManager::currentCharts() {
-  static QList<ChartView*> empty;
+int ChartsTabManager::currentTabId() const {
   int idx = tabbar_->currentIndex();
-  if (idx == -1) return empty;
-  return tab_charts_[tabbar_->tabData(idx).toInt()];
-}
-
-void ChartsTabManager::updateLabels() {
-  for (int i = 0; i < tabbar_->count(); ++i) {
-    int id = tabbar_->tabData(i).toInt();
-    int count = tab_charts_[id].count();
-    tabbar_->setTabText(i, tr("Tab %1 (%2)").arg(i + 1).arg(count));
-  }
+  return (idx != -1) ? tabbar_->tabData(idx).toInt() : -1;
 }
