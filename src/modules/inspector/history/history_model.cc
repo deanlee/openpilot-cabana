@@ -154,7 +154,7 @@ void MessageHistoryModel::fetchData(int insert_pos_idx, uint64_t from_time, uint
     if (e->mono_ns <= min_time) break;
 
     for (int i = 0; i < sigs.size(); ++i) {
-      sigs[i].sig->getValue(e->dat, e->size, &values[i]);
+      sigs[i].sig->parse(e->dat, e->size, &values[i]);
     }
     if (!filter_cmp || filter_cmp(values[filter_sig_idx], filter_value)) {
       auto &m = msgs.emplace_back(LogEntry{e->mono_ns, values, e->size});

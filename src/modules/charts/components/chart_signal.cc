@@ -11,7 +11,7 @@ static void appendCanEvents(const dbc::Signal* sig, const std::vector<const CanE
   double value = 0;
   auto* can = StreamManager::stream();
   for (const CanEvent* e : events) {
-    if (sig->getValue(e->dat, e->size, &value)) {
+    if (sig->parse(e->dat, e->size, &value)) {
       const double ts = can->toSeconds(e->mono_ns);
       vals.emplace_back(ts, value);
 

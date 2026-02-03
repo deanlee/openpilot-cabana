@@ -34,7 +34,7 @@ void exportSignalsToCSV(const QString &file_name, const MessageId &msg_id) {
              << "0x" << QString::number(e->address, 16) << "," << e->src;
       for (auto s : msg->sigs) {
         double value = 0;
-        s->getValue(e->dat, e->size, &value);
+        s->parse(e->dat, e->size, &value);
         stream << "," << QString::number(value, 'f', s->precision);
       }
       stream << "\n";

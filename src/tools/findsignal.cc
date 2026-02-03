@@ -46,10 +46,10 @@ void FindSignalModel::search(std::function<bool(double)> cmp) {
       last = std::upper_bound(events.cbegin(), events.cend(), last_time, CompareCanEvent());
     }
 
-    auto it = std::find_if(first, last, [&](const CanEvent *e) { return cmp(s.sig.getValue(e->dat, e->size)); });
+    auto it = std::find_if(first, last, [&](const CanEvent *e) { return cmp(s.sig.toPhysical(e->dat, e->size)); });
     if (it != last) {
       auto values = s.values;
-      values += QString("(%1, %2)").arg(StreamManager::stream()->toSeconds((*it)->mono_ns), 0, 'f', 3).arg(s.sig.getValue((*it)->dat, (*it)->size));
+      values += QString("(%1, %2)").arg(StreamManager::stream()->toSeconds((*it)->mono_ns), 0, 'f', 3).arg(s.sig.toPhysical((*it)->dat, (*it)->size));
       std::lock_guard lk(lock);
       filtered_signals.push_back({.id = s.id, .mono_ns = (*it)->mono_ns, .sig = s.sig, .values = values});
     }
@@ -240,7 +240,7 @@ void FindSignalDlg::setInitialSignals() {
             s.sig.start_bit = start;
             s.sig.size = size;
             updateMsbLsb(s.sig);
-            s.value = s.sig.getValue((*e)->dat, (*e)->size);
+            s.value = s.sig.toPhysical((*e)->dat, (*e)->size);
             model->initial_signals.push_back(s);
           }
         }
