@@ -4,10 +4,10 @@
 #include <utility>
 #include <vector>
 
+#include <QtCharts/QChartView>
+
 #include "chart.h"
 #include "tiplabel.h"
-
-using namespace QtCharts;
 
 const QString CHART_MIME_TYPE = "application/x-cabanachartview";
 const int CHART_MIN_WIDTH = 300;

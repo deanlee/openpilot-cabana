@@ -2,12 +2,12 @@
 
 #include <QGraphicsPixmapItem>
 #include <QGraphicsProxyWidget>
+#include <QtCharts/QChart>
 #include <QtCharts/QChartView>
+#include <QtCharts/QChartGlobal>
 #include <QtCharts/QLegendMarker>
 
 #include "components/chart_signal.h"
-
-using namespace QtCharts;
 
 class Chart : public QChart {
   Q_OBJECT

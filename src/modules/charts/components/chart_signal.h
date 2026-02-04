@@ -9,7 +9,6 @@
 #include "utils/segment_tree.h"
 #include "utils/series_bounds.h"
 
-using namespace QtCharts;
 // Define a small value of epsilon to compare double values
 const float EPSILON = 0.000001;
 

@@ -110,7 +110,7 @@ void ChartsContainer::dragEnterEvent(QDragEnterEvent* event) {
 void ChartsContainer::dragMoveEvent(QDragMoveEvent* e) {
   if (e->mimeData()->hasFormat(CHART_MIME_TYPE)) {
     e->acceptProposedAction();
-    handleDragInteraction(e->pos());
+    handleDragInteraction(e->position().toPoint());
   }
 }
 
@@ -136,7 +136,7 @@ bool ChartsContainer::eventFilter(QObject* obj, QEvent* event) {
     auto* dev = static_cast<QDropEvent*>(event);
     if (dev->mimeData()->hasFormat(CHART_MIME_TYPE)) {
       dev->acceptProposedAction();
-      handleDragInteraction(mapFromGlobal(vp->mapToGlobal(dev->pos())));
+      handleDragInteraction(mapFromGlobal(vp->mapToGlobal(dev->position())).toPoint());
       return true;
     }
   }

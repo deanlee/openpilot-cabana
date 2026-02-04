@@ -21,7 +21,7 @@
 #include "modules/settings/settings.h"
 #include "modules/system/stream_manager.h"
 
-// ChartAxisElement's padding is 4 (https://codebrowser.dev/qt5/qtcharts/src/charts/axis/chartaxiselement_p.h.html)
+// ChartAxisElement's padding is 4 (https://codebrowser.dev/qt6/qtcharts/src/charts/axis/chartaxiselement_p.h.html)
 const int AXIS_X_TOP_MARGIN = 4;
 const double MIN_ZOOM_SECONDS = 0.01; // 10ms
 

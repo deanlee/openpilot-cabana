@@ -4,6 +4,7 @@
 #include <QStackedWidget>
 #include <QTimer>
 
+#include "chart_view.h"
 #include "components/charts_container.h"
 #include "components/charts_empty_view.h"
 #include "components/charts_scroll_area.h"
@@ -14,8 +15,6 @@
 #include "modules/system/stream_manager.h"
 #include "signal_picker.h"
 #include "widgets/common.h"
-
-class ChartView;
 
 class ChartsPanel : public QFrame {
   Q_OBJECT

@@ -61,8 +61,6 @@ int main(int argc, char* argv[]) {
   QCoreApplication::setApplicationName("Cabana");
   QCoreApplication::setApplicationVersion("1.1.0");
   QCoreApplication::setAttribute(Qt::AA_ShareOpenGLContexts);
-  QCoreApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
-  QCoreApplication::setAttribute(Qt::AA_UseHighDpiPixmaps);
 
   initApp(argc, argv, false);
   QApplication app(argc, argv);

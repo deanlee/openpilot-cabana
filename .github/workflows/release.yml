@@ -57,15 +57,20 @@ jobs:
             libzmq3-dev \
             libzstd-dev \
             libcapnp-dev \
+            libx11-dev \
+            libxcb1-dev \
+            libxcb-xinerama0-dev \
+            libxcb-cursor-dev\
             opencl-headers \
             ocl-icd-libopencl1 \
             ocl-icd-opencl-dev \
-            qttools5-dev-tools \
-            libqt5charts5-dev \
-            libqt5svg5-dev \
-            libqt5serialbus5-dev  \
-            libqt5x11extras5-dev \
-            libqt5opengl5-dev
+            qt6-base-dev \
+            qt6-tools-dev\
+            qt6-tools-dev-tools\
+            libqt6charts6-dev \
+            libqt6svg6-dev \
+            libqt6serialbus6-dev  \
+            libqt6opengl6-dev
 
       - name: Install Python build dependencies
         run: |

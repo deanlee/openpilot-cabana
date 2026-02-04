@@ -1,9 +1,9 @@
 #pragma once
 
 #include <QDoubleValidator>
-#include <QRegExpValidator>
+#include <QRegularExpressionValidator>
 
-class NameValidator : public QRegExpValidator {
+class NameValidator : public QRegularExpressionValidator {
   Q_OBJECT
  public:
   NameValidator(QObject* parent = nullptr);

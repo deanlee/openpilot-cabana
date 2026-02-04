@@ -30,7 +30,7 @@ public:
   QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const override;
   QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
   int columnCount(const QModelIndex &parent = QModelIndex()) const override { return 3; }
-  int rowCount(const QModelIndex &parent = QModelIndex()) const override { return std::min(filtered_signals.size(), 300); }
+  int rowCount(const QModelIndex &parent = QModelIndex()) const override { return std::min<int>((int)(filtered_signals.size()), 300); }
   void search(std::function<bool(double)> cmp);
   void reset();
   void undo();

@@ -16,7 +16,7 @@
 
 SignalTreeDelegate::SignalTreeDelegate(QObject* parent) : QStyledItemDelegate(parent) {
   name_validator = new NameValidator(this);
-  node_validator = new QRegExpValidator(QRegExp("^\\w+(,\\w+)*$"), this);
+  node_validator = new QRegularExpressionValidator(QRegularExpression("^\\w+(,\\w+)*$"), this);
   double_validator = new DoubleValidator(this);
 
   label_font.setPointSize(8);

@@ -4,9 +4,9 @@
 #include <QMap>
 #include <QObject>
 
+#include "modules/charts/chart_view.h"
 #include "widgets/common.h"
 
-class ChartView;
 class ChartsTabManager : public QObject {
   Q_OBJECT
  public:

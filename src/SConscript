@@ -12,86 +12,99 @@ qt_env['QT_MOCFROMHDIR'] = os.path.join(build_dir, 'moc')
 qt_env['QT_MOCFROMCXXDIR'] = os.path.join(build_dir, 'moc')
 
 qt_env["CPPPATH"] += ["#"]
-qt_modules = ["Widgets", "Gui", "Core", "Concurrent", "DBus", "Xml", "Svg"]
+qt_modules = ["Widgets", "Gui", "Core", "Concurrent", "DBus", "Xml", "Svg", "OpenGL", "OpenGLWidgets", "PrintSupport", "Charts", "SerialBus"]
 
 qt_libs = []
+qt_host_bins = ""
+
 if arch == "Darwin":
-  brew_prefix = subprocess.check_output(['brew', '--prefix'], encoding='utf8').strip()
-  qt_env['QTDIR'] = f"{brew_prefix}/opt/qt@5"
-  qt_dirs = [
-    os.path.join(qt_env['QTDIR'], "include"),
-  ]
-  qt_dirs += [f"{qt_env['QTDIR']}/include/Qt{m}" for m in qt_modules]
-  qt_env["LINKFLAGS"] += ["-F" + os.path.join(qt_env['QTDIR'], "lib")]
-  qt_env["FRAMEWORKS"] += [f"Qt{m}" for m in qt_modules] + ["OpenGL"]
-  qt_env.AppendENVPath('PATH', os.path.join(qt_env['QTDIR'], "bin"))
+    brew_prefix = subprocess.check_output(['brew', '--prefix'], encoding='utf8').strip()
+    qt_env['QTDIR'] = f"{brew_prefix}/opt/qt@6"
+    qt_dirs = [os.path.join(qt_env['QTDIR'], "include")]
+    qt_dirs += [f"{qt_env['QTDIR']}/include/Qt{m}" for m in qt_modules]
+    qt_env["LINKFLAGS"] += ["-F" + os.path.join(qt_env['QTDIR'], "lib")]
+    qt_env["FRAMEWORKS"] += [f"Qt{m}" for m in qt_modules] + ["OpenGL"]
+    qt_env.AppendENVPath('PATH', os.path.join(qt_env['QTDIR'], "bin"))
+    qt_host_bins = os.path.join(qt_env['QTDIR'], "bin")
 else:
-  qt_install_prefix = subprocess.check_output(['qmake', '-query', 'QT_INSTALL_PREFIX'], encoding='utf8').strip()
-  qt_install_headers = subprocess.check_output(['qmake', '-query', 'QT_INSTALL_HEADERS'], encoding='utf8').strip()
+    # Use qmake6 to find paths
+    qt_install_prefix = subprocess.check_output(['qmake6', '-query', 'QT_INSTALL_PREFIX'], encoding='utf8').strip()
+    qt_install_headers = subprocess.check_output(['qmake6', '-query', 'QT_INSTALL_HEADERS'], encoding='utf8').strip()
+    qt_host_bins = subprocess.check_output(['qmake6', '-query', 'QT_HOST_BINS'], encoding='utf8').strip()
 
-  qt_env['QTDIR'] = qt_install_prefix
-  qt_dirs = [
-    f"{qt_install_headers}",
-  ]
+    # Validation for Ubuntu/Debian 'libexec' vs 'bin'
+    if not os.path.exists(os.path.join(qt_host_bins, 'moc')):
+        if os.path.exists('/usr/lib/qt6/libexec/moc'):
+            qt_host_bins = '/usr/lib/qt6/libexec'
 
-  qt_gui_path = os.path.join(qt_install_headers, "QtGui")
-  qt_gui_dirs = [d for d in os.listdir(qt_gui_path) if os.path.isdir(os.path.join(qt_gui_path, d))]
-  qt_dirs += [f"{qt_install_headers}/QtGui/{qt_gui_dirs[0]}/QtGui", ] if qt_gui_dirs else []
-  qt_dirs += [f"{qt_install_headers}/Qt{m}" for m in qt_modules]
+    qt_env['QTDIR'] = qt_install_prefix
+    qt_dirs = [qt_install_headers]
 
-  qt_libs = [f"Qt5{m}" for m in qt_modules]
-  if arch == "larch64":
-    qt_libs += ["GLESv2", "wayland-client"]
-    qt_env.PrependENVPath('PATH', Dir("#third_party/qt5/larch64/bin/").abspath)
-  elif arch != "Darwin":
-    qt_libs += ["GL"]
+    # Handle Private QPA headers if necessary
+    qt_gui_path = os.path.join(qt_install_headers, "QtGui")
+    if os.path.exists(qt_gui_path):
+        qt_gui_dirs = [d for d in os.listdir(qt_gui_path) if os.path.isdir(os.path.join(qt_gui_path, d))]
+        qt_dirs += [f"{qt_install_headers}/QtGui/{qt_gui_dirs[0]}/QtGui"] if qt_gui_dirs else []
+
+    qt_dirs += [f"{qt_install_headers}/Qt{m}" for m in qt_modules]
+    qt_libs = [f"Qt6{m}" for m in qt_modules]
+
+    if arch == "larch64":
+        qt_libs += ["GLESv2", "wayland-client"]
+    else:
+        qt_libs += ["GL"]
+
+# Load the tool first, then immediately overwrite its broken path assumptions
 qt_env['QT3DIR'] = qt_env['QTDIR']
 qt_env.Tool('qt3')
 
+# Define absolute paths to binaries
+moc_bin = os.path.join(qt_host_bins, 'moc')
+
+uic_bin = os.path.join(qt_host_bins, 'uic')
+rcc_bin = os.path.join(qt_host_bins, 'rcc')
+
+# Replace the command templates that SCons uses internally
+qt_env.Replace(
+    QT_MOC = moc_bin,
+    QT_UIC = uic_bin,
+    RCC = rcc_bin,
+    MOC = moc_bin,
+    UIC = uic_bin,
+    # Overwrite the command strings to ensure they don't prepend $QTDIR/bin
+   QT3_MOC = moc_bin,
+)
+
 qt_env['CPPPATH'] += qt_dirs + ["#src", "#src/widgets", "#src/streams", "#src/dbc", "#src/chart", "#src/tools", "#src/utils"]
+
 qt_flags = [
-  "-D_REENTRANT",
-  "-DQT_NO_DEBUG",
-  "-DQT_WIDGETS_LIB",
-  "-DQT_GUI_LIB",
-  "-DQT_CORE_LIB",
-  "-DQT_SVG_LIB",
-  "-DQT_MESSAGELOGCONTEXT",
-  "-Wno-deprecated-enum-enum-conversion",
+    "-D_REENTRANT", "-DQT_NO_DEBUG", "-DQT_WIDGETS_LIB", "-DQT_GUI_LIB",
+    "-DQT_CORE_LIB", "-DQT_SVG_LIB", "-DQT_MESSAGELOGCONTEXT",
+    "-Wno-deprecated-enum-enum-conversion",
 ]
 qt_env['CXXFLAGS'] += qt_flags
-qt_env['LIBS'] = qt_libs
 
-base_frameworks = qt_env['FRAMEWORKS']
-base_libs = [common, messaging, cereal, visionipc, 'm', 'ssl', 'crypto', 'pthread'] + qt_env["LIBS"]
+base_frameworks = qt_env.get('FRAMEWORKS', [])
+base_libs = [common, messaging, cereal, visionipc, 'm', 'ssl', 'crypto', 'pthread'] + qt_libs
 
 if arch == "Darwin":
-  base_frameworks.append('OpenCL')
-  base_frameworks.append('QtCharts')
-  base_frameworks.append('QtSerialBus')
+    base_frameworks += ['OpenCL', 'QtCharts', 'QtSerialBus']
 else:
-  base_libs.append('OpenCL')
-  base_libs.append('Qt5Charts')
-  base_libs.append('Qt5SerialBus')
-
-qt_libs = base_libs
+    base_libs += ['OpenCL', 'Qt6Charts', 'Qt6SerialBus']
 
 cabana_env = qt_env.Clone()
-
-# Set build output directory for object files
 cabana_env.VariantDir('#build', '.', duplicate=0)
 
-cabana_libs = [cereal, messaging, visionipc, replay_lib, 'avutil', 'avcodec', 'avformat', 'swscale','bz2', 'zstd', 'curl', 'usb-1.0'] + qt_libs
-
-# build assets
+# Build assets using the verified RCC path
 assets = "#build/assets/assets.cc"
 assets_src = "#/resources.qrc"
-cabana_env.Command(assets, assets_src, f"rcc $SOURCES -o $TARGET")
+cabana_env.Command(assets, assets_src, f"$RCC $SOURCES -o $TARGET")
 cabana_env.Depends(assets, [assets_src] + Glob('assets/*.svg'))
-# cabana_env.Depends(assets, Glob('assets/*', exclude=[assets, assets_src, "assets/assets.o"]))
 
 src_files = Glob('#src/*.cc') + Glob('#src/*/*.cc') + Glob('#src/*/*/*.cc') + Glob('#src/*/*/*/*.cc')
 src_file_strings = ['#build/' + str(f) for f in src_files if f != 'main.cc']
+
+cabana_libs = [cereal, messaging, visionipc, replay_lib, 'avutil', 'avcodec', 'avformat', 'swscale','bz2', 'zstd', 'curl', 'usb-1.0'] + base_libs
 
 cabana_lib = cabana_env.Library(
     "#build/cabana_lib",

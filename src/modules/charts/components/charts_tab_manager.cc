@@ -44,7 +44,7 @@ void ChartsTabManager::handleTabClose(int index) {
 
 void ChartsTabManager::insertChart(int pos, ChartView* chart) {
   auto &current_charts = currentCharts();
-  pos = std::clamp(pos, 0, current_charts.size());
+  pos = std::clamp<int>(pos, 0, current_charts.size());
   current_charts.insert(pos, chart);
   updateLabels();
 }
