@@ -29,7 +29,6 @@ BinaryView::BinaryView(QWidget *parent) : QTableView(parent) {
   verticalHeader()->setDefaultSectionSize(CELL_HEIGHT);
 
 
-  setFrameStyle(QFrame::NoFrame);
   setShowGrid(false);
   setMouseTracking(true);
   setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);

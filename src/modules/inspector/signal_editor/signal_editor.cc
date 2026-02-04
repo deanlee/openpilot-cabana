@@ -12,7 +12,7 @@
 #include "modules/settings/settings.h"
 
 SignalEditor::SignalEditor(ChartsPanel *charts, QWidget *parent) : QFrame(parent) {
-  setFrameStyle(QFrame::StyledPanel | QFrame::Plain);
+  setFrameStyle(QFrame::NoFrame);
   tree = new SignalTree(this);
   tree->setModel(model = new SignalTreeModel(this));
   tree->setItemDelegate(delegate = new SignalTreeDelegate(this));
@@ -28,6 +28,11 @@ SignalEditor::SignalEditor(ChartsPanel *charts, QWidget *parent) : QFrame(parent
   main_layout->setContentsMargins(0, 0, 0, 0);
   main_layout->setSpacing(0);
   main_layout->addWidget(createToolbar());
+
+  QFrame* line = new QFrame(this);
+  line->setFrameStyle(QFrame::HLine | QFrame::Sunken);
+  main_layout->addWidget(line);
+
   main_layout->addWidget(tree);
 
   updateToolBar();
@@ -42,7 +47,7 @@ SignalEditor::SignalEditor(ChartsPanel *charts, QWidget *parent) : QFrame(parent
 QWidget *SignalEditor::createToolbar() {
   QWidget* toolbar = new QWidget(this);
   QHBoxLayout* hl = new QHBoxLayout(toolbar);
-  hl->setContentsMargins(4, 2, 4, 4);
+  hl->setContentsMargins(4, 4, 4, 4);
 
   hl->addWidget(signal_count_lb = new QLabel());
   filter_edit = new DebouncedLineEdit(this);
