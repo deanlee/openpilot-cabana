@@ -133,10 +133,12 @@ void MessageState::updateFrequency(double current_ts, double manual_freq, bool i
 void MessageState::analyzeByteMutation(int i, uint8_t old_v, uint8_t new_v, uint8_t diff, double current_ts) {
   const int delta = static_cast<int>(new_v) - static_cast<int>(old_v);
 
-  // 1. Bit Stats (Now using SoA arrays directly)
+  // 1. Bit Stats
+  uint8_t mask = 0x80;  // 1000 0000
   for (int bit = 0; bit < 8; ++bit) {
-    bit_high_counts[i][bit] += (new_v >> (7 - bit)) & 1;
-    bit_flips[i][bit] += (diff >> (7 - bit)) & 1;
+    if (new_v & mask) bit_high_counts[i][bit]++;
+    if (diff & mask) bit_flips[i][bit]++;
+    mask >>= 1;
   }
 
   // 2. Entropy
