@@ -1,6 +1,5 @@
 #include <QApplication>
 #include <QCommandLineParser>
-#include <QProxyStyle>
 
 #include "core/streams/device_stream.h"
 #include "core/streams/panda_stream.h"
@@ -38,25 +37,6 @@ static AbstractStream* createStream(QCommandLineParser& p, QApplication* app) {
   return nullptr;
 }
 
-class CabanaStyle : public QProxyStyle {
- public:
-  CabanaStyle() : QProxyStyle() {
-    x_icon = QIcon(utils::icon("x", QSize(16, 16)));
-    maximize_icon = QIcon(utils::icon("maximize-2", QSize(16, 16)));
-  }
-
-  QIcon standardIcon(QStyle::StandardPixmap standardIcon, const QStyleOption* option = nullptr, const QWidget* widget = nullptr) const override {
-    if (standardIcon == SP_TitleBarCloseButton) {
-      return x_icon;
-    }
-    if (standardIcon == SP_TitleBarNormalButton) {
-      return maximize_icon;
-    }
-    return QProxyStyle::standardIcon(standardIcon, option, widget);
-  }
-  QIcon x_icon, maximize_icon;
-};
-
 int main(int argc, char* argv[]) {
   QCoreApplication::setApplicationName("Cabana");
   QCoreApplication::setApplicationVersion("1.1.0");
@@ -67,7 +47,6 @@ int main(int argc, char* argv[]) {
   app.setApplicationDisplayName(QString("Cabana v%1").arg(app.applicationVersion()));
   QPixmap appIcon = utils::icon("activity", QSize(64, 64), QColor(59, 130, 246));
   app.setWindowIcon(appIcon);
-  app.setStyle(new CabanaStyle);
 
   SystemSignalHandler signal_handler;
   utils::setTheme(settings.theme);
