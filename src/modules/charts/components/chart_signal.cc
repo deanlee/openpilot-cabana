@@ -60,7 +60,7 @@ void ChartSignal::prepareData(const MessageEventsMap* msg_new_events, double min
 
 void ChartSignal::updateSeries(SeriesType series_type) {
   const auto& points = series_type == SeriesType::StepLine ? step_vals : vals;
-  series->replace(QVector<QPointF>(points.cbegin(), points.cend()));
+  series->replace(QList<QPointF>(points.begin(), points.end()));
 }
 
 void ChartSignal::updateRange(double min_x, double max_x) {
