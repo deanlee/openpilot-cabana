@@ -145,15 +145,15 @@ void TimelineSlider::mousePressEvent(QMouseEvent* e) {
     resume_after_scrub = stream && !stream->isPaused();
 
     if (resume_after_scrub) stream->pause(true);
-    handleMouse(e->x());
+    handleMouse(e->position().x());
   }
 }
 
 void TimelineSlider::mouseMoveEvent(QMouseEvent* e) {
-  setThumbnailTime(xToTime(e->x()));
+  setThumbnailTime(xToTime(e->position().x()));
   bool near = std::abs(e->pos().x() - timeToX(current_time)) < 20;
   if (near != is_hovered) { is_hovered = near; update(); }
-  if (is_scrubbing) handleMouse(e->x());
+  if (is_scrubbing) handleMouse(e->position().x());
 }
 
 void TimelineSlider::mouseReleaseEvent(QMouseEvent* e) {

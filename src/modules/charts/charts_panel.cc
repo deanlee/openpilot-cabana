@@ -260,7 +260,7 @@ void ChartsPanel::moveChart(ChartView* chart, ChartView* target, DropMode mode) 
   if (target_idx == -1) return;  // Safety check
 
   int insert_at = (mode == DropMode::InsertAfter) ? target_idx + 1 : target_idx;
-  current_charts.insert(std::clamp(insert_at, 0, current_charts.size()), chart);
+  current_charts.insert(std::clamp<int>(insert_at, 0, current_charts.size()), chart);
 
   updateLayout(true);
   chart->startAnimation();

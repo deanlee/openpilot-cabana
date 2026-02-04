@@ -23,7 +23,7 @@ Before running or compiling **openpilot-cabana**, install these dependencies.
 
 ```bash
 sudo apt update
-sudo apt install -y g++ clang capnproto libcurl4-openssl-dev libzmq3-dev libssl-dev libbz2-dev libavcodec-dev libavformat-dev libavutil-dev libswscale-dev libavdevice-dev libavfilter-dev libffi-dev libgles2-mesa-dev libglfw3-dev libglib2.0-0 libjpeg-dev libncurses5-dev libusb-1.0-0-dev libzstd-dev libcapnp-dev opencl-headers ocl-icd-libopencl1 ocl-icd-opencl-dev qttools5-dev-tools libqt5charts5-dev libqt5svg5-dev libqt5serialbus5-dev libqt5x11extras5-dev libqt5opengl5-dev
+sudo apt install -y g++ clang capnproto libcurl4-openssl-dev libzmq3-dev libssl-dev libbz2-dev libavcodec-dev libavformat-dev libavutil-dev libswscale-dev libavdevice-dev libavfilter-dev libffi-dev libgles2-mesa-dev libglfw3-dev libglib2.0-0 libjpeg-dev libncurses5-dev libusb-1.0-0-dev libzstd-dev libcapnp-dev libx11-dev libxcb1-dev libxcb-xinerama0-dev libxcb-cursor-dev opencl-headers ocl-icd-libopencl1 ocl-icd-opencl-dev qt6-base-dev qt6-tools-dev qt6-tools-dev-tools libqt6charts6-dev libqt6svg6-dev libqt6serialbus6-dev libqt6opengl6-dev
 
 ```
 

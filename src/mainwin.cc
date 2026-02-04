@@ -1,7 +1,6 @@
 #include "mainwin.h"
 
 #include <QApplication>
-#include <QDesktopWidget>
 #include <QFileDialog>
 #include <QMenuBar>
 #include <QMessageBox>

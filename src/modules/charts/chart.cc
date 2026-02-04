@@ -1,6 +1,7 @@
 #include "chart.h"
 
 #include <QApplication>
+#include <QActionGroup>
 #include <QGraphicsLayout>
 #include <QMenu>
 #include <QOpenGLWidget>

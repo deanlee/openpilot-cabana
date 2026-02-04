@@ -150,14 +150,14 @@ void BinaryView::highlightPosition(const QPoint &pos) {
 }
 
 void BinaryView::mouseMoveEvent(QMouseEvent *event) {
-  highlightPosition(event->globalPos());
+  highlightPosition(event->globalPosition().toPoint());
   QTableView::mouseMoveEvent(event);
 }
 
 void BinaryView::mouseReleaseEvent(QMouseEvent *event) {
   QTableView::mouseReleaseEvent(event);
 
-  auto release_index = indexAt(event->pos());
+  auto release_index = indexAt(event->position().toPoint());
   if (release_index.isValid() && anchor_index.isValid()) {
     if (selectionModel()->hasSelection()) {
       auto sig = resize_sig ? *resize_sig : dbc::Signal{};

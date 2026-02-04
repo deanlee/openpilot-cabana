@@ -4,7 +4,7 @@
 #include <QGridLayout>
 #include <QWidget>
 
-class ChartView;
+#include "modules/charts/chart_view.h"
 
 enum class DropMode { None, Merge, InsertBefore, InsertAfter };
 

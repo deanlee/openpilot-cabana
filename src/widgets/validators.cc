@@ -2,11 +2,11 @@
 
 #include <limits>
 
-NameValidator::NameValidator(QObject* parent) : QRegExpValidator(QRegExp("^(\\w+)"), parent) {}
+NameValidator::NameValidator(QObject* parent) : QRegularExpressionValidator(QRegularExpression("^(\\w+)"), parent) {}
 
 QValidator::State NameValidator::validate(QString& input, int& pos) const {
   input.replace(' ', '_');
-  return QRegExpValidator::validate(input, pos);
+  return QRegularExpressionValidator::validate(input, pos);
 }
 
 DoubleValidator::DoubleValidator(QObject* parent) : QDoubleValidator(parent) {

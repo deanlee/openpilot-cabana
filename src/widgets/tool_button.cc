@@ -38,7 +38,7 @@ void ToolButton::onSettingsChanged() {
   }
 }
 
-void ToolButton::enterEvent(QEvent* event) {
+void ToolButton::enterEvent(QEnterEvent* event) {
   QToolButton::enterEvent(event);
   if (hover_color.isValid()) {
     refreshIcon(hover_color);

@@ -13,7 +13,7 @@ class ToolButton : public QToolButton {
   void setIcon(const QString &icon);
 
  private:
-  void enterEvent(QEvent* event) override;
+  void enterEvent(QEnterEvent* event) override;
   void leaveEvent(QEvent* event) override;
   void onSettingsChanged();
   void refreshIcon(std::optional<QColor> tint_color = std::nullopt);
