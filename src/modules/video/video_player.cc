@@ -33,8 +33,6 @@ VideoPlayer::VideoPlayer(QWidget *parent) : QFrame(parent) {
 
   createPlaybackController();
 
-  setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Maximum);
-
   setupConnections();
   resetState();
 
@@ -161,7 +159,7 @@ QWidget *VideoPlayer::createCameraWidget() {
 
   l->addWidget(cam_widget = new PlaybackCameraView("camerad", VISION_STREAM_ROAD));
   cam_widget->setMinimumHeight(MIN_VIDEO_HEIGHT);
-  cam_widget->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::MinimumExpanding);
+  cam_widget->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Expanding);
 
   l->addWidget(slider = new TimelineSlider(w));
   slider->setRange(StreamManager::stream()->minSeconds(), StreamManager::stream()->maxSeconds());
