@@ -175,6 +175,27 @@ void BinaryModel::updateState() {
   }
 }
 
+void BinaryModel::updateSignalCells(const dbc::Signal* sig) {
+  for (int i = 0; i < items.size(); ++i) {
+    if (items[i].sigs.contains(sig)) {
+      auto index = this->index(i / column_count, i % column_count);
+      emit dataChanged(index, index, {Qt::DisplayRole});
+    }
+  }
+}
+
+QSet<const dbc::Signal *> BinaryModel::getOverlappingSignals() const {
+  QSet<const dbc::Signal *> overlapping;
+  for (const auto &item : items) {
+    if (item.sigs.size() > 1) {
+      for (auto s : item.sigs) {
+        if (s->type == dbc::Signal::Type::Normal) overlapping += s;
+      }
+    }
+  }
+  return overlapping;
+}
+
 bool BinaryModel::syncRowItems(int row, const MessageSnapshot* msg, const std::array<uint32_t, 8>& row_flips,
                                float log_max, bool is_light, const QColor& base_bg, float decay) {
   bool row_dirty = false;

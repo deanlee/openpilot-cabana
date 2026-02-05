@@ -3,6 +3,7 @@
 #include <QAbstractTableModel>
 #include <QColor>
 #include <QFont>
+#include <QSet>
 
 #include <array>
 #include <optional>
@@ -17,25 +18,6 @@ const int CELL_HEIGHT = 32;
 
 class BinaryModel : public QAbstractTableModel {
  public:
-  BinaryModel(QObject* parent);
-  void setMessage(const MessageId& message_id);
-  void initializeItems();
-  void mapSignalsToItems(const dbc::Msg* msg);
-  void setHeatmapMode(bool live);
-  void rebuild();
-  void updateBorders();
-  void updateState();
-  QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const override;
-  QVariant data(const QModelIndex& index, int role = Qt::DisplayRole) const override;
-  int rowCount(const QModelIndex& parent = QModelIndex()) const override { return row_count; }
-  int columnCount(const QModelIndex& parent = QModelIndex()) const override { return column_count; }
-  QModelIndex index(int row, int column, const QModelIndex& parent = QModelIndex()) const override {
-    return createIndex(row, column, (void*)&items[row * column_count + column]);
-  }
-  Qt::ItemFlags flags(const QModelIndex& index) const override {
-    return (index.column() == column_count - 1) ? Qt::ItemIsEnabled : Qt::ItemIsEnabled | Qt::ItemIsSelectable;
-  }
-  const std::array<std::array<uint32_t, 8>, MAX_CAN_LEN>& getBitFlipChanges(size_t msg_size);
 
   struct Item {
     QColor bg_color = QColor(102, 86, 169, 255);
@@ -53,9 +35,31 @@ class BinaryModel : public QAbstractTableModel {
     } borders;
   };
 
+  BinaryModel(QObject* parent);
+  void setMessage(const MessageId& message_id);
+  void initializeItems();
+  void mapSignalsToItems(const dbc::Msg* msg);
+  void setHeatmapMode(bool live);
+  void rebuild();
+  void updateBorders();
+  void updateState();
+  void updateSignalCells(const dbc::Signal* sig);
+  QSet<const dbc::Signal *> getOverlappingSignals() const;
+  const std::array<std::array<uint32_t, 8>, MAX_CAN_LEN>& getBitFlipChanges(size_t msg_size);
+
+  // QAbstractTableModel overrides
+  QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const override;
+  QVariant data(const QModelIndex& index, int role = Qt::DisplayRole) const override;
+  int rowCount(const QModelIndex& parent = QModelIndex()) const override { return row_count; }
+  int columnCount(const QModelIndex& parent = QModelIndex()) const override { return column_count; }
+  QModelIndex index(int row, int column, const QModelIndex& parent = QModelIndex()) const override {
+    return createIndex(row, column, (void*)&items[row * column_count + column]);
+  }
+  Qt::ItemFlags flags(const QModelIndex& index) const override {
+    return (index.column() == column_count - 1) ? Qt::ItemIsEnabled : Qt::ItemIsEnabled | Qt::ItemIsSelectable;
+  }
+
   MessageId msg_id;
-  bool heatmap_live_mode = true;
-  std::vector<Item> items;
 
  private:
   struct BitFlipTracker {
@@ -65,6 +69,8 @@ class BinaryModel : public QAbstractTableModel {
 
   int row_count = 0;
   const int column_count = 9;
+  bool heatmap_live_mode = true;
+  std::vector<Item> items;
   QFont header_font_;
 
   bool syncRowItems(int row, const MessageSnapshot* msg, const std::array<uint32_t, 8>& row_flips,
