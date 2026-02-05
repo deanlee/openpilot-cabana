@@ -40,6 +40,8 @@ public:
 
   SignalTreeModel(QObject *parent);
   void resetSparklines();
+  inline const MessageId & messageId() const { return msg_id; }
+  void highlightSignalRow(const dbc::Signal *sig);
   int rowCount(const QModelIndex &parent = QModelIndex()) const override;
   int columnCount(const QModelIndex &parent = QModelIndex()) const override { return 2; }
   QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
@@ -80,9 +82,6 @@ private:
   std::unique_ptr<Item> root;
 
   SparklineContext sparkline_context_;
-
-  friend class SignalEditor;
-  friend class SignalTreeDelegate;
 };
 
 QString signalTypeToString(dbc::Signal::Type type);

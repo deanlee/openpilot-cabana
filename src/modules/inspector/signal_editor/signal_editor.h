@@ -21,7 +21,6 @@ public:
   SignalEditor(ChartsPanel *charts, QWidget *parent);
   void setMessage(const MessageId &id);
   void clearMessage();
-  void signalHovered(const dbc::Signal *sig);
   void selectSignal(const dbc::Signal *sig, bool expand = false);
   void updateState(const std::set<MessageId> *msgs = nullptr);
   SignalTreeModel *model = nullptr;
@@ -49,7 +48,4 @@ private:
   QLabel *signal_count_lb;
   SignalTreeDelegate *delegate;
   ToolButton *collapse_btn;
-
-  friend class SignalTreeDelegate;
-  friend class SignalTree;
 };

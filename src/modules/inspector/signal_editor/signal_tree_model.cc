@@ -274,6 +274,17 @@ bool SignalTreeModel::setData(const QModelIndex &index, const QVariant &value, i
   return ret;
 }
 
+void SignalTreeModel::highlightSignalRow(const dbc::Signal* sig) {
+  auto& children = root->children;
+  for (int i = 0; i < children.size(); ++i) {
+    bool highlight = children[i]->sig == sig;
+    if (std::exchange(children[i]->highlight, highlight) != highlight) {
+      emit dataChanged(index(i, 0), index(i, 0), {Qt::DecorationRole});
+      emit dataChanged(index(i, 1), index(i, 1), {Qt::DisplayRole});
+    }
+  }
+}
+
 bool SignalTreeModel::saveSignal(const dbc::Signal *origin_s, dbc::Signal &s) {
   auto msg = GetDBC()->msg(msg_id);
   if (s.name != origin_s->name && msg->sig(s.name) != nullptr) {

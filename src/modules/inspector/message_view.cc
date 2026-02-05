@@ -67,7 +67,7 @@ MessageView::MessageView(ChartsPanel* charts, QWidget* parent) : charts(charts),
 }
 
 void MessageView::setupConnections() {
-  connect(binary_view, &BinaryView::signalHovered, signal_editor, &SignalEditor::signalHovered);
+  connect(binary_view, &BinaryView::signalHovered, signal_editor->model, &SignalTreeModel::highlightSignalRow);
   connect(binary_view, &BinaryView::signalClicked, [this](const dbc::Signal* s) { signal_editor->selectSignal(s, true); });
   connect(binary_view, &BinaryView::editSignal, signal_editor->model, &SignalTreeModel::saveSignal);
   connect(binary_view, &BinaryView::showChart, charts, &ChartsPanel::showChart);

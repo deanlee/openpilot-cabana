@@ -96,10 +96,10 @@ void SignalEditor::setupConnections(ChartsPanel *charts) {
   });
 
   connect(delegate, &SignalTreeDelegate::removeRequested, this, [this](const dbc::Signal* sig) {
-    UndoStack::push(new RemoveSigCommand(model->msg_id, sig));
+    UndoStack::push(new RemoveSigCommand(model->messageId(), sig));
   });
   connect(delegate, &SignalTreeDelegate::plotRequested, this, [this](const dbc::Signal* sig, bool show, bool merge) {
-    emit showChart(model->msg_id, sig, show, merge);
+    emit showChart(model->messageId(), sig, show, merge);
   });
 }
 
@@ -117,8 +117,8 @@ void SignalEditor::updateState(const std::set<MessageId>* msgs) {
   // Skip update if the widget is hidden or collapsed
   if (!isVisible() || height() == 0 || width() == 0) return;
 
-  const auto* last_msg = StreamManager::stream()->snapshot(model->msg_id);
-  if (model->rowCount() == 0 || (msgs && !msgs->count(model->msg_id)) || last_msg->size == 0) return;
+  const auto* last_msg = StreamManager::stream()->snapshot(model->messageId());
+  if (model->rowCount() == 0 || (msgs && !msgs->count(model->messageId())) || last_msg->size == 0) return;
 
   auto [first_v, last_v] = visibleSignalRange();
   if (!first_v.isValid()) return;
@@ -147,17 +147,6 @@ void SignalEditor::selectSignal(const dbc::Signal *sig, bool expand) {
   }
 }
 
-void SignalEditor::signalHovered(const dbc::Signal *sig) {
-  auto &children = model->root->children;
-  for (int i = 0; i < children.size(); ++i) {
-    bool highlight = children[i]->sig == sig;
-    if (std::exchange(children[i]->highlight, highlight) != highlight) {
-      emit model->dataChanged(model->index(i, 0), model->index(i, 0), {Qt::DecorationRole});
-      emit model->dataChanged(model->index(i, 1), model->index(i, 1), {Qt::DisplayRole});
-    }
-  }
-}
-
 void SignalEditor::updateToolBar() {
   signal_count_lb->setText(tr("Signals: %1").arg(model->rowCount()));
   sparkline_label->setText(utils::formatSeconds(settings.sparkline_range));
@@ -173,7 +162,7 @@ void SignalEditor::setSparklineRange(int value) {
 }
 
 void SignalEditor::handleSignalAdded(MessageId id, const dbc::Signal *sig) {
-  if (id.address == model->msg_id.address) {
+  if (id.address == model->messageId().address) {
     selectSignal(sig);
   }
 }
@@ -204,7 +193,7 @@ std::pair<QModelIndex, QModelIndex> SignalEditor::visibleSignalRange() {
 }
 
 void SignalEditor::updateColumnWidths() {
-  auto* m = GetDBC()->msg(model->msg_id);
+  auto* m = GetDBC()->msg(model->messageId());
   if (!m) return;
 
   int max_content_w = 0;
