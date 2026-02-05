@@ -90,9 +90,7 @@ void MessageDelegate::paint(QPainter* painter, const QStyleOptionViewItem& optio
 void MessageDelegate::drawItemText(QPainter* p, const QStyleOptionViewItem& opt, const QModelIndex& idx, bool sel, bool active) const {
   QString text = idx.data(Qt::DisplayRole).toString();
   if (text.isEmpty()) return;
-  if (idx.column() == MessageModel::Column::NAME) {
-    // printf("draw coloumn %d text: %s\n", idx.column(), text.toStdString().c_str());
-}
+
   p->setFont(opt.font);
   p->setPen(opt.palette.color(active ? QPalette::Normal : QPalette::Disabled,
                                     sel ? QPalette::HighlightedText : QPalette::Text));
