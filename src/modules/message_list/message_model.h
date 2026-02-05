@@ -50,12 +50,20 @@ public:
   bool show_inactive_ = true;
 
 private:
+ struct FilterRange {
+   double min = -std::numeric_limits<double>::infinity();
+   double max = std::numeric_limits<double>::infinity();
+   bool is_exact = false;
+ };
+
+  std::optional<FilterRange> parseFilter(QString filter, int base = 10);
   std::vector<Item> fetchItems() const;
   void sortItems(std::vector<MessageModel::Item> &items) const;
   bool match(const MessageModel::Item &id) const;
   QString formatFreq(const Item &item) const;
 
   QMap<int, QString> filters_;
+  QMap<int, FilterRange> filter_ranges_;
   int sort_column = 0;
   Qt::SortOrder sort_order = Qt::AscendingOrder;
   int sort_threshold_ = 0;

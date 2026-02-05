@@ -68,11 +68,6 @@ QVariant MessageModel::data(const QModelIndex &index, int role) const {
   return {};
 }
 
-void MessageModel::setFilterStrings(const QMap<int, QString> &filters) {
-  filters_ = filters;
-  rebuild();
-}
-
 void MessageModel::setInactiveMessagesVisible(bool show) {
   show_inactive_ = show;
   rebuild();
@@ -119,60 +114,88 @@ QString MessageModel::formatFreq(const Item &item) const {
   return item.freq_str;
 }
 
-static bool parseRange(const QString &filter, uint32_t value, int base = 10) {
-  // Parse out filter string into a range (e.g. "1" -> {1, 1}, "1-3" -> {1, 3}, "1-" -> {1, inf})
-  unsigned int min = std::numeric_limits<unsigned int>::min();
-  unsigned int max = std::numeric_limits<unsigned int>::max();
-  auto s = filter.split('-');
-  bool ok = s.size() >= 1 && s.size() <= 2;
-  if (ok && !s[0].isEmpty()) min = s[0].toUInt(&ok, base);
-  if (ok && s.size() == 1) {
-    max = min;
-  } else if (ok && s.size() == 2 && !s[1].isEmpty()) {
-    max = s[1].toUInt(&ok, base);
+void MessageModel::setFilterStrings(const QMap<int, QString> &filters) {
+  filters_ = filters;
+  filter_ranges_.clear();
+
+  for (auto it = filters.cbegin(); it != filters.cend(); ++it) {
+    int col = it.key();
+    // Only pre-parse numeric/range columns
+    if (col == Column::SOURCE || col == Column::ADDRESS || col == Column::FREQ || col == Column::COUNT) {
+      if (auto range = parseFilter(it.value(), col == Column::ADDRESS ? 16 : 10)) {
+        filter_ranges_[col] = *range;
+      }
+    }
   }
-  return ok && value >= min && value <= max;
+
+  rebuild();
+}
+
+std::optional<MessageModel::FilterRange> MessageModel::parseFilter(QString filter, int base) {
+  FilterRange r;
+  filter = filter.simplified().replace(" ", "");
+  if (filter.isEmpty()) return std::nullopt;
+
+  auto parse = [&](const QString& s, bool* ok) {
+    return (base == 16) ? (double)s.toUInt(ok, 16) : s.toDouble(ok);
+  };
+
+  QStringList parts = filter.split('-');
+  bool ok = true;
+
+  if (parts.size() == 1) {
+    r.min = r.max = parse(parts[0], &ok);
+    r.is_exact = true;
+  } else if (parts.size() == 2) {
+    if (!parts[0].isEmpty()) r.min = parse(parts[0], &ok);
+    if (!parts[1].isEmpty()) r.max = parse(parts[1], &ok);
+  }
+
+  return ok ? std::optional<FilterRange>(r) : std::nullopt;
 }
 
 bool MessageModel::match(const MessageModel::Item &item) const {
-  if (filters_.isEmpty())
-    return true;
-
-  bool match = true;
-  for (auto it = filters_.cbegin(); it != filters_.cend() && match; ++it) {
+  for (auto it = filters_.cbegin(); it != filters_.cend(); ++it) {
+    const int col = it.key();
     const QString &txt = it.value();
-    switch (it.key()) {
-      case Column::NAME: {
-        match = item.name.contains(txt, Qt::CaseInsensitive);
-        if (!match) {
-          const auto m = GetDBC()->msg(item.id);
-          match = m && std::any_of(m->sigs.cbegin(), m->sigs.cend(),
-                                   [&txt](const auto &s) { return s->name.contains(txt, Qt::CaseInsensitive); });
+
+    switch (col) {
+      case Column::NAME:
+        if (item.name.contains(txt, Qt::CaseInsensitive)) continue;
+        if (auto m = GetDBC()->msg(item.id)) {
+          if (std::any_of(m->sigs.begin(), m->sigs.end(), [&](auto& s){ return s->name.contains(txt, Qt::CaseInsensitive); })) continue;
         }
+        return false;
+
+      case Column::NODE:
+        if (!item.node.contains(txt, Qt::CaseInsensitive)) return false;
+        continue;
+
+      case Column::DATA:
+        if (!item.data || !utils::toHex(item.data->data.data(), item.data->size).contains(txt, Qt::CaseInsensitive)) return false;
+        continue;
+
+      case Column::ADDRESS:
+        if (item.address_hex.contains(txt, Qt::CaseInsensitive)) continue; // Fallthrough to range check
+        [[fallthrough]];
+
+      default: { // SOURCE, FREQ, COUNT, and ADDRESS range
+        auto it_range = filter_ranges_.find(col);
+        if (it_range == filter_ranges_.end()) return false;
+
+        const auto &r = it_range.value();
+
+        double val = (col == Column::SOURCE) ? item.id.source :
+                     (col == Column::ADDRESS) ? item.id.address :
+                     (col == Column::FREQ) ? (item.data ? item.data->freq : -1) :
+                     (item.data ? (double)item.data->count : -1);
+
+        if (r.is_exact ? (std::abs(val - r.min) > 0.001) : (val < r.min || val > r.max)) return false;
         break;
       }
-      case Column::SOURCE:
-        match = parseRange(txt, item.id.source);
-        break;
-      case Column::ADDRESS:
-        match = item.address_hex.contains(txt, Qt::CaseInsensitive);
-        match = match || parseRange(txt, item.id.address, 16);
-        break;
-      case Column::NODE:
-        match = item.node.contains(txt, Qt::CaseInsensitive);
-        break;
-      case Column::FREQ:
-        match = item.data ? parseRange(txt, item.data->freq) : false;
-        break;
-      case Column::COUNT:
-        match = item.data ? parseRange(txt, item.data->count) : false;
-        break;
-      case Column::DATA:
-        match = item.data ? utils::toHex(item.data->data.data(), item.data->size).contains(txt, Qt::CaseInsensitive) : false;
-        break;
     }
   }
-  return match;
+  return true;
 }
 
 std::vector<MessageModel::Item> MessageModel::fetchItems() const {
