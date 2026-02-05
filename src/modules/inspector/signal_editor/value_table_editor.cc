@@ -136,11 +136,7 @@ void ValueTableEditor::handleSave() {
   }
 
   // Final sort to keep DBC file organized
-  std::sort(value_table.begin(), value_table.end(),
-            [](const std::pair<double, QString>& a, const std::pair<double, QString>& b) {
-              return a.first < b.first;
-            });
-
+  std::ranges::sort(value_table, {}, &std::pair<double, QString>::first);
   QDialog::accept();
 }
 
