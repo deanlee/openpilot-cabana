@@ -8,6 +8,8 @@
 class MessageBytesDelegate : public QStyledItemDelegate {
 public:
   MessageBytesDelegate(QObject *parent);
+
+protected:
   void paint(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const override;
   void drawSignalCell(QPainter* painter, const QStyleOptionViewItem &option, const QModelIndex &index, const dbc::Signal *sig) const;
 
