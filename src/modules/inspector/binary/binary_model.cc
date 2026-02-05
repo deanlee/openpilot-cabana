@@ -114,15 +114,16 @@ void BinaryModel::updateBorders() {
   }
 }
 
-bool BinaryModel::updateItem(int row, int col, uint8_t val, const QColor &color) {
+void BinaryModel::updateItem(int row, int col, uint8_t val, const QColor &color) {
   auto &item = items[row * column_count + col];
   item.valid = true;
   if (item.val != val || item.bg_color != color) {
     item.val = val;
     item.bg_color = color;
-    return true;
+
+    auto idx = index(row, col);
+    emit dataChanged(idx, idx);
   }
-  return false;
 }
 
 void BinaryModel::updateState() {
@@ -161,23 +162,13 @@ void BinaryModel::updateState() {
   }
 
   const float log_max = std::log2(static_cast<float>(max_flips) + 1.0f);
-  int first_dirty = -1, last_dirty = -1;
-
   for (size_t i = 0; i < msg_size; ++i) {
-    if (syncRowItems(i, last_msg, bit_flips[i], log_max, is_light_theme, base_bg, decay_factor)) {
-      if (first_dirty == -1) first_dirty = i;
-      last_dirty = i;
-    }
-  }
-
-  if (first_dirty != -1) {
-    emit dataChanged(index(first_dirty, 0), index(last_dirty, 8), {Qt::DisplayRole});
+    syncRowItems(i, last_msg, bit_flips[i], log_max, is_light_theme, base_bg, decay_factor);
   }
 }
 
-bool BinaryModel::syncRowItems(int row, const MessageSnapshot* msg, const std::array<uint32_t, 8>& row_flips,
+void BinaryModel::syncRowItems(int row, const MessageSnapshot* msg, const std::array<uint32_t, 8>& row_flips,
                                float log_max, bool is_light, const QColor& base_bg, float decay) {
-  bool row_dirty = false;
   const uint8_t byte_val = msg->data[row];
   const size_t row_offset = row * column_count;
 
@@ -187,14 +178,12 @@ bool BinaryModel::syncRowItems(int row, const MessageSnapshot* msg, const std::a
     const int bit_val = (byte_val >> (7 - j)) & 1;
 
     QColor heat_color = calculateBitHeatColor(item, row_flips[j], log_max, is_light, base_bg, decay);
-    row_dirty |= updateItem(row, j, bit_val, heat_color);
+    updateItem(row, j, bit_val, heat_color);
   }
 
   // Update 9th Column (Hex Value)
   QColor byte_color = QColor::fromRgba(msg->colors[row]);
-  row_dirty |= updateItem(row, 8, byte_val, byte_color);
-
-  return row_dirty;
+  updateItem(row, 8, byte_val, byte_color);
 }
 
 QColor BinaryModel::calculateBitHeatColor(Item& item, uint32_t flips, float log_max,

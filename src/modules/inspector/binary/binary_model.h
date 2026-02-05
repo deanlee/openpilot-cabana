@@ -67,11 +67,11 @@ class BinaryModel : public QAbstractTableModel {
   const int column_count = 9;
   QFont header_font_;
 
-  bool syncRowItems(int row, const MessageSnapshot* msg, const std::array<uint32_t, 8>& row_flips,
+  void syncRowItems(int row, const MessageSnapshot* msg, const std::array<uint32_t, 8>& row_flips,
                     float log_max, bool is_light, const QColor& base_bg, float decay);
   QColor calculateBitHeatColor(Item& item, uint32_t flips, float log_max,
                                bool is_light, const QColor& base_bg, float decay_factor);
-  bool updateItem(int row, int col, uint8_t val, const QColor& color);
+  void updateItem(int row, int col, uint8_t val, const QColor& color);
 };
 
 QString signalToolTip(const dbc::Signal *sig);
