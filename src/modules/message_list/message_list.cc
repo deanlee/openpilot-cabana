@@ -128,25 +128,15 @@ void MessageList::resetState() {
 }
 
 void MessageList::updateTitle() {
-  size_t dbc_msg_count = 0;
-  size_t signal_count = 0;
-  auto* dbc = GetDBC();
-
-  for (const auto& item : model->items_) {
-    if (auto m = dbc->msg(item.id)) {
-      dbc_msg_count++;
-      signal_count += m->sigs.size();
-    }
-  }
   emit titleChanged(tr("%1 Messages (%2 DBC Messages, %3 Signals)")
-                    .arg(model->items_.size()).arg(dbc_msg_count).arg(signal_count));
+                    .arg(model->rowCount()).arg(model->getDbcMessageCount()).arg(model->getSignalCount()));
 }
 
 void MessageList::handleSelectionChanged(const QModelIndex &current) {
-  if (current.isValid() && current.row() < model->items_.size()) {
-    const auto &id = model->items_[current.row()].id;
-    if (!current_msg_id || id != *current_msg_id) {
-      current_msg_id = id;
+  if (current.isValid()) {
+    auto *item = static_cast<MessageModel::Item*>(current.internalPointer());
+    if (!current_msg_id || item->id != *current_msg_id) {
+      current_msg_id = item->id;
       emit msgSelectionChanged(*current_msg_id);
     }
   }
@@ -155,10 +145,9 @@ void MessageList::handleSelectionChanged(const QModelIndex &current) {
 void MessageList::selectMessageForced(const MessageId &msg_id, bool force) {
   if (!force && current_msg_id && *current_msg_id == msg_id) return;
 
-  auto it = std::ranges::find(model->items_, msg_id, &MessageModel::Item::id);
-  if (it != model->items_.cend()) {
+  int row = model->getRowForMessageId(msg_id);
+  if (row != -1) {
     current_msg_id = msg_id;
-    int row = std::ranges::distance(model->items_.begin(), it);
     QModelIndex index = model->index(row, 0);
 
     view->setUpdatesEnabled(false);
@@ -202,5 +191,5 @@ void MessageList::menuAboutToShow() {
 
   auto *action = menu->addAction(tr("Show inactive Messages"), model, &MessageModel::setInactiveMessagesVisible);
   action->setCheckable(true);
-  action->setChecked(model->show_inactive_);
+  action->setChecked(model->isInactiveMessagesVisible());
 }

@@ -45,5 +45,4 @@ protected:
   ToolButton *suppress_clear;
   QCheckBox *suppress_defined_signals;
   QMenu *menu;
-  friend class MessageModel;
 };

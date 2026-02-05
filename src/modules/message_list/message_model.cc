@@ -248,6 +248,16 @@ std::vector<MessageModel::Item> MessageModel::fetchItems() const {
 void MessageModel::rebuild() {
   std::vector<Item> new_items = fetchItems();
 
+  dbc_msg_count_ = 0;
+  signal_count_ = 0;
+  auto *dbc = GetDBC();
+  for (const auto& item : new_items) {
+    if (auto m = dbc->msg(item.id)) {
+      dbc_msg_count_++;
+      signal_count_ += m->sigs.size();
+    }
+  }
+
   // Check if the IDs or count changed (affects UI structure)
   bool structureChanged = (items_.size() != new_items.size()) ||
                           !std::equal(items_.begin(), items_.end(), new_items.begin(),

@@ -22,21 +22,6 @@ public:
     DATA,
   };
 
-  MessageModel(QObject *parent);
-  QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const override;
-  int columnCount(const QModelIndex &parent = QModelIndex()) const override { return Column::DATA + 1; }
-  QModelIndex index(int row, int column, const QModelIndex &parent = QModelIndex()) const override {
-    if (!hasIndex(row, column, parent)) return {};
-    return createIndex(row, column, (void*)(&items_[row]));
-  }
-  QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const;
-  int rowCount(const QModelIndex &parent = QModelIndex()) const override { return items_.size(); }
-  void sort(int column, Qt::SortOrder order = Qt::AscendingOrder) override;
-  void setFilterStrings(const QMap<int, QString> &filters);
-  void setInactiveMessagesVisible(bool show);
-  void onSnapshotsUpdated(const std::set<MessageId> *ids, bool needs_rebuild);
-  void rebuild();
-
   struct Item {
     MessageId id;
     QString name;
@@ -46,8 +31,30 @@ public:
     mutable float last_freq = -1.0f;
     mutable QString freq_str;
   };
-  std::vector<Item> items_;
-  bool show_inactive_ = true;
+
+  MessageModel(QObject *parent);
+  inline bool isInactiveMessagesVisible() const { return show_inactive_; }
+  inline int getDbcMessageCount() const { return dbc_msg_count_; }
+  inline int getSignalCount() const { return signal_count_; }
+  inline int getRowForMessageId(const MessageId &id) const {
+    auto it = std::ranges::find(items_, id, &Item::id);
+    return (it != items_.end()) ? std::distance(items_.begin(), it) : -1;
+  }
+  void setFilterStrings(const QMap<int, QString> &filters);
+  void setInactiveMessagesVisible(bool show);
+  void onSnapshotsUpdated(const std::set<MessageId> *ids, bool needs_rebuild);
+  void rebuild();
+
+  // QAbstractTableModel overrides
+  QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const override;
+  int columnCount(const QModelIndex &parent = QModelIndex()) const override { return Column::DATA + 1; }
+  QModelIndex index(int row, int column, const QModelIndex &parent = QModelIndex()) const override {
+    if (!hasIndex(row, column, parent)) return {};
+    return createIndex(row, column, (void*)(&items_[row]));
+  }
+  QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const;
+  int rowCount(const QModelIndex &parent = QModelIndex()) const override { return items_.size(); }
+  void sort(int column, Qt::SortOrder order = Qt::AscendingOrder) override;
 
 private:
  struct FilterRange {
@@ -62,10 +69,14 @@ private:
   bool match(const MessageModel::Item &id) const;
   QString formatFreq(const Item &item) const;
 
+  std::vector<Item> items_;
   QMap<int, QString> filters_;
   QMap<int, FilterRange> filter_ranges_;
+  bool show_inactive_ = true;
   int sort_column = 0;
   Qt::SortOrder sort_order = Qt::AscendingOrder;
   int sort_threshold_ = 0;
   QColor disabled_color_;
+  int dbc_msg_count_ = 0;
+  int signal_count_ = 0;
 };
