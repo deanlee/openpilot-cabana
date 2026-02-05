@@ -318,10 +318,6 @@ bool SignalTreeDelegate::editorEvent(QEvent* event, QAbstractItemModel* model,
   }
 
   if (btn != -1) {
-    if (type == QEvent::MouseButtonPress || type == QEvent::MouseButtonDblClick) {
-      return true;  // Stop event propagation to prevent selection/expansion
-    }
-
     if (type == QEvent::MouseButtonRelease) {
       if (btn == 1) {  // Plot Button
         bool isCharted = idx.data(IsChartedRole).toBool();
@@ -330,8 +326,9 @@ bool SignalTreeDelegate::editorEvent(QEvent* event, QAbstractItemModel* model,
         clearHoverState();    // Reset before model potentially deletes 'item'
         emit removeRequested(item->sig);
       }
-      return true;
     }
+    // Accept all mouse events on buttons to prevent row selection/expansion
+    return true;
   }
 
   return QStyledItemDelegate::editorEvent(event, model, opt, idx);
