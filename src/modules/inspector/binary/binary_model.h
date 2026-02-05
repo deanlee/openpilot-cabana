@@ -2,6 +2,8 @@
 
 #include <QAbstractTableModel>
 #include <QColor>
+#include <QFont>
+
 #include <array>
 #include <optional>
 #include <vector>
@@ -63,6 +65,7 @@ class BinaryModel : public QAbstractTableModel {
 
   int row_count = 0;
   const int column_count = 9;
+  QFont header_font_;
 
   bool syncRowItems(int row, const MessageSnapshot* msg, const std::array<uint32_t, 8>& row_flips,
                     float log_max, bool is_light, const QColor& base_bg, float decay);

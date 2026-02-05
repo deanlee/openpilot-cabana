@@ -12,6 +12,10 @@
 #include "modules/system/stream_manager.h"
 
 BinaryModel::BinaryModel(QObject* parent) : QAbstractTableModel(parent) {
+  header_font_ = QApplication::font();
+  header_font_.setPointSize(9);
+  header_font_.setBold(true);
+
   connect(GetDBC(), &dbc::Manager::DBCFileChanged, this, &BinaryModel::rebuild);
   connect(UndoStack::instance(), &QUndoStack::indexChanged, this, &BinaryModel::rebuild);
 }
@@ -286,25 +290,15 @@ const std::array<std::array<uint32_t, 8>, MAX_CAN_LEN>& BinaryModel::getBitFlipC
 QVariant BinaryModel::headerData(int section, Qt::Orientation orientation, int role) const {
   if (orientation == Qt::Vertical) {
     switch (role) {
-      case Qt::DisplayRole:
-        return section;
-
-      case Qt::SizeHintRole:
-        return QSize(CELL_WIDTH, CELL_HEIGHT);
-
-      case Qt::TextAlignmentRole:
-        return Qt::AlignCenter;
-
-      case Qt::FontRole: {
-        QFont font;
-        font.setPointSize(9);
-        font.setBold(true);
-        return font;
-      }
+      case Qt::DisplayRole: return section;
+      case Qt::SizeHintRole: return QSize(CELL_WIDTH, CELL_HEIGHT);
+      case Qt::TextAlignmentRole: return Qt::AlignCenter;
+      case Qt::FontRole: return header_font_;
     }
   }
   return {};
 }
+
 QVariant BinaryModel::data(const QModelIndex &index, int role) const {
   auto item = (const BinaryModel::Item *)index.internalPointer();
   return role == Qt::ToolTipRole && item && !item->sigs.empty() ? signalToolTip(item->sigs.back()) : QVariant();
