@@ -1,6 +1,5 @@
 #pragma once
 
-#include <QSet>
 #include <QTableView>
 #include <tuple>
 
@@ -16,7 +15,6 @@ public:
   BinaryView(QWidget *parent = nullptr);
   void setModel(QAbstractItemModel *newModel) override;
   void highlight(const dbc::Signal *sig);
-  QSet<const dbc::Signal*> getOverlappingSignals() const;
   void paintEvent(QPaintEvent *event) override {
     is_message_active = StreamManager::stream()->snapshot(model->msg_id)->is_active;
     QTableView::paintEvent(event);

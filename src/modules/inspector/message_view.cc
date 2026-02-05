@@ -228,7 +228,7 @@ void MessageView::refresh() {
     } else if (can_msg->ts > 0 && msg->size != can_msg->size) {
       warnings.push_back(tr("Message size (%1) is incorrect.").arg(msg->size));
     }
-    for (auto s : binary_view->getOverlappingSignals()) {
+    for (auto s : binary_model->getOverlappingSignals()) {
       warnings.push_back(tr("%1 has overlapping bits.").arg(s->name));
     }
   }

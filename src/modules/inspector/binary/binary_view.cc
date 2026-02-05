@@ -109,13 +109,8 @@ QSize BinaryView::minimumSizeHint() const {
 
 void BinaryView::highlight(const dbc::Signal *sig) {
   if (sig != hovered_sig) {
-    for (int i = 0; i < model->items.size(); ++i) {
-      auto &item_sigs = model->items[i].sigs;
-      if ((sig && item_sigs.contains(sig)) || (hovered_sig && item_sigs.contains(hovered_sig))) {
-        auto index = model->index(i / model->columnCount(), i % model->columnCount());
-        emit model->dataChanged(index, index, {Qt::DisplayRole});
-      }
-    }
+    if (sig) model->updateSignalCells(sig);
+    if (hovered_sig) model->updateSignalCells(hovered_sig);
 
     hovered_sig = sig;
     emit signalHovered(hovered_sig);
@@ -185,18 +180,6 @@ void BinaryView::resetInternalState() {
   hovered_sig = nullptr;
   verticalScrollBar()->setValue(0);
   highlightPosition(QCursor::pos());
-}
-
-QSet<const dbc::Signal *> BinaryView::getOverlappingSignals() const {
-  QSet<const dbc::Signal *> overlapping;
-  for (const auto &item : model->items) {
-    if (item.sigs.size() > 1) {
-      for (auto s : item.sigs) {
-        if (s->type == dbc::Signal::Type::Normal) overlapping += s;
-      }
-    }
-  }
-  return overlapping;
 }
 
 std::tuple<int, int, bool> BinaryView::getSelection(QModelIndex index) {
