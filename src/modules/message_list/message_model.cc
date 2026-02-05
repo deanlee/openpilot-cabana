@@ -21,9 +21,7 @@ static const QString getHexCached(uint32_t addr) {
   return *it;
 }
 
-MessageModel::MessageModel(QObject *parent) : QAbstractTableModel(parent) {
-  disabled_color_ = QApplication::palette().color(QPalette::Disabled, QPalette::Text);
-}
+MessageModel::MessageModel(QObject *parent) : QAbstractTableModel(parent) {}
 
 QVariant MessageModel::headerData(int section, Qt::Orientation orientation, int role) const {
   if (orientation != Qt::Horizontal || role != Qt::DisplayRole) return {};

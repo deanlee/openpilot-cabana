@@ -76,7 +76,6 @@ private:
   int sort_column = 0;
   Qt::SortOrder sort_order = Qt::AscendingOrder;
   int sort_threshold_ = 0;
-  QColor disabled_color_;
   int dbc_msg_count_ = 0;
   int signal_count_ = 0;
 };
