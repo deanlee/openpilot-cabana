@@ -200,8 +200,8 @@ bool MessageModel::match(const MessageModel::Item &item) const {
 
 std::vector<MessageModel::Item> MessageModel::fetchItems() const {
   const auto& snapshots = StreamManager::stream()->snapshots();
-  const auto& dbc_messages = GetDBC()->getMessages();
   auto* dbc = GetDBC();
+  const auto& dbc_messages = dbc->getMessages();
 
   std::vector<Item> new_items;
   new_items.reserve(snapshots.size() + dbc_messages.size());
