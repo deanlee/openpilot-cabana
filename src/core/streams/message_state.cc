@@ -45,8 +45,11 @@ double getEntropy(uint32_t highs, uint32_t total) {
 
 void MessageState::init(const uint8_t* new_data, int data_size, double current_ts) {
   size = std::min<int>(data_size, MAX_CAN_LEN);
-
   ts = current_ts;
+  count = 1;
+  freq = 0;
+  last_freq_ts = current_ts;
+
   // Wipe arrays for the new message length
   std::memset(data.data(), 0, MAX_CAN_LEN);
   std::memcpy(data.data(), new_data, size);
@@ -66,15 +69,14 @@ void MessageState::init(const uint8_t* new_data, int data_size, double current_t
 
 void MessageState::update(const uint8_t* new_data, int data_size,
                           double current_ts, double manual_freq, bool is_seek) {
-  ts = current_ts;
-  count++;
-
-  updateFrequency(current_ts, manual_freq, is_seek);
-
   if (size != data_size) {
     init(new_data, data_size, current_ts);
     return;
   }
+
+  ts = current_ts;
+  count++;
+  updateFrequency(current_ts, manual_freq, is_seek);
 
   const int num_blocks = (size + 7) / 8;
   for (int b = 0; b < num_blocks; ++b) {
