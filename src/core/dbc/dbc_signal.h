@@ -44,6 +44,9 @@ class Signal {
   // Multiplexed
   int multiplex_value = 0;
   Signal* multiplexor = nullptr;
+
+ private:
+  void updateColor();
 };
 }  // namespace dbc
 

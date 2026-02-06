@@ -50,6 +50,7 @@ class SignalTreeDelegate : public QStyledItemDelegate {
   QValidator* double_validator = nullptr;
   QValidator* node_validator = nullptr;
   QFont label_font, minmax_font, value_font;
+  QColor signal_text_color;
   mutable QPersistentModelIndex hoverIndex;
   mutable int hoverButton = -1;  // -1: none, 0: plot, 1: remove
 };
