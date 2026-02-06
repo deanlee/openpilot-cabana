@@ -50,6 +50,7 @@ void AbstractStream::commitSnapshots() {
         structure_changed = true;
         sources.insert(id.source);
       }
+      state.dirty = false;
     }
     msgs = std::move(shared_state_.dirty_ids);
   }
@@ -86,8 +87,11 @@ void AbstractStream::processNewMessage(const MessageId& id, uint64_t mono_ns, co
     applyCurrentPolicy(state, id);
   }
 
+  if (!state.dirty) {
+    state.dirty = true;
+    shared_state_.dirty_ids.insert(id);
+  }
   state.update(data, size, sec);
-  shared_state_.dirty_ids.insert(id);
 }
 
 const std::vector<const CanEvent*>& AbstractStream::events(const MessageId& id) const {

@@ -31,6 +31,7 @@ class MessageState {
   double freq = 0.0;   // Message frequency (Hz)
   uint32_t count = 0;  // Total messages received
   uint8_t size = 0;     // Message length in bytes
+  bool dirty = false;   // Whether this message has uncommitted changes (for snapshotting)
 
   std::array<uint8_t, MAX_CAN_LEN> data = {0};                     // Raw payload
   std::array<uint32_t, MAX_CAN_LEN> colors = {0};
