@@ -21,10 +21,9 @@
 
 namespace utils {
 
-bool isDarkTheme() {
-  QColor windowColor = QApplication::palette().color(QPalette::Window);
-  return windowColor.lightness() < 128;
-}
+static bool dark_theme = false;
+
+bool isDarkTheme() { return dark_theme; }
 
 QString doubleToString(double value, int precision) {
   if (value == 0.0) {
@@ -97,11 +96,19 @@ void setTheme(int theme) {
   auto style = QApplication::style();
   if (!style) return;
 
-  static int prev_theme = 0;
-  if (theme != prev_theme) {
-    prev_theme = theme;
-    QPalette new_palette;
-    if (theme == DARK_THEME) {
+  // Resolve automatic: follow system preference
+  int resolved = theme;
+  if (theme == 0) {
+    resolved = style->standardPalette().color(QPalette::Window).lightness() < 128 ? DARK_THEME : LIGHT_THEME;
+  }
+
+  static int prev_resolved = 0;
+  if (resolved == prev_resolved) return;
+  prev_resolved = resolved;
+
+  dark_theme = (resolved == DARK_THEME);
+  QPalette new_palette;
+  if (resolved == DARK_THEME) {
       // Modern dark theme inspired by VS Code / GitHub Dark
       // Uses blue-grey undertones instead of pure grey for a warmer, less fatiguing look.
 
@@ -168,7 +175,6 @@ void setTheme(int theme) {
     for (auto w : QApplication::allWidgets()) {
       w->setPalette(new_palette);
     }
-  }
 }
 
 QString formatSeconds(double sec, bool include_milliseconds, bool absolute_time) {

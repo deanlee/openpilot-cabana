@@ -35,6 +35,7 @@ class MainWindow : public QMainWindow {
  protected:
   void setupConnections();
   bool eventFilter(QObject* obj, QEvent* event) override;
+  void changeEvent(QEvent* ev) override;
   void remindSaveChanges();
 
   void setupMenus();

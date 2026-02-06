@@ -446,3 +446,10 @@ void MainWindow::restoreSessionState() {
   if (charts_panel != nullptr && !settings.active_charts.empty())
     charts_panel->restoreChartsFromIds(settings.active_charts);
 }
+
+void MainWindow::changeEvent(QEvent* ev) {
+  if (ev->type() == QEvent::ApplicationPaletteChange) {
+    utils::setTheme(0);
+  }
+  QMainWindow::changeEvent(ev);
+}
