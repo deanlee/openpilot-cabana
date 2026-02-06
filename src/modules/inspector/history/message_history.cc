@@ -98,17 +98,13 @@ void MessageHistory::setupConnections() {
   connect(model, &MessageHistoryModel::rowsInserted, [this]() { export_btn->setEnabled(true); });
 }
 
-void MessageHistory::setHexModel(int index) {
-  model->setHexMode(index);
-}
+void MessageHistory::setHexModel(int index) { model->setHexMode(index); }
 
-void MessageHistory::clearMessage() {
-  model->setMessage(MessageId());
-}
+void MessageHistory::clearMessage() { model->setMessage(MessageId()); }
 
 void MessageHistory::resetInternalState() {
   signals_cb->clear();
-  for (auto &s : model->messageSignals()) {
+  for (auto& s : model->messageSignals()) {
     signals_cb->addItem(s.sig->name);
   }
   export_btn->setEnabled(false);
@@ -122,11 +118,7 @@ void MessageHistory::filterChanged() {
   if (value_edit->text().isEmpty() && !value_edit->isModified()) return;
 
   static const std::vector<std::function<bool(double, double)>> ops = {
-    std::greater<double>{},
-    std::equal_to<double>{},
-    [](double l, double r) { return l != r; },
-    std::less<double>{}
-  };
+      std::greater<double>{}, std::equal_to<double>{}, [](double l, double r) { return l != r; }, std::less<double>{}};
 
   int idx = comp_box->currentIndex();
   if (idx >= 0 && idx < ops.size()) {

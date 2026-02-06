@@ -2,10 +2,10 @@
 
 #include <sys/socket.h>
 
-#include <csignal>
 #include <QApplication>
+#include <csignal>
 
-SystemSignalHandler::SystemSignalHandler(QObject *parent) : QObject(nullptr) {
+SystemSignalHandler::SystemSignalHandler(QObject* parent) : QObject(nullptr) {
   if (::socketpair(AF_UNIX, SOCK_STREAM, 0, sig_fd)) {
     qFatal("Couldn't create TERM socketpair");
   }
@@ -21,9 +21,7 @@ SystemSignalHandler::~SystemSignalHandler() {
   ::close(sig_fd[1]);
 }
 
-void SystemSignalHandler::signalHandler(int s) {
-  ::write(sig_fd[0], &s, sizeof(s));
-}
+void SystemSignalHandler::signalHandler(int s) { ::write(sig_fd[0], &s, sizeof(s)); }
 
 void SystemSignalHandler::handleSigTerm() {
   sn->setEnabled(false);

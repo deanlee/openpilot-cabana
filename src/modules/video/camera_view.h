@@ -1,22 +1,21 @@
 #pragma once
 
+#include <QOpenGLFunctions>
+#include <QOpenGLShaderProgram>
+#include <QOpenGLWidget>
+#include <QThread>
 #include <memory>
 #include <mutex>
 #include <set>
 #include <string>
 #include <utility>
 
-#include <QOpenGLFunctions>
-#include <QOpenGLShaderProgram>
-#include <QOpenGLWidget>
-#include <QThread>
-
 #include "msgq/visionipc/visionipc_client.h"
 
 class CameraView : public QOpenGLWidget, protected QOpenGLFunctions {
   Q_OBJECT
 
-public:
+ public:
   using QOpenGLWidget::QOpenGLWidget;
   explicit CameraView(std::string stream_name, VisionStreamType stream_type, QWidget* parent = nullptr);
   ~CameraView();
@@ -24,17 +23,17 @@ public:
   VisionStreamType getStreamType() { return active_stream_type; }
   void stopVipcThread();
 
-signals:
+ signals:
   void clicked();
-  void vipcThreadConnected(VisionIpcClient *);
+  void vipcThreadConnected(VisionIpcClient*);
   void vipcThreadFrameReceived();
   void vipcAvailableStreamsUpdated(std::set<VisionStreamType>);
 
-protected:
+ protected:
   void paintGL() override;
   void initializeGL() override;
-  void showEvent(QShowEvent *event) override;
-  void mouseReleaseEvent(QMouseEvent *event) override { emit clicked(); }
+  void showEvent(QShowEvent* event) override;
+  void mouseReleaseEvent(QMouseEvent* event) override { emit clicked(); }
   void vipcThread();
   void clearFrames();
 
@@ -50,13 +49,13 @@ protected:
   std::atomic<VisionStreamType> active_stream_type;
   std::atomic<VisionStreamType> requested_stream_type;
   std::set<VisionStreamType> available_streams;
-  QThread *vipc_thread = nullptr;
+  QThread* vipc_thread = nullptr;
   std::recursive_mutex frame_lock;
   VisionBuf* current_frame_ = nullptr;
   VisionIpcBufExtra frame_meta_ = {};
 
-protected slots:
-  void vipcConnected(VisionIpcClient *vipc_client);
+ protected slots:
+  void vipcConnected(VisionIpcClient* vipc_client);
   void vipcFrameReceived();
   void availableStreamsUpdated(std::set<VisionStreamType> streams);
 };

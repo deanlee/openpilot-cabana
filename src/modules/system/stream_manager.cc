@@ -5,9 +5,7 @@
 
 #include "system_relay.h"
 
-StreamManager::StreamManager() : QObject(nullptr) {
-  setStream(new DummyStream(this));
-}
+StreamManager::StreamManager() : QObject(nullptr) { setStream(new DummyStream(this)); }
 
 void StreamManager::setStream(AbstractStream* new_stream, const QString& dbc_file) {
   if (stream_) {
@@ -35,9 +33,7 @@ void StreamManager::setStream(AbstractStream* new_stream, const QString& dbc_fil
   }
 }
 
-void StreamManager::closeStream() {
-  setStream(new DummyStream(this));
-}
+void StreamManager::closeStream() { setStream(new DummyStream(this)); }
 
 void StreamManager::shutdown() {
   if (stream_) {

@@ -10,11 +10,11 @@
 #include "modules/settings/settings.h"
 #include "modules/system/stream_manager.h"
 
-ChartsPanel::ChartsPanel(QWidget *parent) : QFrame(parent) {
+ChartsPanel::ChartsPanel(QWidget* parent) : QFrame(parent) {
   setFrameStyle(QFrame::StyledPanel | QFrame::Plain);
   setMouseTracking(true);
 
-  auto *main_layout = new QVBoxLayout(this);
+  auto* main_layout = new QVBoxLayout(this);
   main_layout->setContentsMargins(0, 0, 0, 0);
   main_layout->setSpacing(0);
 
@@ -90,7 +90,7 @@ void ChartsPanel::eventsMerged(const MessageEventsMap& new_events) {
   }
 }
 
-void ChartsPanel::timeRangeChanged(const std::optional<std::pair<double, double>> &time_range) {
+void ChartsPanel::timeRangeChanged(const std::optional<std::pair<double, double>>& time_range) {
   toolbar->updateState(charts.size());
   updateState();
 }
@@ -153,12 +153,12 @@ void ChartsPanel::updateState() {
 
   if (!has_charts) return;
 
-  auto *stream = StreamManager::stream();
+  auto* stream = StreamManager::stream();
   const double cur_sec = stream->currentSec();
   const double prev_display_start = display_range.first;
   const double prev_display_end = display_range.second;
 
-  const auto &manual_range = stream->timeRange();
+  const auto& manual_range = stream->timeRange();
   if (!manual_range) {
     // 1. Shift the window if the playhead leaves the 0-80% "viewing zone"
     double pos = (cur_sec - display_range.first) / max_chart_range;
@@ -167,11 +167,12 @@ void ChartsPanel::updateState() {
     }
 
     // 2. Clamp the window to the absolute stream boundaries
-    double start = std::clamp(display_range.first, stream->minSeconds(), std::max(stream->minSeconds(), stream->maxSeconds() - max_chart_range));
+    double start = std::clamp(display_range.first, stream->minSeconds(),
+                              std::max(stream->minSeconds(), stream->maxSeconds() - max_chart_range));
     display_range = {start, start + max_chart_range};
   }
 
-  const auto &range = manual_range.value_or(display_range);
+  const auto& range = manual_range.value_or(display_range);
   for (auto c : charts) {
     c->updatePlot(cur_sec, range.first, range.second);
   }
@@ -201,7 +202,7 @@ void ChartsPanel::settingChanged() {
   }
 }
 
-ChartView *ChartsPanel::findChart(const MessageId &id, const dbc::Signal *sig) {
+ChartView* ChartsPanel::findChart(const MessageId& id, const dbc::Signal* sig) {
   for (auto c : charts)
     if (c->chart_->hasSignal(id, sig)) return c;
   return nullptr;
@@ -217,7 +218,7 @@ const QMap<MessageId, QSet<const dbc::Signal*>> ChartsPanel::getChartedSignals()
   return charted_signals;
 }
 
-ChartView *ChartsPanel::createChart(int pos) {
+ChartView* ChartsPanel::createChart(int pos) {
   auto chart = new ChartView(StreamManager::stream()->timeRange().value_or(display_range), this);
   charts.append(chart);
   chart->viewport()->installEventFilter(scroll_area_->container_);
@@ -229,14 +230,14 @@ ChartView *ChartsPanel::createChart(int pos) {
   return chart;
 }
 
-void ChartsPanel::showChart(const MessageId &id, const dbc::Signal *sig, bool show, bool merge) {
-  ChartView *c = findChart(id, sig);
+void ChartsPanel::showChart(const MessageId& id, const dbc::Signal* sig, bool show, bool merge) {
+  ChartView* c = findChart(id, sig);
   if (show && !c) {
     c = merge && tab_manager_->currentCharts().size() > 0 ? tab_manager_->currentCharts().front() : createChart();
     c->chart_->addSignal(id, sig);
     updateState();
   } else if (!show && c) {
-    c->chart_->removeIf([&](auto &s) { return s.msg_id == id && s.sig == sig; });
+    c->chart_->removeIf([&](auto& s) { return s.msg_id == id && s.sig == sig; });
   }
 }
 
@@ -295,8 +296,7 @@ QStringList ChartsPanel::serializeChartIds() const {
   QStringList chart_ids;
   for (auto c : charts) {
     QStringList ids;
-    for (const auto& s : c->chart_->sigs_)
-      ids += QString("%1|%2").arg(s.msg_id.toString(), s.sig->name);
+    for (const auto& s : c->chart_->sigs_) ids += QString("%1|%2").arg(s.msg_id.toString(), s.sig->name);
     chart_ids += ids.join(',');
   }
   std::ranges::reverse(chart_ids);
@@ -311,8 +311,7 @@ void ChartsPanel::restoreChartsFromIds(const QStringList& chart_ids) {
       if (sig_parts.size() != 2) continue;
       MessageId msg_id = MessageId::fromString(sig_parts[0]);
       if (auto* msg = GetDBC()->msg(msg_id))
-        if (auto* sig = msg->sig(sig_parts[1]))
-          showChart(msg_id, sig, true, index++ > 0);
+        if (auto* sig = msg->sig(sig_parts[1])) showChart(msg_id, sig, true, index++ > 0);
     }
   }
 }
@@ -329,9 +328,7 @@ void ChartsPanel::updateLayout(bool force) {
   scroll_area_->container_->updateLayout(tab_manager_->currentCharts(), column_count, force);
 }
 
-QSize ChartsPanel::minimumSizeHint() const {
-  return QSize(CHART_MIN_WIDTH * 1.5, QWidget::minimumSizeHint().height());
-}
+QSize ChartsPanel::minimumSizeHint() const { return QSize(CHART_MIN_WIDTH * 1.5, QWidget::minimumSizeHint().height()); }
 
 void ChartsPanel::newChart() {
   SignalPicker dlg(tr("New Chart"), this);
@@ -357,7 +354,7 @@ void ChartsPanel::removeCharts(QList<ChartView*> charts_to_remove) {
   emit seriesChanged();
 }
 
-void ChartsPanel::removeChart(ChartView *chart) {
+void ChartsPanel::removeChart(ChartView* chart) {
   charts.removeOne(chart);
   chart->deleteLater();
   tab_manager_->removeChart(chart);
@@ -401,7 +398,7 @@ void ChartsPanel::handleChartDrop(ChartView* chart, ChartView* target, DropMode 
   }
 }
 
-bool ChartsPanel::eventFilter(QObject *obj, QEvent *event) {
+bool ChartsPanel::eventFilter(QObject* obj, QEvent* event) {
   if (obj == scroll_area_->container_) {
     if (event->type() == QEvent::Leave) {
       hideHover();
@@ -410,21 +407,21 @@ bool ChartsPanel::eventFilter(QObject *obj, QEvent *event) {
   return QFrame::eventFilter(obj, event);
 }
 
-void ChartsPanel::changeEvent(QEvent *ev) {
+void ChartsPanel::changeEvent(QEvent* ev) {
   if (ev->type() == QEvent::PaletteChange || ev->type() == QEvent::StyleChange) {
     settingChanged();
   }
   QFrame::changeEvent(ev);
 }
 
-bool ChartsPanel::event(QEvent *event) {
+bool ChartsPanel::event(QEvent* event) {
   bool back_button = false;
   switch (event->type()) {
     case QEvent::MouseButtonPress:
-      back_button = static_cast<QMouseEvent *>(event)->button() == Qt::BackButton;
+      back_button = static_cast<QMouseEvent*>(event)->button() == Qt::BackButton;
       break;
     case QEvent::NativeGesture:
-      back_button = (static_cast<QNativeGestureEvent *>(event)->value() == 180);
+      back_button = (static_cast<QNativeGestureEvent*>(event)->value() == 180);
       break;
     case QEvent::Leave:
     case QEvent::WindowDeactivate:

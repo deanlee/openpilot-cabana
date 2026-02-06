@@ -11,13 +11,13 @@
 class FindSimilarBitsDlg : public QDialog {
   Q_OBJECT
 
-public:
-  FindSimilarBitsDlg(QWidget *parent);
+ public:
+  FindSimilarBitsDlg(QWidget* parent);
 
-signals:
-  void openMessage(const MessageId &msg_id);
+ signals:
+  void openMessage(const MessageId& msg_id);
 
-private:
+ private:
   struct mismatched_struct {
     uint32_t address, byte_idx, bit_idx, mismatches, total;
     float perc;
@@ -26,9 +26,9 @@ private:
                                     bool equal, int min_msgs_cnt);
   void find();
 
-  QTableWidget *table;
+  QTableWidget* table;
   QComboBox *src_bus_combo, *find_bus_combo, *msg_cb, *equal_combo;
   QSpinBox *byte_idx_sb, *bit_idx_sb;
-  QPushButton *search_btn;
-  QLineEdit *min_msgs;
+  QPushButton* search_btn;
+  QLineEdit* min_msgs;
 };

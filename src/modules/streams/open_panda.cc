@@ -10,19 +10,20 @@
 
 #include "modules/system/stream_manager.h"
 
-OpenPandaWidget::OpenPandaWidget(QWidget *parent) : AbstractStreamWidget(parent) {
+OpenPandaWidget::OpenPandaWidget(QWidget* parent) : AbstractStreamWidget(parent) {
   form_layout = new QFormLayout(this);
-  if (dynamic_cast<PandaStream *>(StreamManager::stream()) != nullptr) {
+  if (dynamic_cast<PandaStream*>(StreamManager::stream()) != nullptr) {
     form_layout->addWidget(new QLabel(tr("Already connected to %1.").arg(StreamManager::stream()->routeName())));
-    form_layout->addWidget(new QLabel("Close the current connection via [File menu -> Close Stream] before connecting to another Panda."));
+    form_layout->addWidget(
+        new QLabel("Close the current connection via [File menu -> Close Stream] before connecting to another Panda."));
     QTimer::singleShot(0, [this]() { emit enableOpenButton(false); });
     return;
   }
 
-  QHBoxLayout *serial_layout = new QHBoxLayout();
+  QHBoxLayout* serial_layout = new QHBoxLayout();
   serial_layout->addWidget(serial_edit = new QComboBox());
 
-  QPushButton *refresh = new QPushButton(tr("Refresh"));
+  QPushButton* refresh = new QPushButton(tr("Refresh"));
   refresh->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Preferred);
   serial_layout->addWidget(refresh);
   form_layout->addRow(tr("Serial"), serial_layout);
@@ -54,7 +55,8 @@ void OpenPandaWidget::buildConfigForm() {
   if (has_panda) {
     try {
       Panda panda(serial.toStdString());
-      has_fd = (panda.hw_type == cereal::PandaState::PandaType::RED_PANDA) || (panda.hw_type == cereal::PandaState::PandaType::RED_PANDA_V2);
+      has_fd = (panda.hw_type == cereal::PandaState::PandaType::RED_PANDA) ||
+               (panda.hw_type == cereal::PandaState::PandaType::RED_PANDA_V2);
     } catch (const std::exception& e) {
       qDebug() << "failed to open panda" << serial;
       has_panda = false;
@@ -65,11 +67,11 @@ void OpenPandaWidget::buildConfigForm() {
     config.serial = serial;
     config.bus_config.resize(3);
     for (int i = 0; i < config.bus_config.size(); i++) {
-      QHBoxLayout *bus_layout = new QHBoxLayout;
+      QHBoxLayout* bus_layout = new QHBoxLayout;
 
       // CAN Speed
       bus_layout->addWidget(new QLabel(tr("CAN Speed (kbps):")));
-      QComboBox *can_speed = new QComboBox;
+      QComboBox* can_speed = new QComboBox;
       for (int j = 0; j < std::size(speeds); j++) {
         can_speed->addItem(QString::number(speeds[j]));
 
@@ -77,15 +79,16 @@ void OpenPandaWidget::buildConfigForm() {
           can_speed->setCurrentIndex(j);
         }
       }
-      connect(can_speed, qOverload<int>(&QComboBox::currentIndexChanged), [=](int index) {config.bus_config[i].can_speed_kbps = speeds[index];});
+      connect(can_speed, qOverload<int>(&QComboBox::currentIndexChanged),
+              [=](int index) { config.bus_config[i].can_speed_kbps = speeds[index]; });
       bus_layout->addWidget(can_speed);
 
       // CAN-FD Speed
       if (has_fd) {
-        QCheckBox *enable_fd = new QCheckBox("CAN-FD");
+        QCheckBox* enable_fd = new QCheckBox("CAN-FD");
         bus_layout->addWidget(enable_fd);
         bus_layout->addWidget(new QLabel(tr("Data Speed (kbps):")));
-        QComboBox *data_speed = new QComboBox;
+        QComboBox* data_speed = new QComboBox;
         for (int j = 0; j < std::size(data_speeds); j++) {
           data_speed->addItem(QString::number(data_speeds[j]));
 
@@ -97,9 +100,10 @@ void OpenPandaWidget::buildConfigForm() {
         data_speed->setEnabled(false);
         bus_layout->addWidget(data_speed);
 
-        connect(data_speed, qOverload<int>(&QComboBox::currentIndexChanged), [=](int index) {config.bus_config[i].data_speed_kbps = data_speeds[index];});
+        connect(data_speed, qOverload<int>(&QComboBox::currentIndexChanged),
+                [=](int index) { config.bus_config[i].data_speed_kbps = data_speeds[index]; });
         connect(enable_fd, &QCheckBox::stateChanged, data_speed, &QComboBox::setEnabled);
-        connect(enable_fd, &QCheckBox::stateChanged, [=](int state) {config.bus_config[i].can_fd = (bool)state;});
+        connect(enable_fd, &QCheckBox::stateChanged, [=](int state) { config.bus_config[i].can_fd = (bool)state; });
       }
 
       form_layout->addRow(tr("Bus %1:").arg(i), bus_layout);
@@ -110,10 +114,10 @@ void OpenPandaWidget::buildConfigForm() {
   }
 }
 
-AbstractStream *OpenPandaWidget::open() {
+AbstractStream* OpenPandaWidget::open() {
   try {
     return new PandaStream(qApp, config);
-  } catch (std::exception &e) {
+  } catch (std::exception& e) {
     QMessageBox::warning(nullptr, tr("Warning"), tr("Failed to connect to panda: '%1'").arg(e.what()));
     return nullptr;
   }

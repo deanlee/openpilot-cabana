@@ -13,8 +13,8 @@
 #include <QStyle>
 #include <QSurfaceFormat>
 #include <QTextStream>
-#include <QtSvg/QSvgRenderer>
 #include <QWidget>
+#include <QtSvg/QSvgRenderer>
 
 #include "common/util.h"
 #include "modules/settings/settings.h"
@@ -133,7 +133,8 @@ void setTheme(int theme) {
 
 QString formatSeconds(double sec, bool include_milliseconds, bool absolute_time) {
   if (absolute_time) {
-    return QDateTime::fromMSecsSinceEpoch(sec * 1000).toString(include_milliseconds ? "yyyy-MM-dd HH:mm:ss.zzz" : "yyyy-MM-dd HH:mm:ss");
+    return QDateTime::fromMSecsSinceEpoch(sec * 1000)
+        .toString(include_milliseconds ? "yyyy-MM-dd HH:mm:ss.zzz" : "yyyy-MM-dd HH:mm:ss");
   }
 
   // High-performance relative time (math is faster than QTime objects)
@@ -147,13 +148,10 @@ QString formatSeconds(double sec, bool include_milliseconds, bool absolute_time)
   char buf[32];
   int len;
   if (h > 0) {
-    len = include_milliseconds
-              ? std::sprintf(buf, "%02d:%02d:%02d.%03d", h, m, s, ms)
-              : std::sprintf(buf, "%02d:%02d:%02d", h, m, s);
+    len = include_milliseconds ? std::sprintf(buf, "%02d:%02d:%02d.%03d", h, m, s, ms)
+                               : std::sprintf(buf, "%02d:%02d:%02d", h, m, s);
   } else {
-    len = include_milliseconds
-              ? std::sprintf(buf, "%02d:%02d.%03d", m, s, ms)
-              : std::sprintf(buf, "%02d:%02d", m, s);
+    len = include_milliseconds ? std::sprintf(buf, "%02d:%02d.%03d", m, s, ms) : std::sprintf(buf, "%02d:%02d", m, s);
   }
 
   return QString::fromLatin1(buf, len);
@@ -180,7 +178,7 @@ void sigTermHandler(int s) {
   qApp->quit();
 }
 
-void initApp(int argc, char *argv[], bool disable_hidpi) {
+void initApp(int argc, char* argv[], bool disable_hidpi) {
   // setup signal handlers to exit gracefully
   std::signal(SIGINT, sigTermHandler);
   std::signal(SIGTERM, sigTermHandler);

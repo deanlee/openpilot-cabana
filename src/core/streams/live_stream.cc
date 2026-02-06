@@ -33,7 +33,7 @@ struct LiveStream::Logger {
   uint64_t start_ts;
 };
 
-LiveStream::LiveStream(QObject *parent) : AbstractStream(parent) {
+LiveStream::LiveStream(QObject* parent) : AbstractStream(parent) {
   if (settings.log_livestream) {
     logger = std::make_unique<Logger>();
   }
@@ -44,9 +44,7 @@ LiveStream::LiveStream(QObject *parent) : AbstractStream(parent) {
   connect(stream_thread, &QThread::finished, stream_thread, &QThread::deleteLater);
 }
 
-LiveStream::~LiveStream() {
-  stop();
-}
+LiveStream::~LiveStream() { stop(); }
 
 void LiveStream::startUpdateTimer() {
   update_timer.stop();
@@ -81,7 +79,7 @@ void LiveStream::handleEvent(kj::ArrayPtr<capnp::word> data) {
   if (event.which() == cereal::Event::Which::CAN) {
     const uint64_t mono_ns = event.getLogMonoTime();
     std::lock_guard lk(lock);
-    for (const auto &c : event.getCan()) {
+    for (const auto& c : event.getCan()) {
       received_events_.push_back(newEvent(mono_ns, c));
     }
   }
@@ -125,13 +123,13 @@ void LiveStream::processNewMessages() {
   }
 
   uint64_t last_ts = post_last_event && speed_ == 1.0
-                       ? all_events_.back()->mono_ns
-                       : first_event_ts + (nanos_since_boot() - first_update_ts) * speed_;
+                         ? all_events_.back()->mono_ns
+                         : first_event_ts + (nanos_since_boot() - first_update_ts) * speed_;
   auto first = std::ranges::upper_bound(all_events_, current_event_ts, {}, &CanEvent::mono_ns);
   auto last = std::ranges::upper_bound(first, all_events_.end(), last_ts, {}, &CanEvent::mono_ns);
 
   for (auto it = first; it != last; ++it) {
-    const CanEvent *e = *it;
+    const CanEvent* e = *it;
     MessageId id(e->src, e->address);
     processNewMessage(id, e->mono_ns, e->dat, e->size);
     current_event_ts = e->mono_ns;

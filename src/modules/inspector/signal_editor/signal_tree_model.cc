@@ -4,7 +4,6 @@
 #include <QFontDatabase>
 #include <QMessageBox>
 #include <QtConcurrent>
-
 #include <span>
 
 #include "core/commands/commands.h"
@@ -14,14 +13,17 @@
 #include "modules/system/stream_manager.h"
 
 static const QStringList SIGNAL_PROPERTY_LABELS = {
-    "Name", "Size", "Receiver Nodes", "Little Endian", "Signed", "Offset", "Factor", 
-    "Type", "Multiplex Value", "Extra Info", "Unit", "Comment", "Min", "Max", "Value Table"
-};
+    "Name",   "Size", "Receiver Nodes",  "Little Endian", "Signed", "Offset",
+    "Factor", "Type", "Multiplex Value", "Extra Info",    "Unit",   "Comment",
+    "Min",    "Max",  "Value Table"};
 
 QString signalTypeToString(dbc::Signal::Type type) {
-  if (type == dbc::Signal::Type::Multiplexor) return "Multiplexor Signal";
-  else if (type == dbc::Signal::Type::Multiplexed) return "Multiplexed Signal";
-  else return "Normal Signal";
+  if (type == dbc::Signal::Type::Multiplexor)
+    return "Multiplexor Signal";
+  else if (type == dbc::Signal::Type::Multiplexed)
+    return "Multiplexed Signal";
+  else
+    return "Normal Signal";
 }
 
 SignalTreeModel::SignalTreeModel(QObject* parent) : QAbstractItemModel(parent) {
@@ -36,12 +38,12 @@ SignalTreeModel::SignalTreeModel(QObject* parent) : QAbstractItemModel(parent) {
   connect(GetDBC(), &dbc::Manager::signalRemoved, this, &SignalTreeModel::handleSignalRemoved);
 }
 
-void SignalTreeModel::insertItem(SignalTreeModel::Item *root_item, int pos, const dbc::Signal *sig) {
-  Item *sig_item = new Item(Item::Sig, sig->name, sig, root_item);
+void SignalTreeModel::insertItem(SignalTreeModel::Item* root_item, int pos, const dbc::Signal* sig) {
+  Item* sig_item = new Item(Item::Sig, sig->name, sig, root_item);
   root_item->children.insert(pos, sig_item);
 }
 
-void SignalTreeModel::setMessage(const MessageId &id) {
+void SignalTreeModel::setMessage(const MessageId& id) {
   msg_id = id;
   filter_str = "";
   rebuild();
@@ -58,12 +60,12 @@ void SignalTreeModel::updateValues(const MessageSnapshot* msg) {
       current_max = std::max(current_max, item->value_width);
     }
   }
-  current_max += 10; // Small buffer
+  current_max += 10;  // Small buffer
 
   if (current_max > max_value_width) {
     max_value_width = current_max;
   } else if (max_value_width - current_max > 40) {
-    max_value_width = current_max + 10; // Shrink to target + small buffer
+    max_value_width = current_max + 10;  // Shrink to target + small buffer
   }
 }
 
@@ -74,22 +76,21 @@ void SignalTreeModel::updateSparklines(const MessageSnapshot* msg, int first_row
   }
 
   if (sparkline_context_.update(msg_id, StreamManager::stream()->toMonoNs(msg->ts), settings.sparkline_range, size)) {
-    QtConcurrent::blockingMap(items, [&](SignalTreeModel::Item* item) {
-      item->sparkline->update(item->sig, sparkline_context_);
-    });
+    QtConcurrent::blockingMap(
+        items, [&](SignalTreeModel::Item* item) { item->sparkline->update(item->sig, sparkline_context_); });
 
     emit dataChanged(index(first_row, 1), index(last_row, 1), {Qt::DisplayRole});
   }
 }
 
-void SignalTreeModel::updateChartedSignals(const QMap<MessageId, QSet<const dbc::Signal*>> &opened) {
+void SignalTreeModel::updateChartedSignals(const QMap<MessageId, QSet<const dbc::Signal*>>& opened) {
   charted_signals_ = opened;
   if (rowCount() > 0) {
     emit dataChanged(index(0, 0), index(rowCount() - 1, 1), {IsChartedRole});
   }
 }
 
-void SignalTreeModel::setFilter(const QString &txt) {
+void SignalTreeModel::setFilter(const QString& txt) {
   filter_str = txt;
   rebuild();
 }
@@ -111,25 +112,25 @@ void SignalTreeModel::rebuild() {
   endResetModel();
 }
 
-SignalTreeModel::Item *SignalTreeModel::itemFromIndex(const QModelIndex &index) const {
-  auto item = index.isValid() ? (SignalTreeModel::Item *)index.internalPointer() : nullptr;
+SignalTreeModel::Item* SignalTreeModel::itemFromIndex(const QModelIndex& index) const {
+  auto item = index.isValid() ? (SignalTreeModel::Item*)index.internalPointer() : nullptr;
   return item ? item : root.get();
 }
 
-int SignalTreeModel::rowCount(const QModelIndex &parent) const {
+int SignalTreeModel::rowCount(const QModelIndex& parent) const {
   if (parent.column() > 0) return 0;
   return itemFromIndex(parent)->children.size();
 }
 
-bool SignalTreeModel::hasChildren(const QModelIndex &parent) const {
+bool SignalTreeModel::hasChildren(const QModelIndex& parent) const {
   if (!parent.isValid()) return true;
-  Item *item = itemFromIndex(parent);
+  Item* item = itemFromIndex(parent);
   return item->type == Item::Sig || item->type == Item::ExtraInfo;
 }
 
-bool SignalTreeModel::canFetchMore(const QModelIndex &parent) const {
+bool SignalTreeModel::canFetchMore(const QModelIndex& parent) const {
   if (!parent.isValid()) return false;
-  Item *item = itemFromIndex(parent);
+  Item* item = itemFromIndex(parent);
 
   return (item->type == Item::Sig || item->type == Item::ExtraInfo) && item->children.isEmpty();
 }
@@ -138,11 +139,10 @@ void SignalTreeModel::fetchMore(const QModelIndex& parent) {
   if (!parent.isValid()) return;
   Item* item = itemFromIndex(parent);
 
-  static constexpr std::array kSigChildren = {
-    Item::Name, Item::Size, Item::Node, Item::Endian, Item::Signed,
-    Item::Offset, Item::Factor, Item::SignalType, Item::MultiplexValue, Item::ExtraInfo};
-  static constexpr std::array kExtraInfoChildren = {
-    Item::Unit, Item::Comment, Item::Min, Item::Max, Item::ValueTable};
+  static constexpr std::array kSigChildren = {Item::Name,           Item::Size,     Item::Node,   Item::Endian,
+                                              Item::Signed,         Item::Offset,   Item::Factor, Item::SignalType,
+                                              Item::MultiplexValue, Item::ExtraInfo};
+  static constexpr std::array kExtraInfoChildren = {Item::Unit, Item::Comment, Item::Min, Item::Max, Item::ValueTable};
 
   std::span<const Item::Type> types;
   if (item->type == Item::Sig) {
@@ -185,14 +185,14 @@ Qt::ItemFlags SignalTreeModel::flags(const QModelIndex& index) const {
   return f;
 }
 
-int SignalTreeModel::signalRow(const dbc::Signal *sig) const {
+int SignalTreeModel::signalRow(const dbc::Signal* sig) const {
   for (int i = 0; i < root->children.size(); ++i) {
     if (root->children[i]->sig == sig) return i;
   }
   return -1;
 }
 
-QModelIndex SignalTreeModel::index(int row, int column, const QModelIndex &parent) const {
+QModelIndex SignalTreeModel::index(int row, int column, const QModelIndex& parent) const {
   if (parent.isValid() && parent.column() != 0) return {};
 
   auto parent_item = itemFromIndex(parent);
@@ -202,16 +202,16 @@ QModelIndex SignalTreeModel::index(int row, int column, const QModelIndex &paren
   return {};
 }
 
-QModelIndex SignalTreeModel::parent(const QModelIndex &index) const {
+QModelIndex SignalTreeModel::parent(const QModelIndex& index) const {
   if (!index.isValid()) return {};
-  Item *parent_item = itemFromIndex(index)->parent;
+  Item* parent_item = itemFromIndex(index)->parent;
   return !parent_item || parent_item == root.get() ? QModelIndex() : createIndex(parent_item->row(), 0, parent_item);
 }
 
-QVariant SignalTreeModel::data(const QModelIndex &index, int role) const {
+QVariant SignalTreeModel::data(const QModelIndex& index, int role) const {
   if (!index.isValid()) return {};
 
-  const Item *item = itemFromIndex(index);
+  const Item* item = itemFromIndex(index);
   if (role == Qt::DisplayRole || role == Qt::EditRole) {
     if (index.column() == 0) {
       return item->type == Item::Sig ? item->sig->name : item->title;
@@ -232,7 +232,7 @@ QVariant SignalTreeModel::data(const QModelIndex &index, int role) const {
       case Item::Max: return utils::doubleToString(item->sig->max);
       case Item::ValueTable: {
         QStringList value_table;
-        for (auto &[val, desc] : item->sig->value_table) {
+        for (auto& [val, desc] : item->sig->value_table) {
           value_table << QString("%1 \"%2\"").arg(val).arg(desc);
         }
         return value_table.join(" ");
@@ -254,10 +254,10 @@ QVariant SignalTreeModel::data(const QModelIndex &index, int role) const {
   return {};
 }
 
-bool SignalTreeModel::setData(const QModelIndex &index, const QVariant &value, int role) {
+bool SignalTreeModel::setData(const QModelIndex& index, const QVariant& value, int role) {
   if (role != Qt::EditRole && role != Qt::CheckStateRole) return false;
 
-  Item *item = itemFromIndex(index);
+  Item* item = itemFromIndex(index);
   dbc::Signal s = *item->sig;
   switch (item->type) {
     case Item::Name: s.name = value.toString(); break;
@@ -292,7 +292,7 @@ void SignalTreeModel::highlightSignalRow(const dbc::Signal* sig) {
   }
 }
 
-bool SignalTreeModel::saveSignal(const dbc::Signal *origin_s, dbc::Signal &s) {
+bool SignalTreeModel::saveSignal(const dbc::Signal* origin_s, dbc::Signal& s) {
   auto msg = GetDBC()->msg(msg_id);
   if (s.name != origin_s->name && msg->sig(s.name) != nullptr) {
     QString text = tr("There is already a signal with the same name '%1'").arg(s.name);
@@ -313,7 +313,7 @@ void SignalTreeModel::handleMsgChanged(MessageId id) {
   }
 }
 
-void SignalTreeModel::handleSignalAdded(MessageId id, const dbc::Signal *sig) {
+void SignalTreeModel::handleSignalAdded(MessageId id, const dbc::Signal* sig) {
   if (id == msg_id) {
     if (filter_str.isEmpty()) {
       int i = GetDBC()->msg(msg_id)->indexOf(sig);
@@ -326,7 +326,7 @@ void SignalTreeModel::handleSignalAdded(MessageId id, const dbc::Signal *sig) {
   }
 }
 
-void SignalTreeModel::handleSignalUpdated(const dbc::Signal *sig) {
+void SignalTreeModel::handleSignalUpdated(const dbc::Signal* sig) {
   if (int row = signalRow(sig); row != -1) {
     emit dataChanged(index(row, 0), index(row, 1), {Qt::DisplayRole, Qt::EditRole, Qt::CheckStateRole});
 
@@ -342,7 +342,7 @@ void SignalTreeModel::handleSignalUpdated(const dbc::Signal *sig) {
   }
 }
 
-void SignalTreeModel::handleSignalRemoved(const dbc::Signal *sig) {
+void SignalTreeModel::handleSignalRemoved(const dbc::Signal* sig) {
   if (int row = signalRow(sig); row != -1) {
     beginRemoveRows({}, row, row);
     delete root->children.takeAt(row);

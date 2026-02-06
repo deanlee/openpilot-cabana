@@ -3,10 +3,7 @@
 #include <QPixmap>
 #include <QStyledItemDelegate>
 
-enum class CallerType {
-  MessageList,
-  HistoryView
-};
+enum class CallerType { MessageList, HistoryView };
 
 enum ColumnTypeRole {
   IsHexColumn = Qt::UserRole + 11,

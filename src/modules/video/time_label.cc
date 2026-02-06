@@ -35,8 +35,7 @@ void TimeLabel::paintEvent(QPaintEvent* event) {
   // 2. Draw Regular Total Time
   if (!total_sec_text.isEmpty()) {
     p.setFont(fixed_font);
-    p.drawText(cur_time_width, 0, width() - cur_time_width, height(),
-               Qt::AlignLeft | Qt::AlignVCenter, total_sec_text);
+    p.drawText(cur_time_width, 0, width() - cur_time_width, height(), Qt::AlignLeft | Qt::AlignVCenter, total_sec_text);
   }
 }
 

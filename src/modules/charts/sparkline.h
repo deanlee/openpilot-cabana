@@ -18,13 +18,13 @@ class RingBuffer {
     buffer[head++ & (N - 1)] = item;
     if (count < N) count++;
   }
-  const T& operator[](size_t i) const {
-    return buffer[(head - count + i) & (N - 1)];
-  }
+  const T& operator[](size_t i) const { return buffer[(head - count + i) & (N - 1)]; }
   const T& front() const { return (*this)[0]; }
   const T& back() const { return (*this)[count - 1]; }
   void pop_front_n(size_t n) { count = (n >= count) ? 0 : count - n; }
-  void pop_front() { if (count > 0) count--; }
+  void pop_front() {
+    if (count > 0) count--;
+  }
   void clear() {
     head = 0;
     count = 0;
@@ -53,7 +53,7 @@ class SparklineContext {
   QSize widget_size = {};
   float px_per_ns = 0;
 
-  bool update(const MessageId &msg_id, uint64_t current_ns, int time_window, const QSize& size);
+  bool update(const MessageId& msg_id, uint64_t current_ns, int time_window, const QSize& size);
   inline float getX(uint64_t ts) const {
     if (ts >= win_end_ns) return right_edge;
 
@@ -93,17 +93,23 @@ class Sparkline {
 
     void update(double y, uint64_t ts) {
       exit = y;
-      if (y > min) { min = y; min_ts = ts; } // Y increases downwards
-      if (y < max) { max = y; max_ts = ts; }
+      if (y > min) {
+        min = y;
+        min_ts = ts;
+      }  // Y increases downwards
+      if (y < max) {
+        max = y;
+        max_ts = ts;
+      }
     }
   };
 
-  void updateDataPoints(const dbc::Signal* sig, const SparklineContext &ctx);
+  void updateDataPoints(const dbc::Signal* sig, const SparklineContext& ctx);
   bool calculateValueBounds();
   void flushBucket(int x, const Bucket& b);
   void addUniquePoint(int x, float y);
   void render();
-  void mapFlatPath(const SparklineContext &ctx);
+  void mapFlatPath(const SparklineContext& ctx);
   void mapNoisyPath(const SparklineContext& ctx);
 
   RingBuffer<DataPoint> history_;

@@ -24,11 +24,7 @@ class Signal {
   bool operator==(const dbc::Signal& other) const;
   inline bool operator!=(const dbc::Signal& other) const { return !(*this == other); }
 
-  enum class Type {
-    Normal = 0,
-    Multiplexed,
-    Multiplexor
-  };
+  enum class Type { Normal = 0, Multiplexed, Multiplexor };
 
   Type type = Type::Normal;
   QString name;
@@ -49,7 +45,7 @@ class Signal {
   int multiplex_value = 0;
   Signal* multiplexor = nullptr;
 };
-}  // namespace cabana
+}  // namespace dbc
 
 // Helper functions
 void updateMsbLsb(dbc::Signal& s);

@@ -4,7 +4,7 @@
 
 #include "utils/util.h"
 
-HistoryHeader::HistoryHeader(Qt::Orientation orientation, QWidget *parent) : QHeaderView(orientation, parent) {
+HistoryHeader::HistoryHeader(Qt::Orientation orientation, QWidget* parent) : QHeaderView(orientation, parent) {
   setResizeContentsPrecision(100);
   setHighlightSections(false);
   setStretchLastSection(true);

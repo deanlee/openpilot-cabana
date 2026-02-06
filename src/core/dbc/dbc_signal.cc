@@ -66,12 +66,10 @@ bool dbc::Signal::parse(const uint8_t* data, size_t data_size, double* val) cons
 }
 
 bool dbc::Signal::operator==(const dbc::Signal& other) const {
-  return name == other.name && size == other.size &&
-         start_bit == other.start_bit &&
-         msb == other.msb && lsb == other.lsb &&
-         is_signed == other.is_signed && is_little_endian == other.is_little_endian &&
-         factor == other.factor && offset == other.offset &&
-         min == other.min && max == other.max && comment == other.comment && unit == other.unit && value_table == other.value_table &&
+  return name == other.name && size == other.size && start_bit == other.start_bit && msb == other.msb &&
+         lsb == other.lsb && is_signed == other.is_signed && is_little_endian == other.is_little_endian &&
+         factor == other.factor && offset == other.offset && min == other.min && max == other.max &&
+         comment == other.comment && unit == other.unit && value_table == other.value_table &&
          multiplex_value == other.multiplex_value && type == other.type && receiver_name == other.receiver_name;
 }
 

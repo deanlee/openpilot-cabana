@@ -1,7 +1,6 @@
 #include "abstract_stream.h"
 
 #include <QApplication>
-
 #include <cstring>
 #include <limits>
 #include <utility>
@@ -187,8 +186,8 @@ void AbstractStream::mergeEvents(const std::vector<const CanEvent*>& events) {
     bool is_append = target.empty() || new_evs.front()->mono_ns >= target.back()->mono_ns;
     target.reserve(target.size() + new_evs.size());
 
-    auto pos = is_append ? target.end()
-                         : std::ranges::upper_bound(target, new_evs.front()->mono_ns, {}, &CanEvent::mono_ns);
+    auto pos =
+        is_append ? target.end() : std::ranges::upper_bound(target, new_evs.front()->mono_ns, {}, &CanEvent::mono_ns);
     target.insert(pos, new_evs.begin(), new_evs.end());
     return is_append;
   };
@@ -206,7 +205,8 @@ void AbstractStream::mergeEvents(const std::vector<const CanEvent*>& events) {
   emit eventsMerged(msg_events);
 }
 
-std::pair<CanEventIter, CanEventIter> AbstractStream::eventsInRange(const MessageId& id, std::optional<std::pair<double, double>> range) const {
+std::pair<CanEventIter, CanEventIter> AbstractStream::eventsInRange(
+    const MessageId& id, std::optional<std::pair<double, double>> range) const {
   const auto& evs = events(id);
   if (evs.empty() || !range) return {evs.begin(), evs.end()};
 

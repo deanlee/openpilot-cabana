@@ -2,8 +2,7 @@
 
 #include "modules/charts/chart_view.h"
 
-ChartsTabManager::ChartsTabManager(QWidget* parent)
-    : QObject(parent) {
+ChartsTabManager::ChartsTabManager(QWidget* parent) : QObject(parent) {
   tabbar_ = new TabBar(parent);
   tabbar_->setAutoHide(true);
   tabbar_->setExpanding(false);
@@ -43,7 +42,7 @@ void ChartsTabManager::handleTabClose(int index) {
 }
 
 void ChartsTabManager::insertChart(int pos, ChartView* chart) {
-  auto &current_charts = currentCharts();
+  auto& current_charts = currentCharts();
   pos = std::clamp<int>(pos, 0, current_charts.size());
   current_charts.insert(pos, chart);
   updateLabels();

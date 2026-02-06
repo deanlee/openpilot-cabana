@@ -6,18 +6,18 @@
 #include <QMessageBox>
 #include <QPushButton>
 
-OpenSocketCanWidget::OpenSocketCanWidget(QWidget *parent) : AbstractStreamWidget(parent) {
-  QVBoxLayout *main_layout = new QVBoxLayout(this);
+OpenSocketCanWidget::OpenSocketCanWidget(QWidget* parent) : AbstractStreamWidget(parent) {
+  QVBoxLayout* main_layout = new QVBoxLayout(this);
   main_layout->addStretch(1);
 
-  QFormLayout *form_layout = new QFormLayout();
+  QFormLayout* form_layout = new QFormLayout();
 
-  QHBoxLayout *device_layout = new QHBoxLayout();
+  QHBoxLayout* device_layout = new QHBoxLayout();
   device_edit = new QComboBox();
   device_edit->setFixedWidth(300);
   device_layout->addWidget(device_edit);
 
-  QPushButton *refresh = new QPushButton(tr("Refresh"));
+  QPushButton* refresh = new QPushButton(tr("Refresh"));
   refresh->setFixedWidth(100);
   device_layout->addWidget(refresh);
   form_layout->addRow(tr("Device"), device_layout);
@@ -27,7 +27,7 @@ OpenSocketCanWidget::OpenSocketCanWidget(QWidget *parent) : AbstractStreamWidget
   setFocusProxy(device_edit);
 
   connect(refresh, &QPushButton::clicked, this, &OpenSocketCanWidget::refreshDevices);
-  connect(device_edit, &QComboBox::currentTextChanged, this, [=]{ config.device = device_edit->currentText(); });
+  connect(device_edit, &QComboBox::currentTextChanged, this, [=] { config.device = device_edit->currentText(); });
 
   // Populate devices
   refreshDevices();
@@ -40,11 +40,10 @@ void OpenSocketCanWidget::refreshDevices() {
   }
 }
 
-
-AbstractStream *OpenSocketCanWidget::open() {
+AbstractStream* OpenSocketCanWidget::open() {
   try {
     return new SocketCanStream(qApp, config);
-  } catch (std::exception &e) {
+  } catch (std::exception& e) {
     QMessageBox::warning(nullptr, tr("Warning"), tr("Failed to connect to SocketCAN device: '%1'").arg(e.what()));
     return nullptr;
   }

@@ -15,34 +15,34 @@ class ToolButton;
 class MessageList : public QWidget {
   Q_OBJECT
 
-public:
-  MessageList(QWidget *parent);
+ public:
+  MessageList(QWidget* parent);
   QByteArray saveHeaderState() const { return view->header()->saveState(); }
-  bool restoreHeaderState(const QByteArray &state) const { return view->header()->restoreState(state); }
+  bool restoreHeaderState(const QByteArray& state) const { return view->header()->restoreState(state); }
   void suppressHighlighted(bool suppress);
-  void selectMessage(const MessageId &message_id) { selectMessageForced(message_id, false); }
+  void selectMessage(const MessageId& message_id) { selectMessageForced(message_id, false); }
 
-signals:
-  void msgSelectionChanged(const MessageId &message_id);
-  void titleChanged(const QString &title);
+ signals:
+  void msgSelectionChanged(const MessageId& message_id);
+  void titleChanged(const QString& title);
 
-protected:
+ protected:
   void setupConnections();
-  void selectMessageForced(const MessageId &msg_id, bool force);
-  QWidget *createToolBar();
+  void selectMessageForced(const MessageId& msg_id, bool force);
+  QWidget* createToolBar();
   void resetState();
-  void headerContextMenuEvent(const QPoint &pos);
+  void headerContextMenuEvent(const QPoint& pos);
   void menuAboutToShow();
   void updateTitle();
-  void handleSelectionChanged(const QModelIndex &current);
+  void handleSelectionChanged(const QModelIndex& current);
 
-  MessageTable *view;
-  MessageHeader *header;
-  MessageDelegate *delegate;
+  MessageTable* view;
+  MessageHeader* header;
+  MessageDelegate* delegate;
   std::optional<MessageId> current_msg_id;
-  MessageModel *model;
-  ToolButton *suppress_add;
-  ToolButton *suppress_clear;
-  QCheckBox *suppress_defined_signals;
-  QMenu *menu;
+  MessageModel* model;
+  ToolButton* suppress_add;
+  ToolButton* suppress_clear;
+  QCheckBox* suppress_defined_signals;
+  QMenu* menu;
 };

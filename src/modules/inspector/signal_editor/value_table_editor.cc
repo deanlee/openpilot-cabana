@@ -84,13 +84,10 @@ void ValueTableEditor::setupConnections() {
   });
 
   // Remove Button logic
-  connect(remove_btn, &QPushButton::clicked, [this]() {
-    table->removeRow(table->currentRow());
-  });
+  connect(remove_btn, &QPushButton::clicked, [this]() { table->removeRow(table->currentRow()); });
 
-  connect(table, &QTableWidget::itemSelectionChanged, [this]() {
-    remove_btn->setEnabled(table->selectionModel()->hasSelection());
-  });
+  connect(table, &QTableWidget::itemSelectionChanged,
+          [this]() { remove_btn->setEnabled(table->selectionModel()->hasSelection()); });
 
   // Keyboard: Delete key
   QShortcut* deleteShortcut = new QShortcut(QKeySequence::Delete, table);
@@ -125,8 +122,7 @@ void ValueTableEditor::handleSave() {
     }
 
     if (seen_values.contains(val)) {
-      QMessageBox::warning(this, tr("Duplicate Value"),
-                           tr("Value %1 is defined multiple times.").arg(val));
+      QMessageBox::warning(this, tr("Duplicate Value"), tr("Value %1 is defined multiple times.").arg(val));
       table->setCurrentCell(i, 0);
       return;
     }
@@ -140,7 +136,8 @@ void ValueTableEditor::handleSave() {
   QDialog::accept();
 }
 
-QWidget* ValueTableEditor::Delegate::createEditor(QWidget* parent, const QStyleOptionViewItem& option, const QModelIndex& index) const {
+QWidget* ValueTableEditor::Delegate::createEditor(QWidget* parent, const QStyleOptionViewItem& option,
+                                                  const QModelIndex& index) const {
   QLineEdit* edit = new QLineEdit(parent);
   edit->setFrame(false);
   if (index.column() == 0) {

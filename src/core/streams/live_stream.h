@@ -1,18 +1,17 @@
 #pragma once
 
+#include <QBasicTimer>
 #include <algorithm>
 #include <memory>
 #include <vector>
-
-#include <QBasicTimer>
 
 #include "abstract_stream.h"
 
 class LiveStream : public AbstractStream {
   Q_OBJECT
 
-public:
-  LiveStream(QObject *parent);
+ public:
+  LiveStream(QObject* parent);
   virtual ~LiveStream();
   void start() override;
   void stop();
@@ -25,18 +24,18 @@ public:
   void pause(bool pause) override;
   void seekTo(double sec) override;
 
-protected:
+ protected:
   virtual void streamThread() = 0;
   void handleEvent(kj::ArrayPtr<capnp::word> event);
 
-private:
+ private:
   void startUpdateTimer();
-  void timerEvent(QTimerEvent *event) override;
+  void timerEvent(QTimerEvent* event) override;
   void processNewMessages();
 
   std::mutex lock;
-  QThread *stream_thread;
-  std::vector<const CanEvent *> received_events_;
+  QThread* stream_thread;
+  std::vector<const CanEvent*> received_events_;
 
   int timer_id;
   QBasicTimer update_timer;

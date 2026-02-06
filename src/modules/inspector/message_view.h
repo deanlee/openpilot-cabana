@@ -14,41 +14,41 @@ class QSplitter;
 class MessageView : public QWidget {
   Q_OBJECT
 
-public:
-  MessageView(ChartsPanel *charts, QWidget *parent);
-  void setMessage(const MessageId &message_id);
+ public:
+  MessageView(ChartsPanel* charts, QWidget* parent);
+  void setMessage(const MessageId& message_id);
   void refresh();
   std::pair<QString, QStringList> serializeMessageIds() const;
-  void restoreTabs(const QString active_msg_id, const QStringList &msg_ids);
+  void restoreTabs(const QString active_msg_id, const QStringList& msg_ids);
   void resetState();
   void toggleCenterOrientation();
 
-signals:
+ signals:
   void requestDockCompression();
-  void activeMessageChanged(const MessageId &id);
+  void activeMessageChanged(const MessageId& id);
 
-private:
+ private:
   void setupConnections();
-  QWidget *createToolBar();
+  QWidget* createToolBar();
   int findOrAddTab(const MessageId& id);
-  void showTabBarContextMenu(const QPoint &pt);
+  void showTabBarContextMenu(const QPoint& pt);
   void editMsg();
   void removeMsg();
-  void updateState(const std::set<MessageId> *msgs = nullptr);
+  void updateState(const std::set<MessageId>* msgs = nullptr);
   void updateOrientationButton();
 
   MessageId msg_id;
   QLabel *warning_icon, *warning_label;
-  ElidedLabel *name_label;
-  QWidget *warning_widget;
-  TabBar *tabbar;
-  QTabWidget *tab_widget;
-  ToolButton *remove_msg_btn;
-  MessageHistory *message_history;
-  BinaryView *binary_view;
-  BinaryModel *binary_model;
-  SignalEditor *signal_editor;
-  ChartsPanel *charts;
-  PanelSplitter *splitter;
-  ToolButton *toggle_orientation_btn_;
+  ElidedLabel* name_label;
+  QWidget* warning_widget;
+  TabBar* tabbar;
+  QTabWidget* tab_widget;
+  ToolButton* remove_msg_btn;
+  MessageHistory* message_history;
+  BinaryView* binary_view;
+  BinaryModel* binary_model;
+  SignalEditor* signal_editor;
+  ChartsPanel* charts;
+  PanelSplitter* splitter;
+  ToolButton* toggle_orientation_btn_;
 };

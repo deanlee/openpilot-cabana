@@ -14,11 +14,11 @@
 const int MIN_CACHE_MINIUTES = 30;
 const int MAX_CACHE_MINIUTES = 120;
 
-SettingsDialog::SettingsDialog(QWidget *parent) : QDialog(parent) {
+SettingsDialog::SettingsDialog(QWidget* parent) : QDialog(parent) {
   setWindowTitle(tr("Settings"));
-  QVBoxLayout *main_layout = new QVBoxLayout(this);
-  QGroupBox *groupbox = new QGroupBox("General");
-  QFormLayout *form_layout = new QFormLayout(groupbox);
+  QVBoxLayout* main_layout = new QVBoxLayout(this);
+  QGroupBox* groupbox = new QGroupBox("General");
+  QFormLayout* form_layout = new QFormLayout(groupbox);
 
   form_layout->addRow(tr("Color Theme"), theme = new QComboBox(this));
   theme->setToolTip(tr("You may need to restart cabana after changes theme"));
@@ -53,7 +53,7 @@ SettingsDialog::SettingsDialog(QWidget *parent) : QDialog(parent) {
 
   log_livestream = new QGroupBox(tr("Enable live stream logging"), this);
   log_livestream->setCheckable(true);
-  QHBoxLayout *path_layout = new QHBoxLayout(log_livestream);
+  QHBoxLayout* path_layout = new QHBoxLayout(log_livestream);
   path_layout->addWidget(log_path = new QLineEdit(settings.log_path, this));
   log_path->setReadOnly(true);
   auto browse_btn = new QPushButton(tr("B&rowse..."));
@@ -65,10 +65,9 @@ SettingsDialog::SettingsDialog(QWidget *parent) : QDialog(parent) {
   setFixedSize(400, sizeHint().height());
 
   connect(browse_btn, &QPushButton::clicked, [this]() {
-    QString fn = QFileDialog::getExistingDirectory(
-        this, tr("Log File Location"),
-        QStandardPaths::writableLocation(QStandardPaths::HomeLocation),
-        QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks);
+    QString fn = QFileDialog::getExistingDirectory(this, tr("Log File Location"),
+                                                   QStandardPaths::writableLocation(QStandardPaths::HomeLocation),
+                                                   QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks);
     if (!fn.isEmpty()) {
       log_path->setText(fn);
     }

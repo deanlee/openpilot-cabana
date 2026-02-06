@@ -27,9 +27,7 @@ void ChartsScrollArea::startAutoScroll() {
   }
 }
 
-void ChartsScrollArea::stopAutoScroll() {
-  auto_scroll_timer_->stop();
-}
+void ChartsScrollArea::stopAutoScroll() { auto_scroll_timer_->stop(); }
 
 void ChartsScrollArea::doAutoScroll() {
   QScrollBar* scroll = verticalScrollBar();
@@ -56,8 +54,8 @@ void ChartsScrollArea::doAutoScroll() {
 
   if (scroll->value() != old_val) {
     // Synthesize a move event to the container to update the drop indicators
-    QMouseEvent mm(QEvent::MouseMove, container_->mapFromGlobal(global_pos),
-                   global_pos, Qt::NoButton, Qt::LeftButton, Qt::NoModifier);
+    QMouseEvent mm(QEvent::MouseMove, container_->mapFromGlobal(global_pos), global_pos, Qt::NoButton, Qt::LeftButton,
+                   Qt::NoModifier);
     QApplication::sendEvent(container_, &mm);
   }
 }

@@ -28,11 +28,8 @@ void PanelSplitter::Handle::paintEvent(QPaintEvent* e) {
 bool PanelSplitter::Handle::event(QEvent* e) {
   switch (e->type()) {
     case QEvent::HoverEnter:
-    case QEvent::HoverLeave:
-      update();
-      break;
-    default:
-      break;
+    case QEvent::HoverLeave: update(); break;
+    default: break;
   }
   return QSplitterHandle::event(e);
 }

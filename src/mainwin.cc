@@ -22,7 +22,7 @@
 #include "tools/findsignal.h"
 #include "widgets/guide_overlay.h"
 
-MainWindow::MainWindow(AbstractStream *stream, const QString &dbc_file) : QMainWindow() {
+MainWindow::MainWindow(AbstractStream* stream, const QString& dbc_file) : QMainWindow() {
   dbc_controller_ = new DbcController(this);
   charts_panel = new ChartsPanel(this);
   inspector_widget_ = new MessageInspector(charts_panel, this);
@@ -71,7 +71,8 @@ void MainWindow::setupConnections() {
   connect(&StreamManager::instance(), &StreamManager::streamChanged, this, &MainWindow::onStreamChanged);
   connect(&StreamManager::instance(), &StreamManager::eventsMerged, this, &MainWindow::eventsMerged);
 
-  connect(inspector_widget_->getMessageView(), &MessageView::activeMessageChanged, message_list_, &MessageList::selectMessage);
+  connect(inspector_widget_->getMessageView(), &MessageView::activeMessageChanged, message_list_,
+          &MessageList::selectMessage);
 }
 
 void MainWindow::setupMenus() {
@@ -83,7 +84,7 @@ void MainWindow::setupMenus() {
 }
 
 void MainWindow::createFileMenu() {
-  QMenu *file_menu = menuBar()->addMenu(tr("&File"));
+  QMenu* file_menu = menuBar()->addMenu(tr("&File"));
   file_menu->addAction(tr("Open Stream..."), this, &MainWindow::selectAndOpenStream);
   close_stream_act_ = file_menu->addAction(tr("Close stream"), this, &MainWindow::closeStream);
   export_to_csv_act_ = file_menu->addAction(tr("Export to CSV..."), this, &MainWindow::exportToCSV);
@@ -95,21 +96,25 @@ void MainWindow::createFileMenu() {
   file_menu->addAction(tr("Open DBC File..."), [this]() { dbc_controller_->openFile(); }, QKeySequence::Open);
 
   manage_dbcs_menu_ = file_menu->addMenu(tr("Manage &DBC Files"));
-  connect(manage_dbcs_menu_, &QMenu::aboutToShow, this, [this]() { dbc_controller_->populateManageMenu(manage_dbcs_menu_); });
+  connect(manage_dbcs_menu_, &QMenu::aboutToShow, this,
+          [this]() { dbc_controller_->populateManageMenu(manage_dbcs_menu_); });
 
   recent_files_menu_ = file_menu->addMenu(tr("Open &Recent"));
-  connect(recent_files_menu_, &QMenu::aboutToShow, this, [this]() { dbc_controller_->populateRecentMenu(recent_files_menu_); });
+  connect(recent_files_menu_, &QMenu::aboutToShow, this,
+          [this]() { dbc_controller_->populateRecentMenu(recent_files_menu_); });
 
   file_menu->addSeparator();
-  QMenu *load_opendbc_menu = file_menu->addMenu(tr("Load DBC from commaai/opendbc"));
+  QMenu* load_opendbc_menu = file_menu->addMenu(tr("Load DBC from commaai/opendbc"));
   dbc_controller_->populateOpendbcFiles(load_opendbc_menu);
 
   file_menu->addAction(tr("Load DBC From Clipboard"), [=]() { dbc_controller_->loadFromClipboard(); });
 
   file_menu->addSeparator();
   save_dbc_ = file_menu->addAction(tr("Save DBC..."), dbc_controller_, &DbcController::save, QKeySequence::Save);
-  save_dbc_as_ = file_menu->addAction(tr("Save DBC As..."), dbc_controller_, &DbcController::saveAs, QKeySequence::SaveAs);
-  copy_dbc_to_clipboard_ = file_menu->addAction(tr("Copy DBC To Clipboard"), dbc_controller_, &DbcController::saveToClipboard);
+  save_dbc_as_ =
+      file_menu->addAction(tr("Save DBC As..."), dbc_controller_, &DbcController::saveAs, QKeySequence::SaveAs);
+  copy_dbc_to_clipboard_ =
+      file_menu->addAction(tr("Copy DBC To Clipboard"), dbc_controller_, &DbcController::saveToClipboard);
 
   file_menu->addSeparator();
   file_menu->addAction(tr("Settings..."), this, &MainWindow::setOption, QKeySequence::Preferences);
@@ -119,7 +124,7 @@ void MainWindow::createFileMenu() {
 }
 
 void MainWindow::createEditMenu() {
-  QMenu *edit_menu = menuBar()->addMenu(tr("&Edit"));
+  QMenu* edit_menu = menuBar()->addMenu(tr("&Edit"));
   auto undo_act = UndoStack::instance()->createUndoAction(this, tr("&Undo"));
   undo_act->setShortcuts(QKeySequence::Undo);
   edit_menu->addAction(undo_act);
@@ -128,16 +133,16 @@ void MainWindow::createEditMenu() {
   edit_menu->addAction(redo_act);
   edit_menu->addSeparator();
 
-  QMenu *commands_menu = edit_menu->addMenu(tr("Command &List"));
-  QWidgetAction *commands_act = new QWidgetAction(this);
-  QUndoView *view = new QUndoView(UndoStack::instance(), this); // Parent set here
+  QMenu* commands_menu = edit_menu->addMenu(tr("Command &List"));
+  QWidgetAction* commands_act = new QWidgetAction(this);
+  QUndoView* view = new QUndoView(UndoStack::instance(), this);  // Parent set here
   view->setEmptyLabel(tr("No commands"));
   commands_act->setDefaultWidget(view);
   commands_menu->addAction(commands_act);
 }
 
 void MainWindow::createViewMenu() {
-  QMenu *view_menu = menuBar()->addMenu(tr("&View"));
+  QMenu* view_menu = menuBar()->addMenu(tr("&View"));
   auto act = view_menu->addAction(tr("Full Screen"), this, &MainWindow::toggleFullScreen, QKeySequence::FullScreen);
   addAction(act);
   view_menu->addSeparator();
@@ -154,7 +159,7 @@ void MainWindow::createToolsMenu() {
 }
 
 void MainWindow::createHelpMenu() {
-  QMenu *help_menu = menuBar()->addMenu(tr("&Help"));
+  QMenu* help_menu = menuBar()->addMenu(tr("&Help"));
   help_menu->addAction(tr("Help"), this, &MainWindow::onlineHelp, QKeySequence::HelpContents);
   help_menu->addAction(tr("About &Qt"), qApp, &QApplication::aboutQt);
 }
@@ -167,8 +172,10 @@ void MainWindow::setupDocks() {
 void MainWindow::createMessagesDock() {
   messages_dock_ = new QDockWidget(tr("MESSAGES"), this);
   messages_dock_->setObjectName("MessagesPanel");
-  messages_dock_->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea | Qt::TopDockWidgetArea | Qt::BottomDockWidgetArea);
-  messages_dock_->setFeatures(QDockWidget::DockWidgetMovable | QDockWidget::DockWidgetFloatable | QDockWidget::DockWidgetClosable);
+  messages_dock_->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea | Qt::TopDockWidgetArea |
+                                  Qt::BottomDockWidgetArea);
+  messages_dock_->setFeatures(QDockWidget::DockWidgetMovable | QDockWidget::DockWidgetFloatable |
+                              QDockWidget::DockWidgetClosable);
 
   message_list_ = new MessageList(this);
   messages_dock_->setWidget(message_list_);
@@ -182,9 +189,10 @@ void MainWindow::createVideoChartsDock() {
   video_dock_ = new QDockWidget("", this);
   video_dock_->setObjectName(tr("VideoPanel"));
   video_dock_->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
-  video_dock_->setFeatures(QDockWidget::DockWidgetMovable | QDockWidget::DockWidgetFloatable | QDockWidget::DockWidgetClosable);
+  video_dock_->setFeatures(QDockWidget::DockWidgetMovable | QDockWidget::DockWidgetFloatable |
+                           QDockWidget::DockWidgetClosable);
 
-  QWidget *charts_container = new QWidget(this);
+  QWidget* charts_container = new QWidget(this);
   charts_layout_ = new QVBoxLayout(charts_container);
   charts_layout_->setContentsMargins(0, 0, 0, 0);
   charts_layout_->addWidget(charts_panel);
@@ -207,9 +215,8 @@ void MainWindow::createVideoChartsDock() {
 
 void MainWindow::createShortcuts() {
   auto shortcut = new QShortcut(QKeySequence(Qt::Key_Space), this, nullptr, nullptr, Qt::ApplicationShortcut);
-  connect(shortcut, &QShortcut::activated, this, []() {
-    StreamManager::stream()->pause(!StreamManager::stream()->isPaused());
-  });
+  connect(shortcut, &QShortcut::activated, this,
+          []() { StreamManager::stream()->pause(!StreamManager::stream()->isPaused()); });
   // TODO: add more shortcuts here.
 }
 
@@ -217,9 +224,7 @@ void MainWindow::onStreamChanged() {
   video_splitter_->handle(1)->setEnabled(!StreamManager::instance().isLiveStream());
 }
 
-void MainWindow::undoStackCleanChanged(bool clean) {
-  setWindowModified(!clean);
-}
+void MainWindow::undoStackCleanChanged(bool clean) { setWindowModified(!clean); }
 
 void MainWindow::DBCFileChanged() {
   UndoStack::instance()->clear();
@@ -266,8 +271,8 @@ void MainWindow::exportToCSV() {
   }
 }
 
-void MainWindow::openStream(AbstractStream *stream, const QString &dbc_file) {
-  auto &sm = StreamManager::instance();
+void MainWindow::openStream(AbstractStream* stream, const QString& dbc_file) {
+  auto& sm = StreamManager::instance();
   sm.setStream(stream, dbc_file);
 
   inspector_widget_->clear();
@@ -296,9 +301,8 @@ void MainWindow::openStream(AbstractStream *stream, const QString &dbc_file) {
 }
 
 void MainWindow::createLoadingDialog(bool is_live) {
-  auto wait_dlg = new QProgressDialog(
-      is_live ? tr("Waiting for live stream...") : tr("Loading segments..."),
-      tr("&Abort"), 0, 100, this);
+  auto wait_dlg = new QProgressDialog(is_live ? tr("Waiting for live stream...") : tr("Loading segments..."),
+                                      tr("&Abort"), 0, 100, this);
 
   wait_dlg->setWindowModality(Qt::WindowModal);
   wait_dlg->setAttribute(Qt::WA_DeleteOnClose);
@@ -306,14 +310,13 @@ void MainWindow::createLoadingDialog(bool is_live) {
 
   connect(wait_dlg, &QProgressDialog::canceled, this, &MainWindow::close);
   connect(&StreamManager::instance(), &StreamManager::eventsMerged, wait_dlg, &QProgressDialog::accept);
-  connect(&SystemRelay::instance(), &SystemRelay::downloadProgress, wait_dlg, [=](uint64_t cur, uint64_t total, bool success) {
-    wait_dlg->setValue((int)((cur / (double)total) * 100));
-  });
+  connect(&SystemRelay::instance(), &SystemRelay::downloadProgress, wait_dlg,
+          [=](uint64_t cur, uint64_t total, bool success) { wait_dlg->setValue((int)((cur / (double)total) * 100)); });
   wait_dlg->show();
 }
 
 void MainWindow::eventsMerged() {
-  auto *stream = StreamManager::stream();
+  auto* stream = StreamManager::stream();
   if (!stream->liveStreaming() && std::exchange(car_fingerprint_, stream->carFingerprint()) != car_fingerprint_) {
     video_dock_->setWindowTitle(tr("ROUTE: %1  FINGERPRINT: %2")
                                     .arg(stream->routeName())
@@ -325,7 +328,7 @@ void MainWindow::eventsMerged() {
   }
 }
 
-bool MainWindow::eventFilter(QObject *obj, QEvent *event) {
+bool MainWindow::eventFilter(QObject* obj, QEvent* event) {
   if (obj == floating_window_ && event->type() == QEvent::Close) {
     toggleChartsDocking();
     return true;
@@ -353,14 +356,13 @@ void MainWindow::toggleChartsDocking() {
   }
 }
 
-void MainWindow::closeEvent(QCloseEvent *event) {
+void MainWindow::closeEvent(QCloseEvent* event) {
   // Force the StreamManager to clean up its resources
   StreamManager::instance().shutdown();
 
   dbc_controller_->remindSaveChanges();
 
-  if (floating_window_)
-    floating_window_->deleteLater();
+  if (floating_window_) floating_window_->deleteLater();
 
   // save states
   settings.geometry = saveGeometry();
@@ -381,13 +383,13 @@ void MainWindow::setOption() {
 }
 
 void MainWindow::findSimilarBits() {
-  FindSimilarBitsDlg *dlg = new FindSimilarBitsDlg(this);
+  FindSimilarBitsDlg* dlg = new FindSimilarBitsDlg(this);
   connect(dlg, &FindSimilarBitsDlg::openMessage, message_list_, &MessageList::selectMessage);
   dlg->show();
 }
 
 void MainWindow::findSignal() {
-  FindSignalDlg *dlg = new FindSignalDlg(this);
+  FindSignalDlg* dlg = new FindSignalDlg(this);
   connect(dlg, &FindSignalDlg::openMessage, message_list_, &MessageList::selectMessage);
   dlg->show();
 }
@@ -422,16 +424,18 @@ void MainWindow::saveSessionState() {
   settings.selected_msg_ids.clear();
   settings.active_charts.clear();
 
-  for (auto &f : GetDBC()->allDBCFiles())
-    if (!f->isEmpty()) { settings.recent_dbc_file = f->filename; break; }
+  for (auto& f : GetDBC()->allDBCFiles())
+    if (!f->isEmpty()) {
+      settings.recent_dbc_file = f->filename;
+      break;
+    }
 
-  if (auto *detail = inspector_widget_->getMessageView()) {
+  if (auto* detail = inspector_widget_->getMessageView()) {
     auto [active_id, ids] = detail->serializeMessageIds();
     settings.active_msg_id = active_id;
     settings.selected_msg_ids = ids;
   }
-  if (charts_panel)
-    settings.active_charts = charts_panel->serializeChartIds();
+  if (charts_panel) settings.active_charts = charts_panel->serializeChartIds();
 }
 
 void MainWindow::restoreSessionState() {
@@ -439,7 +443,10 @@ void MainWindow::restoreSessionState() {
 
   QString dbc_file;
   for (auto& f : GetDBC()->allDBCFiles())
-    if (!f->isEmpty()) { dbc_file = f->filename; break; }
+    if (!f->isEmpty()) {
+      dbc_file = f->filename;
+      break;
+    }
   if (dbc_file != settings.recent_dbc_file) return;
 
   if (!settings.selected_msg_ids.isEmpty()) {

@@ -17,9 +17,9 @@ class ChartsScrollArea : public QScrollArea {
  private slots:
   void doAutoScroll();
 
-private:
-  ChartsContainer *container_;
-  QTimer *auto_scroll_timer_;
+ private:
+  ChartsContainer* container_;
+  QTimer* auto_scroll_timer_;
 
   friend class ChartsPanel;
 };

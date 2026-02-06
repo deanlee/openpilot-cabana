@@ -28,7 +28,7 @@ QVariant MessageHistoryModel::data(const QModelIndex& index, int role) const {
   return {};
 }
 
-void MessageHistoryModel::setMessage(const MessageId &message_id) {
+void MessageHistoryModel::setMessage(const MessageId& message_id) {
   msg_id = message_id;
   rebuild();
 }
@@ -81,8 +81,7 @@ QVariant MessageHistoryModel::headerData(int section, Qt::Orientation orientatio
     case Qt::BackgroundRole: return (!hex) ? col.sig->color : QVariant();
     case Qt::ToolTipRole:
       if (hex) return tr("Raw message data (Hex)");
-      return col.sig->unit.isEmpty() ? col.sig->name
-                                     : QString("%1 (%2)").arg(col.sig->name, col.sig->unit);
+      return col.sig->unit.isEmpty() ? col.sig->name : QString("%1 (%2)").arg(col.sig->name, col.sig->unit);
     default: return {};
   }
 }
@@ -92,7 +91,7 @@ void MessageHistoryModel::setHexMode(bool hex) {
   rebuild();
 }
 
-void MessageHistoryModel::setFilter(int sig_idx, const QString &value, std::function<bool(double, double)> cmp) {
+void MessageHistoryModel::setFilter(int sig_idx, const QString& value, std::function<bool(double, double)> cmp) {
   filter_sig_idx = sig_idx;
   filter_value = value.toDouble();
   filter_cmp = value.isEmpty() ? nullptr : cmp;
@@ -107,7 +106,7 @@ void MessageHistoryModel::updateState(bool clear) {
     endRemoveRows();
   }
 
-  auto *stream = StreamManager::stream();
+  auto* stream = StreamManager::stream();
   uint64_t current_time = stream->toMonoNs(stream->snapshot(msg_id)->ts) + 1;
   uint64_t last_time = messages.empty() ? 0 : messages.front().mono_ns;
 
@@ -131,7 +130,7 @@ bool MessageHistoryModel::canFetchMore(const QModelIndex& parent) const {
   return messages.back().mono_ns > events.front()->mono_ns;
 }
 
-void MessageHistoryModel::fetchMore(const QModelIndex &parent) {
+void MessageHistoryModel::fetchMore(const QModelIndex& parent) {
   if (messages.empty()) return;
   // Fetch older data at the end (Infinite Scroll)
   fetchData((int)messages.size(), messages.back().mono_ns, 0);
@@ -139,25 +138,24 @@ void MessageHistoryModel::fetchMore(const QModelIndex &parent) {
 
 void MessageHistoryModel::fetchData(int insert_pos_idx, uint64_t from_time, uint64_t min_time) {
   auto* stream = StreamManager::stream();
-  const auto &events = stream->events(msg_id);
+  const auto& events = stream->events(msg_id);
   if (events.empty()) return;
 
-  auto first = std::lower_bound(events.rbegin(), events.rend(), from_time, [](auto e, uint64_t ts) {
-    return e->mono_ns > ts;
-  });
+  auto first =
+      std::lower_bound(events.rbegin(), events.rend(), from_time, [](auto e, uint64_t ts) { return e->mono_ns > ts; });
 
   std::vector<MessageHistoryModel::LogEntry> msgs;
   std::vector<double> values(sigs.size());
   msgs.reserve(batch_size);
   for (; first != events.rend(); ++first) {
-    const CanEvent *e = *first;
+    const CanEvent* e = *first;
     if (e->mono_ns <= min_time) break;
 
     for (int i = 0; i < sigs.size(); ++i) {
       sigs[i].sig->parse(e->dat, e->size, &values[i]);
     }
     if (!filter_cmp || filter_cmp(values[filter_sig_idx], filter_value)) {
-      auto &m = msgs.emplace_back(LogEntry{e->mono_ns, values, e->size});
+      auto& m = msgs.emplace_back(LogEntry{e->mono_ns, values, e->size});
       std::copy_n(e->dat, std::min<int>(e->size, MAX_CAN_LEN), m.data.begin());
       if (msgs.size() >= batch_size && min_time == 0) {
         break;
@@ -168,7 +166,7 @@ void MessageHistoryModel::fetchData(int insert_pos_idx, uint64_t from_time, uint
   if (!msgs.empty()) {
     if (isHexMode() && (min_time > 0 || messages.empty())) {
       const auto freq = stream->snapshot(msg_id)->freq;
-       for (auto it = msgs.rbegin(); it != msgs.rend(); ++it) {
+      for (auto it = msgs.rbegin(); it != msgs.rend(); ++it) {
         double ts = it->mono_ns / 1e9;
         hex_colors.update(it->data.data(), it->size, ts, freq);
         hex_colors.updateAllPatternColors(ts);
@@ -177,8 +175,7 @@ void MessageHistoryModel::fetchData(int insert_pos_idx, uint64_t from_time, uint
     }
 
     beginInsertRows({}, insert_pos_idx, insert_pos_idx + msgs.size() - 1);
-    messages.insert(messages.begin() + insert_pos_idx,
-                    std::make_move_iterator(msgs.begin()),
+    messages.insert(messages.begin() + insert_pos_idx, std::make_move_iterator(msgs.begin()),
                     std::make_move_iterator(msgs.end()));
     endInsertRows();
   }

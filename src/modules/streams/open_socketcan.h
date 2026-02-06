@@ -8,13 +8,13 @@
 class OpenSocketCanWidget : public AbstractStreamWidget {
   Q_OBJECT
 
-public:
-  OpenSocketCanWidget(QWidget *parent = nullptr);
-  AbstractStream *open() override;
+ public:
+  OpenSocketCanWidget(QWidget* parent = nullptr);
+  AbstractStream* open() override;
 
-private:
+ private:
   void refreshDevices();
 
-  QComboBox *device_edit;
+  QComboBox* device_edit;
   SocketCanStreamConfig config = {};
 };

@@ -53,7 +53,7 @@ void ChartsToolBar::createActions(QHBoxLayout* hl) {
   createColumnMenu();
   hl->addWidget(columns_btn);
 
-   // Chart Type Menu (Preserving InstantPopup feature)
+  // Chart Type Menu (Preserving InstantPopup feature)
   chart_type_btn = new ToolButton();
   chart_type_btn->setPopupMode(QToolButton::InstantPopup);
   chart_type_btn->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
@@ -73,11 +73,14 @@ void ChartsToolBar::createActions(QHBoxLayout* hl) {
 
 void ChartsToolBar::createTypeMenu() {
   QMenu* menu = new QMenu(this);
-  struct ChartStyle { QString name; QString icon; };
+  struct ChartStyle {
+    QString name;
+    QString icon;
+  };
   auto styles = std::array{
-    ChartStyle{tr("Line"), "chart-line"},
-    ChartStyle{tr("Step"), "chart-network"},
-    ChartStyle{tr("Scatter"), "chart-scatter"},
+      ChartStyle{tr("Line"), "chart-line"},
+      ChartStyle{tr("Step"), "chart-network"},
+      ChartStyle{tr("Scatter"), "chart-scatter"},
   };
 
   for (int i = 0; i < styles.size(); ++i) {
@@ -153,7 +156,9 @@ void ChartsToolBar::updateState(int chart_count) {
   undo_btn->setVisible(is_zoomed);
   redo_btn->setVisible(is_zoomed);
   reset_zoom_btn->setVisible(is_zoomed);
-  reset_zoom_btn->setText(is_zoomed ? tr("%1-%2").arg(stream->timeRange()->first, 0, 'f', 2).arg(stream->timeRange()->second, 0, 'f', 2) : "");
+  reset_zoom_btn->setText(
+      is_zoomed ? tr("%1-%2").arg(stream->timeRange()->first, 0, 'f', 2).arg(stream->timeRange()->second, 0, 'f', 2)
+                : "");
   remove_all_btn->setEnabled(chart_count > 0);
 }
 

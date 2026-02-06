@@ -68,9 +68,8 @@ void SignalTreeDelegate::drawNameColumn(QPainter* p, QRect r, const QStyleOption
 
     // 2. Multiplexer Indicator (Badge)
     if (item->sig->type != dbc::Signal::Type::Normal) {
-      QString m_text = (item->sig->type == dbc::Signal::Type::Multiplexor)
-                           ? "M"
-                           : QString("m%1").arg(item->sig->multiplex_value);
+      QString m_text =
+          (item->sig->type == dbc::Signal::Type::Multiplexor) ? "M" : QString("m%1").arg(item->sig->multiplex_value);
 
       int m_width = opt.fontMetrics.horizontalAdvance(m_text) + 8;
       QRect m_rect(r.left(), iconRect.top(), m_width, kBtnSize);
@@ -97,7 +96,8 @@ void SignalTreeDelegate::drawNameColumn(QPainter* p, QRect r, const QStyleOption
   p->drawText(r, Qt::AlignVCenter | Qt::AlignLeft, elidedText);
 }
 
-void SignalTreeDelegate::drawDataColumn(QPainter* p, QRect r, const QStyleOptionViewItem& opt, SignalTreeModel::Item* item, const QModelIndex& idx) const {
+void SignalTreeDelegate::drawDataColumn(QPainter* p, QRect r, const QStyleOptionViewItem& opt,
+                                        SignalTreeModel::Item* item, const QModelIndex& idx) const {
   const bool sel = opt.state & QStyle::State_Selected;
   const bool show_details = (hoverIndex == idx) && !item->sparkline->isEmpty();
   const QColor text_c = opt.palette.color(sel ? QPalette::HighlightedText : QPalette::Text);
@@ -144,7 +144,8 @@ void SignalTreeDelegate::drawDataColumn(QPainter* p, QRect r, const QStyleOption
   drawButtons(p, opt, item, idx);
 }
 
-QWidget* SignalTreeDelegate::createEditor(QWidget* parent, const QStyleOptionViewItem& option, const QModelIndex& idx) const {
+QWidget* SignalTreeDelegate::createEditor(QWidget* parent, const QStyleOptionViewItem& option,
+                                          const QModelIndex& idx) const {
   auto item = (SignalTreeModel::Item*)idx.internalPointer();
   using T = SignalTreeModel::Item::Type;
 
@@ -159,8 +160,10 @@ QWidget* SignalTreeDelegate::createEditor(QWidget* parent, const QStyleOptionVie
     auto* c = new QComboBox(parent);
     c->addItem(signalTypeToString(dbc::Signal::Type::Normal), (int)dbc::Signal::Type::Normal);
     auto* msg = GetDBC()->msg(((SignalTreeModel*)idx.model())->messageId());
-    if (!msg->multiplexor) c->addItem(signalTypeToString(dbc::Signal::Type::Multiplexor), (int)dbc::Signal::Type::Multiplexor);
-    else if (item->sig->type != dbc::Signal::Type::Multiplexor) c->addItem(signalTypeToString(dbc::Signal::Type::Multiplexed), (int)dbc::Signal::Type::Multiplexed);
+    if (!msg->multiplexor)
+      c->addItem(signalTypeToString(dbc::Signal::Type::Multiplexor), (int)dbc::Signal::Type::Multiplexor);
+    else if (item->sig->type != dbc::Signal::Type::Multiplexor)
+      c->addItem(signalTypeToString(dbc::Signal::Type::Multiplexed), (int)dbc::Signal::Type::Multiplexed);
     return c;
   }
 
@@ -207,7 +210,8 @@ QRect SignalTreeDelegate::getButtonRect(const QRect& colRect, int btnIdx) const 
   return QRect(x, y, kBtnSize, kBtnSize);
 }
 
-void SignalTreeDelegate::drawButtons(QPainter* p, const QStyleOptionViewItem& opt, SignalTreeModel::Item* item, const QModelIndex& idx) const {
+void SignalTreeDelegate::drawButtons(QPainter* p, const QStyleOptionViewItem& opt, SignalTreeModel::Item* item,
+                                     const QModelIndex& idx) const {
   bool chart_opened = idx.data(IsChartedRole).toBool();
 
   auto drawBtn = [&](int btnIdx, const QString& iconName, bool active) {
@@ -243,9 +247,8 @@ void SignalTreeDelegate::drawButtons(QPainter* p, const QStyleOptionViewItem& op
     if (btnIdx == 0 && hovered) {
       icon_color = QColor(220, 53, 69);  // Soft Red
     } else {
-      icon_color = (active || selected)
-                       ? opt.palette.color(QPalette::HighlightedText)
-                       : opt.palette.color(QPalette::Text);
+      icon_color =
+          (active || selected) ? opt.palette.color(QPalette::HighlightedText) : opt.palette.color(QPalette::Text);
     }
     QPixmap pix = utils::icon(iconName, iconSize, icon_color);
     p->drawPixmap(rect.left() + iconPadding, rect.top() + iconPadding, pix);
@@ -256,10 +259,11 @@ void SignalTreeDelegate::drawButtons(QPainter* p, const QStyleOptionViewItem& op
   drawBtn(1, chart_opened ? "chart-area" : "chart-line", chart_opened);
 }
 
-bool SignalTreeDelegate::helpEvent(QHelpEvent* event, QAbstractItemView* view, const QStyleOptionViewItem& option, const QModelIndex& index) {
+bool SignalTreeDelegate::helpEvent(QHelpEvent* event, QAbstractItemView* view, const QStyleOptionViewItem& option,
+                                   const QModelIndex& index) {
   auto item = static_cast<SignalTreeModel::Item*>(index.internalPointer());
   if (index.column() != 1 || !item || item->type != SignalTreeModel::Item::Sig) {
-   return QStyledItemDelegate::helpEvent(event, view, option, index);
+    return QStyledItemDelegate::helpEvent(event, view, option, index);
   }
 
   // Button Hit-Testing
@@ -267,7 +271,8 @@ bool SignalTreeDelegate::helpEvent(QHelpEvent* event, QAbstractItemView* view, c
   if (btnIdx != -1) {
     if (btnIdx == 1) {  // Plot Button
       bool opened = index.data(IsChartedRole).toBool();
-      QToolTip::showText(event->globalPos(), opened ? tr("Close Plot") : tr("Show Plot\nSHIFT click to add to previous opened plot"), view);
+      QToolTip::showText(event->globalPos(),
+                         opened ? tr("Close Plot") : tr("Show Plot\nSHIFT click to add to previous opened plot"), view);
     } else {  // Remove Button
       QToolTip::showText(event->globalPos(), tr("Remove Signal"), view);
     }
@@ -277,13 +282,15 @@ bool SignalTreeDelegate::helpEvent(QHelpEvent* event, QAbstractItemView* view, c
   // Value & Sparkline Area Hit-Testing
   int right_edge = option.rect.right() - getButtonsWidth();
   QRect value_rect = option.rect;
-  value_rect.setLeft(option.rect.left() + item->sparkline->image.width() / item->sparkline->image.devicePixelRatio() + kPadding * 2);
+  value_rect.setLeft(option.rect.left() + item->sparkline->image.width() / item->sparkline->image.devicePixelRatio() +
+                     kPadding * 2);
   value_rect.setRight(right_edge);
 
   if (value_rect.contains(event->pos()) && !item->sig_val.isEmpty()) {
-    QString tooltip = item->sig_val + "\n" +
-                      tr("Session Min: %1\nSession Max: %2").arg(QString::number(item->sparkline->min_val, 'f', 3),
-                                                QString::number(item->sparkline->max_val, 'f', 3));
+    QString tooltip =
+        item->sig_val + "\n" +
+        tr("Session Min: %1\nSession Max: %2")
+            .arg(QString::number(item->sparkline->min_val, 'f', 3), QString::number(item->sparkline->max_val, 'f', 3));
     QToolTip::showText(event->globalPos(), tooltip, view);
     return true;
   }
@@ -291,8 +298,8 @@ bool SignalTreeDelegate::helpEvent(QHelpEvent* event, QAbstractItemView* view, c
   return QStyledItemDelegate::helpEvent(event, view, option, index);
 }
 
-bool SignalTreeDelegate::editorEvent(QEvent* event, QAbstractItemModel* model,
-                                     const QStyleOptionViewItem& opt, const QModelIndex& idx) {
+bool SignalTreeDelegate::editorEvent(QEvent* event, QAbstractItemModel* model, const QStyleOptionViewItem& opt,
+                                     const QModelIndex& idx) {
   auto item = static_cast<SignalTreeModel::Item*>(idx.internalPointer());
 
   if (!item || idx.column() != 1 || item->type != SignalTreeModel::Item::Sig) {

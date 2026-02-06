@@ -1,7 +1,7 @@
 #include "chart.h"
 
-#include <QApplication>
 #include <QActionGroup>
+#include <QApplication>
 #include <QGraphicsLayout>
 #include <QMenu>
 #include <QOpenGLWidget>
@@ -93,9 +93,8 @@ void Chart::initControls() {
   close_act_ = new QAction(tr("Remove Chart"), this);
   connect(close_act_, &QAction::triggered, this, &Chart::close);
   connect(remove_btn, &QToolButton::clicked, close_act_, &QAction::triggered);
-  connect(change_series_group, &QActionGroup::triggered, [this](QAction* action) {
-    setSeriesType((SeriesType)action->data().toInt());
-  });
+  connect(change_series_group, &QActionGroup::triggered,
+          [this](QAction* action) { setSeriesType((SeriesType)action->data().toInt()); });
 }
 
 bool Chart::addSignal(const MessageId& msg_id, const dbc::Signal* sig) {
@@ -151,7 +150,8 @@ void Chart::resizeEvent(QGraphicsSceneResizeEvent* event) {
   layout()->getContentsMargins(&left, &top, &right, &bottom);
   move_icon_->setPos(left, top);
   close_btn_proxy_->setPos(rect().right() - right - close_btn_proxy_->size().width(), top);
-  int x = close_btn_proxy_->pos().x() - manage_btn_proxy_->size().width() - style()->pixelMetric(QStyle::PM_ToolBarItemSpacing);
+  int x = close_btn_proxy_->pos().x() - manage_btn_proxy_->size().width() -
+          style()->pixelMetric(QStyle::PM_ToolBarItemSpacing);
   manage_btn_proxy_->setPos(x, top);
 
   if (align_to_ > 0) {
@@ -218,14 +218,13 @@ void Chart::updateAxisY() {
 
   if (axis_y_->titleText() != unit) {
     axis_y_->setTitleText(unit);
-    y_label_width_ = 0; // Force recalculation of margin
+    y_label_width_ = 0;  // Force recalculation of margin
   }
 
   double delta = std::abs(g_max - g_min) < 1e-3 ? 1 : (g_max - g_min) * 0.05;
   auto [min_y, max_y, ticks] = getNiceAxisNumbers(g_min - delta, g_max + delta, 3);
-  bool range_changed = !qFuzzyCompare(min_y, axis_y_->min()) ||
-                       !qFuzzyCompare(max_y, axis_y_->max()) ||
-                       ticks != axis_y_->tickCount();
+  bool range_changed =
+      !qFuzzyCompare(min_y, axis_y_->min()) || !qFuzzyCompare(max_y, axis_y_->max()) || ticks != axis_y_->tickCount();
 
   if (!range_changed && y_label_width_ != 0) return;
 
@@ -289,9 +288,9 @@ void Chart::updateTitle() {
 
   for (auto& s : sigs_) {
     auto decoration = s.series->isVisible() ? "none" : "line-through";
-    QString name = QString("<span style=\"text-decoration:%1; color:%2\"><b>%3</b> <font color=\"%4\">%5 %6</font></span>")
-                       .arg(decoration, titleColorCss, s.sig->name,
-                            msgColorCss, msgName(s.msg_id), s.msg_id.toString());
+    QString name =
+        QString("<span style=\"text-decoration:%1; color:%2\"><b>%3</b> <font color=\"%4\">%5 %6</font></span>")
+            .arg(decoration, titleColorCss, s.sig->name, msgColorCss, msgName(s.msg_id), s.msg_id.toString());
     if (s.series->name() != name) {
       s.series->setName(name);
     }

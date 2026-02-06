@@ -5,10 +5,10 @@
 
 class AbstractStreamWidget : public QWidget {
   Q_OBJECT
-public:
-  AbstractStreamWidget(QWidget *parent = nullptr);
-  virtual AbstractStream *open() = 0;
+ public:
+  AbstractStreamWidget(QWidget* parent = nullptr);
+  virtual AbstractStream* open() = 0;
 
-signals:
+ signals:
   void enableOpenButton(bool);
 };

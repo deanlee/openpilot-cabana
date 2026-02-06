@@ -10,9 +10,7 @@ class PanelSplitter : public QSplitter {
   using QSplitter::QSplitter;
 
  protected:
-  QSplitterHandle* createHandle() override {
-    return new Handle(orientation(), this);
-  }
+  QSplitterHandle* createHandle() override { return new Handle(orientation(), this); }
 
   class Handle : public QSplitterHandle {
    public:

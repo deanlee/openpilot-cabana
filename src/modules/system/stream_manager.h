@@ -16,9 +16,7 @@ class StreamManager : public QObject {
     return s;
   }
 
-  [[nodiscard]] inline static AbstractStream* stream() {
-    return instance().stream_;
-  }
+  [[nodiscard]] inline static AbstractStream* stream() { return instance().stream_; }
 
   void setStream(AbstractStream* new_stream, const QString& dbc_file = {});
   void shutdown();
@@ -26,15 +24,11 @@ class StreamManager : public QObject {
 
   [[nodiscard]] inline AbstractStream* currentStream() const { return stream_; }
   [[nodiscard]] inline bool hasStream() const { return !isDummy(); }
-  [[nodiscard]] inline bool isDummy() const {
-    return !stream_ || dynamic_cast<DummyStream*>(stream_) != nullptr;
-  }
+  [[nodiscard]] inline bool isDummy() const { return !stream_ || dynamic_cast<DummyStream*>(stream_) != nullptr; }
   [[nodiscard]] inline bool isReplayStream() const {
     return stream_ && dynamic_cast<ReplayStream*>(stream_) != nullptr;
   }
-  [[nodiscard]] inline bool isLiveStream() const {
-    return stream_ && stream_->liveStreaming();
-  }
+  [[nodiscard]] inline bool isLiveStream() const { return stream_ && stream_->liveStreaming(); }
 
   // Prevent Copying
   StreamManager(const StreamManager&) = delete;
@@ -58,5 +52,5 @@ class StreamManager : public QObject {
 
  private:
   StreamManager();
-  AbstractStream *stream_ = nullptr;
+  AbstractStream* stream_ = nullptr;
 };

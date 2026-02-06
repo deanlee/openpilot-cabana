@@ -22,14 +22,12 @@ struct PandaStreamConfig {
 
 class PandaStream : public LiveStream {
   Q_OBJECT
-public:
-  PandaStream(QObject *parent, PandaStreamConfig config_ = {});
+ public:
+  PandaStream(QObject* parent, PandaStreamConfig config_ = {});
   ~PandaStream() { stop(); }
-  inline QString routeName() const override {
-    return QString("Panda: %1").arg(config.serial);
-  }
+  inline QString routeName() const override { return QString("Panda: %1").arg(config.serial); }
 
-protected:
+ protected:
   bool connect();
   void streamThread() override;
 

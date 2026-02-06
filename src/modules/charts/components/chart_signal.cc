@@ -3,8 +3,7 @@
 #include "modules/system/stream_manager.h"
 
 static void appendCanEvents(const dbc::Signal* sig, const std::vector<const CanEvent*>& events,
-                            std::vector<QPointF>& vals, std::vector<QPointF>& step_vals,
-                            SeriesBounds &series_bounds) {
+                            std::vector<QPointF>& vals, std::vector<QPointF>& step_vals, SeriesBounds& series_bounds) {
   vals.reserve(vals.size() + events.capacity());
   step_vals.reserve(step_vals.size() + events.capacity() * 2);
 
@@ -17,8 +16,7 @@ static void appendCanEvents(const dbc::Signal* sig, const std::vector<const CanE
 
       series_bounds.addPoint(value);
 
-      if (!step_vals.empty())
-        step_vals.emplace_back(ts, step_vals.back().y());
+      if (!step_vals.empty()) step_vals.emplace_back(ts, step_vals.back().y());
       step_vals.emplace_back(ts, value);
     }
   }

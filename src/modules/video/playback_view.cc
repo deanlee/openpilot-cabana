@@ -4,14 +4,13 @@
 
 #include "modules/system/stream_manager.h"
 
-static Replay *getReplay() {
-  auto stream = qobject_cast<ReplayStream *>(StreamManager::stream());
+static Replay* getReplay() {
+  auto stream = qobject_cast<ReplayStream*>(StreamManager::stream());
   return stream ? stream->getReplay() : nullptr;
 }
 
 PlaybackCameraView::PlaybackCameraView(std::string stream_name, VisionStreamType stream_type, QWidget* parent)
-    : CameraView(stream_name, stream_type, parent) {
-}
+    : CameraView(stream_name, stream_type, parent) {}
 
 void PlaybackCameraView::parseQLog(std::shared_ptr<LogReader> qlog) {
   std::mutex mutex;
@@ -21,7 +20,8 @@ void PlaybackCameraView::parseQLog(std::shared_ptr<LogReader> qlog) {
       auto thumb_data = reader.getRoot<cereal::Event>().getThumbnail();
       auto image_data = thumb_data.getThumbnail();
       if (QPixmap thumb; thumb.loadFromData(image_data.begin(), image_data.size(), "jpeg")) {
-        QPixmap generated_thumb = generateThumbnail(thumb, StreamManager::stream()->toSeconds(thumb_data.getTimestampEof()));
+        QPixmap generated_thumb =
+            generateThumbnail(thumb, StreamManager::stream()->toSeconds(thumb_data.getTimestampEof()));
         std::lock_guard lock(mutex);
         thumbnails[thumb_data.getTimestampEof()] = generated_thumb;
         big_thumbnails[thumb_data.getTimestampEof()] = thumb;
@@ -46,7 +46,8 @@ void PlaybackCameraView::paintGL() {
     scrubbing = StreamManager::stream()->isPaused();
     scrubbing ? drawScrubThumbnail(p) : drawThumbnail(p);
   }
-  if (auto alert = getReplay()->findAlertAtTime(scrubbing ? thumbnail_dispaly_time : StreamManager::stream()->currentSec())) {
+  if (auto alert =
+          getReplay()->findAlertAtTime(scrubbing ? thumbnail_dispaly_time : StreamManager::stream()->currentSec())) {
     drawAlert(p, rect(), *alert);
   }
 
@@ -95,7 +96,8 @@ void PlaybackCameraView::drawThumbnail(QPainter& p) {
   auto it = thumbnails.lowerBound(StreamManager::stream()->toMonoNs(thumbnail_dispaly_time));
   if (it != thumbnails.end()) {
     const QPixmap& thumb = it.value();
-    auto [min_sec, max_sec] = StreamManager::stream()->timeRange().value_or(std::make_pair(StreamManager::stream()->minSeconds(), StreamManager::stream()->maxSeconds()));
+    auto [min_sec, max_sec] = StreamManager::stream()->timeRange().value_or(
+        std::make_pair(StreamManager::stream()->minSeconds(), StreamManager::stream()->maxSeconds()));
     int pos = (thumbnail_dispaly_time - min_sec) * width() / (max_sec - min_sec);
     int x = std::clamp(pos - thumb.width() / 2, THUMBNAIL_MARGIN, width() - thumb.width() - THUMBNAIL_MARGIN + 1);
     int y = height() - thumb.height() - THUMBNAIL_MARGIN;
@@ -108,7 +110,8 @@ void PlaybackCameraView::drawThumbnail(QPainter& p) {
 void PlaybackCameraView::drawTime(QPainter& p, const QRect& rect, double seconds) {
   p.setPen(palette().color(QPalette::BrightText));
   p.setFont(QFont(font().family(), 10));
-  p.drawText(rect.adjusted(0, 0, 0, -THUMBNAIL_MARGIN), Qt::AlignHCenter | Qt::AlignBottom, QString::number(seconds, 'f', 3));
+  p.drawText(rect.adjusted(0, 0, 0, -THUMBNAIL_MARGIN), Qt::AlignHCenter | Qt::AlignBottom,
+             QString::number(seconds, 'f', 3));
 }
 
 void PlaybackCameraView::drawAlert(QPainter& p, const QRect& rect, const Timeline::Entry& alert) {

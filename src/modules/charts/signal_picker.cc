@@ -11,9 +11,9 @@
 #include "core/streams/abstract_stream.h"
 #include "modules/system/stream_manager.h"
 
-SignalPicker::SignalPicker(QString title, QWidget *parent) : QDialog(parent) {
+SignalPicker::SignalPicker(QString title, QWidget* parent) : QDialog(parent) {
   setWindowTitle(title);
-  QGridLayout *main_layout = new QGridLayout(this);
+  QGridLayout* main_layout = new QGridLayout(this);
 
   // left column
   main_layout->addWidget(new QLabel(tr("Available Signals")), 0, 0);
@@ -27,7 +27,7 @@ SignalPicker::SignalPicker(QString title, QWidget *parent) : QDialog(parent) {
   main_layout->addWidget(available_list = new QListWidget(this), 2, 0);
 
   // buttons
-  QVBoxLayout *btn_layout = new QVBoxLayout();
+  QVBoxLayout* btn_layout = new QVBoxLayout();
   add_btn = new QPushButton(utils::icon("chevron-right"), "", this);
   add_btn->setEnabled(false);
   remove_btn = new QPushButton(utils::icon("chevron-left"), "", this);
@@ -45,7 +45,7 @@ SignalPicker::SignalPicker(QString title, QWidget *parent) : QDialog(parent) {
   button_box = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
   main_layout->addWidget(button_box, 3, 2);
 
-  for (const auto &[id, _] : StreamManager::stream()->snapshots()) {
+  for (const auto& [id, _] : StreamManager::stream()->snapshots()) {
     if (auto m = GetDBC()->msg(id)) {
       msgs_combo->addItem(QString("%1 (%2)").arg(m->name).arg(id.toString()), QVariant::fromValue(id));
     }
@@ -62,20 +62,24 @@ void SignalPicker::setupConnections() {
   connect(selected_list, &QListWidget::currentRowChanged, [=](int row) { remove_btn->setEnabled(row != -1); });
   connect(available_list, &QListWidget::itemDoubleClicked, this, &SignalPicker::add);
   connect(selected_list, &QListWidget::itemDoubleClicked, this, &SignalPicker::remove);
-  connect(add_btn, &QPushButton::clicked, [this]() { if (auto item = available_list->currentItem()) add(item); });
-  connect(remove_btn, &QPushButton::clicked, [this]() { if (auto item = selected_list->currentItem()) remove(item); });
+  connect(add_btn, &QPushButton::clicked, [this]() {
+    if (auto item = available_list->currentItem()) add(item);
+  });
+  connect(remove_btn, &QPushButton::clicked, [this]() {
+    if (auto item = selected_list->currentItem()) remove(item);
+  });
   connect(button_box, &QDialogButtonBox::accepted, this, &QDialog::accept);
   connect(button_box, &QDialogButtonBox::rejected, this, &QDialog::reject);
 }
 
-void SignalPicker::add(QListWidgetItem *item) {
-  auto it = (ListItem *)item;
+void SignalPicker::add(QListWidgetItem* item) {
+  auto it = (ListItem*)item;
   addItemToList(selected_list, it->msg_id, it->sig, true);
   delete item;
 }
 
-void SignalPicker::remove(QListWidgetItem *item) {
-  auto it = (ListItem *)item;
+void SignalPicker::remove(QListWidgetItem* item) {
+  auto it = (ListItem*)item;
   if (it->msg_id == msgs_combo->currentData().value<MessageId>()) {
     addItemToList(available_list, it->msg_id, it->sig);
   }
@@ -96,19 +100,19 @@ void SignalPicker::updateAvailableList(int index) {
   }
 }
 
-void SignalPicker::addItemToList(QListWidget *parent, const MessageId id, const dbc::Signal *sig, bool show_msg_name) {
+void SignalPicker::addItemToList(QListWidget* parent, const MessageId id, const dbc::Signal* sig, bool show_msg_name) {
   QString text = QString("<span style=\"color:%0;\">■ </span> %1").arg(sig->color.name(), sig->name);
   if (show_msg_name) text += QString(" <font color=\"gray\">%0 %1</font>").arg(msgName(id), id.toString());
 
-  QLabel *label = new QLabel(text);
+  QLabel* label = new QLabel(text);
   label->setContentsMargins(5, 0, 5, 0);
   auto new_item = new ListItem(id, sig, parent);
   new_item->setSizeHint(label->sizeHint());
   parent->setItemWidget(new_item, label);
 }
 
-QList<SignalPicker::ListItem *> SignalPicker::seletedItems() {
-  QList<SignalPicker::ListItem *> ret;
-  for (int i = 0; i < selected_list->count(); ++i) ret.push_back((ListItem *)selected_list->item(i));
+QList<SignalPicker::ListItem*> SignalPicker::seletedItems() {
+  QList<SignalPicker::ListItem*> ret;
+  for (int i = 0; i < selected_list->count(); ++i) ret.push_back((ListItem*)selected_list->item(i));
   return ret;
 }

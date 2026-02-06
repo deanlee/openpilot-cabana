@@ -7,15 +7,15 @@
 #include <QSpinBox>
 
 class SettingsDialog : public QDialog {
-public:
-  SettingsDialog(QWidget *parent);
+ public:
+  SettingsDialog(QWidget* parent);
   void save();
-  QSpinBox *fps;
-  QSpinBox *cached_minutes;
-  QSpinBox *chart_height;
-  QComboBox *chart_series_type;
-  QComboBox *theme;
-  QGroupBox *log_livestream;
-  QLineEdit *log_path;
-  QComboBox *drag_direction;
+  QSpinBox* fps;
+  QSpinBox* cached_minutes;
+  QSpinBox* chart_height;
+  QComboBox* chart_series_type;
+  QComboBox* theme;
+  QGroupBox* log_livestream;
+  QLineEdit* log_path;
+  QComboBox* drag_direction;
 };

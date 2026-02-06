@@ -14,7 +14,7 @@ class ValueTableEditor : public QDialog {
   ValueTable value_table;
 
  private:
- void addRow(const QString& val, const QString& desc);
+  void addRow(const QString& val, const QString& desc);
 
   void setupConnections();
   void handleSave();
@@ -23,9 +23,8 @@ class ValueTableEditor : public QDialog {
     QWidget* createEditor(QWidget* parent, const QStyleOptionViewItem& option, const QModelIndex& index) const override;
   };
 
-
   QTableWidget* table;
-  QDialogButtonBox *btn_box;
-  QPushButton *add_btn;
-  QPushButton *remove_btn;
+  QDialogButtonBox* btn_box;
+  QPushButton* add_btn;
+  QPushButton* remove_btn;
 };

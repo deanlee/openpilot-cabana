@@ -30,7 +30,7 @@ void settings_op(SettingOperation op) {
   op(s, "sparkline_range", settings.sparkline_range);
   op(s, "log_livestream", settings.log_livestream);
   op(s, "log_path", settings.log_path);
-  op(s, "drag_direction", (int &)settings.drag_direction);
+  op(s, "drag_direction", (int&)settings.drag_direction);
   op(s, "recent_dbc_file", settings.recent_dbc_file);
   op(s, "active_msg_id", settings.active_msg_id);
   op(s, "selected_msg_ids", settings.selected_msg_ids);
@@ -40,12 +40,12 @@ void settings_op(SettingOperation op) {
 Settings::Settings() {
   last_dir = last_route_dir = QDir::homePath();
   log_path = QStandardPaths::writableLocation(QStandardPaths::HomeLocation) + "/cabana_live_stream/";
-  settings_op([](QSettings &s, const QString &key, auto &value) {
+  settings_op([](QSettings& s, const QString& key, auto& value) {
     if (auto v = s.value(key); v.canConvert<std::decay_t<decltype(value)>>())
       value = v.value<std::decay_t<decltype(value)>>();
   });
 }
 
 Settings::~Settings() {
-  settings_op([](QSettings &s, const QString &key, auto &v) { s.setValue(key, v); });
+  settings_op([](QSettings& s, const QString& key, auto& v) { s.setValue(key, v); });
 }

@@ -11,13 +11,13 @@ dbc::Msg::~Msg() {
   }
 }
 
-dbc::Signal *dbc::Msg::addSignal(const dbc::Signal &sig) {
+dbc::Signal* dbc::Msg::addSignal(const dbc::Signal& sig) {
   auto s = sigs.emplace_back(new dbc::Signal(sig));
   update();
   return s;
 }
 
-dbc::Signal *dbc::Msg::updateSignal(const QString &sig_name, const dbc::Signal &new_sig) {
+dbc::Signal* dbc::Msg::updateSignal(const QString& sig_name, const dbc::Signal& new_sig) {
   auto s = sig(sig_name);
   if (s) {
     *s = new_sig;
@@ -26,7 +26,7 @@ dbc::Signal *dbc::Msg::updateSignal(const QString &sig_name, const dbc::Signal &
   return s;
 }
 
-void dbc::Msg::removeSignal(const QString &sig_name) {
+void dbc::Msg::removeSignal(const QString& sig_name) {
   auto it = std::ranges::find(sigs, sig_name, &dbc::Signal::name);
   if (it != sigs.end()) {
     delete *it;
@@ -35,7 +35,7 @@ void dbc::Msg::removeSignal(const QString &sig_name) {
   }
 }
 
-dbc::Msg &dbc::Msg::operator=(const dbc::Msg &other) {
+dbc::Msg& dbc::Msg::operator=(const dbc::Msg& other) {
   address = other.address;
   name = other.name;
   size = other.size;
@@ -52,12 +52,12 @@ dbc::Msg &dbc::Msg::operator=(const dbc::Msg &other) {
   return *this;
 }
 
-dbc::Signal *dbc::Msg::sig(const QString &sig_name) const {
+dbc::Signal* dbc::Msg::sig(const QString& sig_name) const {
   auto it = std::ranges::find(sigs, sig_name, &dbc::Signal::name);
   return it != sigs.end() ? *it : nullptr;
 }
 
-int dbc::Msg::indexOf(const dbc::Signal *sig) const {
+int dbc::Msg::indexOf(const dbc::Signal* sig) const {
   for (int i = 0; i < sigs.size(); ++i) {
     if (sigs[i] == sig) return i;
   }

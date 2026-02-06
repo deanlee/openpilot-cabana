@@ -9,15 +9,15 @@
 class OpenPandaWidget : public AbstractStreamWidget {
   Q_OBJECT
 
-public:
-  OpenPandaWidget(QWidget *parent = nullptr);
-  AbstractStream *open() override;
+ public:
+  OpenPandaWidget(QWidget* parent = nullptr);
+  AbstractStream* open() override;
 
-private:
+ private:
   void refreshSerials();
   void buildConfigForm();
 
-  QComboBox *serial_edit;
-  QFormLayout *form_layout;
+  QComboBox* serial_edit;
+  QFormLayout* form_layout;
   PandaStreamConfig config = {};
 };

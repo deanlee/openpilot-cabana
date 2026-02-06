@@ -55,7 +55,8 @@ RouteBrowserDialog::RouteBrowserDialog(QWidget* parent) : QDialog(parent) {
 
   // UI Trigger connections
   connect(device_list_, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &RouteBrowserDialog::fetchRoutes);
-  connect(period_selector_, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &RouteBrowserDialog::fetchRoutes);
+  connect(period_selector_, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
+          &RouteBrowserDialog::fetchRoutes);
   connect(button_box, &QDialogButtonBox::accepted, this, &QDialog::accept);
   connect(button_box, &QDialogButtonBox::rejected, this, &QDialog::reject);
 

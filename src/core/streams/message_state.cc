@@ -27,8 +27,8 @@ static const std::array<float, 256> ENTROPY_LOOKUP = [] {
   std::array<float, 256> table;
   for (int i = 0; i < 256; ++i) {
     double p = i / 255.0;
-    table[i] = (p <= 0.001 || p >= 0.999) ? 0.0f :
-               static_cast<float>(-(p * std::log2(p) + (1.0 - p) * std::log2(1.0 - p)));
+    table[i] =
+        (p <= 0.001 || p >= 0.999) ? 0.0f : static_cast<float>(-(p * std::log2(p) + (1.0 - p) * std::log2(1.0 - p)));
   }
   return table;
 }();
@@ -67,8 +67,7 @@ void MessageState::init(const uint8_t* new_data, int data_size, double current_t
   std::memcpy(last_data_64.data(), new_data, size);
 }
 
-void MessageState::update(const uint8_t* new_data, int data_size,
-                          double current_ts, double manual_freq, bool is_seek) {
+void MessageState::update(const uint8_t* new_data, int data_size, double current_ts, double manual_freq, bool is_seek) {
   if (size != data_size) {
     init(new_data, data_size, current_ts);
     return;
@@ -236,7 +235,7 @@ void MessageState::unmuteActiveBits(const std::vector<uint8_t>& mask) {
 uint32_t colorFromDataPattern(DataPattern pattern, double current_ts, double last_ts, double freq) {
   if (pattern == DataPattern::None) return 0x00000000;
 
-    const double elapsed = std::max(0.0, current_ts - last_ts);
+  const double elapsed = std::max(0.0, current_ts - last_ts);
 
   // Adaptive Decay Limit
   // If a message comes in at 1Hz, we want the color to last ~2s so it doesn't blink.
@@ -256,8 +255,12 @@ uint32_t colorFromDataPattern(DataPattern pattern, double current_ts, double las
   // Apply a slight "boost" to the initial flash
   uint32_t alpha = static_cast<uint32_t>(230 * intensity);
 
-  struct RGB { uint8_t r, g, b; };
-  struct ThemeColors { RGB light, dark; };
+  struct RGB {
+    uint8_t r, g, b;
+  };
+  struct ThemeColors {
+    RGB light, dark;
+  };
 
   static const ThemeColors palette[] = {
       {{200, 200, 200}, {80, 80, 80}},   // None

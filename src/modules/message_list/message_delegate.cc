@@ -5,9 +5,9 @@
 #include <QPainter>
 #include <QStyle>
 
-#include "utils/util.h"
 #include "message_model.h"
 #include "modules/inspector/history/history_model.h"
+#include "utils/util.h"
 
 namespace {
 // Internal helper to abstract data access from different models
@@ -24,21 +24,20 @@ MessageDataRef getDataRef(CallerType type, const QModelIndex& index) {
                       : MessageDataRef{0, nullptr, nullptr};
   } else {
     auto* msg = static_cast<MessageHistoryModel::LogEntry*>(index.internalPointer());
-    return msg ? MessageDataRef{msg->size, &msg->data, &msg->colors}
-               : MessageDataRef{0, nullptr, nullptr};
+    return msg ? MessageDataRef{msg->size, &msg->data, &msg->colors} : MessageDataRef{0, nullptr, nullptr};
   }
 }
 
-const int GAP_WIDTH = 8; // Extra pixels added every 8 bytes
+const int GAP_WIDTH = 8;  // Extra pixels added every 8 bytes
 }  // namespace
 
-MessageDelegate::MessageDelegate(QObject *parent, CallerType caller_type)
+MessageDelegate::MessageDelegate(QObject* parent, CallerType caller_type)
     : caller_type_(caller_type), QStyledItemDelegate(parent) {
   fixed_font = QFontDatabase::systemFont(QFontDatabase::FixedFont);
 
   QFontMetrics fm(fixed_font);
   int hex_width = fm.horizontalAdvance("FF");
-  int byte_gap = 4; // Gap between characters in a byte
+  int byte_gap = 4;  // Gap between characters in a byte
   byte_size = QSize(hex_width + byte_gap, fm.height() + 2);
 
   h_margin = QApplication::style()->pixelMetric(QStyle::PM_FocusFrameHMargin) + 1;
@@ -87,16 +86,17 @@ void MessageDelegate::paint(QPainter* painter, const QStyleOptionViewItem& optio
   }
 }
 
-void MessageDelegate::drawItemText(QPainter* p, const QStyleOptionViewItem& opt, const QModelIndex& idx, bool sel, bool active) const {
+void MessageDelegate::drawItemText(QPainter* p, const QStyleOptionViewItem& opt, const QModelIndex& idx, bool sel,
+                                   bool active) const {
   QString text = idx.data(Qt::DisplayRole).toString();
   if (text.isEmpty()) return;
 
   p->setFont(opt.font);
   p->setPen(opt.palette.color(active ? QPalette::Normal : QPalette::Disabled,
-                                    sel ? QPalette::HighlightedText : QPalette::Text));
+                              sel ? QPalette::HighlightedText : QPalette::Text));
 
   QRect textRect = opt.rect.adjusted(h_margin, 0, -h_margin, 0);
-  const QFontMetrics &fm = opt.fontMetrics;
+  const QFontMetrics& fm = opt.fontMetrics;
   const int y_baseline = textRect.top() + (textRect.height() - fm.height()) / 2 + fm.ascent();
 
   if (fm.horizontalAdvance(text) <= textRect.width()) {
@@ -107,7 +107,8 @@ void MessageDelegate::drawItemText(QPainter* p, const QStyleOptionViewItem& opt,
   }
 }
 
-void MessageDelegate::drawHexData(QPainter* p, const QStyleOptionViewItem& opt, const QModelIndex& idx, bool sel, bool active) const {
+void MessageDelegate::drawHexData(QPainter* p, const QStyleOptionViewItem& opt, const QModelIndex& idx, bool sel,
+                                  bool active) const {
   MessageDataRef ref = getDataRef(caller_type_, idx);
   if (!ref.bytes || ref.len == 0) return;
 
@@ -135,11 +136,9 @@ void MessageDelegate::updatePixmapCache(const QPalette& palette) const {
   cached_palette = palette;
   qreal dpr = qApp->devicePixelRatio();
 
-  QColor colors[3] = {
-      palette.color(QPalette::Normal, QPalette::Text),
-      palette.color(QPalette::Normal, QPalette::HighlightedText),
-      palette.color(QPalette::Disabled, QPalette::Text)
-  };
+  QColor colors[3] = {palette.color(QPalette::Normal, QPalette::Text),
+                      palette.color(QPalette::Normal, QPalette::HighlightedText),
+                      palette.color(QPalette::Disabled, QPalette::Text)};
 
   for (int i = 0; i < 256; ++i) {
     QString hex = QString("%1").arg(i, 2, 16, QLatin1Char('0')).toUpper();

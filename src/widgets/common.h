@@ -18,20 +18,21 @@ class TabBar : public QTabBar {
 class LogSlider : public QSlider {
   Q_OBJECT
 
-public:
-  LogSlider(double factor, Qt::Orientation orientation, QWidget *parent = nullptr) : factor(factor), QSlider(orientation, parent) {}
+ public:
+  LogSlider(double factor, Qt::Orientation orientation, QWidget* parent = nullptr)
+      : factor(factor), QSlider(orientation, parent) {}
   void setRange(double min, double max);
   int value() const;
   void setValue(int v);
 
-private:
+ private:
   double factor, log_min = 0, log_max = 1;
 };
 
 class ElidedLabel : public QLabel {
-public:
-  ElidedLabel(QWidget *parent);
-  void paintEvent(QPaintEvent *event) override;
+ public:
+  ElidedLabel(QWidget* parent);
+  void paintEvent(QPaintEvent* event) override;
 };
 
-QFrame *createVLine(QWidget *parent);
+QFrame* createVLine(QWidget* parent);

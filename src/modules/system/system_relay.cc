@@ -27,9 +27,7 @@ void SystemRelay::installGlobalHandlers() {
     emit SystemRelay::instance().logMessage(msg);
   });
 
-  installMessageHandler([](ReplyMsgType type, const std::string msg) {
-    qInfo() << msg.c_str();
-  });
+  installMessageHandler([](ReplyMsgType type, const std::string msg) { qInfo() << msg.c_str(); });
 }
 
 void SystemRelay::uninstallHandlers() {

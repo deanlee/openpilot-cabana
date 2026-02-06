@@ -5,8 +5,8 @@
 #include <set>
 #include <vector>
 
-#include "common/prefix.h"
 #include "abstract_stream.h"
+#include "common/prefix.h"
 #include "replay/include/replay.h"
 
 Q_DECLARE_METATYPE(std::shared_ptr<LogReader>);
@@ -16,11 +16,12 @@ class QTimer;
 class ReplayStream : public AbstractStream {
   Q_OBJECT
 
-public:
-  ReplayStream(QObject *parent);
+ public:
+  ReplayStream(QObject* parent);
   void start() override { replay->start(); }
-  bool loadRoute(const QString &route, const QString &data_dir, uint32_t replay_flags = REPLAY_FLAG_NONE, bool auto_source = false);
-  bool eventFilter(const Event *event);
+  bool loadRoute(const QString& route, const QString& data_dir, uint32_t replay_flags = REPLAY_FLAG_NONE,
+                 bool auto_source = false);
+  bool eventFilter(const Event* event);
   void seekTo(double ts) override { replay->seekTo(std::max(double(0), ts), false); }
   bool liveStreaming() const override { return false; }
   inline QString routeName() const override { return QString::fromStdString(replay->route().name()); }
@@ -31,14 +32,14 @@ public:
   inline uint64_t beginMonoNs() const override { return replay->routeStartNanos(); }
   inline void setSpeed(float speed) override { replay->setSpeed(speed); }
   inline float getSpeed() const { return replay->getSpeed(); }
-  inline Replay *getReplay() const { return replay.get(); }
+  inline Replay* getReplay() const { return replay.get(); }
   inline bool isPaused() const override { return replay->isPaused(); }
   void pause(bool pause) override;
 
-private:
+ private:
   void mergeSegments();
   std::unique_ptr<Replay> replay = nullptr;
   std::set<int> processed_segments;
   std::unique_ptr<OpenpilotPrefix> op_prefix;
-  QTimer *ui_update_timer = nullptr;
+  QTimer* ui_update_timer = nullptr;
 };

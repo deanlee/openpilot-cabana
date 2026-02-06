@@ -1,11 +1,10 @@
 #pragma once
 
+#include <QMetaType>
+#include <QString>
 #include <limits>
 #include <utility>
 #include <vector>
-
-#include <QMetaType>
-#include <QString>
 
 #include "dbc_signal.h"
 
@@ -17,20 +16,16 @@ struct MessageId {
 
   MessageId(uint8_t s = 0, uint32_t a = 0) : address(a), source(s) {}
 
-  inline uint64_t v() const noexcept {
-    return (static_cast<uint64_t>(source) << 32) | address;
-  }
+  inline uint64_t v() const noexcept { return (static_cast<uint64_t>(source) << 32) | address; }
 
-  bool operator==(const MessageId &other) const noexcept { return v() == other.v(); }
-  bool operator!=(const MessageId &other) const noexcept { return v() != other.v(); }
-  bool operator<(const MessageId &other) const noexcept { return v() < other.v(); }
-  bool operator>(const MessageId &other) const noexcept { return v() > other.v(); }
+  bool operator==(const MessageId& other) const noexcept { return v() == other.v(); }
+  bool operator!=(const MessageId& other) const noexcept { return v() != other.v(); }
+  bool operator<(const MessageId& other) const noexcept { return v() < other.v(); }
+  bool operator>(const MessageId& other) const noexcept { return v() > other.v(); }
 
-  QString toString() const {
-    return QString("%1:%2").arg(source).arg(address, 0, 16).toUpper();
-  }
+  QString toString() const { return QString("%1:%2").arg(source).arg(address, 0, 16).toUpper(); }
 
-  static MessageId fromString(const QString &str) {
+  static MessageId fromString(const QString& str) {
     auto parts = str.split(':');
     if (parts.size() != 2) return {};
     return MessageId(uint8_t(parts[0].toUInt()), parts[1].toUInt(nullptr, 16));
@@ -55,29 +50,29 @@ struct std::hash<MessageId> {
 namespace dbc {
 
 class Msg {
-public:
+ public:
   Msg() = default;
-  Msg(const Msg &other) { *this = other; }
+  Msg(const Msg& other) { *this = other; }
   ~Msg();
-  dbc::Signal *addSignal(const dbc::Signal &sig);
-  dbc::Signal *updateSignal(const QString &sig_name, const dbc::Signal &sig);
-  void removeSignal(const QString &sig_name);
-  Msg &operator=(const Msg &other);
-  int indexOf(const dbc::Signal *sig) const;
-  dbc::Signal *sig(const QString &sig_name) const;
+  dbc::Signal* addSignal(const dbc::Signal& sig);
+  dbc::Signal* updateSignal(const QString& sig_name, const dbc::Signal& sig);
+  void removeSignal(const QString& sig_name);
+  Msg& operator=(const Msg& other);
+  int indexOf(const dbc::Signal* sig) const;
+  dbc::Signal* sig(const QString& sig_name) const;
   QString newSignalName();
   void update();
-  inline const std::vector<dbc::Signal *> &getSignals() const { return sigs; }
+  inline const std::vector<dbc::Signal*>& getSignals() const { return sigs; }
 
   uint32_t address;
   QString name;
   uint32_t size;
   QString comment;
   QString transmitter;
-  std::vector<dbc::Signal *> sigs;
+  std::vector<dbc::Signal*> sigs;
 
   std::vector<uint8_t> mask;
-  dbc::Signal *multiplexor = nullptr;
+  dbc::Signal* multiplexor = nullptr;
 };
 
-}  // namespace cabana
+}  // namespace dbc

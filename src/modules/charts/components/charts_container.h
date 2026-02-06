@@ -26,7 +26,7 @@ class ChartsContainer : public QWidget {
 
   void handleDragInteraction(const QPoint& pos);
   void handleDrop(ChartView* target, DropMode mode, QDropEvent* event);
-  bool eventFilter(QObject *obj, QEvent *event) override;
+  bool eventFilter(QObject* obj, QEvent* event) override;
   void paintEvent(QPaintEvent* ev) override;
   int calculateOptimalColumns() const;
   void reflowLayout();

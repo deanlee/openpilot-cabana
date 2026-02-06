@@ -2,12 +2,13 @@
 
 #include <QApplication>
 #include <cmath>
+
 #include "modules/system/stream_manager.h"
 
 // EditMsgCommand
 
-EditMsgCommand::EditMsgCommand(const MessageId &id, const QString &name, int size,
-                               const QString &node, const QString &comment, QUndoCommand *parent)
+EditMsgCommand::EditMsgCommand(const MessageId& id, const QString& name, int size, const QString& node,
+                               const QString& comment, QUndoCommand* parent)
     : id(id), new_name(name), new_size(size), new_node(node), new_comment(comment), QUndoCommand(parent) {
   if (auto msg = GetDBC()->msg(id)) {
     old_name = msg->name;
@@ -27,13 +28,11 @@ void EditMsgCommand::undo() {
     GetDBC()->updateMsg(id, old_name, old_size, old_node, old_comment);
 }
 
-void EditMsgCommand::redo() {
-  GetDBC()->updateMsg(id, new_name, new_size, new_node, new_comment);
-}
+void EditMsgCommand::redo() { GetDBC()->updateMsg(id, new_name, new_size, new_node, new_comment); }
 
 // RemoveMsgCommand
 
-RemoveMsgCommand::RemoveMsgCommand(const MessageId &id, QUndoCommand *parent) : id(id), QUndoCommand(parent) {
+RemoveMsgCommand::RemoveMsgCommand(const MessageId& id, QUndoCommand* parent) : id(id), QUndoCommand(parent) {
   if (auto msg = GetDBC()->msg(id)) {
     message = *msg;
     setText(QObject::tr("remove message %1:%2").arg(message.name).arg(id.address));
@@ -43,19 +42,17 @@ RemoveMsgCommand::RemoveMsgCommand(const MessageId &id, QUndoCommand *parent) : 
 void RemoveMsgCommand::undo() {
   if (!message.name.isEmpty()) {
     GetDBC()->updateMsg(id, message.name, message.size, message.transmitter, message.comment);
-    for (auto s : message.getSignals())
-      GetDBC()->addSignal(id, *s);
+    for (auto s : message.getSignals()) GetDBC()->addSignal(id, *s);
   }
 }
 
 void RemoveMsgCommand::redo() {
-  if (!message.name.isEmpty())
-    GetDBC()->removeMsg(id);
+  if (!message.name.isEmpty()) GetDBC()->removeMsg(id);
 }
 
 // AddSigCommand
 
-AddSigCommand::AddSigCommand(const MessageId &id, const dbc::Signal &sig, QUndoCommand *parent)
+AddSigCommand::AddSigCommand(const MessageId& id, const dbc::Signal& sig, QUndoCommand* parent)
     : id(id), signal(sig), QUndoCommand(parent) {
   setText(QObject::tr("add signal %1 to %2:%3").arg(sig.name).arg(msgName(id)).arg(id.address));
 }
@@ -77,11 +74,11 @@ void AddSigCommand::redo() {
 
 // RemoveSigCommand
 
-RemoveSigCommand::RemoveSigCommand(const MessageId &id, const dbc::Signal *sig, QUndoCommand *parent)
+RemoveSigCommand::RemoveSigCommand(const MessageId& id, const dbc::Signal* sig, QUndoCommand* parent)
     : id(id), QUndoCommand(parent) {
   sigs.push_back(*sig);
   if (sig->type == dbc::Signal::Type::Multiplexor) {
-    for (const auto &s : GetDBC()->msg(id)->sigs) {
+    for (const auto& s : GetDBC()->msg(id)->sigs) {
       if (s->type == dbc::Signal::Type::Multiplexed) {
         sigs.push_back(*s);
       }
@@ -90,19 +87,24 @@ RemoveSigCommand::RemoveSigCommand(const MessageId &id, const dbc::Signal *sig, 
   setText(QObject::tr("remove signal %1 from %2:%3").arg(sig->name).arg(msgName(id)).arg(id.address));
 }
 
-void RemoveSigCommand::undo() { for (const auto &s : sigs) GetDBC()->addSignal(id, s); }
-void RemoveSigCommand::redo() { for (const auto &s : sigs) GetDBC()->removeSignal(id, s.name); }
+void RemoveSigCommand::undo() {
+  for (const auto& s : sigs) GetDBC()->addSignal(id, s);
+}
+void RemoveSigCommand::redo() {
+  for (const auto& s : sigs) GetDBC()->removeSignal(id, s.name);
+}
 
 // EditSignalCommand
 
-EditSignalCommand::EditSignalCommand(const MessageId &id, const dbc::Signal *sig, const dbc::Signal &new_sig, QUndoCommand *parent)
+EditSignalCommand::EditSignalCommand(const MessageId& id, const dbc::Signal* sig, const dbc::Signal& new_sig,
+                                     QUndoCommand* parent)
     : id(id), QUndoCommand(parent) {
   sigs.push_back({*sig, new_sig});
   if (sig->type == dbc::Signal::Type::Multiplexor && new_sig.type == dbc::Signal::Type::Normal) {
     // convert all multiplexed signals to normal signals
     auto msg = GetDBC()->msg(id);
     assert(msg);
-    for (const auto &s : msg->sigs) {
+    for (const auto& s : msg->sigs) {
       if (s->type == dbc::Signal::Type::Multiplexed) {
         auto new_s = *s;
         new_s.type = dbc::Signal::Type::Normal;
@@ -113,13 +115,17 @@ EditSignalCommand::EditSignalCommand(const MessageId &id, const dbc::Signal *sig
   setText(QObject::tr("edit signal %1 in %2:%3").arg(sig->name).arg(msgName(id)).arg(id.address));
 }
 
-void EditSignalCommand::undo() { for (const auto &s : sigs) GetDBC()->updateSignal(id, s.second.name, s.first); }
-void EditSignalCommand::redo() { for (const auto &s : sigs) GetDBC()->updateSignal(id, s.first.name, s.second); }
+void EditSignalCommand::undo() {
+  for (const auto& s : sigs) GetDBC()->updateSignal(id, s.second.name, s.first);
+}
+void EditSignalCommand::redo() {
+  for (const auto& s : sigs) GetDBC()->updateSignal(id, s.first.name, s.second);
+}
 
 namespace UndoStack {
 
-QUndoStack *instance() {
-  static QUndoStack *undo_stack = new QUndoStack(qApp);
+QUndoStack* instance() {
+  static QUndoStack* undo_stack = new QUndoStack(qApp);
   return undo_stack;
 }
 

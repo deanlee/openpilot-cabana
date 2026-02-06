@@ -9,11 +9,11 @@
 #include <QPushButton>
 
 #include "core/streams/replay_stream.h"
-#include "route_browser.h"
 #include "modules/settings/settings.h"
+#include "route_browser.h"
 
-OpenReplayWidget::OpenReplayWidget(QWidget *parent) : AbstractStreamWidget(parent) {
-  QGridLayout *grid_layout = new QGridLayout(this);
+OpenReplayWidget::OpenReplayWidget(QWidget* parent) : AbstractStreamWidget(parent) {
+  QGridLayout* grid_layout = new QGridLayout(this);
   grid_layout->addWidget(new QLabel(tr("Route")), 0, 0);
   grid_layout->addWidget(route_edit = new QLineEdit(this), 0, 1);
   route_edit->setPlaceholderText(tr("Enter route name or browse for local/remote route"));
@@ -22,7 +22,7 @@ OpenReplayWidget::OpenReplayWidget(QWidget *parent) : AbstractStreamWidget(paren
   auto browse_local_btn = new QPushButton(tr("Local route..."), this);
   grid_layout->addWidget(browse_local_btn, 0, 3);
 
-  QHBoxLayout *camera_layout = new QHBoxLayout();
+  QHBoxLayout* camera_layout = new QHBoxLayout();
   for (auto c : {tr("Road camera"), tr("Driver camera"), tr("Wide road camera")})
     camera_layout->addWidget(cameras.emplace_back(new QCheckBox(c, this)));
   cameras[0]->setChecked(true);
@@ -47,7 +47,7 @@ OpenReplayWidget::OpenReplayWidget(QWidget *parent) : AbstractStreamWidget(paren
   });
 }
 
-AbstractStream *OpenReplayWidget::open() {
+AbstractStream* OpenReplayWidget::open() {
   QString route = route_edit->text();
   QString data_dir;
   if (int idx = route.lastIndexOf('/'); idx != -1 && util::file_exists(route.toStdString())) {

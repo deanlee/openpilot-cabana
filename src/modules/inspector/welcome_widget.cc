@@ -21,9 +21,7 @@ void WelcomeWidget::paintEvent(QPaintEvent* event) {
 
   // 2. Shortcuts
   const QList<std::pair<QString, QString>> shortcuts = {
-      {tr("Play / Pause"), "Space"},
-      {tr("Help"), "F1"},
-      {tr("WhatsThis"), "Shift+F1"}};
+      {tr("Play / Pause"), "Space"}, {tr("Help"), "F1"}, {tr("WhatsThis"), "Shift+F1"}};
 
   p.setFont(QFont("sans-serif", 10));
   for (int i = 0; i < shortcuts.size(); ++i) {

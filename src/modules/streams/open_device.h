@@ -8,11 +8,11 @@
 class OpenDeviceWidget : public AbstractStreamWidget {
   Q_OBJECT
 
-public:
-  OpenDeviceWidget(QWidget *parent = nullptr);
-  AbstractStream *open() override;
+ public:
+  OpenDeviceWidget(QWidget* parent = nullptr);
+  AbstractStream* open() override;
 
-private:
-  QLineEdit *ip_address;
-  QButtonGroup *group;
+ private:
+  QLineEdit* ip_address;
+  QButtonGroup* group;
 };

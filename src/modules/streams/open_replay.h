@@ -8,11 +8,11 @@
 class OpenReplayWidget : public AbstractStreamWidget {
   Q_OBJECT
 
-public:
-  OpenReplayWidget(QWidget *parent = nullptr);
-  AbstractStream *open() override;
+ public:
+  OpenReplayWidget(QWidget* parent = nullptr);
+  AbstractStream* open() override;
 
-private:
-  QLineEdit *route_edit;
-  std::vector<QCheckBox *> cameras;
+ private:
+  QLineEdit* route_edit;
+  std::vector<QCheckBox*> cameras;
 };

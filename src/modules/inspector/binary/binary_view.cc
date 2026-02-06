@@ -10,11 +10,9 @@
 #include "core/commands/commands.h"
 #include "modules/settings/settings.h"
 
-inline int get_abs_bit(const QModelIndex& index) {
-  return index.row() * 8 + (7 - index.column());
-}
+inline int get_abs_bit(const QModelIndex& index) { return index.row() * 8 + (7 - index.column()); }
 
-BinaryView::BinaryView(QWidget *parent) : QTableView(parent) {
+BinaryView::BinaryView(QWidget* parent) : QTableView(parent) {
   delegate = new MessageBytesDelegate(this);
 
   setItemDelegate(delegate);
@@ -27,7 +25,6 @@ BinaryView::BinaryView(QWidget *parent) : QTableView(parent) {
   verticalHeader()->setSectionsClickable(false);
   verticalHeader()->setSectionResizeMode(QHeaderView::Fixed);
   verticalHeader()->setDefaultSectionSize(CELL_HEIGHT);
-
 
   setShowGrid(false);
   setMouseTracking(true);
@@ -62,7 +59,7 @@ void BinaryView::setModel(QAbstractItemModel* newModel) {
 void BinaryView::addShortcuts() {
   auto bindKeys = [this](const QList<Qt::Key>& keys, auto&& func) {
     for (auto key : keys) {
-      QShortcut *s = new QShortcut(QKeySequence(key), this);
+      QShortcut* s = new QShortcut(QKeySequence(key), this);
       connect(s, &QShortcut::activated, this, func);
     }
   };
@@ -107,7 +104,7 @@ QSize BinaryView::minimumSizeHint() const {
   return {totalWidth, totalHeight};
 }
 
-void BinaryView::highlight(const dbc::Signal *sig) {
+void BinaryView::highlight(const dbc::Signal* sig) {
   if (sig != hovered_sig) {
     if (sig) model->updateSignalCells(sig);
     if (hovered_sig) model->updateSignalCells(hovered_sig);
@@ -135,20 +132,20 @@ void BinaryView::mousePressEvent(QMouseEvent* event) {
   event->accept();
 }
 
-void BinaryView::highlightPosition(const QPoint &pos) {
+void BinaryView::highlightPosition(const QPoint& pos) {
   if (auto index = indexAt(viewport()->mapFromGlobal(pos)); index.isValid()) {
-    auto item = (BinaryModel::Item *)index.internalPointer();
-    const dbc::Signal *sig = item->sigs.isEmpty() ? nullptr : item->sigs.back();
+    auto item = (BinaryModel::Item*)index.internalPointer();
+    const dbc::Signal* sig = item->sigs.isEmpty() ? nullptr : item->sigs.back();
     highlight(sig);
   }
 }
 
-void BinaryView::mouseMoveEvent(QMouseEvent *event) {
+void BinaryView::mouseMoveEvent(QMouseEvent* event) {
   highlightPosition(event->globalPosition().toPoint());
   QTableView::mouseMoveEvent(event);
 }
 
-void BinaryView::mouseReleaseEvent(QMouseEvent *event) {
+void BinaryView::mouseReleaseEvent(QMouseEvent* event) {
   QTableView::mouseReleaseEvent(event);
 
   auto release_index = indexAt(event->position().toPoint());
@@ -156,12 +153,10 @@ void BinaryView::mouseReleaseEvent(QMouseEvent *event) {
     if (selectionModel()->hasSelection()) {
       auto sig = resize_sig ? *resize_sig : dbc::Signal{};
       std::tie(sig.start_bit, sig.size, sig.is_little_endian) = getSelection(release_index);
-      resize_sig ? emit editSignal(resize_sig, sig)
-                 : UndoStack::push(new AddSigCommand(model->msg_id, sig));
+      resize_sig ? emit editSignal(resize_sig, sig) : UndoStack::push(new AddSigCommand(model->msg_id, sig));
     } else {
-      auto item = (const BinaryModel::Item *)anchor_index.internalPointer();
-      if (item && item->sigs.size() > 0)
-        emit signalClicked(item->sigs.back());
+      auto item = (const BinaryModel::Item*)anchor_index.internalPointer();
+      if (item && item->sigs.size() > 0) emit signalClicked(item->sigs.back());
     }
   }
   clearSelection();
@@ -169,7 +164,7 @@ void BinaryView::mouseReleaseEvent(QMouseEvent *event) {
   resize_sig = nullptr;
 }
 
-void BinaryView::leaveEvent(QEvent *event) {
+void BinaryView::leaveEvent(QEvent* event) {
   highlight(nullptr);
   QTableView::leaveEvent(event);
 }

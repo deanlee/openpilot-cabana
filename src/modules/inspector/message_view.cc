@@ -68,7 +68,8 @@ MessageView::MessageView(ChartsPanel* charts, QWidget* parent) : charts(charts),
 
 void MessageView::setupConnections() {
   connect(binary_view, &BinaryView::signalHovered, signal_editor->model, &SignalTreeModel::highlightSignalRow);
-  connect(binary_view, &BinaryView::signalClicked, [this](const dbc::Signal* s) { signal_editor->selectSignal(s, true); });
+  connect(binary_view, &BinaryView::signalClicked,
+          [this](const dbc::Signal* s) { signal_editor->selectSignal(s, true); });
   connect(binary_view, &BinaryView::editSignal, signal_editor->model, &SignalTreeModel::saveSignal);
   connect(binary_view, &BinaryView::showChart, charts, &ChartsPanel::showChart);
   connect(signal_editor, &SignalEditor::showChart, charts, &ChartsPanel::showChart);
@@ -113,9 +114,8 @@ QWidget* MessageView::createToolBar() {
   QString time_desc = tr("• <b>Timeline:</b> Bit flips within the current zoom or full range.");
   heatmap_mode->setToolTip(tr("<b>Heatmap Mode</b><br/>%1<br/>%2").arg(live_desc, time_desc));
 
-  connect(heatmap_mode, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this, heatmap_mode](int index) {
-    binary_model->setHeatmapMode(heatmap_mode->itemData(index).toBool());
-  });
+  connect(heatmap_mode, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
+          [this, heatmap_mode](int index) { binary_model->setHeatmapMode(heatmap_mode->itemData(index).toBool()); });
   hl->addWidget(heatmap_mode);
 
   // Layout Orientation Toggle
@@ -205,8 +205,7 @@ void MessageView::restoreTabs(const QString active_msg_id, const QStringList& ms
   tabbar->blockSignals(true);
   for (const auto& str_id : msg_ids) {
     MessageId id = MessageId::fromString(str_id);
-    if (GetDBC()->msg(id) != nullptr)
-      findOrAddTab(id);
+    if (GetDBC()->msg(id) != nullptr) findOrAddTab(id);
   }
   tabbar->blockSignals(false);
 
@@ -265,9 +264,7 @@ void MessageView::editMsg() {
   }
 }
 
-void MessageView::removeMsg() {
-  UndoStack::push(new RemoveMsgCommand(msg_id));
-}
+void MessageView::removeMsg() { UndoStack::push(new RemoveMsgCommand(msg_id)); }
 
 void MessageView::toggleCenterOrientation() {
   bool willBeHorizontal = splitter->orientation() == Qt::Vertical;

@@ -72,7 +72,6 @@ void SignalTree::paintEvent(QPaintEvent* event) {
 
   font.setBold(false);
   p.setFont(font);
-  p.drawText(viewport()->rect().adjusted(20, 15, -20, 15),
-             Qt::AlignCenter | Qt::TextWordWrap,
+  p.drawText(viewport()->rect().adjusted(20, 15, -20, 15), Qt::AlignCenter | Qt::TextWordWrap,
              tr("Drag bits in the binary view above to create a signal."));
 }

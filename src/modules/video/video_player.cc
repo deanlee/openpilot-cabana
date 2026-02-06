@@ -16,12 +16,12 @@
 #include "widgets/common.h"
 #include "widgets/tool_button.h"
 
-static Replay *getReplay() {
-  auto stream = qobject_cast<ReplayStream *>(StreamManager::stream());
+static Replay* getReplay() {
+  auto stream = qobject_cast<ReplayStream*>(StreamManager::stream());
   return stream ? stream->getReplay() : nullptr;
 }
 
-VideoPlayer::VideoPlayer(QWidget *parent) : QFrame(parent) {
+VideoPlayer::VideoPlayer(QWidget* parent) : QFrame(parent) {
   setFrameStyle(QFrame::StyledPanel | QFrame::Plain);
   auto main_layout = new QVBoxLayout(this);
   main_layout->setContentsMargins(0, 0, 0, 0);
@@ -50,16 +50,17 @@ VideoPlayer::VideoPlayer(QWidget *parent) : QFrame(parent) {
     </table>
     <span style="color:gray">Shortcuts</span><br/>
     Pause/Resume: <span style="background-color:lightGray;color:gray">&nbsp;space&nbsp;</span>
-  )").arg(timeline_colors[(int)TimelineType::None].name(),
-          timeline_colors[(int)TimelineType::Engaged].name(),
-          timeline_colors[(int)TimelineType::UserBookmark].name(),
-          timeline_colors[(int)TimelineType::AlertInfo].name(),
-          timeline_colors[(int)TimelineType::AlertWarning].name(),
-          timeline_colors[(int)TimelineType::AlertCritical].name()));
+  )")
+                   .arg(timeline_colors[(int)TimelineType::None].name(),
+                        timeline_colors[(int)TimelineType::Engaged].name(),
+                        timeline_colors[(int)TimelineType::UserBookmark].name(),
+                        timeline_colors[(int)TimelineType::AlertInfo].name(),
+                        timeline_colors[(int)TimelineType::AlertWarning].name(),
+                        timeline_colors[(int)TimelineType::AlertCritical].name()));
 }
 
 void VideoPlayer::setupConnections() {
-  auto &sm = StreamManager::instance();
+  auto& sm = StreamManager::instance();
   connect(&sm, &StreamManager::streamChanged, this, &VideoPlayer::resetState);
   connect(&sm, &StreamManager::paused, this, &VideoPlayer::updatePlayBtnState);
   connect(&sm, &StreamManager::resume, this, &VideoPlayer::updatePlayBtnState);
@@ -69,7 +70,7 @@ void VideoPlayer::setupConnections() {
 }
 
 void VideoPlayer::createPlaybackController() {
-  auto *bar = new QWidget(this);
+  auto* bar = new QWidget(this);
 
   int margin = style()->pixelMetric(QStyle::PM_ToolBarItemMargin);
   int spacing = style()->pixelMetric(QStyle::PM_ToolBarItemSpacing);
@@ -83,9 +84,8 @@ void VideoPlayer::createPlaybackController() {
     StreamManager::stream()->seekTo(StreamManager::stream()->currentSec() - 1);
   }));
 
-  play_toggle_btn = createToolButton("play", tr("Play"), []() {
-    StreamManager::stream()->pause(!StreamManager::stream()->isPaused());
-  });
+  play_toggle_btn = createToolButton("play", tr("Play"),
+                                     []() { StreamManager::stream()->pause(!StreamManager::stream()->isPaused()); });
   h_layout->addWidget(play_toggle_btn);
 
   h_layout->addWidget(createToolButton("step-forward", tr("Seek forward"), []() {
@@ -118,8 +118,8 @@ void VideoPlayer::createPlaybackController() {
   layout()->addWidget(bar);
 }
 
-ToolButton* VideoPlayer::createToolButton(const QString &icon, const QString &tip, std::function<void()> cb) {
-  auto *btn = new ToolButton(icon, tip);
+ToolButton* VideoPlayer::createToolButton(const QString& icon, const QString& tip, std::function<void()> cb) {
+  auto* btn = new ToolButton(icon, tip);
   if (cb) connect(btn, &QToolButton::clicked, this, cb);
   return btn;
 }
@@ -133,9 +133,9 @@ void VideoPlayer::createSpeedDropdown() {
   speed_btn->setFont(font);
   speed_btn->setAutoRaise(true);
 
-  auto *speed_group = new QActionGroup(this);
+  auto* speed_group = new QActionGroup(this);
   for (float speed : {0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 0.8, 1.0, 2.0, 3.0, 5.0}) {
-    auto *act = speed_btn->menu()->addAction(QString("%1x").arg(speed), this, [this, speed]() {
+    auto* act = speed_btn->menu()->addAction(QString("%1x").arg(speed), this, [this, speed]() {
       StreamManager::stream()->setSpeed(speed);
       speed_btn->setText(QString("%1x ").arg(speed));
       speed_btn->setToolTip(tr("Playback Speed: %1x").arg(speed));
@@ -147,9 +147,9 @@ void VideoPlayer::createSpeedDropdown() {
   speed_btn->setText("1.0x ");
 }
 
-QWidget *VideoPlayer::createCameraWidget() {
-  QWidget *w = new QWidget(this);
-  QVBoxLayout *l = new QVBoxLayout(w);
+QWidget* VideoPlayer::createCameraWidget() {
+  QWidget* w = new QWidget(this);
+  QVBoxLayout* l = new QVBoxLayout(w);
   l->setContentsMargins(0, 0, 0, 0);
   l->setSpacing(0);
 
@@ -167,10 +167,14 @@ QWidget *VideoPlayer::createCameraWidget() {
   connect(slider, &TimelineSlider::timeHovered, this, &VideoPlayer::showThumbnail);
   connect(&StreamManager::instance(), &StreamManager::paused, cam_widget, [c = cam_widget]() { c->update(); });
   connect(&StreamManager::instance(), &StreamManager::eventsMerged, slider, &TimelineSlider::updateCache);
-  connect(&StreamManager::instance(), &StreamManager::qLogLoaded, slider, &TimelineSlider::updateCache, Qt::QueuedConnection);
-  connect(&StreamManager::instance(), &StreamManager::qLogLoaded, cam_widget, &PlaybackCameraView::parseQLog, Qt::QueuedConnection);
-  connect(cam_widget, &PlaybackCameraView::clicked, []() { StreamManager::stream()->pause(!StreamManager::stream()->isPaused()); });
-  connect(cam_widget, &PlaybackCameraView::vipcAvailableStreamsUpdated, this, &VideoPlayer::vipcAvailableStreamsUpdated);
+  connect(&StreamManager::instance(), &StreamManager::qLogLoaded, slider, &TimelineSlider::updateCache,
+          Qt::QueuedConnection);
+  connect(&StreamManager::instance(), &StreamManager::qLogLoaded, cam_widget, &PlaybackCameraView::parseQLog,
+          Qt::QueuedConnection);
+  connect(cam_widget, &PlaybackCameraView::clicked,
+          []() { StreamManager::stream()->pause(!StreamManager::stream()->isPaused()); });
+  connect(cam_widget, &PlaybackCameraView::vipcAvailableStreamsUpdated, this,
+          &VideoPlayer::vipcAvailableStreamsUpdated);
   connect(camera_tab, &QTabBar::currentChanged, [this](int index) {
     if (index != -1) cam_widget->setStreamType((VisionStreamType)camera_tab->tabData(index).toInt());
   });
@@ -211,7 +215,7 @@ void VideoPlayer::loopPlaybackClicked() {
 }
 
 void VideoPlayer::timeRangeChanged() {
-  auto *stream = StreamManager::stream();
+  auto* stream = StreamManager::stream();
   const auto time_range = stream->timeRange();
   if (stream->liveStreaming()) {
     skip_to_end_btn->setEnabled(!time_range.has_value());
@@ -253,7 +257,7 @@ void VideoPlayer::showThumbnail(double seconds) {
 }
 
 void VideoPlayer::showRouteInfo() {
-  RouteInfoDlg *route_info = new RouteInfoDlg(this);
+  RouteInfoDlg* route_info = new RouteInfoDlg(this);
   route_info->setAttribute(Qt::WA_DeleteOnClose);
   route_info->show();
 }

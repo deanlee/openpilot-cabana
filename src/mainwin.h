@@ -20,21 +20,21 @@ class QVBoxLayout;
 class MainWindow : public QMainWindow {
   Q_OBJECT
 
-public:
-  MainWindow(AbstractStream *stream, const QString &dbc_file);
+ public:
+  MainWindow(AbstractStream* stream, const QString& dbc_file);
   void toggleChartsDocking();
-  ChartsPanel *charts_panel = nullptr;
+  ChartsPanel* charts_panel = nullptr;
 
-public slots:
+ public slots:
   void selectAndOpenStream();
-  void openStream(AbstractStream *stream, const QString &dbc_file = {});
+  void openStream(AbstractStream* stream, const QString& dbc_file = {});
   void closeStream();
   void exportToCSV();
   void onStreamChanged();
 
-protected:
+ protected:
   void setupConnections();
-  bool eventFilter(QObject *obj, QEvent *event) override;
+  bool eventFilter(QObject* obj, QEvent* event) override;
   void remindSaveChanges();
 
   void setupMenus();
@@ -50,7 +50,7 @@ protected:
 
   void createLoadingDialog(bool is_live);
   void createShortcuts();
-  void closeEvent(QCloseEvent *event) override;
+  void closeEvent(QCloseEvent* event) override;
   void DBCFileChanged();
   void setOption();
   void findSimilarBits();
@@ -62,24 +62,24 @@ protected:
   void saveSessionState();
   void restoreSessionState();
 
-  VideoPlayer *video_player_ = nullptr;
-  QDockWidget *video_dock_ = nullptr;
-  QDockWidget *messages_dock_ = nullptr;
-  MessageList *message_list_ = nullptr;
-  MessageInspector *inspector_widget_ = nullptr;
-  QWidget *floating_window_ = nullptr;
-  QVBoxLayout *charts_layout_ = nullptr;
-  PanelSplitter *video_splitter_ = nullptr;
-  StatusBar *status_bar_ = nullptr;
-  QMenu *recent_files_menu_ = nullptr;
-  QMenu *manage_dbcs_menu_ = nullptr;
-  QMenu *tools_menu_ = nullptr;
-  QAction *close_stream_act_ = nullptr;
-  QAction *export_to_csv_act_ = nullptr;
-  QAction *save_dbc_ = nullptr;
-  QAction *save_dbc_as_ = nullptr;
-  QAction *copy_dbc_to_clipboard_ = nullptr;
+  VideoPlayer* video_player_ = nullptr;
+  QDockWidget* video_dock_ = nullptr;
+  QDockWidget* messages_dock_ = nullptr;
+  MessageList* message_list_ = nullptr;
+  MessageInspector* inspector_widget_ = nullptr;
+  QWidget* floating_window_ = nullptr;
+  QVBoxLayout* charts_layout_ = nullptr;
+  PanelSplitter* video_splitter_ = nullptr;
+  StatusBar* status_bar_ = nullptr;
+  QMenu* recent_files_menu_ = nullptr;
+  QMenu* manage_dbcs_menu_ = nullptr;
+  QMenu* tools_menu_ = nullptr;
+  QAction* close_stream_act_ = nullptr;
+  QAction* export_to_csv_act_ = nullptr;
+  QAction* save_dbc_ = nullptr;
+  QAction* save_dbc_as_ = nullptr;
+  QAction* copy_dbc_to_clipboard_ = nullptr;
   QString car_fingerprint_;
   QByteArray default_window_state_;
-  DbcController *dbc_controller_ = nullptr;
+  DbcController* dbc_controller_ = nullptr;
 };

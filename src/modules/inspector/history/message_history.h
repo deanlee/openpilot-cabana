@@ -15,19 +15,19 @@
 class MessageHistory : public QFrame {
   Q_OBJECT
 
-public:
-  MessageHistory(QWidget *parent);
-  void setMessage(const MessageId &message_id) { model->setMessage(message_id); }
+ public:
+  MessageHistory(QWidget* parent);
+  void setMessage(const MessageId& message_id) { model->setMessage(message_id); }
   void clearMessage();
   void updateState() { model->updateState(); }
 
-private slots:
+ private slots:
   void filterChanged();
   void exportToCSV();
   void resetInternalState();
   void setHexModel(int index);
 
-private:
+ private:
   QWidget* createToolbar();
   void setupConnections();
 
@@ -46,11 +46,11 @@ private:
     }
   };
 
-  HistoryTableView *logs;
-  MessageHistoryModel *model;
+  HistoryTableView* logs;
+  MessageHistoryModel* model;
   QComboBox *signals_cb, *comp_box, *display_type_cb;
-  DebouncedLineEdit *value_edit;
-  QWidget *filters_widget;
-  ToolButton *export_btn;
-  MessageDelegate *delegate;
+  DebouncedLineEdit* value_edit;
+  QWidget* filters_widget;
+  ToolButton* export_btn;
+  MessageDelegate* delegate;
 };

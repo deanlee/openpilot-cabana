@@ -31,9 +31,9 @@ class TimelineSlider : public QWidget {
 
  private:
   void handleMouse(int x);
-  void drawEvents(QPainter &p, int y, int h, double scale);
-  void drawUnloadedOverlay(QPainter &p, int y, int h, double scale);
-  void drawScrubber(QPainter &p, int h, double scale);
+  void drawEvents(QPainter& p, int y, int h, double scale);
+  void drawUnloadedOverlay(QPainter& p, int y, int h, double scale);
+  void drawScrubber(QPainter& p, int h, double scale);
   double timeToX(double t) const;
   double xToTime(int x) const;
 

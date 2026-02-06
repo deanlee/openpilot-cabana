@@ -4,7 +4,6 @@
 #include <QColor>
 #include <QFont>
 #include <QSet>
-
 #include <array>
 #include <optional>
 #include <vector>
@@ -18,7 +17,6 @@ const int CELL_HEIGHT = 32;
 
 class BinaryModel : public QAbstractTableModel {
  public:
-
   struct Item {
     QColor bg_color = QColor(102, 86, 169, 255);
     bool is_msb = false;
@@ -44,7 +42,7 @@ class BinaryModel : public QAbstractTableModel {
   void updateBorders();
   void updateState();
   void updateSignalCells(const dbc::Signal* sig);
-  QSet<const dbc::Signal *> getOverlappingSignals() const;
+  QSet<const dbc::Signal*> getOverlappingSignals() const;
   const std::array<std::array<uint32_t, 8>, MAX_CAN_LEN>& getBitFlipChanges(size_t msg_size);
 
   // QAbstractTableModel overrides
@@ -73,11 +71,11 @@ class BinaryModel : public QAbstractTableModel {
   std::vector<Item> items;
   QFont header_font_;
 
-  bool syncRowItems(int row, const MessageSnapshot* msg, const std::array<uint32_t, 8>& row_flips,
-                    float log_max, bool is_light, const QColor& base_bg, float decay);
-  QColor calculateBitHeatColor(Item& item, uint32_t flips, float log_max,
-                               bool is_light, const QColor& base_bg, float decay_factor);
+  bool syncRowItems(int row, const MessageSnapshot* msg, const std::array<uint32_t, 8>& row_flips, float log_max,
+                    bool is_light, const QColor& base_bg, float decay);
+  QColor calculateBitHeatColor(Item& item, uint32_t flips, float log_max, bool is_light, const QColor& base_bg,
+                               float decay_factor);
   bool updateItem(int row, int col, uint8_t val, const QColor& color);
 };
 
-QString signalToolTip(const dbc::Signal *sig);
+QString signalToolTip(const dbc::Signal* sig);

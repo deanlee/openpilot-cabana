@@ -12,16 +12,11 @@
 // Define a small value of epsilon to compare double values
 const float EPSILON = 0.000001;
 
-enum class SeriesType {
-  Line = 0,
-  StepLine,
-  Scatter
-};
+enum class SeriesType { Line = 0, StepLine, Scatter };
 
 class ChartSignal {
-public:
-  ChartSignal(const MessageId &id, const dbc::Signal *s, QXYSeries *ser)
-      : msg_id(id), sig(s), series(ser) {}
+ public:
+  ChartSignal(const MessageId& id, const dbc::Signal* s, QXYSeries* ser) : msg_id(id), sig(s), series(ser) {}
   MessageId msg_id;
   const dbc::Signal* sig = nullptr;
   QXYSeries* series = nullptr;
@@ -34,7 +29,7 @@ public:
   void updateRange(double main_x, double max_x);
   void updateSeries(SeriesType series_type);
 
-private:
+ private:
   SeriesBounds series_bounds;
   std::pair<double, double> last_range_{0, 0};
 };

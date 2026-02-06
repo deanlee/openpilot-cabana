@@ -88,7 +88,7 @@ void BinaryModel::mapSignalsToItems(const dbc::Msg* msg) {
 void BinaryModel::updateBorders() {
   for (int r = 0; r < row_count; ++r) {
     for (int c = 0; c < column_count; ++c) {
-      auto &item = items[r * column_count + c];
+      auto& item = items[r * column_count + c];
       if (item.sigs.isEmpty()) {
         item.borders = {};
         continue;
@@ -99,21 +99,21 @@ void BinaryModel::updateBorders() {
         return items[nr * column_count + nc].sigs == item.sigs;
       };
 
-      item.borders.left   = !matches(r, c - 1);
-      item.borders.right  = !matches(r, c + 1);
-      item.borders.top    = !matches(r - 1, c);
+      item.borders.left = !matches(r, c - 1);
+      item.borders.right = !matches(r, c + 1);
+      item.borders.top = !matches(r - 1, c);
       item.borders.bottom = !matches(r + 1, c);
 
-      item.borders.top_left     = !matches(r - 1, c - 1);
-      item.borders.top_right    = !matches(r - 1, c + 1);
-      item.borders.bottom_left  = !matches(r + 1, c - 1);
+      item.borders.top_left = !matches(r - 1, c - 1);
+      item.borders.top_right = !matches(r - 1, c + 1);
+      item.borders.bottom_left = !matches(r + 1, c - 1);
       item.borders.bottom_right = !matches(r + 1, c + 1);
     }
   }
 }
 
-bool BinaryModel::updateItem(int row, int col, uint8_t val, const QColor &color) {
-  auto &item = items[row * column_count + col];
+bool BinaryModel::updateItem(int row, int col, uint8_t val, const QColor& color) {
+  auto& item = items[row * column_count + col];
   item.valid = true;
   if (item.val != val || item.bg_color != color) {
     item.val = val;
@@ -182,9 +182,9 @@ void BinaryModel::updateSignalCells(const dbc::Signal* sig) {
   }
 }
 
-QSet<const dbc::Signal *> BinaryModel::getOverlappingSignals() const {
-  QSet<const dbc::Signal *> overlapping;
-  for (const auto &item : items) {
+QSet<const dbc::Signal*> BinaryModel::getOverlappingSignals() const {
+  QSet<const dbc::Signal*> overlapping;
+  for (const auto& item : items) {
     if (item.sigs.size() > 1) {
       for (auto s : item.sigs) {
         if (s->type == dbc::Signal::Type::Normal) overlapping += s;
@@ -216,8 +216,8 @@ bool BinaryModel::syncRowItems(int row, const MessageSnapshot* msg, const std::a
   return row_dirty;
 }
 
-QColor BinaryModel::calculateBitHeatColor(Item& item, uint32_t flips, float log_max,
-                                          bool is_light, const QColor& base_bg, float decay_factor) {
+QColor BinaryModel::calculateBitHeatColor(Item& item, uint32_t flips, float log_max, bool is_light,
+                                          const QColor& base_bg, float decay_factor) {
   float target = std::clamp(std::log2(static_cast<float>(flips) + 1.0f) / log_max, 0.0f, 1.0f);
   if (heatmap_live_mode) {
     if (flips != item.last_flips) {
@@ -262,16 +262,15 @@ QColor BinaryModel::calculateBitHeatColor(Item& item, uint32_t flips, float log_
   float inv_i = 1.0f - i;
   int min_alpha = is_light ? 40 : 60;
 
-  return QColor(
-      static_cast<int>(base_bg.red() * inv_i + hot.red() * i),
-      static_cast<int>(base_bg.green() * inv_i + hot.green() * i),
-      static_cast<int>(base_bg.blue() * inv_i + hot.blue() * i),
-      static_cast<int>(min_alpha * inv_i + 220 * i));
+  return QColor(static_cast<int>(base_bg.red() * inv_i + hot.red() * i),
+                static_cast<int>(base_bg.green() * inv_i + hot.green() * i),
+                static_cast<int>(base_bg.blue() * inv_i + hot.blue() * i),
+                static_cast<int>(min_alpha * inv_i + 220 * i));
 }
 
 const std::array<std::array<uint32_t, 8>, MAX_CAN_LEN>& BinaryModel::getBitFlipChanges(size_t msg_size) {
   // Return cached results if time range and data are unchanged
-  auto *stream = StreamManager::stream();
+  auto* stream = StreamManager::stream();
   auto time_range = stream->timeRange();
   if (!time_range) {
     time_range = {stream->minSeconds(), stream->maxSeconds()};
@@ -289,13 +288,13 @@ const std::array<std::array<uint32_t, 8>, MAX_CAN_LEN>& BinaryModel::getBitFlipC
 
   std::vector<uint8_t> prev_values((*first)->dat, (*first)->dat + (*first)->size);
   for (auto it = std::next(first); it != last; ++it) {
-    const CanEvent *event = *it;
+    const CanEvent* event = *it;
     int size = std::min<int>(msg_size, event->size);
     for (int i = 0; i < size; ++i) {
       const uint8_t diff = event->dat[i] ^ prev_values[i];
       if (!diff) continue;
 
-      auto &bit_flips = bit_flip_tracker.flip_counts[i];
+      auto& bit_flips = bit_flip_tracker.flip_counts[i];
       for (int bit = 0; bit < 8; ++bit) {
         if (diff & (1u << bit)) ++bit_flips[7 - bit];
       }
@@ -318,17 +317,23 @@ QVariant BinaryModel::headerData(int section, Qt::Orientation orientation, int r
   return {};
 }
 
-QVariant BinaryModel::data(const QModelIndex &index, int role) const {
-  auto item = (const BinaryModel::Item *)index.internalPointer();
+QVariant BinaryModel::data(const QModelIndex& index, int role) const {
+  auto item = (const BinaryModel::Item*)index.internalPointer();
   return role == Qt::ToolTipRole && item && !item->sigs.empty() ? signalToolTip(item->sigs.back()) : QVariant();
 }
 
-QString signalToolTip(const dbc::Signal *sig) {
+QString signalToolTip(const dbc::Signal* sig) {
   return QObject::tr(R"(
     %1<br /><span font-size:small">
     Start Bit: %2 Size: %3<br />
     MSB: %4 LSB: %5<br />
     Little Endian: %6 Signed: %7</span>
-  )").arg(sig->name).arg(sig->start_bit).arg(sig->size).arg(sig->msb).arg(sig->lsb)
-     .arg(sig->is_little_endian ? "Y" : "N").arg(sig->is_signed ? "Y" : "N");
+  )")
+      .arg(sig->name)
+      .arg(sig->start_bit)
+      .arg(sig->size)
+      .arg(sig->msb)
+      .arg(sig->lsb)
+      .arg(sig->is_little_endian ? "Y" : "N")
+      .arg(sig->is_signed ? "Y" : "N");
 }

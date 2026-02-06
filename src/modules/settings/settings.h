@@ -1,7 +1,7 @@
 #pragma once
 
-#include <QObject>
 #include <QByteArray>
+#include <QObject>
 #include <QString>
 #include <QStringList>
 
@@ -11,7 +11,7 @@
 class Settings : public QObject {
   Q_OBJECT
 
-public:
+ public:
   enum DragDirection {
     MsbFirst,
     LsbFirst,
@@ -27,10 +27,10 @@ public:
   int max_cached_minutes = 30;
   int chart_height = 200;
   int chart_column_count = 1;
-  int chart_range = 3 * 60; // 3 minutes
+  int chart_range = 3 * 60;  // 3 minutes
   int chart_series_type = 0;
   int theme = 0;
-  int sparkline_range = 15; // 15 seconds
+  int sparkline_range = 15;  // 15 seconds
   bool log_livestream = true;
   QString log_path;
   QString last_dir;
@@ -48,7 +48,7 @@ public:
   QStringList selected_msg_ids;
   QStringList active_charts;
 
-signals:
+ signals:
   void changed();
 };
 

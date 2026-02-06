@@ -3,46 +3,46 @@
 #include <QTableView>
 #include <tuple>
 
-#include "binary_model.h"
 #include "binary_delegate.h"
+#include "binary_model.h"
 #include "core/streams/abstract_stream.h"
 #include "modules/system/stream_manager.h"
 
 class BinaryView : public QTableView {
   Q_OBJECT
 
-public:
-  BinaryView(QWidget *parent = nullptr);
-  void setModel(QAbstractItemModel *newModel) override;
-  void highlight(const dbc::Signal *sig);
-  void paintEvent(QPaintEvent *event) override {
+ public:
+  BinaryView(QWidget* parent = nullptr);
+  void setModel(QAbstractItemModel* newModel) override;
+  void highlight(const dbc::Signal* sig);
+  void paintEvent(QPaintEvent* event) override {
     is_message_active = StreamManager::stream()->snapshot(model->msg_id)->is_active;
     QTableView::paintEvent(event);
   }
   QSize minimumSizeHint() const override;
 
-signals:
-  void signalClicked(const dbc::Signal *sig);
-  void signalHovered(const dbc::Signal *sig);
-  void editSignal(const dbc::Signal *origin_s, dbc::Signal &s);
-  void showChart(const MessageId &id, const dbc::Signal *sig, bool show, bool merge);
+ signals:
+  void signalClicked(const dbc::Signal* sig);
+  void signalHovered(const dbc::Signal* sig);
+  void editSignal(const dbc::Signal* origin_s, dbc::Signal& s);
+  void showChart(const MessageId& id, const dbc::Signal* sig, bool show, bool merge);
 
-private:
+ private:
   void resetInternalState();
   void addShortcuts();
   std::tuple<int, int, bool> getSelection(QModelIndex index);
-  void setSelection(const QRect &rect, QItemSelectionModel::SelectionFlags flags) override;
-  void mousePressEvent(QMouseEvent *event) override;
-  void mouseMoveEvent(QMouseEvent *event) override;
-  void mouseReleaseEvent(QMouseEvent *event) override;
-  void leaveEvent(QEvent *event) override;
-  void highlightPosition(const QPoint &pt);
+  void setSelection(const QRect& rect, QItemSelectionModel::SelectionFlags flags) override;
+  void mousePressEvent(QMouseEvent* event) override;
+  void mouseMoveEvent(QMouseEvent* event) override;
+  void mouseReleaseEvent(QMouseEvent* event) override;
+  void leaveEvent(QEvent* event) override;
+  void highlightPosition(const QPoint& pt);
 
   QModelIndex anchor_index;
-  BinaryModel *model;
-  MessageBytesDelegate *delegate;
+  BinaryModel* model;
+  MessageBytesDelegate* delegate;
   bool is_message_active = false;
-  const dbc::Signal *resize_sig = nullptr;
-  const dbc::Signal *hovered_sig = nullptr;
+  const dbc::Signal* resize_sig = nullptr;
+  const dbc::Signal* hovered_sig = nullptr;
   friend class MessageBytesDelegate;
 };

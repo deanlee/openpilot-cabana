@@ -17,35 +17,35 @@
 class SignalEditor : public QFrame {
   Q_OBJECT
 
-public:
-  SignalEditor(ChartsPanel *charts, QWidget *parent);
-  void setMessage(const MessageId &id);
+ public:
+  SignalEditor(ChartsPanel* charts, QWidget* parent);
+  void setMessage(const MessageId& id);
   void clearMessage();
-  void selectSignal(const dbc::Signal *sig, bool expand = false);
-  void updateState(const std::set<MessageId> *msgs = nullptr);
-  SignalTreeModel *model = nullptr;
+  void selectSignal(const dbc::Signal* sig, bool expand = false);
+  void updateState(const std::set<MessageId>* msgs = nullptr);
+  SignalTreeModel* model = nullptr;
 
-signals:
-  void highlight(const dbc::Signal *sig);
-  void showChart(const MessageId &id, const dbc::Signal *sig, bool show, bool merge);
+ signals:
+  void highlight(const dbc::Signal* sig);
+  void showChart(const MessageId& id, const dbc::Signal* sig, bool show, bool merge);
 
-private:
-  QWidget *createToolbar();
-  void setupConnections(ChartsPanel *charts);
+ private:
+  QWidget* createToolbar();
+  void setupConnections(ChartsPanel* charts);
   void rowsChanged();
   void resizeEvent(QResizeEvent* event) override;
   void updateToolBar();
   void setSparklineRange(int value);
-  void handleSignalAdded(MessageId id, const dbc::Signal *sig);
-  void handleSignalUpdated(const dbc::Signal *sig);
+  void handleSignalAdded(MessageId id, const dbc::Signal* sig);
+  void handleSignalUpdated(const dbc::Signal* sig);
   void updateColumnWidths();
   std::pair<QModelIndex, QModelIndex> visibleSignalRange();
 
-  SignalTree *tree;
-  QLabel *sparkline_label;
-  QSlider *sparkline_range_slider;
-  DebouncedLineEdit *filter_edit;
-  QLabel *signal_count_lb;
-  SignalTreeDelegate *delegate;
-  ToolButton *collapse_btn;
+  SignalTree* tree;
+  QLabel* sparkline_label;
+  QSlider* sparkline_range_slider;
+  DebouncedLineEdit* filter_edit;
+  QLabel* signal_count_lb;
+  SignalTreeDelegate* delegate;
+  ToolButton* collapse_btn;
 };

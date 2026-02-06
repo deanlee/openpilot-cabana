@@ -10,10 +10,10 @@
 class MessageHistoryModel : public QAbstractTableModel {
   Q_OBJECT
 
-public:
+ public:
   struct SignalColumn {
     QString display_name;
-    dbc::Signal *sig;
+    dbc::Signal* sig;
   };
 
   struct LogEntry {
@@ -24,32 +24,34 @@ public:
     std::array<uint32_t, MAX_CAN_LEN> colors;
   };
 
-  MessageHistoryModel(QObject *parent) : QAbstractTableModel(parent) {}
-  void setMessage(const MessageId &message_id);
+  MessageHistoryModel(QObject* parent) : QAbstractTableModel(parent) {}
+  void setMessage(const MessageId& message_id);
   void updateState(bool clear = false);
-  void setFilter(int sig_idx, const QString &value, std::function<bool(double, double)> cmp);
+  void setFilter(int sig_idx, const QString& value, std::function<bool(double, double)> cmp);
   QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const override;
   QModelIndex index(int row, int column, const QModelIndex& parent = QModelIndex()) const override {
     if (!hasIndex(row, column, parent)) return {};
     return createIndex(row, column, (void*)(&messages[row]));
   }
-  QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
-  void fetchMore(const QModelIndex &parent) override;
-  bool canFetchMore(const QModelIndex &parent) const override;
-  int rowCount(const QModelIndex &parent = QModelIndex()) const override { return messages.size(); }
-  int columnCount(const QModelIndex &parent = QModelIndex()) const override { return !isHexMode() ? sigs.size() + 1 : 2; }
+  QVariant data(const QModelIndex& index, int role = Qt::DisplayRole) const override;
+  void fetchMore(const QModelIndex& parent) override;
+  bool canFetchMore(const QModelIndex& parent) const override;
+  int rowCount(const QModelIndex& parent = QModelIndex()) const override { return messages.size(); }
+  int columnCount(const QModelIndex& parent = QModelIndex()) const override {
+    return !isHexMode() ? sigs.size() + 1 : 2;
+  }
   inline bool isHexMode() const { return sigs.empty() || hex_mode; }
   void rebuild();
   void setHexMode(bool hex_mode);
   void setPaused() { setPauseState(true); }
   void setResumed() { setPauseState(false); }
-  const std::vector<SignalColumn> &messageSignals() const { return sigs; }
+  const std::vector<SignalColumn>& messageSignals() const { return sigs; }
   void setPauseState(bool paused);
   void fetchData(int insert_pos_idx, uint64_t from_time, uint64_t min_time);
 
   MessageId msg_id;
 
-private:
+ private:
   MessageState hex_colors;
   const int batch_size = 50;
   int filter_sig_idx = -1;

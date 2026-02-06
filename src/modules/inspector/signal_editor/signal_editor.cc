@@ -11,7 +11,7 @@
 #include "core/commands/commands.h"
 #include "modules/settings/settings.h"
 
-SignalEditor::SignalEditor(ChartsPanel *charts, QWidget *parent) : QFrame(parent) {
+SignalEditor::SignalEditor(ChartsPanel* charts, QWidget* parent) : QFrame(parent) {
   setFrameStyle(QFrame::NoFrame);
   tree = new SignalTree(this);
   tree->setModel(model = new SignalTreeModel(this));
@@ -24,7 +24,7 @@ SignalEditor::SignalEditor(ChartsPanel *charts, QWidget *parent) : QFrame(parent
   header->setSectionResizeMode(0, QHeaderView::Interactive);
   header->setSectionResizeMode(1, QHeaderView::Stretch);
 
-  QVBoxLayout *main_layout = new QVBoxLayout(this);
+  QVBoxLayout* main_layout = new QVBoxLayout(this);
   main_layout->setContentsMargins(0, 0, 0, 0);
   main_layout->setSpacing(0);
   main_layout->addWidget(createToolbar());
@@ -44,7 +44,7 @@ SignalEditor::SignalEditor(ChartsPanel *charts, QWidget *parent) : QFrame(parent
   )"));
 }
 
-QWidget *SignalEditor::createToolbar() {
+QWidget* SignalEditor::createToolbar() {
   QWidget* toolbar = new QWidget(this);
   QHBoxLayout* hl = new QHBoxLayout(toolbar);
   hl->setContentsMargins(4, 4, 4, 4);
@@ -77,7 +77,7 @@ QWidget *SignalEditor::createToolbar() {
   return toolbar;
 }
 
-void SignalEditor::setupConnections(ChartsPanel *charts) {
+void SignalEditor::setupConnections(ChartsPanel* charts) {
   connect(filter_edit, &DebouncedLineEdit::debouncedTextEdited, model, &SignalTreeModel::setFilter);
   connect(sparkline_range_slider, &QSlider::valueChanged, this, &SignalEditor::setSparklineRange);
   connect(collapse_btn, &QPushButton::clicked, tree, &QTreeView::collapseAll);
@@ -91,19 +91,17 @@ void SignalEditor::setupConnections(ChartsPanel *charts) {
   connect(tree, &SignalTree::highlightRequested, this, &SignalEditor::highlight);
   connect(tree->verticalScrollBar(), &QScrollBar::valueChanged, [this]() { updateState(); });
   connect(tree->verticalScrollBar(), &QScrollBar::rangeChanged, [this]() { updateState(); });
-  connect(charts, &ChartsPanel::seriesChanged, model, [this, charts]() {
-    model->updateChartedSignals(charts->getChartedSignals());
-  });
+  connect(charts, &ChartsPanel::seriesChanged, model,
+          [this, charts]() { model->updateChartedSignals(charts->getChartedSignals()); });
 
-  connect(delegate, &SignalTreeDelegate::removeRequested, this, [this](const dbc::Signal* sig) {
-    UndoStack::push(new RemoveSigCommand(model->messageId(), sig));
-  });
+  connect(delegate, &SignalTreeDelegate::removeRequested, this,
+          [this](const dbc::Signal* sig) { UndoStack::push(new RemoveSigCommand(model->messageId(), sig)); });
   connect(delegate, &SignalTreeDelegate::plotRequested, this, [this](const dbc::Signal* sig, bool show, bool merge) {
     emit showChart(model->messageId(), sig, show, merge);
   });
 }
 
-void SignalEditor::setMessage(const MessageId &id) {
+void SignalEditor::setMessage(const MessageId& id) {
   filter_edit->clear();
   model->setMessage(id);
 }
@@ -136,7 +134,7 @@ void SignalEditor::rowsChanged() {
   updateColumnWidths();
 }
 
-void SignalEditor::selectSignal(const dbc::Signal *sig, bool expand) {
+void SignalEditor::selectSignal(const dbc::Signal* sig, bool expand) {
   if (int row = model->signalRow(sig); row != -1) {
     auto idx = model->index(row, 0);
     if (expand) {
@@ -161,15 +159,14 @@ void SignalEditor::setSparklineRange(int value) {
   updateState();
 }
 
-void SignalEditor::handleSignalAdded(MessageId id, const dbc::Signal *sig) {
+void SignalEditor::handleSignalAdded(MessageId id, const dbc::Signal* sig) {
   if (id.address == model->messageId().address) {
     selectSignal(sig);
   }
 }
 
-void SignalEditor::handleSignalUpdated(const dbc::Signal *sig) {
-  if (int row = model->signalRow(sig); row != -1)
-    updateState();
+void SignalEditor::handleSignalUpdated(const dbc::Signal* sig) {
+  if (int row = model->signalRow(sig); row != -1) updateState();
 }
 
 std::pair<QModelIndex, QModelIndex> SignalEditor::visibleSignalRange() {
@@ -199,7 +196,7 @@ void SignalEditor::updateColumnWidths() {
   int max_content_w = 0;
   int indentation = tree->indentation();
 
-  for (const auto *sig : m->getSignals()) {
+  for (const auto* sig : m->getSignals()) {
     int w = delegate->nameColumnWidth(sig);
     if (sig->type == dbc::Signal::Type::Multiplexed) {
       w += indentation;

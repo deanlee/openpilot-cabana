@@ -5,30 +5,30 @@
 
 #include "modules/system/stream_manager.h"
 
-void exportMessagesToCSV(const QString &file_name, std::optional<MessageId> msg_id) {
+void exportMessagesToCSV(const QString& file_name, std::optional<MessageId> msg_id) {
   QFile file(file_name);
   if (file.open(QIODevice::ReadWrite | QIODevice::Truncate)) {
     QTextStream stream(&file);
     stream << "time,addr,bus,data\n";
-    auto *can = StreamManager::stream();
+    auto* can = StreamManager::stream();
     for (auto e : msg_id ? can->events(*msg_id) : can->allEvents()) {
       stream << QString::number(can->toSeconds(e->mono_ns), 'f', 3) << ","
              << "0x" << QString::number(e->address, 16) << "," << e->src << ","
-             << "0x" << QByteArray::fromRawData((const char *)e->dat, e->size).toHex().toUpper() << "\n";
+             << "0x" << QByteArray::fromRawData((const char*)e->dat, e->size).toHex().toUpper() << "\n";
     }
   }
 }
 
-void exportSignalsToCSV(const QString &file_name, const MessageId &msg_id) {
+void exportSignalsToCSV(const QString& file_name, const MessageId& msg_id) {
   QFile file(file_name);
-  if (auto msg = GetDBC()->msg(msg_id); msg && msg->sigs.size() && file.open(QIODevice::ReadWrite | QIODevice::Truncate)) {
+  if (auto msg = GetDBC()->msg(msg_id);
+      msg && msg->sigs.size() && file.open(QIODevice::ReadWrite | QIODevice::Truncate)) {
     QTextStream stream(&file);
     stream << "time,addr,bus";
-    for (auto s : msg->sigs)
-      stream << "," << s->name;
+    for (auto s : msg->sigs) stream << "," << s->name;
     stream << "\n";
 
-    auto *can = StreamManager::stream();
+    auto* can = StreamManager::stream();
     for (auto e : can->events(msg_id)) {
       stream << QString::number(can->toSeconds(e->mono_ns), 'f', 3) << ","
              << "0x" << QString::number(e->address, 16) << "," << e->src;

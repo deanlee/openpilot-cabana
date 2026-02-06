@@ -72,27 +72,30 @@ void MessageList::setupConnections() {
   });
 }
 
-QWidget *MessageList::createToolBar() {
-  QWidget *toolbar = new QWidget(this);
-  QHBoxLayout *layout = new QHBoxLayout(toolbar);
+QWidget* MessageList::createToolBar() {
+  QWidget* toolbar = new QWidget(this);
+  QHBoxLayout* layout = new QHBoxLayout(toolbar);
   layout->setContentsMargins(0, 4, 0, 0);
   layout->setSpacing(style()->pixelMetric(QStyle::PM_ToolBarItemSpacing));
 
   layout->addWidget(suppress_add = new ToolButton("ban"));
   suppress_add->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
   suppress_add->setText(tr("Mute Current"));
-  suppress_add->setToolTip(tr("Mute Current Activity.\n"
-                            "Silences bytes currently changing to help you detect new bit transitions."));
+  suppress_add->setToolTip(
+      tr("Mute Current Activity.\n"
+         "Silences bytes currently changing to help you detect new bit transitions."));
   layout->addWidget(suppress_clear = new ToolButton("refresh-ccw"));
   suppress_clear->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
   suppress_clear->setText(tr("Reset Activity"));
-  suppress_clear->setToolTip(tr("Reset Activity.\n"
-                            "Restore highlighting for all bytes."));
+  suppress_clear->setToolTip(
+      tr("Reset Activity.\n"
+         "Restore highlighting for all bytes."));
 
   suppress_defined_signals = new QCheckBox(tr("Mute Defined"), this);
   suppress_defined_signals->setFocusPolicy(Qt::NoFocus);
-  suppress_defined_signals->setToolTip(tr("Mute Defined Signals.\n"
-                                        "Focus on unknown data by hiding activity for bits already assigned to a signal."));
+  suppress_defined_signals->setToolTip(
+      tr("Mute Defined Signals.\n"
+         "Focus on unknown data by hiding activity for bits already assigned to a signal."));
   layout->addWidget(suppress_defined_signals);
 
   layout->addStretch(1);
@@ -104,9 +107,8 @@ QWidget *MessageList::createToolBar() {
 
   connect(suppress_add, &ToolButton::clicked, this, [this]() { suppressHighlighted(true); });
   connect(suppress_clear, &ToolButton::clicked, this, [this]() { suppressHighlighted(false); });
-  connect(suppress_defined_signals, &QCheckBox::stateChanged, this , [this]() {
-    StreamManager::stream()->suppressDefinedSignals(suppress_defined_signals->isChecked());
-  });
+  connect(suppress_defined_signals, &QCheckBox::stateChanged, this,
+          [this]() { StreamManager::stream()->suppressDefinedSignals(suppress_defined_signals->isChecked()); });
 
   suppressHighlighted(false);
   return toolbar;
@@ -129,12 +131,14 @@ void MessageList::resetState() {
 
 void MessageList::updateTitle() {
   emit titleChanged(tr("%1 Messages (%2 DBC Messages, %3 Signals)")
-                    .arg(model->rowCount()).arg(model->getDbcMessageCount()).arg(model->getSignalCount()));
+                        .arg(model->rowCount())
+                        .arg(model->getDbcMessageCount())
+                        .arg(model->getSignalCount()));
 }
 
-void MessageList::handleSelectionChanged(const QModelIndex &current) {
+void MessageList::handleSelectionChanged(const QModelIndex& current) {
   if (current.isValid()) {
-    auto *item = static_cast<MessageModel::Item*>(current.internalPointer());
+    auto* item = static_cast<MessageModel::Item*>(current.internalPointer());
     if (!current_msg_id || item->id != *current_msg_id) {
       current_msg_id = item->id;
       emit msgSelectionChanged(*current_msg_id);
@@ -142,7 +146,7 @@ void MessageList::handleSelectionChanged(const QModelIndex &current) {
   }
 }
 
-void MessageList::selectMessageForced(const MessageId &msg_id, bool force) {
+void MessageList::selectMessageForced(const MessageId& msg_id, bool force) {
   if (!force && current_msg_id && *current_msg_id == msg_id) return;
 
   int row = model->getRowForMessageId(msg_id);
@@ -172,9 +176,7 @@ void MessageList::suppressHighlighted(bool suppress) {
   suppress_clear->setEnabled(n > 0);
 }
 
-void MessageList::headerContextMenuEvent(const QPoint &pos) {
-  menu->exec(header->mapToGlobal(pos));
-}
+void MessageList::headerContextMenuEvent(const QPoint& pos) { menu->exec(header->mapToGlobal(pos)); }
 
 void MessageList::menuAboutToShow() {
   menu->clear();
@@ -189,7 +191,7 @@ void MessageList::menuAboutToShow() {
   }
   menu->addSeparator();
 
-  auto *action = menu->addAction(tr("Show inactive Messages"), model, &MessageModel::setInactiveMessagesVisible);
+  auto* action = menu->addAction(tr("Show inactive Messages"), model, &MessageModel::setInactiveMessagesVisible);
   action->setCheckable(true);
   action->setChecked(model->isInactiveMessagesVisible());
 }

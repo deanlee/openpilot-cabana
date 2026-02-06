@@ -3,6 +3,6 @@
 
 class RouteInfoDlg : public QDialog {
   Q_OBJECT
-public:
-  RouteInfoDlg(QWidget *parent = nullptr);
+ public:
+  RouteInfoDlg(QWidget* parent = nullptr);
 };

@@ -19,11 +19,10 @@ bool SparklineContext::update(const MessageId& msg_id, uint64_t current_ns, int 
 
   // Jump Detection
   jump_detected = (last_processed_mono_ns != 0) &&
-                  ((current_ns < last_processed_mono_ns) ||
-                   (current_ns > last_processed_mono_ns + 1000000000ULL));
+                  ((current_ns < last_processed_mono_ns) || (current_ns > last_processed_mono_ns + 1000000000ULL));
 
   if (!size_changed && !time_shifted && !jump_detected) {
-    first = last; // Signals to the caller that no new processing is needed
+    first = last;  // Signals to the caller that no new processing is needed
     return false;
   }
 
@@ -46,7 +45,8 @@ bool SparklineContext::update(const MessageId& msg_id, uint64_t current_ns, int 
   }
 
   auto* stream = StreamManager::stream();
-  auto range = stream->eventsInRange(msg_id, std::make_pair(stream->toSeconds(fetch_start), stream->toSeconds(win_end_ns)));
+  auto range =
+      stream->eventsInRange(msg_id, std::make_pair(stream->toSeconds(fetch_start), stream->toSeconds(win_end_ns)));
 
   first = range.first;
   last = range.second;
@@ -83,7 +83,7 @@ void Sparkline::update(const dbc::Signal* sig, const SparklineContext& ctx) {
 void Sparkline::updateDataPoints(const dbc::Signal* sig, const SparklineContext& ctx) {
   double val = 0.0;
   for (auto it = ctx.first; it != ctx.last; ++it) {
-    auto *e = *it;
+    auto* e = *it;
     if (sig->parse(e->dat, e->size, &val)) {
       history_.push_back({e->mono_ns, val});
     }

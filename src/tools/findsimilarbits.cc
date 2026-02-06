@@ -1,26 +1,25 @@
 #include "tools/findsimilarbits.h"
 
-#include <algorithm>
-
 #include <QGridLayout>
-#include <QHeaderView>
 #include <QHBoxLayout>
+#include <QHeaderView>
 #include <QIntValidator>
 #include <QLabel>
 #include <QPushButton>
 #include <QRadioButton>
+#include <algorithm>
 
 #include "core/dbc/dbc_manager.h"
 #include "core/streams/abstract_stream.h"
 #include "modules/system/stream_manager.h"
 
-FindSimilarBitsDlg::FindSimilarBitsDlg(QWidget *parent) : QDialog(parent, Qt::WindowFlags() | Qt::Window) {
+FindSimilarBitsDlg::FindSimilarBitsDlg(QWidget* parent) : QDialog(parent, Qt::WindowFlags() | Qt::Window) {
   setWindowTitle(tr("Find similar bits"));
   setAttribute(Qt::WA_DeleteOnClose);
 
-  QVBoxLayout *main_layout = new QVBoxLayout(this);
+  QVBoxLayout* main_layout = new QVBoxLayout(this);
 
-  QHBoxLayout *src_layout = new QHBoxLayout();
+  QHBoxLayout* src_layout = new QHBoxLayout();
   src_bus_combo = new QComboBox(this);
   find_bus_combo = new QComboBox(this);
   for (auto cb : {src_bus_combo, find_bus_combo}) {
@@ -31,7 +30,7 @@ FindSimilarBitsDlg::FindSimilarBitsDlg(QWidget *parent) : QDialog(parent, Qt::Wi
 
   msg_cb = new QComboBox(this);
   // TODO: update when src_bus_combo changes
-  for (auto &[address, msg] : GetDBC()->getMessages(-1)) {
+  for (auto& [address, msg] : GetDBC()->getMessages(-1)) {
     msg_cb->addItem(msg.name, address);
   }
   msg_cb->model()->sort(0);
@@ -54,7 +53,7 @@ FindSimilarBitsDlg::FindSimilarBitsDlg(QWidget *parent) : QDialog(parent, Qt::Wi
   src_layout->addWidget(bit_idx_sb);
   src_layout->addStretch(0);
 
-  QHBoxLayout *find_layout = new QHBoxLayout();
+  QHBoxLayout* find_layout = new QHBoxLayout();
   find_layout->addWidget(new QLabel(tr("Bus")));
   find_layout->addWidget(find_bus_combo);
   find_layout->addWidget(new QLabel(tr("Equal")));
@@ -70,7 +69,7 @@ FindSimilarBitsDlg::FindSimilarBitsDlg(QWidget *parent) : QDialog(parent, Qt::Wi
   find_layout->addWidget(search_btn);
   find_layout->addStretch(0);
 
-  QGridLayout *grid_layout = new QGridLayout();
+  QGridLayout* grid_layout = new QGridLayout();
   grid_layout->addWidget(new QLabel("Find From:"), 0, 0);
   grid_layout->addLayout(src_layout, 0, 1);
   grid_layout->addWidget(new QLabel("Find In:"), 1, 0);
@@ -86,9 +85,10 @@ FindSimilarBitsDlg::FindSimilarBitsDlg(QWidget *parent) : QDialog(parent, Qt::Wi
 
   setMinimumSize({700, 500});
   connect(search_btn, &QPushButton::clicked, this, &FindSimilarBitsDlg::find);
-  connect(table, &QTableWidget::doubleClicked, [this](const QModelIndex &index) {
+  connect(table, &QTableWidget::doubleClicked, [this](const QModelIndex& index) {
     if (index.isValid()) {
-      MessageId msg_id((uint8_t)find_bus_combo->currentData().toUInt(), table->item(index.row(), 0)->text().toUInt(0, 16));
+      MessageId msg_id((uint8_t)find_bus_combo->currentData().toUInt(),
+                       table->item(index.row(), 0)->text().toUInt(0, 16));
       emit openMessage(msg_id);
     }
   });
@@ -98,13 +98,14 @@ void FindSimilarBitsDlg::find() {
   search_btn->setEnabled(false);
   table->clear();
   uint32_t selected_address = msg_cb->currentData().toUInt();
-  auto msg_mismatched = calcBits(src_bus_combo->currentText().toUInt(), selected_address, byte_idx_sb->value(), bit_idx_sb->value(),
-                                 find_bus_combo->currentText().toUInt(), equal_combo->currentIndex() == 0, min_msgs->text().toInt());
+  auto msg_mismatched =
+      calcBits(src_bus_combo->currentText().toUInt(), selected_address, byte_idx_sb->value(), bit_idx_sb->value(),
+               find_bus_combo->currentText().toUInt(), equal_combo->currentIndex() == 0, min_msgs->text().toInt());
   table->setRowCount(msg_mismatched.size());
   table->setColumnCount(6);
   table->setHorizontalHeaderLabels({"address", "byte idx", "bit idx", "mismatches", "total msgs", "% mismatched"});
   for (int i = 0; i < msg_mismatched.size(); ++i) {
-    auto &m = msg_mismatched[i];
+    auto& m = msg_mismatched[i];
     table->setItem(i, 0, new QTableWidgetItem(QString("%1").arg(m.address, 1, 16)));
     table->setItem(i, 1, new QTableWidgetItem(QString::number(m.byte_idx)));
     table->setItem(i, 2, new QTableWidgetItem(QString::number(m.bit_idx)));
@@ -115,13 +116,14 @@ void FindSimilarBitsDlg::find() {
   search_btn->setEnabled(true);
 }
 
-QList<FindSimilarBitsDlg::mismatched_struct> FindSimilarBitsDlg::calcBits(uint8_t bus, uint32_t selected_address, int byte_idx,
-                                                                          int bit_idx, uint8_t find_bus, bool equal, int min_msgs_cnt) {
+QList<FindSimilarBitsDlg::mismatched_struct> FindSimilarBitsDlg::calcBits(uint8_t bus, uint32_t selected_address,
+                                                                          int byte_idx, int bit_idx, uint8_t find_bus,
+                                                                          bool equal, int min_msgs_cnt) {
   QHash<uint32_t, QVector<uint32_t>> mismatches;
   QHash<uint32_t, uint32_t> msg_count;
-  const auto &events = StreamManager::stream()->allEvents();
+  const auto& events = StreamManager::stream()->allEvents();
   int bit_to_find = -1;
-  for (const CanEvent *e : events) {
+  for (const CanEvent* e : events) {
     if (e->src == bus) {
       if (e->address == selected_address && e->size > byte_idx) {
         bit_to_find = ((e->dat[byte_idx] >> (7 - bit_idx)) & 1) != 0;
@@ -131,7 +133,7 @@ QList<FindSimilarBitsDlg::mismatched_struct> FindSimilarBitsDlg::calcBits(uint8_
       ++msg_count[e->address];
       if (bit_to_find == -1) continue;
 
-      auto &mismatched = mismatches[e->address];
+      auto& mismatched = mismatches[e->address];
       if (mismatched.size() < e->size * 8) {
         mismatched.resize(e->size * 8);
       }
@@ -148,7 +150,7 @@ QList<FindSimilarBitsDlg::mismatched_struct> FindSimilarBitsDlg::calcBits(uint8_
   result.reserve(mismatches.size());
   for (auto it = mismatches.begin(); it != mismatches.end(); ++it) {
     if (auto cnt = msg_count[it.key()]; cnt > min_msgs_cnt) {
-      auto &mismatched = it.value();
+      auto& mismatched = it.value();
       for (int i = 0; i < mismatched.size(); ++i) {
         if (float perc = (mismatched[i] / (double)cnt) * 100; perc < 50) {
           result.push_back({it.key(), (uint32_t)i / 8, (uint32_t)i % 8, mismatched[i], cnt, perc});

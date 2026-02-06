@@ -8,7 +8,7 @@
 #include "playback_view.h"
 #include "replay/include/timeline.h"
 
-const int kMargin = 9; // Scrubber radius
+const int kMargin = 9;  // Scrubber radius
 
 static Replay* getReplay() {
   auto stream = qobject_cast<ReplayStream*>(StreamManager::stream());
@@ -152,7 +152,10 @@ void TimelineSlider::mousePressEvent(QMouseEvent* e) {
 void TimelineSlider::mouseMoveEvent(QMouseEvent* e) {
   setThumbnailTime(xToTime(e->position().x()));
   bool near = std::abs(e->pos().x() - timeToX(current_time)) < 20;
-  if (near != is_hovered) { is_hovered = near; update(); }
+  if (near != is_hovered) {
+    is_hovered = near;
+    update();
+  }
   if (is_scrubbing) handleMouse(e->position().x());
 }
 

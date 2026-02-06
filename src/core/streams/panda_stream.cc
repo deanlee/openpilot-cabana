@@ -4,7 +4,7 @@
 #include <QThread>
 #include <QTimer>
 
-PandaStream::PandaStream(QObject *parent, PandaStreamConfig config_) : config(config_), LiveStream(parent) {
+PandaStream::PandaStream(QObject* parent, PandaStreamConfig config_) : config(config_), LiveStream(parent) {
   if (!connect()) {
     throw std::runtime_error("Failed to connect to panda");
   }
@@ -25,7 +25,8 @@ bool PandaStream::connect() {
     panda->set_can_speed_kbps(bus, config.bus_config[bus].can_speed_kbps);
 
     // CAN-FD
-    if (panda->hw_type == cereal::PandaState::PandaType::RED_PANDA || panda->hw_type == cereal::PandaState::PandaType::RED_PANDA_V2) {
+    if (panda->hw_type == cereal::PandaState::PandaType::RED_PANDA ||
+        panda->hw_type == cereal::PandaState::PandaType::RED_PANDA_V2) {
       if (config.bus_config[bus].can_fd) {
         panda->set_data_speed_kbps(bus, config.bus_config[bus].data_speed_kbps);
       } else {
@@ -45,7 +46,7 @@ void PandaStream::streamThread() {
 
     if (!panda->connected()) {
       qDebug() << "Connection to panda lost. Attempting reconnect.";
-      if (!connect()){
+      if (!connect()) {
         QThread::msleep(1000);
         continue;
       }
@@ -60,7 +61,7 @@ void PandaStream::streamThread() {
     MessageBuilder msg;
     auto evt = msg.initEvent();
     auto canData = evt.initCan(raw_can_data.size());
-    for (uint i = 0; i<raw_can_data.size(); i++) {
+    for (uint i = 0; i < raw_can_data.size(); i++) {
       canData[i].setAddress(raw_can_data[i].address);
       canData[i].setDat(kj::arrayPtr((uint8_t*)raw_can_data[i].dat.data(), raw_can_data[i].dat.size()));
       canData[i].setSrc(raw_can_data[i].src);

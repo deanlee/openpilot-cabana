@@ -3,7 +3,7 @@
 #include "mainwin.h"
 #include "modules/charts/charts_panel.h"
 
-MessageInspector::MessageInspector(ChartsPanel *charts, QWidget* parent) : QStackedWidget(parent) {
+MessageInspector::MessageInspector(ChartsPanel* charts, QWidget* parent) : QStackedWidget(parent) {
   addWidget(welcome_widget = new WelcomeWidget(this));
   addWidget(message_view = new MessageView(charts, this));
 }

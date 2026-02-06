@@ -4,10 +4,10 @@
 #include <QFontDatabase>
 #include <QPainter>
 
-#include "utils/util.h"
 #include "binary_view.h"
+#include "utils/util.h"
 
-MessageBytesDelegate::MessageBytesDelegate(QObject *parent) : QStyledItemDelegate(parent) {
+MessageBytesDelegate::MessageBytesDelegate(QObject* parent) : QStyledItemDelegate(parent) {
   small_font.setPixelSize(8);
   hex_font = QFontDatabase::systemFont(QFontDatabase::FixedFont);
   hex_font.setBold(true);
@@ -20,9 +20,10 @@ MessageBytesDelegate::MessageBytesDelegate(QObject *parent) : QStyledItemDelegat
   }
 }
 
-void MessageBytesDelegate::paint(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const {
-  auto item = (const BinaryModel::Item *)index.internalPointer();
-  BinaryView *bin_view = (BinaryView *)parent();
+void MessageBytesDelegate::paint(QPainter* painter, const QStyleOptionViewItem& option,
+                                 const QModelIndex& index) const {
+  auto item = (const BinaryModel::Item*)index.internalPointer();
+  BinaryView* bin_view = (BinaryView*)parent();
 
   bool is_hex = (index.column() == 8);
   bool is_selected = option.state & QStyle::State_Selected;
@@ -34,11 +35,13 @@ void MessageBytesDelegate::paint(QPainter *painter, const QStyleOptionViewItem &
       painter->fillRect(option.rect, item->bg_color);
     }
   } else if (is_selected) {
-    auto color = bin_view->resize_sig ? bin_view->resize_sig->color : option.palette.color(QPalette::Active, QPalette::Highlight);
+    auto color = bin_view->resize_sig ? bin_view->resize_sig->color
+                                      : option.palette.color(QPalette::Active, QPalette::Highlight);
     painter->fillRect(option.rect, color);
-  } else if (!bin_view->selectionModel()->hasSelection() || !item->sigs.contains(bin_view->resize_sig)) {  // not resizing
+  } else if (!bin_view->selectionModel()->hasSelection() ||
+             !item->sigs.contains(bin_view->resize_sig)) {  // not resizing
     if (item->sigs.size() > 0) {
-      for (auto &s : item->sigs) {
+      for (auto& s : item->sigs) {
         if (s == bin_view->hovered_sig) {
           painter->fillRect(option.rect, s->color.darker(125));  // 4/5x brightness
         } else {
@@ -60,7 +63,8 @@ void MessageBytesDelegate::paint(QPainter *painter, const QStyleOptionViewItem &
     auto group = bin_view->is_message_active ? QPalette::Normal : QPalette::Disabled;
     painter->setPen(option.palette.color(group, color_role));
     painter->setFont(is_hex ? hex_font : option.font);
-    utils::drawStaticText(painter, option.rect, index.column() == 8 ? hex_text_table[item->val] : bin_text_table[item->val]);
+    utils::drawStaticText(painter, option.rect,
+                          index.column() == 8 ? hex_text_table[item->val] : bin_text_table[item->val]);
   }
   if ((item->is_msb || item->is_lsb) && item->sigs.size() == 1 && item->sigs[0]->size > 1) {
     painter->setFont(small_font);
@@ -70,12 +74,11 @@ void MessageBytesDelegate::paint(QPainter *painter, const QStyleOptionViewItem &
 
 void MessageBytesDelegate::drawSignalCell(QPainter* painter, const QStyleOptionViewItem& option,
                                           const QModelIndex& index, const dbc::Signal* sig) const {
-  const auto *item = static_cast<const BinaryModel::Item*>(index.internalPointer());
+  const auto* item = static_cast<const BinaryModel::Item*>(index.internalPointer());
   const auto& b = item->borders;
   constexpr int h_space = 3, v_space = 2;
 
-  const QRect rc = option.rect.adjusted(b.left * h_space, b.top * v_space,
-                                        b.right * -h_space, b.bottom * -v_space);
+  const QRect rc = option.rect.adjusted(b.left * h_space, b.top * v_space, b.right * -h_space, b.bottom * -v_space);
 
   // Logic: Fill center, then fill top/bottom rows with calculated widths to "carve" corners
   if (b.top_left || b.top_right || b.bottom_left || b.bottom_right) {
@@ -99,12 +102,12 @@ void MessageBytesDelegate::drawSignalCell(QPainter* painter, const QStyleOptionV
   QPen borderPen(sig->color.darker(125), 0);
   painter->setPen(borderPen);
 
-  QLine lines[8]; // Max 4 borders + 4 corner pieces
+  QLine lines[8];  // Max 4 borders + 4 corner pieces
   int l_idx = 0;
 
-  if (b.left)   lines[l_idx++] = QLine(rc.topLeft(), rc.bottomLeft());
-  if (b.right)  lines[l_idx++] = QLine(rc.topRight(), rc.bottomRight());
-  if (b.top)    lines[l_idx++] = QLine(rc.topLeft(), rc.topRight());
+  if (b.left) lines[l_idx++] = QLine(rc.topLeft(), rc.bottomLeft());
+  if (b.right) lines[l_idx++] = QLine(rc.topRight(), rc.bottomRight());
+  if (b.top) lines[l_idx++] = QLine(rc.topLeft(), rc.topRight());
   if (b.bottom) lines[l_idx++] = QLine(rc.bottomLeft(), rc.bottomRight());
 
   // L-Shaped Corner Borders (only if no main border exists)

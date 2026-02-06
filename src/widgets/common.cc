@@ -2,18 +2,17 @@
 
 #include <QApplication>
 #include <QStyle>
-
 #include <cmath>
 
-#include "utils/util.h"
 #include "modules/settings/settings.h"
 #include "tool_button.h"
+#include "utils/util.h"
 
 // TabBar
 
-int TabBar::addTab(const QString &text) {
+int TabBar::addTab(const QString& text) {
   int index = QTabBar::addTab(text);
-  QToolButton *btn = new ToolButton("x", tr("Close Tab"));
+  QToolButton* btn = new ToolButton("x", tr("Close Tab"));
   int width = style()->pixelMetric(QStyle::PM_TabCloseIndicatorWidth, nullptr, btn);
   int height = style()->pixelMetric(QStyle::PM_TabCloseIndicatorHeight, nullptr, btn);
   btn->setFixedSize({width, height});
@@ -23,7 +22,7 @@ int TabBar::addTab(const QString &text) {
 }
 
 void TabBar::closeTabClicked() {
-  QObject *object = sender();
+  QObject* object = sender();
   for (int i = 0; i < count(); ++i) {
     if (tabButton(i, QTabBar::RightSide) == object) {
       emit tabCloseRequested(i);
@@ -54,7 +53,7 @@ void LogSlider::setValue(int v) {
 
 // ElidedLabel
 
-ElidedLabel::ElidedLabel(QWidget *parent) : QLabel(parent) {
+ElidedLabel::ElidedLabel(QWidget* parent) : QLabel(parent) {
   setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
   setMinimumWidth(1);
 }

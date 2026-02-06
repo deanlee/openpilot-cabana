@@ -3,7 +3,7 @@
 #include <QDebug>
 #include <QThread>
 
-SocketCanStream::SocketCanStream(QObject *parent, SocketCanStreamConfig config_) : config(config_), LiveStream(parent) {
+SocketCanStream::SocketCanStream(QObject* parent, SocketCanStreamConfig config_) : config(config_), LiveStream(parent) {
   if (!available()) {
     throw std::runtime_error("SocketCAN plugin not available");
   }
@@ -14,9 +14,7 @@ SocketCanStream::SocketCanStream(QObject *parent, SocketCanStreamConfig config_)
   }
 }
 
-bool SocketCanStream::available() {
-  return QCanBus::instance()->plugins().contains("socketcan");
-}
+bool SocketCanStream::available() { return QCanBus::instance()->plugins().contains("socketcan"); }
 
 bool SocketCanStream::connect() {
   // Connecting might generate some warnings about missing socketcan/libsocketcan libraries

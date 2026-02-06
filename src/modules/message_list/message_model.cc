@@ -21,7 +21,7 @@ static const QString getHexCached(uint32_t addr) {
   return *it;
 }
 
-MessageModel::MessageModel(QObject *parent) : QAbstractTableModel(parent) {}
+MessageModel::MessageModel(QObject* parent) : QAbstractTableModel(parent) {}
 
 QVariant MessageModel::headerData(int section, Qt::Orientation orientation, int role) const {
   if (orientation != Qt::Horizontal || role != Qt::DisplayRole) return {};
@@ -30,10 +30,10 @@ QVariant MessageModel::headerData(int section, Qt::Orientation orientation, int 
   return (section >= 0 && section < headers.size()) ? headers[section] : QVariant();
 }
 
-QVariant MessageModel::data(const QModelIndex &index, int role) const {
+QVariant MessageModel::data(const QModelIndex& index, int role) const {
   if (!index.isValid() || index.row() >= items_.size()) return {};
 
-  const auto &item = items_[index.row()];
+  const auto& item = items_[index.row()];
   if (role == Qt::DisplayRole) {
     switch (index.column()) {
       case Column::NAME: return item.name;
@@ -79,17 +79,14 @@ void MessageModel::sortItems(std::vector<MessageModel::Item>& items) const {
   };
 
   switch (sort_column) {
-    case Column::NAME:
-      std::ranges::sort(items, comp, [](const Item& i) { return std::tie(i.name, i.id); });
-      break;
+    case Column::NAME: std::ranges::sort(items, comp, [](const Item& i) { return std::tie(i.name, i.id); }); break;
     case Column::SOURCE:
       std::ranges::sort(items, comp, [](const Item& i) { return std::tie(i.id.source, i.id.address); });
       break;
-    case Column::ADDRESS: std::ranges::sort(items, comp, [](const Item& i) { return std::tie(i.id.address, i.id.source); });
+    case Column::ADDRESS:
+      std::ranges::sort(items, comp, [](const Item& i) { return std::tie(i.id.address, i.id.source); });
       break;
-    case Column::NODE:
-      std::ranges::sort(items, comp, [](const Item& i) { return std::tie(i.node, i.id);});
-      break;
+    case Column::NODE: std::ranges::sort(items, comp, [](const Item& i) { return std::tie(i.node, i.id); }); break;
     case Column::FREQ:
       std::ranges::sort(items, comp, [](const Item& i) {
         double freq = i.data ? i.data->freq : -1.0;
@@ -102,25 +99,22 @@ void MessageModel::sortItems(std::vector<MessageModel::Item>& items) const {
         return std::pair(count, i.id);
       });
       break;
-    default:
-      break;
+    default: break;
   }
 }
 
-QString MessageModel::formatFreq(const Item &item) const {
+QString MessageModel::formatFreq(const Item& item) const {
   if (!item.data) return NA;
 
   const float f = item.data->freq;
   if (std::abs(item.last_freq - f) > 0.01f) {
     item.last_freq = f;
-    item.freq_str = (f <= 0.0f) ? DASH :
-                    (f >= 0.95f) ? QString::number(std::nearbyint(f)) :
-                                   QString::number(f, 'f', 2);
+    item.freq_str = (f <= 0.0f) ? DASH : (f >= 0.95f) ? QString::number(std::nearbyint(f)) : QString::number(f, 'f', 2);
   }
   return item.freq_str;
 }
 
-void MessageModel::setFilterStrings(const QMap<int, QString> &filters) {
+void MessageModel::setFilterStrings(const QMap<int, QString>& filters) {
   filters_ = filters;
   filter_ranges_.clear();
 
@@ -142,9 +136,7 @@ std::optional<MessageModel::FilterRange> MessageModel::parseFilter(QString filte
   filter = filter.simplified().replace(" ", "");
   if (filter.isEmpty()) return std::nullopt;
 
-  auto parse = [&](const QString& s, bool* ok) {
-    return (base == 16) ? (double)s.toUInt(ok, 16) : s.toDouble(ok);
-  };
+  auto parse = [&](const QString& s, bool* ok) { return (base == 16) ? (double)s.toUInt(ok, 16) : s.toDouble(ok); };
 
   QStringList parts = filter.split('-');
   bool ok = true;
@@ -160,16 +152,18 @@ std::optional<MessageModel::FilterRange> MessageModel::parseFilter(QString filte
   return ok ? std::optional<FilterRange>(r) : std::nullopt;
 }
 
-bool MessageModel::match(const MessageModel::Item &item) const {
+bool MessageModel::match(const MessageModel::Item& item) const {
   for (auto it = filters_.cbegin(); it != filters_.cend(); ++it) {
     const int col = it.key();
-    const QString &txt = it.value();
+    const QString& txt = it.value();
 
     switch (col) {
       case Column::NAME:
         if (item.name.contains(txt, Qt::CaseInsensitive)) continue;
         if (auto m = GetDBC()->msg(item.id)) {
-          if (std::any_of(m->sigs.begin(), m->sigs.end(), [&](auto& s){ return s->name.contains(txt, Qt::CaseInsensitive); })) continue;
+          if (std::any_of(m->sigs.begin(), m->sigs.end(),
+                          [&](auto& s) { return s->name.contains(txt, Qt::CaseInsensitive); }))
+            continue;
         }
         return false;
 
@@ -178,23 +172,24 @@ bool MessageModel::match(const MessageModel::Item &item) const {
         continue;
 
       case Column::DATA:
-        if (!item.data || !utils::toHex(item.data->data.data(), item.data->size).contains(txt, Qt::CaseInsensitive)) return false;
+        if (!item.data || !utils::toHex(item.data->data.data(), item.data->size).contains(txt, Qt::CaseInsensitive))
+          return false;
         continue;
 
       case Column::ADDRESS:
-        if (item.address_hex.contains(txt, Qt::CaseInsensitive)) continue; // Fallthrough to range check
+        if (item.address_hex.contains(txt, Qt::CaseInsensitive)) continue;  // Fallthrough to range check
         [[fallthrough]];
 
-      default: { // SOURCE, FREQ, COUNT, and ADDRESS range
+      default: {  // SOURCE, FREQ, COUNT, and ADDRESS range
         auto it_range = filter_ranges_.find(col);
         if (it_range == filter_ranges_.end()) return false;
 
-        const auto &r = it_range.value();
+        const auto& r = it_range.value();
 
-        double val = (col == Column::SOURCE) ? item.id.source :
-                     (col == Column::ADDRESS) ? item.id.address :
-                     (col == Column::FREQ) ? (item.data ? item.data->freq : -1) :
-                     (item.data ? (double)item.data->count : -1);
+        double val = (col == Column::SOURCE)    ? item.id.source
+                     : (col == Column::ADDRESS) ? item.id.address
+                     : (col == Column::FREQ)    ? (item.data ? item.data->freq : -1)
+                                                : (item.data ? (double)item.data->count : -1);
 
         if (r.is_exact ? (std::abs(val - r.min) > 0.001) : (val < r.min || val > r.max)) return false;
         break;
@@ -256,7 +251,7 @@ void MessageModel::rebuild() {
 
   dbc_msg_count_ = 0;
   signal_count_ = 0;
-  auto *dbc = GetDBC();
+  auto* dbc = GetDBC();
   for (const auto& item : new_items) {
     if (auto m = dbc->msg(item.id)) {
       dbc_msg_count_++;
@@ -265,9 +260,9 @@ void MessageModel::rebuild() {
   }
 
   // Check if the IDs or count changed (affects UI structure)
-  bool structureChanged = (items_.size() != new_items.size()) ||
-                          !std::equal(items_.begin(), items_.end(), new_items.begin(),
-                                      [](const Item& a, const Item& b) { return a.id == b.id; });
+  bool structureChanged =
+      (items_.size() != new_items.size()) || !std::equal(items_.begin(), items_.end(), new_items.begin(),
+                                                         [](const Item& a, const Item& b) { return a.id == b.id; });
   if (structureChanged) {
     // IDs changed or items added/removed: Reset is necessary
     beginResetModel();
@@ -281,9 +276,10 @@ void MessageModel::rebuild() {
   }
 }
 
-void MessageModel::onSnapshotsUpdated(const std::set<MessageId> *ids, bool needs_rebuild) {
-  if (needs_rebuild || ((filters_.count(Column::FREQ) || filters_.count(Column::COUNT) || filters_.count(Column::DATA)) &&
-                      ++sort_threshold_ == settings.fps)) {
+void MessageModel::onSnapshotsUpdated(const std::set<MessageId>* ids, bool needs_rebuild) {
+  if (needs_rebuild ||
+      ((filters_.count(Column::FREQ) || filters_.count(Column::COUNT) || filters_.count(Column::DATA)) &&
+       ++sort_threshold_ == settings.fps)) {
     sort_threshold_ = 0;
     rebuild();
     return;

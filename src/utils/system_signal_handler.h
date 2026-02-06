@@ -4,15 +4,15 @@
 class SystemSignalHandler : public QObject {
   Q_OBJECT
 
-public:
-  SystemSignalHandler(QObject *parent = nullptr);
+ public:
+  SystemSignalHandler(QObject* parent = nullptr);
   ~SystemSignalHandler();
   static void signalHandler(int s);
 
-public slots:
+ public slots:
   void handleSigTerm();
 
-private:
+ private:
   inline static int sig_fd[2] = {};
-  QSocketNotifier *sn;
+  QSocketNotifier* sn;
 };

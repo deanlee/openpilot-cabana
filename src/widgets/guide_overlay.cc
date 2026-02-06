@@ -2,6 +2,7 @@
 
 #include <QResizeEvent>
 #include <QTextDocument>
+
 #include "mainwin.h"
 
 GuideOverlay::GuideOverlay(QWidget* parent) : QWidget(parent) {
@@ -46,6 +47,4 @@ bool GuideOverlay::eventFilter(QObject* obj, QEvent* event) {
   return false;
 }
 
-void GuideOverlay::mouseReleaseEvent(QMouseEvent* event) {
-  close();
-}
+void GuideOverlay::mouseReleaseEvent(QMouseEvent* event) { close(); }

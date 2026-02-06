@@ -7,7 +7,7 @@
 #include "common/util.h"
 #include "modules/settings/settings.h"
 
-ReplayStream::ReplayStream(QObject *parent) : AbstractStream(parent) {
+ReplayStream::ReplayStream(QObject* parent) : AbstractStream(parent) {
   unsetenv("ZMQ");
   setenv("COMMA_CACHE", "/tmp/comma_download_cache", 1);
 
@@ -32,17 +32,17 @@ ReplayStream::ReplayStream(QObject *parent) : AbstractStream(parent) {
 
 void ReplayStream::mergeSegments() {
   auto event_data = replay->getEventData();
-  for (const auto &[n, seg] : event_data->segments) {
+  for (const auto& [n, seg] : event_data->segments) {
     if (!processed_segments.count(n)) {
       processed_segments.insert(n);
 
-      std::vector<const CanEvent *> new_events;
+      std::vector<const CanEvent*> new_events;
       new_events.reserve(seg->log->events.size());
-      for (const Event &e : seg->log->events) {
+      for (const Event& e : seg->log->events) {
         if (e.which == cereal::Event::Which::CAN) {
           capnp::FlatArrayMessageReader reader(e.data);
           auto event = reader.getRoot<cereal::Event>();
-          for (const auto &c : event.getCan()) {
+          for (const auto& c : event.getCan()) {
             new_events.push_back(newEvent(e.mono_time, c));
           }
         }
@@ -52,17 +52,17 @@ void ReplayStream::mergeSegments() {
   }
 }
 
-bool ReplayStream::loadRoute(const QString &route, const QString &data_dir, uint32_t replay_flags, bool auto_source) {
+bool ReplayStream::loadRoute(const QString& route, const QString& data_dir, uint32_t replay_flags, bool auto_source) {
   ReplayConfig cfg = {
-    .data_dir = data_dir.toStdString(),
-    .route = route.toStdString(),
-    .flags = replay_flags | REPLAY_FLAG_LOW_MEMORY,
-    .cache_segments = settings.max_cached_minutes,
-    .auto_source = auto_source,
-    .allow = {"can", "roadEncodeIdx", "driverEncodeIdx", "wideRoadEncodeIdx", "carParams"},
+      .data_dir = data_dir.toStdString(),
+      .route = route.toStdString(),
+      .flags = replay_flags | REPLAY_FLAG_LOW_MEMORY,
+      .cache_segments = settings.max_cached_minutes,
+      .auto_source = auto_source,
+      .allow = {"can", "roadEncodeIdx", "driverEncodeIdx", "wideRoadEncodeIdx", "carParams"},
   };
   replay.reset(new Replay(cfg));
-  replay->installEventFilter([this](const Event *event) { return eventFilter(event); });
+  replay->installEventFilter([this](const Event* event) { return eventFilter(event); });
 
   // Forward replay callbacks to corresponding Qt signals.
   replay->onSeeking = [this](double sec) { emit seeking(sec); };
@@ -71,7 +71,9 @@ bool ReplayStream::loadRoute(const QString &route, const QString &data_dir, uint
     waitForSeekFinshed();
   };
   replay->onQLogLoaded = [this](std::shared_ptr<LogReader> qlog) { emit qLogLoaded(qlog); };
-  replay->onSegmentsMerged = [this]() { QMetaObject::invokeMethod(this, &ReplayStream::mergeSegments, Qt::BlockingQueuedConnection); };
+  replay->onSegmentsMerged = [this]() {
+    QMetaObject::invokeMethod(this, &ReplayStream::mergeSegments, Qt::BlockingQueuedConnection);
+  };
 
   bool success = replay->load();
   if (!success) {
@@ -79,20 +81,25 @@ bool ReplayStream::loadRoute(const QString &route, const QString &data_dir, uint
       auto auth_content = util::read_file(util::getenv("HOME") + "/.comma/auth.json");
       QString message;
       if (auth_content.empty()) {
-        message = "Authentication Required. Please run the following command to authenticate:\n\n"
-                  "python3 tools/lib/auth.py\n\n"
-                  "This will grant access to routes from your comma account.";
+        message =
+            "Authentication Required. Please run the following command to authenticate:\n\n"
+            "python3 tools/lib/auth.py\n\n"
+            "This will grant access to routes from your comma account.";
       } else {
         message = tr("Access Denied. You do not have permission to access route:\n\n%1\n\n"
-                     "This is likely a private route.").arg(route);
+                     "This is likely a private route.")
+                      .arg(route);
       }
       QMessageBox::warning(nullptr, tr("Access Denied"), message);
     } else if (replay->lastRouteError() == RouteLoadError::NetworkError) {
-      QMessageBox::warning(nullptr, tr("Network Error"),
-                          tr("Unable to load the route:\n\n %1.\n\nPlease check your network connection and try again.").arg(route));
+      QMessageBox::warning(
+          nullptr, tr("Network Error"),
+          tr("Unable to load the route:\n\n %1.\n\nPlease check your network connection and try again.").arg(route));
     } else if (replay->lastRouteError() == RouteLoadError::FileNotFound) {
-      QMessageBox::warning(nullptr, tr("Route Not Found"),
-                           tr("The specified route could not be found:\n\n %1.\n\nPlease check the route name and try again.").arg(route));
+      QMessageBox::warning(
+          nullptr, tr("Route Not Found"),
+          tr("The specified route could not be found:\n\n %1.\n\nPlease check the route name and try again.")
+              .arg(route));
     } else {
       QMessageBox::warning(nullptr, tr("Route Load Failed"), tr("Failed to load route: '%1'").arg(route));
     }
@@ -100,11 +107,11 @@ bool ReplayStream::loadRoute(const QString &route, const QString &data_dir, uint
   return success;
 }
 
-bool ReplayStream::eventFilter(const Event *event) {
+bool ReplayStream::eventFilter(const Event* event) {
   if (event->which == cereal::Event::Which::CAN) {
     capnp::FlatArrayMessageReader reader(event->data);
     auto e = reader.getRoot<cereal::Event>();
-    for (const auto &c : e.getCan()) {
+    for (const auto& c : e.getCan()) {
       MessageId id(c.getSrc(), c.getAddress());
       const auto dat = c.getDat();
       processNewMessage(id, event->mono_time, (const uint8_t*)dat.begin(), dat.size());

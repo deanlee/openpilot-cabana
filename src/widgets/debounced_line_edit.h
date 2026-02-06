@@ -5,13 +5,13 @@
 
 class DebouncedLineEdit : public QLineEdit {
   Q_OBJECT
-public:
+ public:
   explicit DebouncedLineEdit(QWidget* parent = nullptr, int delay_ms = 300);
   void setDelay(int ms);
 
-signals:
-  void debouncedTextEdited(const QString &text);
+ signals:
+  void debouncedTextEdited(const QString& text);
 
-private:
-  QTimer *timer;
+ private:
+  QTimer* timer;
 };

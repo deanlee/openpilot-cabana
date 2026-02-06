@@ -61,13 +61,14 @@ void MessageHeader::updateGeometries() {
       edit->setPlaceholderText(tr("Filter %1").arg(col_name));
 
       QString tooltip;
-      if (i == MessageModel::Column::SOURCE || i == MessageModel::Column::ADDRESS ||
-          i == MessageModel::Column::FREQ || i == MessageModel::Column::COUNT) {
-        tooltip = tr("<b>Range Filter</b><br>"
-            "• Single value: <i>10</i><br>"
-            "• Range: <i>10-20</i><br>"
-            "• Minimum: <i>10-</i><br>"
-            "• Maximum: <i>-20</i>");
+      if (i == MessageModel::Column::SOURCE || i == MessageModel::Column::ADDRESS || i == MessageModel::Column::FREQ ||
+          i == MessageModel::Column::COUNT) {
+        tooltip =
+            tr("<b>Range Filter</b><br>"
+               "• Single value: <i>10</i><br>"
+               "• Range: <i>10-20</i><br>"
+               "• Minimum: <i>10-</i><br>"
+               "• Maximum: <i>-20</i>");
 
         if (i == MessageModel::Column::ADDRESS) {
           tooltip += tr("<br><span style='color:gray;'>Values in Hexadecimal</span>");

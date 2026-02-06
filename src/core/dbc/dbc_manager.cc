@@ -6,15 +6,11 @@
 
 namespace dbc {
 
-Manager::Manager(QObject* parent) : QObject(parent) {
-  qRegisterMetaType<SourceSet>("SourceSet");
-}
+Manager::Manager(QObject* parent) : QObject(parent) { qRegisterMetaType<SourceSet>("SourceSet"); }
 
 bool Manager::open(const SourceSet& sources, const QString& dbc_file_name, QString* error) {
   try {
-    auto it = std::ranges::find_if(dbc_files, [&](auto& f) {
-      return f.second && f.second->filename == dbc_file_name;
-    });
+    auto it = std::ranges::find_if(dbc_files, [&](auto& f) { return f.second && f.second->filename == dbc_file_name; });
     auto file = (it != dbc_files.end()) ? it->second : std::make_shared<File>(dbc_file_name);
     for (auto s : sources) {
       dbc_files[s] = file;
@@ -90,7 +86,8 @@ void Manager::removeSignal(const MessageId& id, const QString& sig_name) {
   }
 }
 
-void Manager::updateMsg(const MessageId& id, const QString& name, uint32_t size, const QString& node, const QString& comment) {
+void Manager::updateMsg(const MessageId& id, const QString& name, uint32_t size, const QString& node,
+                        const QString& comment) {
   auto dbc_file = findDBCFile(id);
   assert(dbc_file);  // This should be impossible
   dbc_file->updateMsg(id, name, size, node, comment);

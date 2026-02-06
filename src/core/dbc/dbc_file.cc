@@ -9,19 +9,16 @@
 namespace dbc {
 
 static QRegularExpression RE_SIGNAL(
-  R"(^SG_\s+(?<name>\w+)\s*(?<mux>M|m\d+)?\s*:\s*(?<start>\d+)\|(?<size>\d+)@(?<endian>[01])(?<sign>[\+-])\s*\((?<factor>[0-9.+\-eE]+),(?<offset>[0-9.+\-eE]+)\)\s*\[(?<min>[0-9.+\-eE]+)\|(?<max>[0-9.+\-eE]+)\]\s*\"(?<unit>.*)\"\s*(?<receiver>.*))"
-);
+    R"(^SG_\s+(?<name>\w+)\s*(?<mux>M|m\d+)?\s*:\s*(?<start>\d+)\|(?<size>\d+)@(?<endian>[01])(?<sign>[\+-])\s*\((?<factor>[0-9.+\-eE]+),(?<offset>[0-9.+\-eE]+)\)\s*\[(?<min>[0-9.+\-eE]+)\|(?<max>[0-9.+\-eE]+)\]\s*\"(?<unit>.*)\"\s*(?<receiver>.*))");
 static QRegularExpression sgm_regexp(
-  R"(^SG_ (\w+) (\w+) *: (\d+)\|(\d+)@(\d+)([\+|\-]) \(([0-9.+\-eE]+),([0-9.+\-eE]+)\) \[([0-9.+\-eE]+)\|([0-9.+\-eE]+)\] \"(.*)\" (.*))"
-);
-static QRegularExpression RE_MESSAGE(
-  R"(^BO_ (?<address>\w+) (?<name>\w+) *: (?<size>\w+) (?<transmitter>\w+))"
-);
-static const QRegularExpression RE_COMMENT(R"(CM_\s+(BO_|SG_)\s+(\d+)\s*(\w+)?\s*\"(.*)\"\s*;)", QRegularExpression::DotMatchesEverythingOption);
+    R"(^SG_ (\w+) (\w+) *: (\d+)\|(\d+)@(\d+)([\+|\-]) \(([0-9.+\-eE]+),([0-9.+\-eE]+)\) \[([0-9.+\-eE]+)\|([0-9.+\-eE]+)\] \"(.*)\" (.*))");
+static QRegularExpression RE_MESSAGE(R"(^BO_ (?<address>\w+) (?<name>\w+) *: (?<size>\w+) (?<transmitter>\w+))");
+static const QRegularExpression RE_COMMENT(R"(CM_\s+(BO_|SG_)\s+(\d+)\s*(\w+)?\s*\"(.*)\"\s*;)",
+                                           QRegularExpression::DotMatchesEverythingOption);
 static const QRegularExpression RE_VALUE_HEADER(R"(VAL_\s+(\d+)\s+(\w+))");
 static const QRegularExpression RE_VALUE_PAIR(R"((-?\d+)\s+\"([^\"]*)\")");
 
-File::File(const QString &dbc_file_name) {
+File::File(const QString& dbc_file_name) {
   QFile file(dbc_file_name);
   if (file.open(QIODevice::ReadOnly)) {
     name_ = QFileInfo(dbc_file_name).baseName();
@@ -32,21 +29,19 @@ File::File(const QString &dbc_file_name) {
   }
 }
 
-File::File(const QString &name, const QString &content) : name_(name), filename("") {
-  parse(content);
-}
+File::File(const QString& name, const QString& content) : name_(name), filename("") { parse(content); }
 
 bool File::save() {
   assert(!filename.isEmpty());
   return safeToFile(filename);
 }
 
-bool File::saveAs(const QString &new_filename) {
+bool File::saveAs(const QString& new_filename) {
   filename = new_filename;
   return safeToFile(filename);
 }
 
-bool File::safeToFile(const QString &fn) {
+bool File::safeToFile(const QString& fn) {
   QFile file(fn);
   if (file.open(QIODevice::WriteOnly)) {
     return file.write(toDBCString().toUtf8()) >= 0;
@@ -54,8 +49,9 @@ bool File::safeToFile(const QString &fn) {
   return false;
 }
 
-void File::updateMsg(const MessageId &id, const QString &name, uint32_t size, const QString &node, const QString &comment) {
-  auto &m = msgs[id.address];
+void File::updateMsg(const MessageId& id, const QString& name, uint32_t size, const QString& node,
+                     const QString& comment) {
+  auto& m = msgs[id.address];
   m.address = id.address;
   m.name = name;
   m.size = size;
@@ -63,30 +59,30 @@ void File::updateMsg(const MessageId &id, const QString &name, uint32_t size, co
   m.comment = comment;
 }
 
-dbc::Msg *File::msg(uint32_t address) {
+dbc::Msg* File::msg(uint32_t address) {
   auto it = msgs.find(address);
   return it != msgs.end() ? &it->second : nullptr;
 }
 
-dbc::Msg *File::msg(const QString &name) {
-  auto it = std::ranges::find_if(msgs, [&name](auto &m) { return m.second.name == name; });
+dbc::Msg* File::msg(const QString& name) {
+  auto it = std::ranges::find_if(msgs, [&name](auto& m) { return m.second.name == name; });
   return it != msgs.end() ? &(it->second) : nullptr;
 }
 
-dbc::Signal *File::signal(uint32_t address, const QString &name) {
+dbc::Signal* File::signal(uint32_t address, const QString& name) {
   auto m = msg(address);
-  return m ? (dbc::Signal *)m->sig(name) : nullptr;
+  return m ? (dbc::Signal*)m->sig(name) : nullptr;
 }
 
-void File::parse(const QString &content) {
+void File::parse(const QString& content) {
   msgs.clear();
 
   int line_num = 0;
   QString line;
-  dbc::Msg *current_msg = nullptr;
+  dbc::Msg* current_msg = nullptr;
   int multiplexor_cnt = 0;
   bool seen_first = false;
-  QTextStream stream((QString *)&content);
+  QTextStream stream((QString*)&content);
 
   while (!stream.atEnd()) {
     ++line_num;
@@ -109,8 +105,9 @@ void File::parse(const QString &content) {
       } else {
         seen = false;
       }
-    } catch (std::exception &e) {
-      throw std::runtime_error(QString("[%1:%2]%3: %4").arg(filename).arg(line_num).arg(e.what()).arg(line).toStdString());
+    } catch (std::exception& e) {
+      throw std::runtime_error(
+          QString("[%1:%2]%3: %4").arg(filename).arg(line_num).arg(e.what()).arg(line).toStdString());
     }
 
     if (seen) {
@@ -120,22 +117,21 @@ void File::parse(const QString &content) {
     }
   }
 
-  for (auto &[_, m] : msgs) {
+  for (auto& [_, m] : msgs) {
     m.update();
   }
 }
 
-dbc::Msg *File::parseBO(const QString &line) {
+dbc::Msg* File::parseBO(const QString& line) {
   auto match = RE_MESSAGE.match(line);
-  if (!match.hasMatch())
-    throw std::runtime_error("Invalid BO_ line format");
+  if (!match.hasMatch()) throw std::runtime_error("Invalid BO_ line format");
 
   uint32_t address = match.captured("address").toUInt();
   if (msgs.count(address) > 0)
     throw std::runtime_error(QString("Duplicate message address: %1").arg(address).toStdString());
 
   // Create a new message object
-  dbc::Msg *msg = &msgs[address];
+  dbc::Msg* msg = &msgs[address];
   msg->address = address;
   msg->name = match.captured("name");
   msg->size = match.captured("size").toULong();
@@ -143,7 +139,7 @@ dbc::Msg *File::parseBO(const QString &line) {
   return msg;
 }
 
-void File::parseSG(const QString &line, dbc::Msg *current_msg, int &multiplexor_cnt) {
+void File::parseSG(const QString& line, dbc::Msg* current_msg, int& multiplexor_cnt) {
   if (!current_msg) {
     throw std::runtime_error("Signal defined before any Message (BO_)");
   }
@@ -176,19 +172,19 @@ void File::parseSG(const QString &line, dbc::Msg *current_msg, int &multiplexor_
   }
 
   // Bit layout and Encoding
-  s.start_bit        = match.captured("start").toInt();
-  s.size             = match.captured("size").toInt();
+  s.start_bit = match.captured("start").toInt();
+  s.size = match.captured("size").toInt();
   s.is_little_endian = (match.captured("endian") == "1");
-  s.is_signed        = (match.captured("sign") == "-");
+  s.is_signed = (match.captured("sign") == "-");
 
   // Physical range and Factor
   s.factor = match.captured("factor").toDouble();
   s.offset = match.captured("offset").toDouble();
-  s.min    = match.captured("min").toDouble();
-  s.max    = match.captured("max").toDouble();
+  s.min = match.captured("min").toDouble();
+  s.max = match.captured("max").toDouble();
 
   // Metadata
-  s.unit          = match.captured("unit");
+  s.unit = match.captured("unit");
   s.receiver_name = match.captured("receiver").trimmed();
 
   current_msg->sigs.push_back(new dbc::Signal(s));
@@ -260,18 +256,16 @@ QString File::toDBCString() {
         mux = QString("m%1 ").arg(sig->multiplex_value);
       }
 
-      body_stream << " SG_ " << sig->name << " " << mux << ": "
-                  << sig->start_bit << "|" << sig->size << "@"
-                  << (sig->is_little_endian ? '1' : '0') << (sig->is_signed ? '-' : '+')
-                  << " (" << utils::doubleToString(sig->factor) << "," << utils::doubleToString(sig->offset) << ") ["
-                  << utils::doubleToString(sig->min) << "|" << utils::doubleToString(sig->max) << "] \""
-                  << sig->unit << "\" "
-                  << (sig->receiver_name.isEmpty() ? DEFAULT_NODE_NAME : sig->receiver_name) << "\n";
+      body_stream << " SG_ " << sig->name << " " << mux << ": " << sig->start_bit << "|" << sig->size << "@"
+                  << (sig->is_little_endian ? '1' : '0') << (sig->is_signed ? '-' : '+') << " ("
+                  << utils::doubleToString(sig->factor) << "," << utils::doubleToString(sig->offset) << ") ["
+                  << utils::doubleToString(sig->min) << "|" << utils::doubleToString(sig->max) << "] \"" << sig->unit
+                  << "\" " << (sig->receiver_name.isEmpty() ? DEFAULT_NODE_NAME : sig->receiver_name) << "\n";
 
       // 4. Generate Signal Comment
       if (!sig->comment.isEmpty()) {
-        comm_stream << "CM_ SG_ " << address << " " << sig->name
-                    << " \"" << QString(sig->comment).replace("\"", "\\\"") << "\";\n";
+        comm_stream << "CM_ SG_ " << address << " " << sig->name << " \"" << QString(sig->comment).replace("\"", "\\\"")
+                    << "\";\n";
       }
 
       // 5. Generate Value Table (VAL_)
@@ -290,4 +284,4 @@ QString File::toDBCString() {
   return header + body + comments + value_tables;
 }
 
-} // namespace dbc
+}  // namespace dbc

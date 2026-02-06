@@ -75,7 +75,8 @@ void StatusBar::updateMetrics() {
   while (sys_stat >> val) sys_total += val;
 
   if (last_sys_time_ > 0 && sys_total > last_sys_time_) {
-    cpu_percent = (100.0 * (proc_total - last_proc_time_) / (sys_total - last_sys_time_)) * sysconf(_SC_NPROCESSORS_ONLN);
+    cpu_percent =
+        (100.0 * (proc_total - last_proc_time_) / (sys_total - last_sys_time_)) * sysconf(_SC_NPROCESSORS_ONLN);
   }
   last_proc_time_ = proc_total;
   last_sys_time_ = sys_total;
@@ -112,9 +113,7 @@ void StatusBar::updateMetrics() {
   QString mem_val = QString::number(mem_mb, 'f', 0);
   mem_label_->setText(tr("MEM:%1 MB").arg(mem_val, 4));
 
-  status_label_->setText(tr("Cache: %1m | FPS: %2")
-                             .arg(settings.max_cached_minutes)
-                             .arg(settings.fps));
+  status_label_->setText(tr("Cache: %1m | FPS: %2").arg(settings.max_cached_minutes).arg(settings.fps));
 }
 
 void StatusBar::updateDownloadProgress(uint64_t cur, uint64_t total, bool success) {

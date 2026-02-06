@@ -4,13 +4,12 @@
 #include <QToolButton>
 #include <optional>
 
-
 class ToolButton : public QToolButton {
   Q_OBJECT
  public:
   ToolButton(const QString& icon = {}, const QString& tooltip = {}, QWidget* parent = nullptr);
   void setHoverColor(const QColor& color) { hover_color = color; }
-  void setIcon(const QString &icon);
+  void setIcon(const QString& icon);
 
  private:
   void enterEvent(QEnterEvent* event) override;
