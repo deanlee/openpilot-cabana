@@ -79,9 +79,7 @@ void BinaryModel::mapSignalsToItems(const dbc::Msg* msg) {
       // Sort overlapping signals: Smallest (inner) signals last
       // so they are prioritized for hover/interaction
       if (item.sigs.size() > 1) {
-        std::sort(item.sigs.begin(), item.sigs.end(), [](auto l, auto r) {
-          return l->size > r->size;
-        });
+        std::ranges::sort(item.sigs, std::ranges::greater{}, &dbc::Signal::size);
       }
     }
   }

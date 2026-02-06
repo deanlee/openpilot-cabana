@@ -156,6 +156,6 @@ QList<FindSimilarBitsDlg::mismatched_struct> FindSimilarBitsDlg::calcBits(uint8_
       }
     }
   }
-  std::sort(result.begin(), result.end(), [](auto &l, auto &r) { return l.perc < r.perc; });
+  std::ranges::sort(result, {}, &mismatched_struct::perc);
   return result;
 }

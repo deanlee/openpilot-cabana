@@ -71,31 +71,39 @@ void MessageModel::setInactiveMessagesVisible(bool show) {
   rebuild();
 }
 
-void MessageModel::sortItems(std::vector<MessageModel::Item> &items) const {
+void MessageModel::sortItems(std::vector<MessageModel::Item>& items) const {
   if (items.empty()) return;
 
-  auto do_sort = [this, &items](auto compare) {
-    if (sort_order == Qt::AscendingOrder) {
-      std::sort(items.begin(), items.end(), compare);
-    } else {
-      std::sort(items.begin(), items.end(), [&compare](const Item &l, const Item &r) { return compare(r, l);});
-    }
+  auto comp = [order = sort_order](const auto& a, const auto& b) {
+    return order == Qt::AscendingOrder ? a < b : a > b;
   };
 
   switch (sort_column) {
-    case Column::NAME: do_sort([](const Item &l, const Item &r) { return l.name < r.name || (l.name == r.name && l.id < r.id); }); break;
-    case Column::SOURCE: do_sort([](const Item &l, const Item &r) { return l.id.source < r.id.source || (l.id.source == r.id.source && l.id.address < r.id.address); }); break;
-    case Column::ADDRESS: do_sort([](const Item &l, const Item &r) { return l.id.address < r.id.address || (l.id.address == r.id.address && l.id.source < r.id.source); }); break;
-    case Column::NODE: do_sort([](const Item &l, const Item &r) { return (l.node < r.node) || (l.node == r.node && l.id < r.id); }); break;
-    case Column::FREQ: do_sort([](const Item &l, const Item &r) {
-      double l_freq = l.data ? l.data->freq : -1.0;
-      double r_freq = r.data ? r.data->freq : -1.0;
-      return l_freq != r_freq ? l_freq < r_freq : l.id < r.id; }); break;
-    case Column::COUNT: do_sort([](const Item &l, const Item &r) {
-      uint32_t l_count = l.data ? l.data->count : 0;
-      uint32_t r_count = r.data ? r.data->count : 0;
-      return l_count != r_count ? l_count < r_count : l.id < r.id; }); break;
-    default: break; // Default case to suppress compiler warning
+    case Column::NAME:
+      std::ranges::sort(items, comp, [](const Item& i) { return std::tie(i.name, i.id); });
+      break;
+    case Column::SOURCE:
+      std::ranges::sort(items, comp, [](const Item& i) { return std::tie(i.id.source, i.id.address); });
+      break;
+    case Column::ADDRESS: std::ranges::sort(items, comp, [](const Item& i) { return std::tie(i.id.address, i.id.source); });
+      break;
+    case Column::NODE:
+      std::ranges::sort(items, comp, [](const Item& i) { return std::tie(i.node, i.id);});
+      break;
+    case Column::FREQ:
+      std::ranges::sort(items, comp, [](const Item& i) {
+        double freq = i.data ? i.data->freq : -1.0;
+        return std::pair(freq, i.id);
+      });
+      break;
+    case Column::COUNT:
+      std::ranges::sort(items, comp, [](const Item& i) {
+        uint32_t count = i.data ? i.data->count : 0;
+        return std::pair(count, i.id);
+      });
+      break;
+    default:
+      break;
   }
 }
 
