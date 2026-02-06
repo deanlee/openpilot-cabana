@@ -61,7 +61,12 @@ bool SparklineContext::update(const MessageId& msg_id, uint64_t current_ns, int 
 
 void Sparkline::update(const dbc::Signal* sig, const SparklineContext& ctx) {
   signal_ = sig;
-  if (ctx.jump_detected) history_.clear();
+  if (ctx.jump_detected) {
+    history_.clear();
+    min_val = std::numeric_limits<double>::max();
+    max_val = std::numeric_limits<double>::lowest();
+    bounds_dirty_ = false;
+  }
 
   updateDataPoints(sig, ctx);
 
@@ -86,20 +91,29 @@ void Sparkline::updateDataPoints(const dbc::Signal* sig, const SparklineContext&
     auto* e = *it;
     if (sig->parse(e->dat, e->size, &val)) {
       history_.push_back({e->mono_ns, val});
+      // Update running bounds
+      if (val < min_val) min_val = val;
+      if (val > max_val) max_val = val;
     }
   }
 
   // Purge data older than the window
   // Keep ONE point just outside win_start_ns for smooth edge rendering
-  while (history_.size() > 1 && history_.front().mono_ns < ctx.win_start_ns) {
-    history_.pop_front();
+  size_t purge_count = 0;
+  while (history_.size() - purge_count > 1 && history_[purge_count].mono_ns < ctx.win_start_ns) {
+    purge_count++;
+  }
+  if (purge_count > 0) {
+    history_.pop_front_n(purge_count);
+    bounds_dirty_ = true;  // Purged points may have held min/max
   }
 }
 
 void Sparkline::mapHistoryToPoints(const SparklineContext& ctx) {
   render_pts_.clear();
 
-  bool is_flat = calculateValueBounds();
+  updateValueBounds();
+  bool is_flat = (max_val - min_val) < 1e-9;
 
   if (is_flat) {
     mapFlatPath(ctx);
@@ -213,49 +227,48 @@ void Sparkline::render() {
   QPainter p(&image);
   const QColor color = is_highlighted_ ? qApp->palette().color(QPalette::HighlightedText) : signal_->color;
 
-  // Line Rendering: Aliasing OFF for crisp 1px lines
-  p.setRenderHint(QPainter::Antialiasing, false);
-  p.setPen(QPen(color, 0));  // 0 = Hairline cosmetic pen
-
   if (render_pts_.size() > 1) {
+    // Line Rendering: Aliasing OFF for crisp 1px lines
+    p.setRenderHint(QPainter::Antialiasing, false);
+    p.setPen(QPen(color, 0));  // 0 = Hairline cosmetic pen
     p.drawPolyline(render_pts_.data(), (int)render_pts_.size());
   }
 
   // Endpoint Dot: Aliasing ON for smoothness
   p.setRenderHint(QPainter::Antialiasing, true);
+  p.setPen(Qt::NoPen);
   p.setBrush(color);
   p.drawEllipse(render_pts_.back(), 1.5, 1.5);
 }
 
-bool Sparkline::calculateValueBounds() {
-  if (history_.empty()) return true;
+void Sparkline::updateValueBounds() {
+  if (!bounds_dirty_) return;
+  bounds_dirty_ = false;
 
-  double current_min = history_[0].value;
-  double current_max = history_[0].value;
+  if (history_.empty()) {
+    min_val = 0;
+    max_val = 0;
+    return;
+  }
 
+  double lo = history_[0].value;
+  double hi = lo;
   for (size_t i = 1; i < history_.size(); ++i) {
     const double v = history_[i].value;
-    if (v < current_min) current_min = v;
-    if (v > current_max) current_max = v;
+    if (v < lo) lo = v;
+    if (v > hi) hi = v;
   }
-
-  min_val = current_min;
-  max_val = current_max;
-
-  const bool flat = (std::abs(max_val - min_val) < 1e-9);
-
-  // Prevent division by zero in scaling logic later
-  if (flat) {
-    min_val -= 1.0;
-    max_val += 1.0;
-  }
-  return flat;
+  min_val = lo;
+  max_val = hi;
 }
 
 void Sparkline::clearHistory() {
   history_.clear();
   render_pts_.clear();
   image = QImage();
+  min_val = std::numeric_limits<double>::max();
+  max_val = std::numeric_limits<double>::lowest();
+  bounds_dirty_ = false;
 }
 
 void Sparkline::setHighlight(bool highlight) {

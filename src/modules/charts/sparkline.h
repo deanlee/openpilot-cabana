@@ -69,9 +69,7 @@ class Sparkline {
     double value;
   };
   void update(const dbc::Signal* sig, const SparklineContext& params);
-  inline double freq() const { return freq_; }
   bool isEmpty() const { return image.isNull(); }
-  void mapHistoryToPoints(const SparklineContext& params);
   void setHighlight(bool highlight);
   void clearHistory();
 
@@ -93,11 +91,11 @@ class Sparkline {
 
     void update(double y, uint64_t ts) {
       exit = y;
-      if (y > min) {
+      if (y < min) {
         min = y;
         min_ts = ts;
-      }  // Y increases downwards
-      if (y < max) {
+      }
+      if (y > max) {
         max = y;
         max_ts = ts;
       }
@@ -105,7 +103,8 @@ class Sparkline {
   };
 
   void updateDataPoints(const dbc::Signal* sig, const SparklineContext& ctx);
-  bool calculateValueBounds();
+  void mapHistoryToPoints(const SparklineContext& ctx);
+  void updateValueBounds();
   void flushBucket(int x, const Bucket& b);
   void addUniquePoint(int x, float y);
   void render();
@@ -114,7 +113,7 @@ class Sparkline {
 
   RingBuffer<DataPoint> history_;
   std::vector<QPointF> render_pts_;
-  double freq_ = 0;
+  bool bounds_dirty_ = true;
   bool is_highlighted_ = false;
   const dbc::Signal* signal_ = nullptr;
 };
