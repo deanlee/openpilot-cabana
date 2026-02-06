@@ -151,7 +151,7 @@ void MessageDelegate::updatePixmapCache(const QPalette& palette) const {
       QPainter p(&pix);
       p.setFont(fixed_font);
       p.setPen(colors[s]);
-      p.drawText(pix.rect(), Qt::AlignCenter, hex);
+      p.drawText(QRect(QPoint(0, 0), byte_size), Qt::AlignCenter, hex);
       p.end();
 
       hex_pixmap_table[i][s] = pix;

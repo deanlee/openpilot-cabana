@@ -96,8 +96,8 @@ void MessageBytesDelegate::drawSignalCell(QPainter* painter, const QStyleOptionV
   }
 
   // Batched Border Drawing
-  const QColor borderColor = sig->color.darker(125);
-  painter->setPen(borderColor);
+  QPen borderPen(sig->color.darker(125), 0);
+  painter->setPen(borderPen);
 
   QLine lines[8]; // Max 4 borders + 4 corner pieces
   int l_idx = 0;
