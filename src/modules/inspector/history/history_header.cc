@@ -26,7 +26,11 @@ void HistoryHeader::paintSection(QPainter* painter, const QRect& rect, int logic
   if (bg.isValid()) painter->fillRect(rect, bg.value<QColor>());
 
   QString text = model()->headerData(logicalIndex, orientation(), Qt::DisplayRole).toString();
-  painter->setPen(palette().color(utils::isDarkTheme() ? QPalette::BrightText : QPalette::Text));
+  if (!bg.isValid()) {
+    painter->setPen(palette().color(QPalette::Text));
+  } else {
+    painter->setPen(utils::isDarkTheme() ? QColor(20, 20, 20) : QColor(255, 255, 255));
+  }
 
   QRect text_rect = rect.adjusted(5, 0, -5, 0);
   QString elided = fontMetrics().elidedText(text, Qt::ElideMiddle, text_rect.width());
