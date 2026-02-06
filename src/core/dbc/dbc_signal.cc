@@ -11,23 +11,55 @@ void dbc::Signal::update() {
   if (receiver_name.isEmpty()) {
     receiver_name = DEFAULT_NODE_NAME;
   }
-
-  // 1. Hue: Use Golden Ratio distribution or a larger prime multiplier
-  // to prevent similar Hues for adjacent signals.
-  // 360 degrees * ((lsb * golden_ratio) mod 1)
-  float h = std::fmod((float)lsb * 0.61803398875f, 1.0f);
-
-  // 2. Saturation: High enough to be "colorful" in charts,
-  // but low enough to allow text readability.
-  size_t hash = qHash(name);
-  float s = 0.4f + 0.2f * (float)(hash & 0xff) / 255.0f;  // Range: 0.4 - 0.6
-
-  // 3. Value (Brightness): Keep it high so black text always has contrast.
-  // For the Binary View, you can control the "heat" using Alpha later.
-  float v = 0.85f + 0.15f * (float)((hash >> 8) & 0xff) / 255.0f;  // Range: 0.85 - 1.0
-
-  color = QColor::fromHsvF(h, s, v);
   precision = std::max(utils::num_decimals(factor), utils::num_decimals(offset));
+
+  updateColor();
+}
+
+void dbc::Signal::updateColor() {
+  // 1. Hue angle: Golden ratio stride in [0, 2π) for maximal separation.
+  const float phi_inv = 0.6180339887f;
+  const float hue = std::fmod(static_cast<float>(lsb) * phi_inv, 1.0f) * 6.2831853f;
+
+  // 2. Theme-aware lightness and chroma in OKLab space.
+  const bool is_dark = utils::isDarkTheme();
+  const int scrambled = lsb ^ (lsb >> 2) ^ (lsb >> 5);
+
+  // Lightness: 3 tiers for depth. Dark theme is brighter, light theme is richer.
+  static constexpr float L_dark[] = {0.75f, 0.68f, 0.82f};
+  static constexpr float L_light[] = {0.58f, 0.50f, 0.65f};
+  const float L = is_dark ? L_dark[scrambled % 3] : L_light[scrambled % 3];
+
+  // Chroma: 4 levels from vivid to soft — gives a modern "flat UI" palette.
+  static constexpr float C_levels[] = {0.14f, 0.10f, 0.17f, 0.12f};
+  const float C = C_levels[(scrambled >> 2) & 3];
+
+  // 3. OKLab → linear sRGB conversion
+  //    a = C * cos(hue), b = C * sin(hue)
+  const float a = C * std::cos(hue);
+  const float b = C * std::sin(hue);
+
+  // OKLab to LMS (approximate inverse)
+  const float l_ = L + 0.3963377774f * a + 0.2158037573f * b;
+  const float m_ = L - 0.1055613458f * a - 0.0638541728f * b;
+  const float s_ = L - 0.0894841775f * a - 1.2914855480f * b;
+
+  const float l3 = l_ * l_ * l_;
+  const float m3 = m_ * m_ * m_;
+  const float s3 = s_ * s_ * s_;
+
+  // LMS to linear sRGB
+  const float r_lin = +4.0767416621f * l3 - 3.3077115913f * m3 + 0.2309699292f * s3;
+  const float g_lin = -1.2684380046f * l3 + 2.6097574011f * m3 - 0.3413193965f * s3;
+  const float b_lin = -0.0041960863f * l3 - 0.7034186147f * m3 + 1.7076147010f * s3;
+
+  // Linear sRGB → sRGB gamma (approximate: γ = 2.2)
+  auto to_srgb = [](float x) -> int {
+    x = std::clamp(x, 0.0f, 1.0f);
+    return static_cast<int>(std::pow(x, 1.0f / 2.2f) * 255.0f + 0.5f);
+  };
+
+  color = QColor(to_srgb(r_lin), to_srgb(g_lin), to_srgb(b_lin));
 }
 
 int dbc::Signal::getBitIndex(int i) const {

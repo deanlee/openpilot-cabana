@@ -18,6 +18,7 @@ SignalTreeDelegate::SignalTreeDelegate(QObject* parent) : QStyledItemDelegate(pa
   name_validator = new NameValidator(this);
   node_validator = new QRegularExpressionValidator(QRegularExpression("^\\w+(,\\w+)*$"), this);
   double_validator = new DoubleValidator(this);
+  signal_text_color = utils::isDarkTheme() ? QColor(20, 20, 20) : QColor(255, 255, 255);
 
   label_font.setPointSize(8);
   minmax_font.setPixelSize(10);
@@ -61,7 +62,7 @@ void SignalTreeDelegate::drawNameColumn(QPainter* p, QRect r, const QStyleOption
     p->drawRoundedRect(iconRect, 3, 3);  // Fixed: Direct drawing instead of roundedPath
 
     p->setFont(label_font);
-    p->setPen(Qt::white);
+    p->setPen(signal_text_color);
     p->drawText(iconRect, Qt::AlignCenter, QString::number(item->row() + 1));
 
     r.setLeft(iconRect.right() + kPadding);
