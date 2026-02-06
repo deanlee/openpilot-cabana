@@ -50,6 +50,7 @@ void AbstractStream::commitSnapshots() {
         structure_changed = true;
         sources.insert(id.source);
       }
+      state.dirty = false;
     }
     msgs = std::move(shared_state_.dirty_ids);
   }
@@ -86,8 +87,11 @@ void AbstractStream::processNewMessage(const MessageId& id, uint64_t mono_ns, co
     applyCurrentPolicy(state, id);
   }
 
+  if (!state.dirty) {
+    state.dirty = true;
+    shared_state_.dirty_ids.insert(id);
+  }
   state.update(data, size, sec);
-  shared_state_.dirty_ids.insert(id);
 }
 
 const std::vector<const CanEvent*>& AbstractStream::events(const MessageId& id) const {
@@ -122,6 +126,7 @@ void AbstractStream::updateSnapshotsTo(double sec) {
 
     const CanEvent* prev_ev = *std::prev(it);
     auto& m = shared_state_.master_state[id];
+    m.dirty = false;
     m.init(prev_ev->dat, prev_ev->size, toSeconds(prev_ev->mono_ns));
     m.count = std::distance(ev.begin(), it);
     m.updateAllPatternColors(sec);  // Important: Update colors before snapshotting
