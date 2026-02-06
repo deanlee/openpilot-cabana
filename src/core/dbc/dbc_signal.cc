@@ -26,12 +26,12 @@ void dbc::Signal::updateColor() {
   const int scrambled = lsb ^ (lsb >> 2) ^ (lsb >> 5);
 
   // Lightness: 3 tiers for depth. Dark theme is brighter, light theme is richer.
-  static constexpr float L_dark[] = {0.75f, 0.68f, 0.82f};
-  static constexpr float L_light[] = {0.58f, 0.50f, 0.65f};
+  static constexpr float L_dark[] = {0.78f, 0.72f, 0.84f};
+  static constexpr float L_light[] = {0.55f, 0.48f, 0.62f};
   const float L = is_dark ? L_dark[scrambled % 3] : L_light[scrambled % 3];
 
-  // Chroma: 4 levels from vivid to soft — gives a modern "flat UI" palette.
-  static constexpr float C_levels[] = {0.14f, 0.10f, 0.17f, 0.12f};
+  // Chroma: 4 levels — higher saturation for chart visibility.
+  static constexpr float C_levels[] = {0.18f, 0.14f, 0.21f, 0.16f};
   const float C = C_levels[(scrambled >> 2) & 3];
 
   // 3. OKLab → linear sRGB conversion
