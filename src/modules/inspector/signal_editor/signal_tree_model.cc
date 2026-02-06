@@ -5,6 +5,8 @@
 #include <QMessageBox>
 #include <QtConcurrent>
 
+#include <span>
+
 #include "core/commands/commands.h"
 #include "core/dbc/dbc_manager.h"
 #include "modules/inspector/binary/binary_model.h"
@@ -136,15 +138,20 @@ void SignalTreeModel::fetchMore(const QModelIndex& parent) {
   if (!parent.isValid()) return;
   Item* item = itemFromIndex(parent);
 
-  QList<Item::Type> types;
+  static constexpr std::array kSigChildren = {
+    Item::Name, Item::Size, Item::Node, Item::Endian, Item::Signed,
+    Item::Offset, Item::Factor, Item::SignalType, Item::MultiplexValue, Item::ExtraInfo};
+  static constexpr std::array kExtraInfoChildren = {
+    Item::Unit, Item::Comment, Item::Min, Item::Max, Item::ValueTable};
+
+  std::span<const Item::Type> types;
   if (item->type == Item::Sig) {
-    types = {Item::Name, Item::Size, Item::Node, Item::Endian, Item::Signed,
-             Item::Offset, Item::Factor, Item::SignalType, Item::MultiplexValue, Item::ExtraInfo};
+    types = kSigChildren;
   } else if (item->type == Item::ExtraInfo) {
-    types = {Item::Unit, Item::Comment, Item::Min, Item::Max, Item::ValueTable};
+    types = kExtraInfoChildren;
   }
 
-  if (types.isEmpty()) return;
+  if (types.empty()) return;
 
   // Notify the View that we are adding rows to this specific parent
   beginInsertRows(parent, 0, types.size() - 1);
