@@ -77,7 +77,7 @@ void AbstractStream::setTimeRange(const std::optional<std::pair<double, double>>
 
 void AbstractStream::processNewMessage(const MessageId& id, uint64_t mono_ns, const uint8_t* data, uint8_t size) {
   std::lock_guard lk(mutex_);
-  double sec = toSeconds(mono_ns);
+  const double sec = toSeconds(mono_ns);
   shared_state_.current_sec = sec;
 
   auto& state = shared_state_.master_state[id];
@@ -169,7 +169,7 @@ const CanEvent* AbstractStream::newEvent(uint64_t mono_ns, const cereal::CanData
   e->address = c.getAddress();
   e->mono_ns = mono_ns;
   e->size = dat.size();
-  memcpy(e->dat, (uint8_t*)dat.begin(), e->size);
+  memcpy(e->dat, dat.begin(), e->size);
   return e;
 }
 
@@ -179,7 +179,9 @@ void AbstractStream::mergeEvents(const std::vector<const CanEvent*>& events) {
   // 1. Group events by ID
   static MessageEventsMap msg_events;
   msg_events.clear();
-  for (auto e : events) msg_events[{e->src, e->address}].push_back(e);
+  for (const auto* e : events) {
+    msg_events[{e->src, e->address}].push_back(e);
+  }
 
   // Helper lambda to insert events while maintaining time order
   auto insert_ordered = [](std::vector<const CanEvent*>& target, const std::vector<const CanEvent*>& new_evs) {
@@ -210,8 +212,8 @@ std::pair<CanEventIter, CanEventIter> AbstractStream::eventsInRange(
   const auto& evs = events(id);
   if (evs.empty() || !range) return {evs.begin(), evs.end()};
 
-  uint64_t t0 = toMonoNs(range->first), t1 = toMonoNs(range->second);
-  uint64_t start_ts = evs.front()->mono_ns;
+  const uint64_t t0 = toMonoNs(range->first);
+  const uint64_t t1 = toMonoNs(range->second);
 
   auto it_index = time_index_map_.find(id);
   if (it_index == time_index_map_.end()) {
@@ -220,6 +222,7 @@ std::pair<CanEventIter, CanEventIter> AbstractStream::eventsInRange(
   }
 
   const auto& index = it_index->second;
+  const uint64_t start_ts = evs.front()->mono_ns;
 
   // Narrowed search for start
   auto [s_min, s_max] = index.getBounds(start_ts, t0, evs.size());
@@ -256,8 +259,8 @@ void AbstractStream::updateMessageMask(const MessageId& id) {
   std::lock_guard lk(mutex_);
 
   for (const uint8_t s : sources) {
-    MessageId target_id(s, id.address);
-    if (auto* m = dbc_manager->msg(target_id)) {
+    const MessageId target_id(s, id.address);
+    if (const auto* m = dbc_manager->msg(target_id)) {
       shared_state_.masks[target_id] = m->mask;
     } else {
       shared_state_.masks.erase(target_id);
@@ -271,16 +274,15 @@ void AbstractStream::updateMessageMask(const MessageId& id) {
 }
 
 void AbstractStream::applyCurrentPolicy(MessageState& state, const MessageId& id) {
-  const std::vector<uint8_t>* mask_ptr = nullptr;
-
   if (shared_state_.mute_defined_signals) {
     auto it = shared_state_.masks.find(id);
     if (it != shared_state_.masks.end()) {
-      mask_ptr = &it->second;
+      state.applyMask(it->second);
+      return;
     }
   }
-
-  state.applyMask(mask_ptr ? *mask_ptr : std::vector<uint8_t>{});
+  static const std::vector<uint8_t> empty_mask;
+  state.applyMask(empty_mask);
 }
 
 void AbstractStream::suppressDefinedSignals(bool suppress) {
