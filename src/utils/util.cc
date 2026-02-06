@@ -62,7 +62,7 @@ int num_decimals(double num) {
 }
 
 QPixmap icon(const QString& id, QSize size, std::optional<QColor> color) {
-  QColor icon_color = color.value_or(isDarkTheme() ? QColor("#bbbbbb") : QColor("#333333"));
+  QColor icon_color = color.value_or(isDarkTheme() ? QColor("#d4d6e4") : QColor("#333333"));
   QString key = QString("lucide_%1_%2_%3").arg(id).arg(size.width()).arg(icon_color.rgba(), 0, 16);
 
   QPixmap pm;
@@ -102,24 +102,64 @@ void setTheme(int theme) {
     prev_theme = theme;
     QPalette new_palette;
     if (theme == DARK_THEME) {
-      // "Darcula" like dark theme
-      new_palette.setColor(QPalette::Window, QColor("#353535"));
-      new_palette.setColor(QPalette::WindowText, QColor("#bbbbbb"));
-      new_palette.setColor(QPalette::Base, QColor("#3c3f41"));
-      new_palette.setColor(QPalette::AlternateBase, QColor("#3c3f41"));
-      new_palette.setColor(QPalette::ToolTipBase, QColor("#3c3f41"));
-      new_palette.setColor(QPalette::ToolTipText, QColor("#bbb"));
-      new_palette.setColor(QPalette::Text, QColor("#bbbbbb"));
-      new_palette.setColor(QPalette::Button, QColor("#3c3f41"));
-      new_palette.setColor(QPalette::ButtonText, QColor("#bbbbbb"));
-      new_palette.setColor(QPalette::Highlight, QColor("#2f65ca"));
-      new_palette.setColor(QPalette::HighlightedText, QColor("#bbbbbb"));
+      // Modern dark theme inspired by VS Code / GitHub Dark
+      // Uses blue-grey undertones instead of pure grey for a warmer, less fatiguing look.
+
+      // ── Backgrounds ──────────────────────────────────────────────
+      const QColor bg_base("#191a22");      // Deepest layer (main window)
+      const QColor bg_surface("#1e1f28");   // Panels, message list, editors
+      const QColor bg_elevated("#25262f");  // Cards, tooltips, dropdowns
+      const QColor bg_hover("#2c2d3a");     // Hover / alternating rows
+
+      // ── Foregrounds ──────────────────────────────────────────────
+      const QColor fg_primary("#d4d6e4");    // Primary text (hex bytes, labels)
+      const QColor fg_secondary("#8b8ea3");  // Muted text (timestamps, headers)
+      const QColor fg_disabled("#4e5064");   // Disabled / suppressed
+
+      // ── Accents ──────────────────────────────────────────────────
+      const QColor accent("#7aa2f7");        // Selection, focus rings
+      const QColor accent_text("#191a22");   // Text on accent background
+      const QColor link_visited("#bb9af7");  // Visited links
+
+      // ── Structure ────────────────────────────────────────────────
+      const QColor border("#353647");  // Borders, separators
+      const QColor shadow("#0c0d12");  // Drop shadows
+
+      // ── Active / Normal ──────────────────────────────────────────
+      new_palette.setColor(QPalette::Window, bg_base);
+      new_palette.setColor(QPalette::WindowText, fg_primary);
+      new_palette.setColor(QPalette::Base, bg_surface);
+      new_palette.setColor(QPalette::AlternateBase, bg_hover);
+      new_palette.setColor(QPalette::Text, fg_primary);
+      new_palette.setColor(QPalette::Button, bg_surface);
+      new_palette.setColor(QPalette::ButtonText, fg_primary);
       new_palette.setColor(QPalette::BrightText, QColor("#f0f0f0"));
-      new_palette.setColor(QPalette::Disabled, QPalette::ButtonText, QColor("#777777"));
-      new_palette.setColor(QPalette::Disabled, QPalette::WindowText, QColor("#777777"));
-      new_palette.setColor(QPalette::Disabled, QPalette::Text, QColor("#777777"));
-      new_palette.setColor(QPalette::Light, QColor("#777777"));
-      new_palette.setColor(QPalette::Dark, QColor("#353535"));
+      new_palette.setColor(QPalette::PlaceholderText, fg_secondary);
+
+      new_palette.setColor(QPalette::Highlight, accent);
+      new_palette.setColor(QPalette::HighlightedText, accent_text);
+
+      new_palette.setColor(QPalette::ToolTipBase, bg_elevated);
+      new_palette.setColor(QPalette::ToolTipText, fg_primary);
+
+      new_palette.setColor(QPalette::Link, accent);
+      new_palette.setColor(QPalette::LinkVisited, link_visited);
+
+      // ── 3D frame / depth ─────────────────────────────────────────
+      new_palette.setColor(QPalette::Light, border);
+      new_palette.setColor(QPalette::Midlight, QColor("#2f3040"));
+      new_palette.setColor(QPalette::Mid, QColor("#3d3e52"));
+      new_palette.setColor(QPalette::Dark, QColor("#111218"));
+      new_palette.setColor(QPalette::Shadow, shadow);
+
+      // ── Disabled state ────────────────────────────────────────────
+      new_palette.setColor(QPalette::Disabled, QPalette::WindowText, fg_disabled);
+      new_palette.setColor(QPalette::Disabled, QPalette::Text, fg_disabled);
+      new_palette.setColor(QPalette::Disabled, QPalette::ButtonText, fg_disabled);
+      new_palette.setColor(QPalette::Disabled, QPalette::Highlight, QColor("#353647"));
+      new_palette.setColor(QPalette::Disabled, QPalette::HighlightedText, fg_disabled);
+      new_palette.setColor(QPalette::Disabled, QPalette::PlaceholderText, fg_disabled);
+
     } else {
       new_palette = style->standardPalette();
     }

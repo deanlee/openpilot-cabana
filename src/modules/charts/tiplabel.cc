@@ -52,8 +52,8 @@ void TipLabel::updateTheme() {
   bool is_dark = utils::isDarkTheme();
 
   // Neutral professional colors: Deep Grey or Pure White with 85% Alpha
-  QColor bg = is_dark ? QColor(30, 30, 30, 215) : QColor(248, 248, 248, 225);
-  QColor text = is_dark ? QColor(220, 220, 220) : QColor(50, 50, 50);
+  QColor bg = is_dark ? QColor(50, 52, 65, 235) : QColor(240, 240, 242, 230);
+  QColor text = is_dark ? QColor(212, 214, 228) : QColor(45, 45, 45);
 
   pal.setColor(QPalette::ToolTipBase, bg);
   pal.setColor(QPalette::ToolTipText, text);

@@ -29,6 +29,6 @@ class MessageDelegate : public QStyledItemDelegate {
   int h_margin, v_margin;
 
   mutable QPixmap hex_pixmap_table[256][3];
-  mutable QPalette cached_palette;
+  mutable qint64 cached_palette_key = 0;
   enum RenderState { StateNormal = 0, StateSelected = 1, StateDisabled = 2 };
 };

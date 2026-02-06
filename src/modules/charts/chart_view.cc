@@ -387,7 +387,8 @@ void ChartView::drawTimeline(QPainter* painter) {
   qreal dpr = devicePixelRatioF();
   x = std::round(x * dpr) / dpr;
   x = std::clamp(x, plot_area.left(), plot_area.right());
-  painter->setPen(QPen(chart_->titleBrush().color(), 1));
+  const QColor timeline_color = palette().color(QPalette::Highlight);
+  painter->setPen(QPen(timeline_color, 1));
   painter->drawLine(QPointF{x, plot_area.top() - 1}, QPointF{x, plot_area.bottom() + 1});
 
   // draw current time under the axis-x
@@ -396,8 +397,8 @@ void ChartView::drawTimeline(QPainter* painter) {
   QRectF time_str_rect(QPointF(x - time_str_size.width() / 2.0, plot_area.bottom() + AXIS_X_TOP_MARGIN), time_str_size);
   QPainterPath path;
   path.addRoundedRect(time_str_rect, 3, 3);
-  painter->fillPath(path, utils::isDarkTheme() ? Qt::darkGray : Qt::gray);
-  painter->setPen(palette().color(QPalette::BrightText));
+  painter->fillPath(path, timeline_color);
+  painter->setPen(palette().color(QPalette::HighlightedText));
   painter->setFont(chart_->axis_x_->labelsFont());
   painter->drawText(time_str_rect, Qt::AlignCenter, time_str);
 }

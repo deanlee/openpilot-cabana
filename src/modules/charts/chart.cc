@@ -208,6 +208,8 @@ void Chart::setTheme(QChart::ChartTheme theme) {
   for (auto& s : sigs_) {
     s.series->setColor(s.sig->color);
   }
+  updateTitle();
+  resetCache();
 }
 
 void Chart::updateAxisY() {

@@ -44,17 +44,6 @@ MainWindow::MainWindow(AbstractStream* stream, const QString& dbc_file) : QMainW
 
   setupConnections();
 
-  setStyleSheet(R"(
-    QMainWindow::separator {
-      background-color: palette(window);
-      width: 3px;
-      height: 3px;
-    }
-    QMainWindow::separator:hover {
-      background-color: palette(highlight);
-    }
-  )");
-
   QTimer::singleShot(0, this, [=]() { stream ? openStream(stream, dbc_file) : selectAndOpenStream(); });
   show();
 }

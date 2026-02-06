@@ -109,6 +109,8 @@ void MessageDelegate::drawItemText(QPainter* p, const QStyleOptionViewItem& opt,
 
 void MessageDelegate::drawHexData(QPainter* p, const QStyleOptionViewItem& opt, const QModelIndex& idx, bool sel,
                                   bool active) const {
+  updatePixmapCache(opt.palette);
+
   MessageDataRef ref = getDataRef(caller_type_, idx);
   if (!ref.bytes || ref.len == 0) return;
 
@@ -131,9 +133,9 @@ void MessageDelegate::drawHexData(QPainter* p, const QStyleOptionViewItem& opt, 
 }
 
 void MessageDelegate::updatePixmapCache(const QPalette& palette) const {
-  if (!hex_pixmap_table[0][0].isNull() && cached_palette == palette) return;
+  if (!hex_pixmap_table[0][0].isNull() && cached_palette_key == palette.cacheKey()) return;
 
-  cached_palette = palette;
+  cached_palette_key = palette.cacheKey();
   qreal dpr = qApp->devicePixelRatio();
 
   QColor colors[3] = {palette.color(QPalette::Normal, QPalette::Text),
