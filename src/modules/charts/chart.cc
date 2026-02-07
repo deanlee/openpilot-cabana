@@ -171,7 +171,8 @@ void Chart::alignLayout(int left_pos, bool force) {
   // Stretch legend to fill the gap between the move and manage icons
   // Ensure legend height matches the larger UI controls (manage_btn) rather than the
   // smaller move_icon to provide sufficient top margin for signal value labels.
-  QRectF legend_geom(move_rect.topRight(), QSize(manage_rect.left() - move_rect.right(), manage_rect.height()));
+  qreal legend_width = std::max(1.0, manage_rect.left() - move_rect.right());
+  QRectF legend_geom(move_rect.topRight(), QSizeF(legend_width, manage_rect.height()));
   legend()->setGeometry(legend_geom);
 
   QFontMetrics fm_x(axis_x_->labelsFont());
