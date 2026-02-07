@@ -318,7 +318,6 @@ void Chart::updateSeriesPoints() {
   if (range_sec <= 0 || plot_width <= 0) return;
 
   const double sec_per_px = range_sec / plot_width;
-  const qreal dpr = qApp->devicePixelRatio();  // Get once
 
   for (auto& s : sigs_) {
     if (s.vals.size() < 2) continue;
@@ -329,7 +328,8 @@ void Chart::updateSeriesPoints() {
     if (series_type == SeriesType::Scatter) {
       // Scale dot size by DPR so it looks consistent on all screens
       qreal size = std::clamp(avg_period / sec_per_px / 2.0, 2.0, 8.0);
-      static_cast<QScatterSeries*>(s.series)->setMarkerSize(size * dpr);
+      static_cast<QScatterSeries*>(s.series)->setMarkerSize(size);
+      s.series->setPointsVisible(false);  // Hide points for scatter series to improve performance; markers are still visible
     } else {
       // Threshold: Hide points if they are closer than 15 logical pixels
       s.series->setPointsVisible(avg_period > (sec_per_px * 15.0));
@@ -366,6 +366,7 @@ QXYSeries* Chart::createSeries(SeriesType type, QColor color) {
   } else {
     series = new QScatterSeries(this);
     static_cast<QScatterSeries*>(series)->setBorderColor(color);
+    static_cast<QScatterSeries*>(series)->setPointsVisible(false);
     legend()->setMarkerShape(QLegend::MarkerShapeCircle);
   }
   series->setColor(color);
@@ -373,9 +374,8 @@ QXYSeries* Chart::createSeries(SeriesType type, QColor color) {
   // are drawn instead of the graphs on MacOS. Re-enable OpenGL when fixed
 #ifndef __APPLE__
   series->setUseOpenGL(true);
-  // Qt doesn't properly apply device pixel ratio in OpenGL mode
   QPen pen = series->pen();
-  pen.setWidthF(2.0 * qApp->devicePixelRatio());
+  pen.setWidthF(2.0);
   series->setPen(pen);
 #endif
   attachSeries(series);
