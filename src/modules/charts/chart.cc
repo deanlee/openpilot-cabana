@@ -29,6 +29,7 @@ Chart::Chart(QChartView* parent) : parent_(parent), QChart() {
 
 void Chart::setupConnections() {
   connect(axis_x_, &QValueAxis::rangeChanged, this, &Chart::updateAxisY);
+  connect(axis_x_, &QValueAxis::rangeChanged, this, &Chart::updateSeriesPoints);
   connect(axis_x_, &QValueAxis::rangeChanged, this, &Chart::resetCache);
   connect(axis_y_, &QValueAxis::rangeChanged, this, &Chart::resetCache);
   connect(axis_y_, &QAbstractAxis::titleTextChanged, this, &Chart::resetCache);
