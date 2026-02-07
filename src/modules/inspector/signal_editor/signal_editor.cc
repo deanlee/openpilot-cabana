@@ -116,7 +116,7 @@ void SignalEditor::updateState(const std::set<MessageId>* msgs) {
   if (!isVisible() || height() == 0 || width() == 0) return;
 
   const auto* last_msg = StreamManager::stream()->snapshot(model->messageId());
-  if (model->rowCount() == 0 || (msgs && !msgs->count(model->messageId())) || last_msg->size == 0) return;
+  if (model->rowCount() == 0 || (msgs && !msgs->count(model->messageId()))) return;
 
   auto [first_v, last_v] = visibleSignalRange();
   if (!first_v.isValid()) return;

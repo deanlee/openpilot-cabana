@@ -114,7 +114,6 @@ void BinaryModel::updateBorders() {
 
 bool BinaryModel::updateItem(int row, int col, uint8_t val, const QColor& color) {
   auto& item = items[row * column_count + col];
-  item.valid = true;
   if (item.val != val || item.bg_color != color) {
     item.val = val;
     item.bg_color = color;
@@ -126,7 +125,13 @@ bool BinaryModel::updateItem(int row, int col, uint8_t val, const QColor& color)
 void BinaryModel::updateState() {
   const auto* last_msg = StreamManager::stream()->snapshot(msg_id);
   const size_t msg_size = last_msg->size;
-  if (msg_size == 0) return;
+  if (msg_size == 0) {
+    for (auto& item : items) {
+      item.val = INVALID_BIT;
+    }
+    emit dataChanged(index(0, 0), index(row_count - 1, column_count - 1), {Qt::DisplayRole});
+    return;
+  }
 
   if (msg_size > row_count) {
     beginInsertRows({}, row_count, msg_size - 1);

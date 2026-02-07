@@ -53,12 +53,17 @@ void SignalTreeModel::updateValues(const MessageSnapshot* msg) {
   QFontMetrics value_metrics(value_font);
   int current_max = 0;
   for (auto item : root->children) {
-    double val = 0;
-    if (item->sig->parse(msg->data.data(), msg->size, &val)) {
-      item->sig_val = item->sig->formatValue(val);
+    if (!msg->size) {
+      item->sig_val = "-";
       item->value_width = value_metrics.horizontalAdvance(item->sig_val);
-      current_max = std::max(current_max, item->value_width);
+    } else {
+      double val = 0;
+      if (item->sig->parse(msg->data.data(), msg->size, &val)) {
+        item->sig_val = item->sig->formatValue(val);
+        item->value_width = value_metrics.horizontalAdvance(item->sig_val);
+      }
     }
+    current_max = std::max(current_max, item->value_width);
   }
   current_max += 10;  // Small buffer
 
@@ -70,11 +75,19 @@ void SignalTreeModel::updateValues(const MessageSnapshot* msg) {
 }
 
 void SignalTreeModel::updateSparklines(const MessageSnapshot* msg, int first_row, int last_row, const QSize& size) {
+  if (msg->size == 0) {
+    for (auto &item : root->children) {
+      item->sparkline->clearHistory();
+    }
+    emit dataChanged(index(first_row, 1), index(last_row, 1), {Qt::DisplayRole});
+    return;
+  }
+
   QVector<SignalTreeModel::Item*> items;
+  items.reserve(last_row - first_row + 1);
   for (int i = first_row; i <= last_row; ++i) {
     items << itemFromIndex(index(i, 1));
   }
-
   if (sparkline_context_.update(msg_id, StreamManager::stream()->toMonoNs(msg->ts), settings.sparkline_range, size)) {
     QtConcurrent::blockingMap(
         items, [&](SignalTreeModel::Item* item) { item->sparkline->update(item->sig, sparkline_context_); });
