@@ -304,14 +304,18 @@ QStringList ChartsPanel::serializeChartIds() const {
 }
 
 void ChartsPanel::restoreChartsFromIds(const QStringList& chart_ids) {
-  for (const auto& chart_id : chart_ids) {
+  for (auto it = chart_ids.rbegin(); it != chart_ids.rend(); ++it) {
     int index = 0;
-    for (const auto& part : chart_id.split(',')) {
-      const auto sig_parts = part.split('|');
+    for (const auto& part : it->split(',')) {
+      auto sig_parts = part.split('|');
       if (sig_parts.size() != 2) continue;
+
       MessageId msg_id = MessageId::fromString(sig_parts[0]);
-      if (auto* msg = GetDBC()->msg(msg_id))
-        if (auto* sig = msg->sig(sig_parts[1])) showChart(msg_id, sig, true, index++ > 0);
+      auto* msg = GetDBC()->msg(msg_id);
+      if (!msg) continue;
+
+      auto* sig = msg->sig(sig_parts[1]);
+      if (sig) showChart(msg_id, sig, true, index++ > 0);
     }
   }
 }
