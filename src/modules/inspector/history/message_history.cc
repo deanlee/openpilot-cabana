@@ -34,6 +34,9 @@ MessageHistory::MessageHistory(QWidget* parent) : QFrame(parent) {
   logs->setItemDelegate(delegate);
   logs->setHorizontalHeader(new HistoryHeader(Qt::Horizontal, this));
   logs->setFrameShape(QFrame::NoFrame);
+  logs->setSelectionBehavior(QAbstractItemView::SelectRows);
+  logs->setSelectionMode(QAbstractItemView::SingleSelection);
+  logs->setEditTriggers(QAbstractItemView::NoEditTriggers);
 
   logs->verticalHeader()->setDefaultSectionSize(delegate->sizeForBytes(8).height());
   logs->verticalHeader()->setVisible(false);
