@@ -6,7 +6,6 @@
 #include <QEvent>
 #include <QLineEdit>
 #include <QMouseEvent>
-#include <QPainterPath>
 #include <QSpinBox>
 #include <QToolTip>
 
@@ -107,9 +106,10 @@ void SignalTreeDelegate::drawDataColumn(QPainter* p, QRect r, const QStyleOption
   int sparkW = 0;
   if (!item->sparkline->image.isNull()) {
     const auto& img = item->sparkline->image;
-    sparkW = img.width() / img.devicePixelRatio();
+    const qreal dpr = img.devicePixelRatio();
+    sparkW = img.width() / dpr;
     item->sparkline->setHighlight(sel);
-    p->drawImage(r.left(), r.top() + (r.height() - img.height() / img.devicePixelRatio()) / 2, img);
+    p->drawImage(r.left(), r.top() + (r.height() - img.height() / dpr) / 2, img);
   }
 
   // Details (Min/Max)
@@ -147,7 +147,7 @@ void SignalTreeDelegate::drawDataColumn(QPainter* p, QRect r, const QStyleOption
 
 QWidget* SignalTreeDelegate::createEditor(QWidget* parent, const QStyleOptionViewItem& option,
                                           const QModelIndex& idx) const {
-  auto item = (SignalTreeModel::Item*)idx.internalPointer();
+  auto item = static_cast<SignalTreeModel::Item*>(idx.internalPointer());
   using T = SignalTreeModel::Item::Type;
 
   if (item->type == T::ValueTable) {
@@ -159,12 +159,12 @@ QWidget* SignalTreeDelegate::createEditor(QWidget* parent, const QStyleOptionVie
 
   if (item->type == T::SignalType) {
     auto* c = new QComboBox(parent);
-    c->addItem(signalTypeToString(dbc::Signal::Type::Normal), (int)dbc::Signal::Type::Normal);
-    auto* msg = GetDBC()->msg(((SignalTreeModel*)idx.model())->messageId());
+    c->addItem(signalTypeToString(dbc::Signal::Type::Normal), static_cast<int>(dbc::Signal::Type::Normal));
+    auto* msg = GetDBC()->msg(static_cast<const SignalTreeModel*>(idx.model())->messageId());
     if (!msg->multiplexor)
-      c->addItem(signalTypeToString(dbc::Signal::Type::Multiplexor), (int)dbc::Signal::Type::Multiplexor);
+      c->addItem(signalTypeToString(dbc::Signal::Type::Multiplexor), static_cast<int>(dbc::Signal::Type::Multiplexor));
     else if (item->sig->type != dbc::Signal::Type::Multiplexor)
-      c->addItem(signalTypeToString(dbc::Signal::Type::Multiplexed), (int)dbc::Signal::Type::Multiplexed);
+      c->addItem(signalTypeToString(dbc::Signal::Type::Multiplexed), static_cast<int>(dbc::Signal::Type::Multiplexed));
     return c;
   }
 
@@ -189,9 +189,9 @@ QWidget* SignalTreeDelegate::createEditor(QWidget* parent, const QStyleOptionVie
 }
 
 void SignalTreeDelegate::setModelData(QWidget* editor, QAbstractItemModel* model, const QModelIndex& index) const {
-  auto item = (SignalTreeModel::Item*)index.internalPointer();
+  auto item = static_cast<SignalTreeModel::Item*>(index.internalPointer());
   if (item->type == SignalTreeModel::Item::SignalType) {
-    model->setData(index, ((QComboBox*)editor)->currentData().toInt());
+    model->setData(index, static_cast<QComboBox*>(editor)->currentData().toInt());
     return;
   }
   QStyledItemDelegate::setModelData(editor, model, index);
@@ -281,11 +281,13 @@ bool SignalTreeDelegate::helpEvent(QHelpEvent* event, QAbstractItemView* view, c
   }
 
   // Value & Sparkline Area Hit-Testing
-  int right_edge = option.rect.right() - getButtonsWidth();
+  int sparkW = 0;
+  if (!item->sparkline->image.isNull()) {
+    sparkW = item->sparkline->image.width() / item->sparkline->image.devicePixelRatio();
+  }
   QRect value_rect = option.rect;
-  value_rect.setLeft(option.rect.left() + item->sparkline->image.width() / item->sparkline->image.devicePixelRatio() +
-                     kPadding * 2);
-  value_rect.setRight(right_edge);
+  value_rect.setLeft(option.rect.left() + sparkW + kPadding * 2);
+  value_rect.setRight(option.rect.right() - getButtonsWidth());
 
   if (value_rect.contains(event->pos()) && !item->sig_val.isEmpty()) {
     QString tooltip =
@@ -308,6 +310,10 @@ bool SignalTreeDelegate::editorEvent(QEvent* event, QAbstractItemModel* model, c
   }
 
   const auto type = event->type();
+  if (type != QEvent::MouseMove && type != QEvent::MouseButtonPress && type != QEvent::MouseButtonRelease) {
+    return QStyledItemDelegate::editorEvent(event, model, opt, idx);
+  }
+
   const auto* mouseEvent = static_cast<QMouseEvent*>(event);
   const int btn = buttonAt(mouseEvent->pos(), opt.rect);
 
@@ -357,15 +363,12 @@ int SignalTreeDelegate::nameColumnWidth(const dbc::Signal* sig) const {
 }
 
 void SignalTreeDelegate::clearHoverState() {
-  if (hoverIndex.isValid()) {
-    QPersistentModelIndex old = hoverIndex;
-    hoverIndex = QPersistentModelIndex();
-    hoverButton = -1;
+  QPersistentModelIndex old = hoverIndex;
+  hoverIndex = QPersistentModelIndex();
+  hoverButton = -1;
+  if (old.isValid()) {
     if (auto* view = qobject_cast<QAbstractItemView*>(parent())) {
       view->update(old);
     }
-  } else {
-    hoverIndex = QPersistentModelIndex();
-    hoverButton = -1;
   }
 }
