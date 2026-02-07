@@ -9,7 +9,6 @@ class MessageHeader : public QHeaderView {
 
  public:
   explicit MessageHeader(QWidget* parent = nullptr);
-  ~MessageHeader();
 
   void setModel(QAbstractItemModel* model) override;
   QSize sizeHint() const override;
@@ -17,12 +16,13 @@ class MessageHeader : public QHeaderView {
  public slots:
   void updateFilters();
   void updateHeaderPositions();
-  void clearEditors();
 
  protected:
   void updateGeometries() override;
 
  private:
+  QString getFilterTooltip(int col) const;
+
   QMap<int, QPointer<DebouncedLineEdit>> editors;
   QTimer filter_timer;
   int cached_editor_height = 0;
