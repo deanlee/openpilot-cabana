@@ -1,4 +1,3 @@
-
 #include "binary_delegate.h"
 
 #include <QFontDatabase>
@@ -22,15 +21,16 @@ MessageBytesDelegate::MessageBytesDelegate(QObject* parent) : QStyledItemDelegat
 
 void MessageBytesDelegate::paint(QPainter* painter, const QStyleOptionViewItem& option,
                                  const QModelIndex& index) const {
-  auto item = (const BinaryModel::Item*)index.internalPointer();
-  BinaryView* bin_view = (BinaryView*)parent();
+  auto item = static_cast<const BinaryModel::Item*>(index.internalPointer());
+  auto* bin_view = static_cast<BinaryView*>(parent());
 
-  bool is_hex = (index.column() == 8);
-  bool is_selected = option.state & QStyle::State_Selected;
-  bool item_has_hovered = item->sigs.contains(bin_view->hovered_sig);
+  const bool is_hex = (index.column() == 8);
+  const bool is_selected = option.state & QStyle::State_Selected;
+  const bool item_has_hovered = item->sigs.contains(bin_view->hovered_sig);
+  const bool has_valid_val = item->val != BinaryModel::INVALID_BIT;
 
   if (is_hex) {
-    if (item->val != BinaryModel::INVALID_BIT) {
+    if (has_valid_val) {
       painter->setFont(hex_font);
       painter->fillRect(option.rect, item->bg_color);
     }
@@ -40,32 +40,33 @@ void MessageBytesDelegate::paint(QPainter* painter, const QStyleOptionViewItem& 
     painter->fillRect(option.rect, color);
   } else if (!bin_view->selectionModel()->hasSelection() ||
              !item->sigs.contains(bin_view->resize_sig)) {  // not resizing
-    if (item->sigs.size() > 0) {
-      for (auto& s : item->sigs) {
+    if (!item->sigs.empty()) {
+      for (auto s : item->sigs) {
         if (s == bin_view->hovered_sig) {
-          painter->fillRect(option.rect, s->color.darker(125));  // 4/5x brightness
+          painter->fillRect(option.rect, s->color.darker(125));
         } else {
           drawSignalCell(painter, option, index, s);
         }
       }
-    } else if (item->val != BinaryModel::INVALID_BIT && item->bg_color.alpha() > 0) {
+    } else if (has_valid_val && item->bg_color.alpha() > 0) {
       painter->fillRect(option.rect, item->bg_color);
     }
   }
 
   if (item->sigs.size() > 1) {
     painter->fillRect(option.rect, QBrush(Qt::darkGray, Qt::Dense7Pattern));
-  } else if (item->val == BinaryModel::INVALID_BIT) {
+  } else if (!has_valid_val) {
     painter->fillRect(option.rect, QBrush(Qt::darkGray, Qt::BDiagPattern));
   }
-  if (item->val != BinaryModel::INVALID_BIT) {
+
+  if (has_valid_val) {
     auto color_role = (item_has_hovered || is_selected) ? QPalette::BrightText : QPalette::Text;
     auto group = bin_view->is_message_active ? QPalette::Normal : QPalette::Disabled;
     painter->setPen(option.palette.color(group, color_role));
     painter->setFont(is_hex ? hex_font : option.font);
-    utils::drawStaticText(painter, option.rect,
-                          index.column() == 8 ? hex_text_table[item->val] : bin_text_table[item->val]);
+    utils::drawStaticText(painter, option.rect, is_hex ? hex_text_table[item->val] : bin_text_table[item->val]);
   }
+
   if ((item->is_msb || item->is_lsb) && item->sigs.size() == 1 && item->sigs[0]->size > 1) {
     painter->setFont(small_font);
     painter->drawText(option.rect.adjusted(8, 0, -8, -3), Qt::AlignRight | Qt::AlignBottom, item->is_msb ? "M" : "L");
