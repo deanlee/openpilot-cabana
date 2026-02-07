@@ -69,11 +69,9 @@ void Chart::initControls() {
 
   QToolButton* manage_btn = new ToolButton("menu", "");
   manage_btn->setToolTip(tr("Chart Settings"));
-  manage_btn->setMenu(menu_);
-  manage_btn->setPopupMode(QToolButton::InstantPopup);
   manage_btn_proxy_ = new QGraphicsProxyWidget(this);
   manage_btn_proxy_->setWidget(manage_btn);
-  manage_btn_proxy_->setZValue(zValue() + 11);
+  manage_btn_proxy_->setZValue(100);
 
   const QString clean_style = R"(
     QToolButton, QToolButton:hover, QToolButton:pressed, QToolButton:checked {
@@ -93,6 +91,9 @@ void Chart::initControls() {
   close_act_ = new QAction(tr("Remove Chart"), this);
   connect(close_act_, &QAction::triggered, this, &Chart::close);
   connect(remove_btn, &QToolButton::clicked, close_act_, &QAction::triggered);
+  connect(manage_btn, &QToolButton::clicked, [this, manage_btn]() {
+    menu_->exec(manage_btn->mapToGlobal(QPoint(0, manage_btn->height())));
+  });
   connect(change_series_group, &QActionGroup::triggered,
           [this](QAction* action) { setSeriesType((SeriesType)action->data().toInt()); });
 }
