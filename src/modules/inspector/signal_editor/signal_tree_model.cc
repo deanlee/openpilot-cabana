@@ -50,27 +50,25 @@ void SignalTreeModel::setMessage(const MessageId& id) {
 }
 
 void SignalTreeModel::updateValues(const MessageSnapshot* msg) {
-  QFontMetrics value_metrics(value_font);
+  QFontMetrics fm(value_font);
   int current_max = 0;
+
   for (auto item : root->children) {
     if (!msg->size) {
-      item->sig_val = "-";
-      item->value_width = value_metrics.horizontalAdvance(item->sig_val);
+      item->sig_val = QStringLiteral("-");
     } else {
       double val = 0;
       if (item->sig->parse(msg->data.data(), msg->size, &val)) {
         item->sig_val = item->sig->formatValue(val);
-        item->value_width = value_metrics.horizontalAdvance(item->sig_val);
       }
     }
+    item->value_width = fm.horizontalAdvance(item->sig_val);
     current_max = std::max(current_max, item->value_width);
   }
-  current_max += 10;  // Small buffer
 
-  if (current_max > max_value_width) {
+  current_max += 10;
+  if (current_max > max_value_width || max_value_width - current_max > 40) {
     max_value_width = current_max;
-  } else if (max_value_width - current_max > 40) {
-    max_value_width = current_max + 10;  // Shrink to target + small buffer
   }
 }
 
@@ -199,10 +197,8 @@ Qt::ItemFlags SignalTreeModel::flags(const QModelIndex& index) const {
 }
 
 int SignalTreeModel::signalRow(const dbc::Signal* sig) const {
-  for (int i = 0; i < root->children.size(); ++i) {
-    if (root->children[i]->sig == sig) return i;
-  }
-  return -1;
+  auto it = std::ranges::find(root->children, sig, &Item::sig);
+  return it != root->children.end() ? std::distance(root->children.begin(), it) : -1;
 }
 
 QModelIndex SignalTreeModel::index(int row, int column, const QModelIndex& parent) const {
