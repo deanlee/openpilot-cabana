@@ -60,6 +60,7 @@ void MainWindow::setupConnections() {
   connect(&StreamManager::instance(), &StreamManager::streamChanged, this, &MainWindow::onStreamChanged);
   connect(&StreamManager::instance(), &StreamManager::eventsMerged, this, &MainWindow::eventsMerged);
 
+  connect(charts_panel, &ChartsPanel::openMessage, message_list_, &MessageList::selectMessage);
   connect(inspector_widget_->getMessageView(), &MessageView::activeMessageChanged, message_list_,
           &MessageList::selectMessage);
 }
