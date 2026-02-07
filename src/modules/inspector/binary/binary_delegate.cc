@@ -30,7 +30,7 @@ void MessageBytesDelegate::paint(QPainter* painter, const QStyleOptionViewItem& 
   bool item_has_hovered = item->sigs.contains(bin_view->hovered_sig);
 
   if (is_hex) {
-    if (item->valid) {
+    if (item->val != BinaryModel::INVALID_BIT) {
       painter->setFont(hex_font);
       painter->fillRect(option.rect, item->bg_color);
     }
@@ -48,17 +48,17 @@ void MessageBytesDelegate::paint(QPainter* painter, const QStyleOptionViewItem& 
           drawSignalCell(painter, option, index, s);
         }
       }
-    } else if (item->valid && item->bg_color.alpha() > 0) {
+    } else if (item->val != BinaryModel::INVALID_BIT && item->bg_color.alpha() > 0) {
       painter->fillRect(option.rect, item->bg_color);
     }
   }
 
   if (item->sigs.size() > 1) {
     painter->fillRect(option.rect, QBrush(Qt::darkGray, Qt::Dense7Pattern));
-  } else if (!item->valid) {
+  } else if (item->val == BinaryModel::INVALID_BIT) {
     painter->fillRect(option.rect, QBrush(Qt::darkGray, Qt::BDiagPattern));
   }
-  if (item->valid) {
+  if (item->val != BinaryModel::INVALID_BIT) {
     auto color_role = (item_has_hovered || is_selected) ? QPalette::BrightText : QPalette::Text;
     auto group = bin_view->is_message_active ? QPalette::Normal : QPalette::Disabled;
     painter->setPen(option.palette.color(group, color_role));
