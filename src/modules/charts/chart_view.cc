@@ -131,6 +131,10 @@ void ChartView::contextMenuEvent(QContextMenuEvent* event) {
   QMenu context_menu(this);
   context_menu.addActions(chart_->menu_->actions());
   context_menu.addSeparator();
+  for (const auto& sig : chart_->sigs_) {
+    auto* act = context_menu.addAction(tr("Open Message %1").arg(sig.msg_id.toString()));
+    connect(act, &QAction::triggered, [this, msgid=sig.msg_id]() { emit charts_panel->openMessage(msgid); });
+  }
   // context_menu.addAction(charts_panel->toolbar->undo_zoom_action);
   // context_menu.addAction(charts_panel->toolbar->redo_zoom_action);
   context_menu.addSeparator();

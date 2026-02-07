@@ -151,17 +151,9 @@ void MessageList::selectMessageForced(const MessageId& msg_id, bool force) {
 
   int row = model->getRowForMessageId(msg_id);
   if (row != -1) {
-    current_msg_id = msg_id;
     QModelIndex index = model->index(row, 0);
-
-    view->setUpdatesEnabled(false);
-    {
-      QSignalBlocker blocker(view->selectionModel());
-      view->setCurrentIndex(index);
-      view->scrollTo(index, QAbstractItemView::PositionAtCenter);
-    }
-    view->setUpdatesEnabled(true);
-    view->viewport()->update();
+    view->setCurrentIndex(index);
+    view->scrollTo(index, QAbstractItemView::PositionAtCenter);
   }
 }
 

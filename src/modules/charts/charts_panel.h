@@ -39,6 +39,7 @@ class ChartsPanel : public QFrame {
   void toggleChartsDocking();
   void seriesChanged();
   void showCursor(double seconds);
+  void openMessage(const MessageId& id);
 
  private:
   void changeEvent(QEvent* ev) override;
