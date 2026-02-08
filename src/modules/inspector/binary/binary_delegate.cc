@@ -55,16 +55,16 @@ void MessageBytesDelegate::paint(QPainter* painter, const QStyleOptionViewItem& 
 
   if (item->sigs.size() > 1) {
     painter->fillRect(option.rect, QBrush(Qt::darkGray, Qt::Dense7Pattern));
-  } else if (!has_valid_val) {
-    painter->fillRect(option.rect, QBrush(Qt::darkGray, Qt::BDiagPattern));
   }
 
+  auto color_role = (item_has_hovered || is_selected) ? QPalette::BrightText : QPalette::Text;
+  painter->setPen(option.palette.color(color_role));
   if (has_valid_val) {
-    auto color_role = (item_has_hovered || is_selected) ? QPalette::BrightText : QPalette::Text;
-    auto group = bin_view->is_message_active ? QPalette::Normal : QPalette::Disabled;
-    painter->setPen(option.palette.color(group, color_role));
     painter->setFont(is_hex ? hex_font : option.font);
     utils::drawStaticText(painter, option.rect, is_hex ? hex_text_table[item->val] : bin_text_table[item->val]);
+  } else {
+    painter->setFont(option.font);
+    painter->drawText(option.rect, Qt::AlignCenter, QStringLiteral("-"));
   }
 
   if ((item->is_msb || item->is_lsb) && item->sigs.size() == 1 && item->sigs[0]->size > 1) {

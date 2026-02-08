@@ -73,6 +73,7 @@ void BinaryModel::mapSignalsToItems(const dbc::Msg* msg) {
       item.is_lsb |= (abs_bit == sig->lsb);
       item.is_msb |= (abs_bit == sig->msb);
       item.bg_color = sig->color;  // Last signal in list sets the primary color
+      item.bg_color.setAlpha(100);
 
       item.sigs.push_back(sig);
 
