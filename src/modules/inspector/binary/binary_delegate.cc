@@ -21,14 +21,13 @@ MessageBytesDelegate::MessageBytesDelegate(QObject* parent) : QStyledItemDelegat
 
 void MessageBytesDelegate::paint(QPainter* painter, const QStyleOptionViewItem& option,
                                  const QModelIndex& index) const {
-  auto item = static_cast<const BinaryModel::Item*>(index.internalPointer());
-  auto* bin_view = static_cast<BinaryView*>(parent());
-
+  const auto* item = static_cast<const BinaryModel::Item*>(index.internalPointer());
+  const auto* bin_view = static_cast<const BinaryView*>(parent());
   const bool is_hex = (index.column() == 8);
   const bool is_selected = option.state & QStyle::State_Selected;
-  const bool item_has_hovered = item->sigs.contains(bin_view->hovered_sig);
   const bool has_valid_val = item->val != BinaryModel::INVALID_BIT;
 
+  // 1. Background
   if (is_hex) {
     if (has_valid_val) {
       painter->setFont(hex_font);
@@ -38,27 +37,26 @@ void MessageBytesDelegate::paint(QPainter* painter, const QStyleOptionViewItem& 
     auto color = bin_view->resize_sig ? bin_view->resize_sig->color
                                       : option.palette.color(QPalette::Active, QPalette::Highlight);
     painter->fillRect(option.rect, color);
-  } else if (!bin_view->selectionModel()->hasSelection() ||
-             !item->sigs.contains(bin_view->resize_sig)) {  // not resizing
-    if (!item->sigs.empty()) {
-      for (auto s : item->sigs) {
-        if (s == bin_view->hovered_sig) {
-          painter->fillRect(option.rect, s->color.darker(125));
-        } else {
-          drawSignalCell(painter, option, index, s);
-        }
+  } else if (!item->sigs.empty()) {
+    for (const auto* s : item->sigs) {
+      if (s == bin_view->hovered_sig) {
+        painter->fillRect(option.rect, s->color.darker(125));
+      } else {
+        drawSignalCell(painter, option, index, s);
       }
-    } else if (has_valid_val && item->bg_color.alpha() > 0) {
-      painter->fillRect(option.rect, item->bg_color);
     }
+  } else if (has_valid_val && item->bg_color.alpha() > 0) {
+    painter->fillRect(option.rect, item->bg_color);
   }
 
+  // 2. Overlap indicator
   if (item->sigs.size() > 1) {
     painter->fillRect(option.rect, QBrush(Qt::darkGray, Qt::Dense7Pattern));
   }
 
-  auto color_role = (item_has_hovered || is_selected) ? QPalette::BrightText : QPalette::Text;
-  painter->setPen(option.palette.color(color_role));
+  // 3. Text
+  const bool bright = is_selected || item->sigs.contains(bin_view->hovered_sig);
+  painter->setPen(option.palette.color(bright ? QPalette::BrightText : QPalette::Text));
   if (has_valid_val) {
     painter->setFont(is_hex ? hex_font : option.font);
     utils::drawStaticText(painter, option.rect, is_hex ? hex_text_table[item->val] : bin_text_table[item->val]);
@@ -67,6 +65,7 @@ void MessageBytesDelegate::paint(QPainter* painter, const QStyleOptionViewItem& 
     painter->drawText(option.rect, Qt::AlignCenter, QStringLiteral("-"));
   }
 
+  // 4. MSB/LSB label
   if ((item->is_msb || item->is_lsb) && item->sigs.size() == 1 && item->sigs[0]->size > 1) {
     painter->setFont(small_font);
     painter->drawText(option.rect.adjusted(8, 0, -8, -3), Qt::AlignRight | Qt::AlignBottom, item->is_msb ? "M" : "L");
