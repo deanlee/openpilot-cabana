@@ -234,7 +234,7 @@ void MainWindow::DBCFileChanged() {
   }
   setWindowFilePath(title.join(" | "));
 
-  QTimer::singleShot(0, this, &::MainWindow::restoreSessionState);
+  QTimer::singleShot(20, this, &::MainWindow::restoreSessionState);
 }
 
 void MainWindow::selectAndOpenStream() {
