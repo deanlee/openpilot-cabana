@@ -9,6 +9,7 @@
 #include "dbc_signal.h"
 
 const QString UNDEFINED = "Undefined";
+constexpr int INVALID_SOURCE = 0xff;
 
 struct MessageId {
   uint32_t address;
@@ -23,13 +24,8 @@ struct MessageId {
   bool operator<(const MessageId& other) const noexcept { return v() < other.v(); }
   bool operator>(const MessageId& other) const noexcept { return v() > other.v(); }
 
-  QString toString() const { return QString("%1:%2").arg(source).arg(address, 0, 16).toUpper(); }
-
-  static MessageId fromString(const QString& str) {
-    auto parts = str.split(':');
-    if (parts.size() != 2) return {};
-    return MessageId(uint8_t(parts[0].toUInt()), parts[1].toUInt(nullptr, 16));
-  }
+  QString toString() const;
+  static MessageId fromString(const QString& str);
 };
 
 Q_DECLARE_METATYPE(MessageId);

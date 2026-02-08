@@ -3,8 +3,35 @@
 #include <algorithm>
 #include <cmath>
 
+#include "dbc_manager.h"
 #include "utils/util.h"
 
+QString MessageId::toString() const {
+  if (source == INVALID_SOURCE) {
+    return QString("[%1]").arg(address, 0, 16).toUpper();
+  }
+  return QString("%1:%2").arg(source).arg(address, 0, 16).toUpper();
+}
+
+MessageId MessageId::fromString(const QString& str) {
+  if (str.startsWith('[') && str.endsWith(']')) {
+    bool ok;
+    uint32_t addr = str.mid(1, str.size() - 2).toUInt(&ok, 16);
+    return ok ? MessageId{INVALID_SOURCE, addr} : MessageId{};
+  }
+
+  const int sep = str.indexOf(':');
+  if (sep == -1) return {};  // Return invalid ID if no separator
+
+  bool ok_src, ok_addr;
+  uint8_t src = static_cast<uint8_t>(str.left(sep).toUInt(&ok_src));
+  uint32_t addr = str.mid(sep + 1).toUInt(&ok_addr, 16);
+
+  if (!ok_src || !ok_addr) return {};
+  return MessageId{src, addr};
+}
+
+// Msg
 dbc::Msg::~Msg() {
   for (auto s : sigs) {
     delete s;

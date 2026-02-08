@@ -7,7 +7,6 @@
 
 #include "dbc_file.h"
 
-const int INVALID_SOURCE = 0xff;
 const int GLOBAL_SOURCE_ID = -1;
 
 using SourceSet = std::set<int>;
