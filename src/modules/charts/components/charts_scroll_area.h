@@ -3,8 +3,6 @@
 #include <QScrollArea>
 #include <QTimer>
 
-class ChartsContainer;
-
 class ChartsScrollArea : public QScrollArea {
   Q_OBJECT
 
@@ -12,9 +10,6 @@ class ChartsScrollArea : public QScrollArea {
   explicit ChartsScrollArea(QWidget* parent = nullptr);
   void startAutoScroll();
   void stopAutoScroll();
-
- protected:
-  void resizeEvent(QResizeEvent* event) override;
 
  private:
   static constexpr int kAutoScrollIntervalMs = 16;  // ~60Hz for smooth scrolling
@@ -25,8 +20,5 @@ class ChartsScrollArea : public QScrollArea {
   int autoScrollDelta(int pos, int viewportHeight) const;
   void doAutoScroll();
 
-  ChartsContainer* container_ = nullptr;
   QTimer* auto_scroll_timer_ = nullptr;
-
-  friend class ChartsPanel;
 };

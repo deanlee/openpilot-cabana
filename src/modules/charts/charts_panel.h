@@ -29,6 +29,12 @@ class ChartsPanel : public QFrame {
   QStringList serializeChartIds() const;
   void restoreChartsFromIds(const QStringList& chart_ids);
   inline ChartsToolBar* getToolBar() const { return toolbar; }
+  void splitChart(ChartView* src_view);
+  void removeChart(ChartView* chart);
+  void pushZoom(const std::pair<double, double>& range);
+  void undoZoom();
+  void updateHover(double time);
+  void hideHover();
 
  public slots:
   void setColumnCount(int n);
@@ -51,17 +57,13 @@ class ChartsPanel : public QFrame {
   void newChart();
   void handleChartDrop(ChartView* chart, ChartView* target, DropMode mode);
   ChartView* createChart(int pos = 0);
-  void removeChart(ChartView* chart);
   void removeCharts(QList<ChartView*> charts_to_remove);
-  void splitChart(ChartView* src_view);
   void eventsMerged(const MessageEventsMap& new_events);
   void updateState();
   void setMaxChartRange(int value);
   void updateLayout(bool force = false);
   void settingChanged();
-  void updateHover(double time);
   void updateHoverFromCursor();
-  void hideHover();
   ChartView* findChart(const MessageId& id, const dbc::Signal* sig);
 
   // --- UI Components ---
@@ -70,6 +72,7 @@ class ChartsPanel : public QFrame {
   QStackedWidget* stack_ = nullptr;
   ChartsScrollArea* scroll_area_ = nullptr;
   ChartsEmptyView* empty_view_ = nullptr;
+  ChartsContainer* container_ = nullptr;
 
   // --- Data & State ---
   QList<ChartView*> charts;  // Total ownership of all charts
@@ -84,8 +87,4 @@ class ChartsPanel : public QFrame {
 
   // --- Utilities ---
   QTimer* align_timer = nullptr;
-
-  friend class ChartView;
-  friend class ChartsContainer;
-  friend class ChartsToolBar;
 };

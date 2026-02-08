@@ -27,9 +27,6 @@ class ChartsToolBar : public QWidget {
   void seriesTypeChanged(int type);
   void rangeChanged(int range_seconds);
 
- public:
-  QUndoStack* zoom_undo_stack;
-
  protected:
   void settingChanged();
   void createActions(QHBoxLayout* hl);  // Pass layout to populate
@@ -53,6 +50,7 @@ class ChartsToolBar : public QWidget {
   ToolButton* new_tab_btn;
   ToolButton* remove_all_btn;
   ToolButton* dock_btn;
+  QUndoStack* zoom_undo_stack;
 
   bool is_docked = true;
   friend class ChartsPanel;

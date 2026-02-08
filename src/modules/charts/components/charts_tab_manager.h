@@ -16,6 +16,7 @@ class ChartsTabManager : public QObject {
   void clear();
   void insertChart(int pos, ChartView* chart);
   void removeChart(ChartView* chart);
+  TabBar* tabbar() const { return tabbar_; }
   void updateLabels();
   QMap<int, QList<ChartView*>> tab_charts_;  // Stores associations, not ownership
 
@@ -29,5 +30,4 @@ class ChartsTabManager : public QObject {
  private:
   TabBar* tabbar_;
   int next_tab_id_ = 0;
-  friend class ChartsPanel;
 };

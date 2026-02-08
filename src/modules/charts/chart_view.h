@@ -18,11 +18,13 @@ class ChartView : public QChartView {
 
  public:
   ChartView(const std::pair<double, double>& x_range, ChartsPanel* parent = nullptr);
+  inline Chart* chart() { return chart_; }
   inline bool empty() const { return chart_->sigs_.empty(); }
   void updatePlot(double cur, double min, double max);
   void showCursor(double sec, const QRect& visible_rect);
   void hideCursor();
   void startAnimation();
+  void resetChartCache();
   double secondsAtPoint(const QPointF& pt) const { return chart_->mapToValue(pt).x(); }
 
  signals:
@@ -46,7 +48,6 @@ class ChartView : public QChartView {
   void dragEnterEvent(QDragEnterEvent* event) override;
   void dragMoveEvent(QDragMoveEvent* event) override;
   QSize sizeHint() const override;
-  void resetChartCache();
   void paintEvent(QPaintEvent* event) override;
   void drawForeground(QPainter* painter, const QRectF& rect) override;
   void drawBackground(QPainter* painter, const QRectF& rect) override;
@@ -69,5 +70,4 @@ class ChartView : public QChartView {
   ChartsPanel* charts_panel;
 
   Chart* chart_ = nullptr;
-  friend class ChartsPanel;
 };

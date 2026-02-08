@@ -20,16 +20,18 @@ ChartsPanel::ChartsPanel(QWidget* parent) : QFrame(parent) {
 
   toolbar = new ChartsToolBar(this);
   tab_manager_ = new ChartsTabManager(this);
+  container_ = new ChartsContainer(this);
+  container_->installEventFilter(this);
 
   stack_ = new QStackedWidget(this);
   scroll_area_ = new ChartsScrollArea(this);
+  scroll_area_->setWidget(container_);
   empty_view_ = new ChartsEmptyView(this);
   stack_->addWidget(empty_view_);
   stack_->addWidget(scroll_area_);
-  scroll_area_->container_->installEventFilter(this);
 
   main_layout->addWidget(toolbar);
-  main_layout->addWidget(tab_manager_->tabbar_);
+  main_layout->addWidget(tab_manager_->tabbar());
   main_layout->addWidget(stack_);
 
   // init settings
@@ -72,7 +74,7 @@ void ChartsPanel::setupConnections() {
   connect(tab_manager_, &ChartsTabManager::tabAboutToBeRemoved, this, &ChartsPanel::removeCharts);
   connect(tab_manager_, &ChartsTabManager::currentTabChanged, this, [this]() { updateLayout(true); });
 
-  connect(scroll_area_->container_, &ChartsContainer::chartDropped, this, &ChartsPanel::handleChartDrop);
+  connect(container_, &ChartsContainer::chartDropped, this, &ChartsPanel::handleChartDrop);
   connect(scroll_area_->verticalScrollBar(), &QScrollBar::valueChanged, this, &ChartsPanel::updateHoverFromCursor);
 }
 
@@ -80,13 +82,13 @@ void ChartsPanel::eventsMerged(const MessageEventsMap& new_events) {
   if (charts.empty()) return;
 
   QtConcurrent::blockingMap(charts, [&new_events](ChartView* c) {
-    if (c && c->chart_) {
-      c->chart_->prepareData(nullptr, &new_events);
+    if (c) {
+      c->chart()->prepareData(nullptr, &new_events);
     }
   });
 
   for (auto* c : charts) {
-    c->chart_->updateSeries(nullptr);
+    c->chart()->updateSeries(nullptr);
   }
 }
 
@@ -105,7 +107,7 @@ void ChartsPanel::updateHover(double time) {
 
   for (auto* chart_view : charts) {
     QPoint chart_pos = chart_view->mapTo(scroll_area_->widget(), QPoint(0, 0));
-    QRect plot_rect = chart_view->chart_->plotArea().toRect();
+    QRect plot_rect = chart_view->chart()->plotArea().toRect();
     plot_rect.moveTopLeft(chart_pos + plot_rect.topLeft());
 
     QRect intersected = plot_rect.intersected(visible_window);
@@ -192,26 +194,26 @@ void ChartsPanel::settingChanged() {
   if (std::exchange(current_theme, settings.theme) != current_theme) {
     auto theme = utils::isDarkTheme() ? QChart::QChart::ChartThemeDark : QChart::ChartThemeLight;
     for (auto c : charts) {
-      c->chart_->setTheme(theme);
+      c->chart()->setTheme(theme);
     }
   }
   for (auto c : charts) {
     c->setFixedHeight(settings.chart_height);
-    c->chart_->setSeriesType((SeriesType)settings.chart_series_type);
+    c->chart()->setSeriesType((SeriesType)settings.chart_series_type);
     c->resetChartCache();
   }
 }
 
 ChartView* ChartsPanel::findChart(const MessageId& id, const dbc::Signal* sig) {
   for (auto c : charts)
-    if (c->chart_->hasSignal(id, sig)) return c;
+    if (c->chart()->hasSignal(id, sig)) return c;
   return nullptr;
 }
 
 const QMap<MessageId, QSet<const dbc::Signal*>> ChartsPanel::getChartedSignals() const {
   QMap<MessageId, QSet<const dbc::Signal*>> charted_signals;
   for (auto* c : charts) {
-    for (const auto& s : c->chart_->sigs_) {
+    for (const auto& s : c->chart()->sigs_) {
       charted_signals[s.msg_id].insert(s.sig);
     }
   }
@@ -221,7 +223,7 @@ const QMap<MessageId, QSet<const dbc::Signal*>> ChartsPanel::getChartedSignals()
 ChartView* ChartsPanel::createChart(int pos) {
   auto chart = new ChartView(StreamManager::stream()->timeRange().value_or(display_range), this);
   charts.append(chart);
-  chart->viewport()->installEventFilter(scroll_area_->container_);
+  chart->viewport()->installEventFilter(container_);
   connect(chart, &ChartView::axisYLabelWidthChanged, align_timer, qOverload<>(&QTimer::start));
 
   tab_manager_->insertChart(pos, chart);
@@ -234,18 +236,18 @@ void ChartsPanel::showChart(const MessageId& id, const dbc::Signal* sig, bool sh
   ChartView* c = findChart(id, sig);
   if (show && !c) {
     c = merge && tab_manager_->currentCharts().size() > 0 ? tab_manager_->currentCharts().front() : createChart();
-    c->chart_->addSignal(id, sig);
+    c->chart()->addSignal(id, sig);
     updateState();
   } else if (!show && c) {
-    c->chart_->removeIf([&](auto& s) { return s.msg_id == id && s.sig == sig; });
+    c->chart()->removeIf([&](auto& s) { return s.msg_id == id && s.sig == sig; });
   }
 }
 
 void ChartsPanel::mergeCharts(ChartView* chart, ChartView* target) {
   target->setUpdatesEnabled(false);
 
-  target->chart_->takeSignals(std::move(chart->chart_->sigs_));
-  chart->chart_->sigs_.clear();
+  target->chart()->takeSignals(std::move(chart->chart()->sigs_));
+  chart->chart()->sigs_.clear();
   removeChart(chart);
 
   target->setUpdatesEnabled(true);
@@ -268,7 +270,7 @@ void ChartsPanel::moveChart(ChartView* chart, ChartView* target, DropMode mode) 
 }
 
 void ChartsPanel::splitChart(ChartView* src_view) {
-  auto& src_sigs = src_view->chart_->sigs_;
+  auto& src_sigs = src_view->chart()->sigs_;
   if (src_sigs.size() <= 1) return;
 
   // 1. Transaction safety: disable updates
@@ -284,11 +286,11 @@ void ChartsPanel::splitChart(ChartView* src_view) {
     to_move.push_back(std::move(src_sigs.back()));
     src_sigs.pop_back();
 
-    dest_view->chart_->takeSignals(std::move(to_move));
+    dest_view->chart()->takeSignals(std::move(to_move));
   }
 
   // 3. Finalize source chart
-  src_view->chart_->syncUI();
+  src_view->chart()->syncUI();
   src_view->setUpdatesEnabled(true);
 }
 
@@ -296,7 +298,7 @@ QStringList ChartsPanel::serializeChartIds() const {
   QStringList chart_ids;
   for (auto c : charts) {
     QStringList ids;
-    for (const auto& s : c->chart_->sigs_) ids += QString("%1|%2").arg(s.msg_id.toString(), s.sig->name);
+    for (const auto& s : c->chart()->sigs_) ids += QString("%1|%2").arg(s.msg_id.toString(), s.sig->name);
     chart_ids += ids.join(',');
   }
   std::ranges::reverse(chart_ids);
@@ -329,7 +331,7 @@ void ChartsPanel::setColumnCount(int n) {
 }
 
 void ChartsPanel::updateLayout(bool force) {
-  scroll_area_->container_->updateLayout(tab_manager_->currentCharts(), column_count, force);
+  container_->updateLayout(tab_manager_->currentCharts(), column_count, force);
 }
 
 QSize ChartsPanel::minimumSizeHint() const { return QSize(CHART_MIN_WIDTH * 1.5, QWidget::minimumSizeHint().height()); }
@@ -341,7 +343,7 @@ void ChartsPanel::newChart() {
     if (!items.isEmpty()) {
       auto c = createChart();
       for (auto it : items) {
-        c->chart_->addSignal(it->msg_id, it->sig);
+        c->chart()->addSignal(it->msg_id, it->sig);
       }
     }
   }
@@ -368,6 +370,14 @@ void ChartsPanel::removeChart(ChartView* chart) {
   emit seriesChanged();
 }
 
+void ChartsPanel::pushZoom(const std::pair<double, double>& range) {
+  toolbar->zoom_undo_stack->push(new ZoomCommand(range));
+}
+
+void ChartsPanel::undoZoom() {
+  toolbar->zoom_undo_stack->undo();
+}
+
 void ChartsPanel::removeAll() {
   if (!charts.isEmpty()) {
     for (auto c : charts) {
@@ -386,11 +396,11 @@ void ChartsPanel::removeAll() {
 void ChartsPanel::alignCharts() {
   int plot_left = 0;
   for (auto c : charts) {
-    plot_left = std::max(plot_left, c->chart_->y_label_width_);
+    plot_left = std::max(plot_left, c->chart()->y_label_width_);
   }
   plot_left = std::max((plot_left / 10) * 10 + 10, 50);
   for (auto c : charts) {
-    c->chart_->alignLayout(plot_left);
+    c->chart()->alignLayout(plot_left);
   }
 }
 
@@ -403,7 +413,7 @@ void ChartsPanel::handleChartDrop(ChartView* chart, ChartView* target, DropMode 
 }
 
 bool ChartsPanel::eventFilter(QObject* obj, QEvent* event) {
-  if (obj == scroll_area_->container_) {
+  if (obj == container_) {
     if (event->type() == QEvent::Leave) {
       hideHover();
     }
@@ -437,7 +447,7 @@ bool ChartsPanel::event(QEvent* event) {
   }
 
   if (back_button) {
-    toolbar->zoom_undo_stack->undo();
+    undoZoom();
     return true;  // Return true since the event has been handled
   }
   return QFrame::event(event);

@@ -1,10 +1,9 @@
 #include "charts_scroll_area.h"
 
 #include <QApplication>
+#include <QMouseEvent>
 #include <QScrollBar>
 
-#include "charts_container.h"
-#include "modules/charts/chart_view.h"
 #include "modules/settings/settings.h"
 
 ChartsScrollArea::ChartsScrollArea(QWidget* parent) : QScrollArea(parent) {
@@ -12,9 +11,6 @@ ChartsScrollArea::ChartsScrollArea(QWidget* parent) : QScrollArea(parent) {
   setWidgetResizable(true);
   setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
   viewport()->setBackgroundRole(QPalette::Base);
-
-  container_ = new ChartsContainer(this);
-  setWidget(container_);
 
   auto_scroll_timer_ = new QTimer(this);
   connect(auto_scroll_timer_, &QTimer::timeout, this, &ChartsScrollArea::doAutoScroll);
@@ -58,13 +54,8 @@ void ChartsScrollArea::doAutoScroll() {
 
   if (scroll->value() != old_val) {
     // Synthesize a move event so the container updates drop indicators
-    QMouseEvent move(QEvent::MouseMove, container_->mapFromGlobal(global_pos),
+    QMouseEvent move(QEvent::MouseMove, widget()->mapFromGlobal(global_pos),
                      global_pos, Qt::NoButton, Qt::LeftButton, Qt::NoModifier);
-    QApplication::sendEvent(container_, &move);
+    QApplication::sendEvent(widget(), &move);
   }
-}
-
-void ChartsScrollArea::resizeEvent(QResizeEvent* event) {
-  QScrollArea::resizeEvent(event);
-  container_->updateLayout(container_->active_charts_, settings.chart_column_count, true);
 }

@@ -19,6 +19,8 @@ class ChartsContainer : public QWidget {
   void chartDropped(ChartView* chart, ChartView* after, DropMode mode);
 
  private:
+  QSize minimumSizeHint() const override { return QSize(0, 0); }
+  void resizeEvent(QResizeEvent* event) override;
   void dragEnterEvent(QDragEnterEvent* event) override;
   void dragMoveEvent(QDragMoveEvent* e) override;
   void dropEvent(QDropEvent* event) override;
@@ -36,5 +38,4 @@ class ChartsContainer : public QWidget {
   QList<ChartView*> active_charts_;
   ChartView* active_target = nullptr;
   DropMode drop_mode = DropMode::None;
-  friend class ChartsScrollArea;
 };

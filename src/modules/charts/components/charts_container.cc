@@ -197,3 +197,8 @@ void ChartsContainer::paintEvent(QPaintEvent* ev) {
     p.drawEllipse(QPoint(width() - 10, y), 4, 4);
   }
 }
+
+void ChartsContainer::resizeEvent(QResizeEvent* event) {
+  QWidget::resizeEvent(event);
+  updateLayout(active_charts_, settings.chart_column_count, false);
+}

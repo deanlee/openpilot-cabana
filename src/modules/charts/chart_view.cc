@@ -160,13 +160,13 @@ void ChartView::mouseReleaseEvent(QMouseEvent* event) {
       // no rubber dragged, seek to mouse position
       can->seekTo(min);
     } else if (rubber->width() > 10 && (max - min) > MIN_ZOOM_SECONDS) {
-      charts_panel->toolbar->zoom_undo_stack->push(new ZoomCommand({min, max}));
+      charts_panel->pushZoom({min, max});
     } else {
       viewport()->update();
     }
     event->accept();
   } else if (event->button() == Qt::RightButton) {
-    charts_panel->toolbar->zoom_undo_stack->undo();
+    charts_panel->undoZoom();
     event->accept();
   } else {
     QGraphicsView::mouseReleaseEvent(event);
