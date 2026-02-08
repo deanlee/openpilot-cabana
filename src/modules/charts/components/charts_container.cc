@@ -43,10 +43,11 @@ int ChartsContainer::calculateOptimalColumns() const {
 }
 
 void ChartsContainer::updateLayout(const QList<ChartView*>& current_charts, int column_count, bool force) {
-  if (!force && active_charts_ == current_charts && current_column_count_ == column_count) return;
+  int optimal_columns = calculateOptimalColumns();
+  if (!force && active_charts_ == current_charts && current_column_count_ == optimal_columns) return;
 
   active_charts_ = current_charts;
-  current_column_count_ = calculateOptimalColumns();
+  current_column_count_ = optimal_columns;
   reflowLayout();
 }
 
@@ -90,13 +91,16 @@ void ChartsContainer::handleDragInteraction(const QPoint& pos) {
 
   if (best_match) {
     active_target = best_match;
-    double rel_y = (double)(pos.y() - active_target->y()) / active_target->height();
+    double rel_y = static_cast<double>(pos.y() - active_target->y()) / active_target->height();
     if (rel_y < 0.2)
       drop_mode = DropMode::InsertBefore;
     else if (rel_y > 0.8)
       drop_mode = DropMode::InsertAfter;
     else
       drop_mode = DropMode::Merge;
+  } else {
+    active_target = nullptr;
+    drop_mode = DropMode::None;
   }
   update();
 }
@@ -142,9 +146,12 @@ bool ChartsContainer::eventFilter(QObject* obj, QEvent* event) {
   }
 
   if (event->type() == QEvent::Drop) {
-    handleDrop(active_target, drop_mode, static_cast<QDropEvent*>(event));
-    resetDragState();
-    return true;
+    auto* dev = static_cast<QDropEvent*>(event);
+    if (dev->mimeData()->hasFormat(CHART_MIME_TYPE)) {
+      handleDrop(active_target, drop_mode, dev);
+      resetDragState();
+      return true;
+    }
   }
 
   return QObject::eventFilter(obj, event);
