@@ -13,7 +13,6 @@ ChartsScrollArea::ChartsScrollArea(QWidget* parent) : QScrollArea(parent) {
   setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
   viewport()->setBackgroundRole(QPalette::Base);
 
-  // We own the container widget that actually holds the grid
   container_ = new ChartsContainer(this);
   setWidget(container_);
 
@@ -23,40 +22,45 @@ ChartsScrollArea::ChartsScrollArea(QWidget* parent) : QScrollArea(parent) {
 
 void ChartsScrollArea::startAutoScroll() {
   if (!auto_scroll_timer_->isActive()) {
-    auto_scroll_timer_->start(20);  // Smoother 50Hz update
+    auto_scroll_timer_->start(kAutoScrollIntervalMs);
   }
 }
 
 void ChartsScrollArea::stopAutoScroll() { auto_scroll_timer_->stop(); }
 
-void ChartsScrollArea::doAutoScroll() {
-  QScrollBar* scroll = verticalScrollBar();
-  QPoint global_pos = QCursor::pos();
-  QPoint local_pos = viewport()->mapFromGlobal(global_pos);
-  QRect area = viewport()->rect();
-
-  int margin = 60;  // Sensitivity zone
-  int delta = 0;
-
-  if (local_pos.y() < margin) {
-    delta = -qBound(2, (margin - local_pos.y()) / 2, 30);
-  } else if (local_pos.y() > area.height() - margin) {
-    delta = qBound(2, (margin - (area.height() - local_pos.y())) / 2, 30);
+int ChartsScrollArea::autoScrollDelta(int pos, int viewportHeight) const {
+  if (pos < kAutoScrollMargin) {
+    // Scroll up — accelerate quadratically near the edge
+    double ratio = double(kAutoScrollMargin - pos) / kAutoScrollMargin;
+    return -qBound(kMinScrollSpeed, int(ratio * ratio * kMaxScrollSpeed), kMaxScrollSpeed);
   }
+  if (pos > viewportHeight - kAutoScrollMargin) {
+    // Scroll down
+    double ratio = double(pos - (viewportHeight - kAutoScrollMargin)) / kAutoScrollMargin;
+    return qBound(kMinScrollSpeed, int(ratio * ratio * kMaxScrollSpeed), kMaxScrollSpeed);
+  }
+  return 0;
+}
+
+void ChartsScrollArea::doAutoScroll() {
+  const QPoint global_pos = QCursor::pos();
+  const QPoint local_pos = viewport()->mapFromGlobal(global_pos);
+  const int delta = autoScrollDelta(local_pos.y(), viewport()->height());
 
   if (delta == 0) {
     stopAutoScroll();
     return;
   }
 
-  int old_val = scroll->value();
+  QScrollBar* scroll = verticalScrollBar();
+  const int old_val = scroll->value();
   scroll->setValue(old_val + delta);
 
   if (scroll->value() != old_val) {
-    // Synthesize a move event to the container to update the drop indicators
-    QMouseEvent mm(QEvent::MouseMove, container_->mapFromGlobal(global_pos), global_pos, Qt::NoButton, Qt::LeftButton,
-                   Qt::NoModifier);
-    QApplication::sendEvent(container_, &mm);
+    // Synthesize a move event so the container updates drop indicators
+    QMouseEvent move(QEvent::MouseMove, container_->mapFromGlobal(global_pos),
+                     global_pos, Qt::NoButton, Qt::LeftButton, Qt::NoModifier);
+    QApplication::sendEvent(container_, &move);
   }
 }
 
