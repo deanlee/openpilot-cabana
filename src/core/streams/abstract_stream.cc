@@ -8,7 +8,7 @@
 #include "common/timing.h"
 #include "modules/settings/settings.h"
 
-static const int EVENT_NEXT_BUFFER_SIZE = 6 * 1024 * 1024;  // 6MB
+static constexpr int EVENT_NEXT_BUFFER_SIZE = 6 * 1024 * 1024;  // 6MB
 
 template <>
 uint64_t TimeIndex<const CanEvent*>::get_timestamp(const CanEvent* const& e) {
@@ -81,7 +81,7 @@ void AbstractStream::processNewMessage(const MessageId& id, uint64_t mono_ns, co
   shared_state_.current_sec = sec;
 
   auto& state = shared_state_.master_state[id];
-  if (state.size != (size_t)size) {
+  if (state.size != size) {
     state.init(data, size, sec);
     applyCurrentPolicy(state, id);
   }
@@ -100,9 +100,9 @@ const std::vector<const CanEvent*>& AbstractStream::events(const MessageId& id) 
 }
 
 const MessageSnapshot* AbstractStream::snapshot(const MessageId& id) const {
-  static MessageSnapshot empty_data = {};
+  static const MessageSnapshot kEmptySnapshot;
   auto it = snapshot_map_.find(id);
-  return it != snapshot_map_.end() ? it->second.get() : &empty_data;
+  return it != snapshot_map_.end() ? it->second.get() : &kEmptySnapshot;
 }
 
 void AbstractStream::updateSnapshotsTo(double sec) {
@@ -145,18 +145,16 @@ void AbstractStream::updateSnapshotsTo(double sec) {
 }
 
 void AbstractStream::updateActiveStates() {
-  static double last_activity_update = 0;
-  double now = millis_since_boot();
-
-  if (now - last_activity_update > 1000) {
+  const double now = millis_since_boot();
+  if (now - last_activity_update_ms_ > kActivityCheckIntervalMs) {
     for (auto& [_, m] : snapshot_map_) {
       m->updateActiveState(current_sec_);
     }
-    last_activity_update = now;
+    last_activity_update_ms_ = now;
   }
 }
 
-void AbstractStream::waitForSeekFinshed() {
+void AbstractStream::waitForSeekFinished() {
   std::unique_lock lock(mutex_);
   seek_finished_cv_.wait(lock, [this]() { return shared_state_.seek_finished; });
   shared_state_.seek_finished = false;
@@ -177,8 +175,8 @@ void AbstractStream::mergeEvents(const std::vector<const CanEvent*>& events) {
   if (events.empty()) return;
 
   // 1. Group events by ID
-  static MessageEventsMap msg_events;
-  msg_events.clear();
+  MessageEventsMap msg_events;
+  msg_events.reserve(64);
   for (const auto* e : events) {
     msg_events[{e->src, e->address}].push_back(e);
   }

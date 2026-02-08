@@ -37,7 +37,7 @@ class AbstractStream : public QObject {
 
  public:
   AbstractStream(QObject* parent);
-  virtual ~AbstractStream() {}
+  virtual ~AbstractStream() = default;
   virtual void start() = 0;
   virtual bool liveStreaming() const { return true; }
   virtual void seekTo(double ts) {}
@@ -94,7 +94,7 @@ class AbstractStream : public QObject {
   void mergeEvents(const std::vector<const CanEvent*>& events);
   const CanEvent* newEvent(uint64_t mono_ns, const cereal::CanData::Reader& c);
   void processNewMessage(const MessageId& id, uint64_t mono_ns, const uint8_t* data, uint8_t size);
-  void waitForSeekFinshed();
+  void waitForSeekFinished();
 
   struct SharedState {
     double current_sec = 0;
@@ -110,6 +110,8 @@ class AbstractStream : public QObject {
   std::optional<std::pair<double, double>> time_range_;
 
  private:
+  static constexpr double kActivityCheckIntervalMs = 1000.0;
+
   void updateSnapshotsTo(double sec);
   void updateMasks();
   void updateActiveStates();
@@ -122,6 +124,7 @@ class AbstractStream : public QObject {
   std::unique_ptr<MonotonicBuffer> event_buffer_;
   std::unordered_map<MessageId, TimeIndex<const CanEvent*>> time_index_map_;
 
+  double last_activity_update_ms_ = 0;
   std::mutex mutex_;
   SharedState shared_state_;
   std::condition_variable seek_finished_cv_;

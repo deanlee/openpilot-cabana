@@ -12,8 +12,8 @@ enum class DataPattern : uint8_t { None = 0, Increasing, Decreasing, Toggle, Ran
 
 class MessageState {
  public:
-  void init(const uint8_t* new_data, int size, double current_ts);
-  void update(const uint8_t* new_data, int size, double current_ts, double manual_freq = 0, bool is_seek = false);
+  void init(const uint8_t* new_data, uint8_t data_size, double current_ts);
+  void update(const uint8_t* new_data, uint8_t data_size, double current_ts, double manual_freq = 0, bool is_seek = false);
   void updateAllPatternColors(double current_ts);
   void applyMask(const std::vector<uint8_t>& mask);
   size_t muteActiveBits(const std::vector<uint8_t>& mask);
@@ -33,8 +33,10 @@ class MessageState {
   std::array<std::array<uint32_t, 8>, MAX_CAN_LEN> bit_high_counts = {};
 
  private:
-  void analyzeByteMutation(int i, uint8_t old_val, uint8_t new_val, uint8_t diff, double current_ts);
+  void analyzeByteMutation(int byte_index, uint8_t old_val, uint8_t new_val, uint8_t diff, double current_ts);
   void updateFrequency(double current_ts, double manual_freq, bool is_seek);
+
+  static constexpr double kMuteActivityWindowSec = 2.0;
 
   double last_freq_ts = 0;
   std::array<double, MAX_CAN_LEN> last_change_ts = {0};
@@ -49,7 +51,7 @@ class MessageState {
 class MessageSnapshot {
  public:
   MessageSnapshot() = default;
-  MessageSnapshot(const MessageState& s) { updateFrom(s); }
+  explicit MessageSnapshot(const MessageState& s) { updateFrom(s); }
   void updateFrom(const MessageState& s);
   void updateActiveState(double now);
 

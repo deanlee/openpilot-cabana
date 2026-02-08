@@ -18,9 +18,9 @@ static constexpr int LIMIT_NOISY = 60;
 static constexpr int LIMIT_TOGGLE = 100;
 static constexpr int LIMIT_TREND = 160;
 
-// static constexpr double ALPHA_DECAY_SECONDS = 1.5;
-static constexpr double ENTROPY_THRESHOLD = 0.85;  // Above this, it's considered "Noisy"
+static constexpr double ENTROPY_THRESHOLD = 0.85;
 static constexpr int MIN_SAMPLES_FOR_ENTROPY = 16;
+static constexpr double FREQ_JITTER_THRESHOLD = 0.0001;  // Intervals below this are considered jitter
 
 // Precomputed Shannon Entropy Table: H(p) = -p*log2(p) - (1-p)*log2(1-p)
 static const std::array<float, 256> ENTROPY_LOOKUP = [] {
@@ -43,8 +43,8 @@ double getEntropy(uint32_t highs, uint32_t total) {
 
 }  // namespace
 
-void MessageState::init(const uint8_t* new_data, int data_size, double current_ts) {
-  size = std::min<int>(data_size, MAX_CAN_LEN);
+void MessageState::init(const uint8_t* new_data, uint8_t data_size, double current_ts) {
+  size = std::min<uint8_t>(data_size, MAX_CAN_LEN);
   ts = current_ts;
   count = 1;
   freq = 0;
@@ -67,7 +67,7 @@ void MessageState::init(const uint8_t* new_data, int data_size, double current_t
   std::memcpy(last_data_64.data(), new_data, size);
 }
 
-void MessageState::update(const uint8_t* new_data, int data_size, double current_ts, double manual_freq, bool is_seek) {
+void MessageState::update(const uint8_t* new_data, uint8_t data_size, double current_ts, double manual_freq, bool is_seek) {
   if (size != data_size) {
     init(new_data, data_size, current_ts);
     return;
@@ -119,7 +119,7 @@ void MessageState::updateFrequency(double current_ts, double manual_freq, bool i
     double interval = current_ts - last_freq_ts;
 
     // Skip interval math if it's too small (jitter)
-    if (interval > 0.0001) {
+    if (interval > FREQ_JITTER_THRESHOLD) {
       double instant_freq = 1.0 / interval;
       // Adaptive Filter:
       // High freq (interval < 0.1s) -> Alpha 0.1 (Heavy smoothing)
@@ -214,7 +214,7 @@ size_t MessageState::muteActiveBits(const std::vector<uint8_t>& mask) {
   bool modified = false;
   size_t cnt = 0;
   for (size_t i = 0; i < size; ++i) {
-    if (!is_suppressed[i] && (ts - last_change_ts[i] < 2.0)) {
+    if (!is_suppressed[i] && (ts - last_change_ts[i] < kMuteActivityWindowSec)) {
       is_suppressed[i] = 1;  // Mark as suppressed
       modified = true;
     }

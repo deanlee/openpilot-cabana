@@ -68,7 +68,7 @@ bool ReplayStream::loadRoute(const QString& route, const QString& data_dir, uint
   replay->onSeeking = [this](double sec) { emit seeking(sec); };
   replay->onSeekedTo = [this](double sec) {
     emit seekedTo(sec);
-    waitForSeekFinshed();
+    waitForSeekFinished();
   };
   replay->onQLogLoaded = [this](std::shared_ptr<LogReader> qlog) { emit qLogLoaded(qlog); };
   replay->onSegmentsMerged = [this]() {
