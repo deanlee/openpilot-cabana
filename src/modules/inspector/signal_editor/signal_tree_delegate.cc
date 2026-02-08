@@ -281,21 +281,20 @@ bool SignalTreeDelegate::helpEvent(QHelpEvent* event, QAbstractItemView* view, c
   }
 
   // Value & Sparkline Area Hit-Testing
-  int sparkW = 0;
-  if (!item->sparkline->image.isNull()) {
-    sparkW = item->sparkline->image.width() / item->sparkline->image.devicePixelRatio();
-  }
-  QRect value_rect = option.rect;
-  value_rect.setLeft(option.rect.left() + sparkW + kPadding * 2);
-  value_rect.setRight(option.rect.right() - getButtonsWidth());
+  if (!item->sparkline->isEmpty()) {
+    int sparkW = item->sparkline->image.width() / item->sparkline->image.devicePixelRatio();
+    QRect value_rect = option.rect;
+    value_rect.setLeft(option.rect.left() + sparkW + kPadding * 2);
+    value_rect.setRight(option.rect.right() - getButtonsWidth());
 
-  if (value_rect.contains(event->pos()) && !item->sig_val.isEmpty()) {
-    QString tooltip =
-        item->sig_val + "\n" +
-        tr("Session Min: %1\nSession Max: %2")
-            .arg(QString::number(item->sparkline->min_val, 'f', 3), QString::number(item->sparkline->max_val, 'f', 3));
-    QToolTip::showText(event->globalPos(), tooltip, view);
-    return true;
+    if (value_rect.contains(event->pos())) {
+      QString tooltip = item->sig_val + "\n" +
+                        tr("Session Min: %1\nSession Max: %2")
+                            .arg(QString::number(item->sparkline->min_val, 'f', 3),
+                                 QString::number(item->sparkline->max_val, 'f', 3));
+      QToolTip::showText(event->globalPos(), tooltip, view);
+      return true;
+    }
   }
 
   return QStyledItemDelegate::helpEvent(event, view, option, index);
