@@ -47,6 +47,7 @@ ChartView::ChartView(const std::pair<double, double>& x_range, ChartsPanel* pare
 }
 
 void ChartView::setupConnections() {
+  connect(chart_, &Chart::openMessage, charts_panel, &ChartsPanel::openMessage);
   connect(chart_, &Chart::axisYLabelWidthChanged, this, &ChartView::axisYLabelWidthChanged);
   connect(chart_, &Chart::signalAdded, charts_panel, &ChartsPanel::seriesChanged);
   connect(chart_, &Chart::signalRemoved, charts_panel, &ChartsPanel::seriesChanged);
@@ -128,18 +129,7 @@ static QPixmap getDropPixmap(const QPixmap& src) {
 }
 
 void ChartView::contextMenuEvent(QContextMenuEvent* event) {
-  QMenu context_menu(this);
-  context_menu.addActions(chart_->menu_->actions());
-  context_menu.addSeparator();
-  for (const auto& sig : chart_->sigs_) {
-    auto* act = context_menu.addAction(tr("Open Message %1").arg(sig.msg_id.toString()));
-    connect(act, &QAction::triggered, [this, msgid=sig.msg_id]() { emit charts_panel->openMessage(msgid); });
-  }
-  // context_menu.addAction(charts_panel->toolbar->undo_zoom_action);
-  // context_menu.addAction(charts_panel->toolbar->redo_zoom_action);
-  context_menu.addSeparator();
-  context_menu.addAction(chart_->close_act_);
-  context_menu.exec(event->globalPos());
+  chart_->menu_->exec(event->globalPos());
 }
 
 void ChartView::mousePressEvent(QMouseEvent* event) {

@@ -67,6 +67,7 @@ void Chart::initControls() {
   menu_->addSeparator();
   menu_->addAction(tr("Edit Signals..."), this, &Chart::manageSignals);
   split_chart_act_ = menu_->addAction(tr("Split Signals"), this, &Chart::splitSeries);
+  dynamic_separator_ = menu_->addSeparator();
 
   QToolButton* manage_btn = new ToolButton("menu", "");
   manage_btn->setToolTip(tr("Chart Settings"));
@@ -89,14 +90,13 @@ void Chart::initControls() {
   manage_btn->setStyleSheet(clean_style);
   manage_btn->setFocusPolicy(Qt::NoFocus);
 
-  close_act_ = new QAction(tr("Remove Chart"), this);
-  connect(close_act_, &QAction::triggered, this, &Chart::close);
-  connect(remove_btn, &QToolButton::clicked, close_act_, &QAction::triggered);
+  connect(remove_btn, &QToolButton::clicked, this, &Chart::close);
   connect(manage_btn, &QToolButton::clicked, [this, manage_btn]() {
     menu_->exec(manage_btn->mapToGlobal(QPoint(0, manage_btn->height())));
   });
   connect(change_series_group, &QActionGroup::triggered,
           [this](QAction* action) { setSeriesType((SeriesType)action->data().toInt()); });
+  connect(menu_, &QMenu::aboutToShow, this, &Chart::updateMenu);
 }
 
 bool Chart::addSignal(const MessageId& msg_id, const dbc::Signal* sig) {
@@ -483,4 +483,23 @@ double Chart::getTooltipTextAt(double sec, QStringList& text_list) {
     }
   }
   return x;
+}
+
+void Chart::updateMenu() {
+  bool found_marker = false;
+  for (auto action : menu_->actions()) {
+    if (found_marker) {
+      menu_->removeAction(action);
+      action->deleteLater();  // Crucial for memory safety
+    }
+    if (action == dynamic_separator_) found_marker = true;
+  }
+
+  // Add current "Open Message" actions
+  if (!sigs_.empty()) {
+    for (const auto& sig : sigs_) {
+      QAction* act = menu_->addAction(tr("Open Message %1").arg(sig.msg_id.toString()));
+      connect(act, &QAction::triggered, [this, id = sig.msg_id]() { emit openMessage(id); });
+    }
+  }
 }

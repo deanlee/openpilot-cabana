@@ -32,6 +32,7 @@ class Chart : public QChart {
   void setSeriesType(SeriesType type);
 
  signals:
+  void openMessage(const MessageId& id);
   void signalAdded();
   void signalRemoved();
   void manageSignals();
@@ -41,6 +42,7 @@ class Chart : public QChart {
   void resetCache();
 
  protected:
+  void updateMenu();
   void attachSeries(QXYSeries* series);
   void setupConnections();
   void updateTitle();
@@ -62,13 +64,12 @@ class Chart : public QChart {
 
   std::vector<ChartSignal> sigs_;
   QMenu* menu_;
-
-  QAction* close_act_;
   QGraphicsPixmapItem* move_icon_;
 
  private:
   int align_to_ = 0;
   QAction* split_chart_act_;
+  QAction* dynamic_separator_;
   QGraphicsProxyWidget* close_btn_proxy_;
   QGraphicsProxyWidget* manage_btn_proxy_;
   QChartView* parent_ = nullptr;
