@@ -40,17 +40,17 @@ class Manager : public QObject {
   QString newMsgName(const MessageId& id);
   QString newSignalName(const MessageId& id);
 
-  const std::map<uint32_t, dbc::Msg>& getMessages(uint8_t source = GLOBAL_SOURCE_ID);
-  dbc::Msg* msg(const MessageId& id);
-  dbc::Msg* msg(uint8_t source, const QString& name);
+  const std::map<uint32_t, dbc::Msg>& getMessages(uint8_t source = GLOBAL_SOURCE_ID) const;
+  dbc::Msg* msg(const MessageId& id) const;
+  dbc::Msg* msg(uint8_t source, const QString& name) const;
 
   QStringList signalNames();
   inline int dbcCount() { return allDBCFiles().size(); }
   int nonEmptyDBCCount();
 
   const SourceSet sources(const File* dbc_file) const;
-  File* findDBCFile(const uint8_t source);
-  inline File* findDBCFile(const MessageId& id) { return findDBCFile(id.source); }
+  File* findDBCFile(const uint8_t source) const;
+  inline File* findDBCFile(const MessageId& id) const { return findDBCFile(id.source); }
   std::set<File*> allDBCFiles();
 
  signals:

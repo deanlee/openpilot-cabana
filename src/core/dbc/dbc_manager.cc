@@ -111,18 +111,18 @@ QString Manager::newSignalName(const MessageId& id) {
   return m ? m->newSignalName() : "";
 }
 
-const std::map<uint32_t, dbc::Msg>& Manager::getMessages(uint8_t source) {
+const std::map<uint32_t, dbc::Msg>& Manager::getMessages(uint8_t source) const {
   static std::map<uint32_t, dbc::Msg> empty_msgs;
   auto dbc_file = findDBCFile(source);
   return dbc_file ? dbc_file->getMessages() : empty_msgs;
 }
 
-dbc::Msg* Manager::msg(const MessageId& id) {
+dbc::Msg* Manager::msg(const MessageId& id) const {
   auto dbc_file = findDBCFile(id);
   return dbc_file ? dbc_file->msg(id) : nullptr;
 }
 
-dbc::Msg* Manager::msg(uint8_t source, const QString& name) {
+dbc::Msg* Manager::msg(uint8_t source, const QString& name) const {
   auto dbc_file = findDBCFile(source);
   return dbc_file ? dbc_file->msg(name) : nullptr;
 }
@@ -147,7 +147,7 @@ int Manager::nonEmptyDBCCount() {
   return std::ranges::count_if(files, [](auto& f) { return !f->isEmpty(); });
 }
 
-File* Manager::findDBCFile(const uint8_t source) {
+File* Manager::findDBCFile(const uint8_t source) const {
   // 1. Single lookup for the specific source
   if (auto it = dbc_files.find(source); it != dbc_files.end()) {
     return it->second.get();
