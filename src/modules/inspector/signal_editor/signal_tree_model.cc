@@ -18,12 +18,11 @@ static const QStringList SIGNAL_PROPERTY_LABELS = {
     "Min",    "Max",  "Value Table"};
 
 QString signalTypeToString(dbc::Signal::Type type) {
-  if (type == dbc::Signal::Type::Multiplexor)
-    return "Multiplexor Signal";
-  else if (type == dbc::Signal::Type::Multiplexed)
-    return "Multiplexed Signal";
-  else
-    return "Normal Signal";
+  switch (type) {
+    case dbc::Signal::Type::Multiplexor: return "Multiplexor Signal";
+    case dbc::Signal::Type::Multiplexed: return "Multiplexed Signal";
+    default: return "Normal Signal";
+  }
 }
 
 SignalTreeModel::SignalTreeModel(QObject* parent) : QAbstractItemModel(parent) {
@@ -53,8 +52,8 @@ void SignalTreeModel::updateValues(const MessageSnapshot* msg) {
   QFontMetrics fm(value_font);
   int current_max = 0;
 
-  for (auto item : root->children) {
-    if (!msg->size) {
+  for (auto* item : root->children) {
+    if (msg->size == 0) {
       item->sig_val = QStringLiteral("-");
     } else {
       double val = 0;
@@ -67,6 +66,7 @@ void SignalTreeModel::updateValues(const MessageSnapshot* msg) {
   }
 
   current_max += 10;
+  // Update max width if current exceeds it or if there's significant shrinkage
   if (current_max > max_value_width || max_value_width - current_max > 40) {
     max_value_width = current_max;
   }
@@ -74,7 +74,7 @@ void SignalTreeModel::updateValues(const MessageSnapshot* msg) {
 
 void SignalTreeModel::updateSparklines(const MessageSnapshot* msg, int first_row, int last_row, const QSize& size) {
   if (msg->size == 0) {
-    for (auto &item : root->children) {
+    for (auto* item : root->children) {
       item->sparkline->clearHistory();
     }
     emit dataChanged(index(first_row, 1), index(last_row, 1), {Qt::DisplayRole});
@@ -110,11 +110,11 @@ void SignalTreeModel::rebuild() {
   resetSparklines();
 
   beginResetModel();
-  root.reset(new SignalTreeModel::Item(Item::Root, "", nullptr, nullptr));
-  if (auto msg = GetDBC()->msg(msg_id)) {
+  root = std::make_unique<Item>(Item::Root, "", nullptr, nullptr);
+  if (auto* msg = GetDBC()->msg(msg_id)) {
     auto sigs = msg->getSignals();
-    root->children.reserve(sigs.size());  // Pre-allocate memory
-    for (auto s : sigs) {
+    root->children.reserve(sigs.size());
+    for (auto* s : sigs) {
       if (filter_str.isEmpty() || s->name.contains(filter_str, Qt::CaseInsensitive)) {
         insertItem(root.get(), root->children.size(), s);
       }
@@ -124,8 +124,7 @@ void SignalTreeModel::rebuild() {
 }
 
 SignalTreeModel::Item* SignalTreeModel::itemFromIndex(const QModelIndex& index) const {
-  auto item = index.isValid() ? (SignalTreeModel::Item*)index.internalPointer() : nullptr;
-  return item ? item : root.get();
+  return index.isValid() ? static_cast<Item*>(index.internalPointer()) : root.get();
 }
 
 int SignalTreeModel::rowCount(const QModelIndex& parent) const {
@@ -148,8 +147,8 @@ bool SignalTreeModel::canFetchMore(const QModelIndex& parent) const {
 
 void SignalTreeModel::fetchMore(const QModelIndex& parent) {
   if (!parent.isValid()) return;
-  Item* item = itemFromIndex(parent);
 
+  Item* item = itemFromIndex(parent);
   static constexpr std::array kSigChildren = {Item::Name,           Item::Size,     Item::Node,   Item::Endian,
                                               Item::Signed,         Item::Offset,   Item::Factor, Item::SignalType,
                                               Item::MultiplexValue, Item::ExtraInfo};
@@ -160,12 +159,12 @@ void SignalTreeModel::fetchMore(const QModelIndex& parent) {
     types = kSigChildren;
   } else if (item->type == Item::ExtraInfo) {
     types = kExtraInfoChildren;
+  } else {
+    return;
   }
 
-  if (types.empty()) return;
-
-  // Notify the View that we are adding rows to this specific parent
   beginInsertRows(parent, 0, types.size() - 1);
+  item->children.reserve(types.size());
   for (auto t : types) {
     QString label = SIGNAL_PROPERTY_LABELS[t - Item::Name];
     item->children.push_back(new Item(t, label, item->sig, item));
@@ -204,8 +203,8 @@ int SignalTreeModel::signalRow(const dbc::Signal* sig) const {
 QModelIndex SignalTreeModel::index(int row, int column, const QModelIndex& parent) const {
   if (parent.isValid() && parent.column() != 0) return {};
 
-  auto parent_item = itemFromIndex(parent);
-  if (parent_item && row < parent_item->children.size()) {
+  auto* parent_item = itemFromIndex(parent);
+  if (row >= 0 && row < parent_item->children.size()) {
     return createIndex(row, column, parent_item->children[row]);
   }
   return {};
@@ -213,8 +212,11 @@ QModelIndex SignalTreeModel::index(int row, int column, const QModelIndex& paren
 
 QModelIndex SignalTreeModel::parent(const QModelIndex& index) const {
   if (!index.isValid()) return {};
+
   Item* parent_item = itemFromIndex(index)->parent;
-  return !parent_item || parent_item == root.get() ? QModelIndex() : createIndex(parent_item->row(), 0, parent_item);
+  if (!parent_item || parent_item == root.get()) return {};
+
+  return createIndex(parent_item->row(), 0, parent_item);
 }
 
 QVariant SignalTreeModel::data(const QModelIndex& index, int role) const {
@@ -254,12 +256,17 @@ QVariant SignalTreeModel::data(const QModelIndex& index, int role) const {
   if (role == Qt::CheckStateRole && index.column() == 1) {
     if (item->type == Item::Endian) return item->sig->is_little_endian ? Qt::Checked : Qt::Unchecked;
     if (item->type == Item::Signed) return item->sig->is_signed ? Qt::Checked : Qt::Unchecked;
-  } else if (role == Qt::ToolTipRole && item->type == Item::Sig) {
-    return (index.column() == 0) ? signalToolTip(item->sig) : QString();
-  } else if (role == IsChartedRole && item->type == Item::Sig) {
+  }
+
+  if (role == Qt::ToolTipRole && item->type == Item::Sig && index.column() == 0) {
+    return signalToolTip(item->sig);
+  }
+
+  if (role == IsChartedRole && item->type == Item::Sig) {
     auto it = charted_signals_.find(msg_id);
     return (it != charted_signals_.end()) && it.value().contains(item->sig);
   }
+
   return {};
 }
 
@@ -291,10 +298,10 @@ bool SignalTreeModel::setData(const QModelIndex& index, const QVariant& value, i
 }
 
 void SignalTreeModel::highlightSignalRow(const dbc::Signal* sig) {
-  auto& children = root->children;
-  for (int i = 0; i < children.size(); ++i) {
-    bool highlight = children[i]->sig == sig;
-    if (std::exchange(children[i]->highlight, highlight) != highlight) {
+  for (int i = 0; i < root->children.size(); ++i) {
+    const bool highlight = (root->children[i]->sig == sig);
+    if (root->children[i]->highlight != highlight) {
+      root->children[i]->highlight = highlight;
       emit dataChanged(index(i, 0), index(i, 0), {Qt::DecorationRole});
       emit dataChanged(index(i, 1), index(i, 1), {Qt::DisplayRole});
     }
@@ -302,7 +309,7 @@ void SignalTreeModel::highlightSignalRow(const dbc::Signal* sig) {
 }
 
 bool SignalTreeModel::saveSignal(const dbc::Signal* origin_s, dbc::Signal& s) {
-  auto msg = GetDBC()->msg(msg_id);
+  auto* msg = GetDBC()->msg(msg_id);
   if (s.name != origin_s->name && msg->sig(s.name) != nullptr) {
     QString text = tr("There is already a signal with the same name '%1'").arg(s.name);
     QMessageBox::warning(nullptr, tr("Failed to save signal"), text);
@@ -336,17 +343,18 @@ void SignalTreeModel::handleSignalAdded(MessageId id, const dbc::Signal* sig) {
 }
 
 void SignalTreeModel::handleSignalUpdated(const dbc::Signal* sig) {
-  if (int row = signalRow(sig); row != -1) {
-    emit dataChanged(index(row, 0), index(row, 1), {Qt::DisplayRole, Qt::EditRole, Qt::CheckStateRole});
+  int row = signalRow(sig);
+  if (row == -1) return;
 
-    if (filter_str.isEmpty()) {
-      // move row when the order changes.
-      int to = GetDBC()->msg(msg_id)->indexOf(sig);
-      if (to != row) {
-        beginMoveRows({}, row, row, {}, to > row ? to + 1 : to);
-        root->children.move(row, to);
-        endMoveRows();
-      }
+  emit dataChanged(index(row, 0), index(row, 1), {Qt::DisplayRole, Qt::EditRole, Qt::CheckStateRole});
+
+  if (filter_str.isEmpty()) {
+    // Move row when the order changes
+    int to = GetDBC()->msg(msg_id)->indexOf(sig);
+    if (to != row) {
+      beginMoveRows({}, row, row, {}, to > row ? to + 1 : to);
+      root->children.move(row, to);
+      endMoveRows();
     }
   }
 }
@@ -361,7 +369,7 @@ void SignalTreeModel::handleSignalRemoved(const dbc::Signal* sig) {
 
 void SignalTreeModel::resetSparklines() {
   sparkline_context_ = {};
-  for (auto item : root->children) {
+  for (auto* item : root->children) {
     item->sparkline->clearHistory();
   }
 }
