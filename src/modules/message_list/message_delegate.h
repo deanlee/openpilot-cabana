@@ -1,5 +1,7 @@
 #pragma once
 
+#include <array>
+
 #include <QPixmap>
 #include <QStyledItemDelegate>
 
@@ -19,6 +21,9 @@ class MessageDelegate : public QStyledItemDelegate {
   QSize sizeForBytes(int n) const;
 
  private:
+  enum RenderState { StateNormal = 0, StateSelected = 1, StateDisabled = 2, StateCount = 3 };
+  static constexpr int kGapWidth = 8;  // Extra pixels added every 8 bytes
+
   void updatePixmapCache(const QPalette& palette) const;
   void drawItemText(QPainter* p, const QStyleOptionViewItem& opt, const QModelIndex& idx, bool sel, bool active) const;
   void drawHexData(QPainter* p, const QStyleOptionViewItem& opt, const QModelIndex& idx, bool sel, bool active) const;
@@ -28,7 +33,6 @@ class MessageDelegate : public QStyledItemDelegate {
   CallerType caller_type_;
   int h_margin, v_margin;
 
-  mutable QPixmap hex_pixmap_table[256][3];
+  mutable std::array<std::array<QPixmap, StateCount>, 256> hex_pixmap_table;
   mutable qint64 cached_palette_key = 0;
-  enum RenderState { StateNormal = 0, StateSelected = 1, StateDisabled = 2 };
 };
