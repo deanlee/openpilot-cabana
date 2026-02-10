@@ -88,14 +88,14 @@ void Manager::removeSignal(const MessageId& id, const QString& sig_name) {
 
 void Manager::updateMsg(const MessageId& id, const QString& name, uint32_t size, const QString& node,
                         const QString& comment) {
-  auto dbc_file = findDBCFile(id);
+  auto dbc_file = findDBCFile(id.source);
   assert(dbc_file);  // This should be impossible
   dbc_file->updateMsg(id, name, size, node, comment);
   emit msgUpdated(id);
 }
 
 void Manager::removeMsg(const MessageId& id) {
-  auto dbc_file = findDBCFile(id);
+  auto dbc_file = findDBCFile(id.source);
   assert(dbc_file);  // This should be impossible
   dbc_file->removeMsg(id);
   emit msgRemoved(id);
@@ -118,7 +118,7 @@ const std::map<uint32_t, dbc::Msg>& Manager::getMessages(uint8_t source) const {
 }
 
 dbc::Msg* Manager::msg(const MessageId& id) const {
-  auto dbc_file = findDBCFile(id);
+  auto dbc_file = findDBCFile(id.source);
   return dbc_file ? dbc_file->msg(id) : nullptr;
 }
 

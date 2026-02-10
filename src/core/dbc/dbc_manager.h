@@ -50,7 +50,6 @@ class Manager : public QObject {
 
   const SourceSet sources(const File* dbc_file) const;
   File* findDBCFile(const uint8_t source) const;
-  inline File* findDBCFile(const MessageId& id) const { return findDBCFile(id.source); }
   std::set<File*> allDBCFiles();
 
  signals:
