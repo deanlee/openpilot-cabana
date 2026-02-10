@@ -23,11 +23,11 @@ class Manager : public QObject {
 
  public:
   Manager(QObject* parent);
-  ~Manager() {}
+  ~Manager() = default;
   bool open(const SourceSet& sources, const QString& dbc_file_name, QString* error = nullptr);
   bool open(const SourceSet& sources, const QString& name, const QString& content, QString* error = nullptr);
-  void close(const SourceSet& sources);
-  void close(File* dbc_file);
+  void closeSources(const SourceSet& sources);
+  void closeFile(File* dbc_file);
   void closeAll();
 
   void addSignal(const MessageId& id, const dbc::Signal& sig);
@@ -37,20 +37,20 @@ class Manager : public QObject {
   void updateMsg(const MessageId& id, const QString& name, uint32_t size, const QString& node, const QString& comment);
   void removeMsg(const MessageId& id);
 
-  QString newMsgName(const MessageId& id);
-  QString newSignalName(const MessageId& id);
+  QString newMsgName(const MessageId& id) const;
+  QString newSignalName(const MessageId& id) const;
 
   const std::map<uint32_t, dbc::Msg>& getMessages(uint8_t source = GLOBAL_SOURCE_ID) const;
   dbc::Msg* msg(const MessageId& id) const;
   dbc::Msg* msg(uint8_t source, const QString& name) const;
 
-  QStringList signalNames();
-  inline int dbcCount() { return allDBCFiles().size(); }
-  int nonEmptyDBCCount();
+  QStringList signalNames() const;
+  inline size_t fileCount() const { return unique_files.size(); }
+  int nonEmptyFileCount() const;
 
-  const SourceSet sources(const File* dbc_file) const;
+  const SourceSet getSourcesForFile(const File* dbc_file) const;
   File* findDBCFile(const uint8_t source) const;
-  std::set<File*> allDBCFiles();
+  const std::vector<std::shared_ptr<File>>& allFiles() const { return unique_files; };
 
  signals:
   void signalAdded(MessageId id, const dbc::Signal* sig);
@@ -62,7 +62,10 @@ class Manager : public QObject {
   void maskUpdated(const MessageId& address);
 
  private:
-  std::map<int, std::shared_ptr<File>> dbc_files;
+  std::map<int, std::shared_ptr<File>> source_to_file;  // Source -> File (Fast Lookup)
+  std::vector<std::shared_ptr<File>> unique_files;      // Unique List (UI & Lifecycle)
+
+  void removeOrphanedFiles();
 };
 
 }  // namespace dbc

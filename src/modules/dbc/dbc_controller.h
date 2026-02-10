@@ -31,7 +31,7 @@ class DbcController : public QObject {
   void saveToClipboard();
   void saveFileToClipboard(dbc::File* dbc_file);
 
-  void closeFile(SourceSet s = SOURCE_ALL);
+  void closeSources(SourceSet s = SOURCE_ALL);
   void closeFile(dbc::File* dbc_file);
 
   void populateOpendbcFiles(QMenu* opendbc_menu);
