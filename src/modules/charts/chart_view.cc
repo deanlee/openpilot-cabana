@@ -134,7 +134,7 @@ void ChartView::contextMenuEvent(QContextMenuEvent* event) {
 
 void ChartView::mousePressEvent(QMouseEvent* event) {
   if (event->button() == Qt::LeftButton && chart_->move_icon_->sceneBoundingRect().contains(event->pos())) {
-    handlDragStart();
+    handleDragStart();
   } else if (event->button() == Qt::LeftButton && QApplication::keyboardModifiers().testFlag(Qt::ShiftModifier)) {
     // Save current playback state when scrubbing
     resume_after_scrub = !StreamManager::stream()->isPaused();
@@ -212,7 +212,7 @@ void ChartView::mouseMoveEvent(QMouseEvent* ev) {
   }
 }
 
-void ChartView::handlDragStart() {
+void ChartView::handleDragStart() {
   QMimeData* mimeData = new QMimeData;
   mimeData->setData(CHART_MIME_TYPE, QByteArray::number((qulonglong)this));
   QPixmap px = grab().scaledToWidth(CHART_MIN_WIDTH * viewport()->devicePixelRatio(), Qt::SmoothTransformation);
