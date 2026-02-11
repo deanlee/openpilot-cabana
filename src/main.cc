@@ -40,7 +40,7 @@ static AbstractStream* createStream(QCommandLineParser& p, QApplication* app) {
 
 int main(int argc, char* argv[]) {
   QCoreApplication::setApplicationName("Cabana");
-  QCoreApplication::setApplicationVersion("1.1.0");
+  QCoreApplication::setApplicationVersion("1.1.2");
   QCoreApplication::setAttribute(Qt::AA_ShareOpenGLContexts);
 
   initApp(argc, argv, false);
