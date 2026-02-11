@@ -220,7 +220,7 @@ void MainWindow::DBCFileChanged() {
   UndoStack::instance()->clear();
 
   // Update file menu
-  int cnt = GetDBC()->nonEmptyDBCCount();
+  int cnt = GetDBC()->nonEmptyFileCount();
   save_dbc_->setText(cnt > 1 ? tr("Save %1 DBCs...").arg(cnt) : tr("Save DBC..."));
   save_dbc_->setEnabled(cnt > 0);
   save_dbc_as_->setEnabled(cnt == 1);
@@ -229,8 +229,8 @@ void MainWindow::DBCFileChanged() {
   manage_dbcs_menu_->setEnabled(StreamManager::instance().hasStream());
 
   QStringList title;
-  for (auto f : GetDBC()->allDBCFiles()) {
-    title.push_back(tr("(%1) %2").arg(toString(GetDBC()->sources(f)), f->name()));
+  for (const auto &f : GetDBC()->allFiles()) {
+    title.push_back(tr("(%1) %2").arg(toString(GetDBC()->getSourcesForFile(f.get())), f->name()));
   }
   setWindowFilePath(title.join(" | "));
 
@@ -246,7 +246,7 @@ void MainWindow::selectAndOpenStream() {
 
 void MainWindow::closeStream() {
   openStream(new DummyStream(this));
-  if (GetDBC()->nonEmptyDBCCount() > 0) {
+  if (GetDBC()->nonEmptyFileCount() > 0) {
     emit GetDBC()->DBCFileChanged();
   }
   statusBar()->showMessage(tr("stream closed"));
@@ -281,7 +281,7 @@ void MainWindow::openStream(AbstractStream* stream, const QString& dbc_file) {
     video_splitter_->setSizes({1, 1});
   }
   // Don't overwrite already loaded DBC
-  if (!GetDBC()->nonEmptyDBCCount()) {
+  if (!GetDBC()->nonEmptyFileCount()) {
     dbc_controller_->newFile();
   }
 
@@ -312,7 +312,7 @@ void MainWindow::eventsMerged() {
                                     .arg(stream->routeName())
                                     .arg(car_fingerprint_.isEmpty() ? tr("Unknown Car") : car_fingerprint_));
     // Don't overwrite already loaded DBC
-    if (!GetDBC()->nonEmptyDBCCount()) {
+    if (!GetDBC()->nonEmptyFileCount()) {
       QTimer::singleShot(0, this, [this]() { dbc_controller_->loadFromFingerprint(car_fingerprint_); });
     }
   }
@@ -414,7 +414,7 @@ void MainWindow::saveSessionState() {
   settings.selected_msg_ids.clear();
   settings.active_charts.clear();
 
-  for (auto& f : GetDBC()->allDBCFiles())
+  for (const auto& f : GetDBC()->allFiles())
     if (!f->isEmpty()) {
       settings.recent_dbc_file = f->filename;
       break;
@@ -429,10 +429,10 @@ void MainWindow::saveSessionState() {
 }
 
 void MainWindow::restoreSessionState() {
-  if (settings.recent_dbc_file.isEmpty() || GetDBC()->nonEmptyDBCCount() == 0) return;
+  if (settings.recent_dbc_file.isEmpty() || GetDBC()->nonEmptyFileCount() == 0) return;
 
   QString dbc_file;
-  for (auto& f : GetDBC()->allDBCFiles())
+  for (const auto& f : GetDBC()->allFiles())
     if (!f->isEmpty()) {
       dbc_file = f->filename;
       break;

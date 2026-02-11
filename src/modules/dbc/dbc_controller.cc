@@ -63,7 +63,7 @@ void DbcController::loadFromClipboard(SourceSet s, bool /*close_all*/) {
   QString dbc_str = QGuiApplication::clipboard()->text();
   QString error;
   bool ret = GetDBC()->open(s, "", dbc_str, &error);
-  if (ret && GetDBC()->nonEmptyDBCCount() > 0) {
+  if (ret && GetDBC()->nonEmptyFileCount() > 0) {
     QMessageBox::information(parent_, QObject::tr("Load From Clipboard"), QObject::tr("DBC Successfully Loaded!"));
   } else {
     QMessageBox msg_box(QMessageBox::Warning, QObject::tr("Failed to load DBC from clipboard"),
@@ -85,30 +85,30 @@ void DbcController::loadFromFingerprint(const QString& fingerprint, SourceSet s)
 }
 
 void DbcController::save() {
-  for (auto dbc_file : GetDBC()->allDBCFiles()) {
-    if (!dbc_file->isEmpty()) saveFile(dbc_file);
+  for (const auto &dbc_file : GetDBC()->allFiles()) {
+    if (!dbc_file->isEmpty()) saveFile(dbc_file.get());
   }
 }
 
 void DbcController::saveAs() {
-  for (auto dbc_file : GetDBC()->allDBCFiles()) {
-    if (!dbc_file->isEmpty()) saveFileAs(dbc_file);
+  for (const auto &dbc_file : GetDBC()->allFiles()) {
+    if (!dbc_file->isEmpty()) saveFileAs(dbc_file.get());
   }
 }
 
-void DbcController::closeFile(SourceSet s) {
+void DbcController::closeSources(SourceSet s) {
   remindSaveChanges();
   if (s == SOURCE_ALL)
     GetDBC()->closeAll();
   else
-    GetDBC()->close(s);
+    GetDBC()->closeSources(s);
 }
 
 void DbcController::closeFile(dbc::File* dbc_file) {
   Q_ASSERT(dbc_file != nullptr);
   remindSaveChanges();
-  GetDBC()->close(dbc_file);
-  if (GetDBC()->dbcCount() == 0) {
+  GetDBC()->closeFile(dbc_file);
+  if (GetDBC()->fileCount() == 0) {
     newFile();
   }
 }
@@ -125,7 +125,7 @@ void DbcController::saveFile(dbc::File* dbc_file) {
 }
 
 void DbcController::saveFileAs(dbc::File* dbc_file) {
-  QString title = QObject::tr("Save File (bus: %1)").arg(toString(GetDBC()->sources(dbc_file)));
+  QString title = QObject::tr("Save File (bus: %1)").arg(toString(GetDBC()->getSourcesForFile(dbc_file)));
   QString fn = QFileDialog::getSaveFileName(parent_, title, QDir::cleanPath(settings.last_dir + "/untitled.dbc"),
                                             QObject::tr("DBC (*.dbc)"));
   if (!fn.isEmpty()) {
@@ -137,8 +137,8 @@ void DbcController::saveFileAs(dbc::File* dbc_file) {
 }
 
 void DbcController::saveToClipboard() {
-  for (auto dbc_file : GetDBC()->allDBCFiles()) {
-    if (!dbc_file->isEmpty()) saveFileToClipboard(dbc_file);
+  for (const auto &dbc_file : GetDBC()->allFiles()) {
+    if (!dbc_file->isEmpty()) saveFileToClipboard(dbc_file.get());
   }
 }
 
@@ -203,7 +203,7 @@ void DbcController::populateManageMenu(QMenu* manage_menu) {
       bus_menu->addSeparator();
 
       // Header for current file info (Disabled action used as a label)
-      QString info = QString("%1 (%2)").arg(dbc_file->name(), toString(GetDBC()->sources(dbc_file)));
+      QString info = QString("%1 (%2)").arg(dbc_file->name(), toString(GetDBC()->getSourcesForFile(dbc_file)));
       bus_menu->addAction(info)->setEnabled(false);
 
       bus_menu->addAction(QObject::tr("Save..."), [this, dbc_file]() { saveFile(dbc_file); });
@@ -211,7 +211,7 @@ void DbcController::populateManageMenu(QMenu* manage_menu) {
       bus_menu->addAction(QObject::tr("Copy to Clipboard"), [this, dbc_file]() { saveFileToClipboard(dbc_file); });
 
       bus_menu->addSeparator();
-      bus_menu->addAction(QObject::tr("Remove from this bus"), [this, ss]() { closeFile(ss); });
+      bus_menu->addAction(QObject::tr("Remove from this bus"), [this, ss]() { closeSources(ss); });
       bus_menu->addAction(QObject::tr("Remove from all buses"), [this, dbc_file]() { closeFile(dbc_file); });
     }
 
