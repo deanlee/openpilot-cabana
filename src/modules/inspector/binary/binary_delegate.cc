@@ -21,7 +21,7 @@ MessageBytesDelegate::MessageBytesDelegate(QObject* parent) : QStyledItemDelegat
 
 void MessageBytesDelegate::paint(QPainter* painter, const QStyleOptionViewItem& option,
                                  const QModelIndex& index) const {
-  const auto* item = static_cast<const BinaryModel::Item*>(index.internalPointer());
+  const auto* item = static_cast<const BinaryModel*>(index.model())->getItem(index);
   const auto* bin_view = static_cast<const BinaryView*>(parent());
   const bool is_hex = (index.column() == 8);
   const bool is_selected = option.state & QStyle::State_Selected;

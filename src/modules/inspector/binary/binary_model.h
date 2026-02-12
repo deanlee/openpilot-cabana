@@ -34,7 +34,8 @@ class BinaryModel : public QAbstractTableModel {
     } borders;
   };
 
-  BinaryModel(QObject* parent);
+  explicit BinaryModel(QObject* parent);
+  const Item *getItem(const QModelIndex& index) const;
   void setMessage(const MessageId& message_id);
   void initializeItems();
   void mapSignalsToItems(const dbc::Msg* msg);
@@ -51,9 +52,6 @@ class BinaryModel : public QAbstractTableModel {
   QVariant data(const QModelIndex& index, int role = Qt::DisplayRole) const override;
   int rowCount(const QModelIndex& parent = QModelIndex()) const override { return row_count; }
   int columnCount(const QModelIndex& parent = QModelIndex()) const override { return column_count; }
-  QModelIndex index(int row, int column, const QModelIndex& parent = QModelIndex()) const override {
-    return createIndex(row, column, (void*)&items[row * column_count + column]);
-  }
   Qt::ItemFlags flags(const QModelIndex& index) const override {
     return (index.column() == column_count - 1) ? Qt::ItemIsEnabled : Qt::ItemIsEnabled | Qt::ItemIsSelectable;
   }

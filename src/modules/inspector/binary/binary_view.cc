@@ -118,7 +118,7 @@ void BinaryView::mousePressEvent(QMouseEvent* event) {
   resize_sig = nullptr;
   if (auto index = indexAt(event->pos()); index.isValid() && index.column() != 8) {
     anchor_index = index;
-    auto item = (const BinaryModel::Item*)anchor_index.internalPointer();
+    const auto *item = model->getItem(anchor_index);
     int clicked_bit = get_abs_bit(anchor_index);
     for (auto s : item->sigs) {
       if (clicked_bit == s->lsb || clicked_bit == s->msb) {
@@ -134,7 +134,7 @@ void BinaryView::mousePressEvent(QMouseEvent* event) {
 
 void BinaryView::highlightPosition(const QPoint& pos) {
   if (auto index = indexAt(viewport()->mapFromGlobal(pos)); index.isValid()) {
-    auto item = (BinaryModel::Item*)index.internalPointer();
+    const auto *item = model->getItem(index);
     const dbc::Signal* sig = item->sigs.isEmpty() ? nullptr : item->sigs.back();
     highlight(sig);
   }
@@ -155,7 +155,7 @@ void BinaryView::mouseReleaseEvent(QMouseEvent* event) {
       std::tie(sig.start_bit, sig.size, sig.is_little_endian) = getSelection(release_index);
       resize_sig ? emit editSignal(resize_sig, sig) : UndoStack::push(new AddSigCommand(model->msg_id, sig));
     } else {
-      auto item = (const BinaryModel::Item*)anchor_index.internalPointer();
+      const auto *item = model->getItem(anchor_index);
       if (item && item->sigs.size() > 0) emit signalClicked(item->sigs.back());
     }
   }

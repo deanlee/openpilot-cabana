@@ -20,6 +20,12 @@ BinaryModel::BinaryModel(QObject* parent) : QAbstractTableModel(parent) {
   connect(UndoStack::instance(), &QUndoStack::indexChanged, this, &BinaryModel::rebuild);
 }
 
+const BinaryModel::Item* BinaryModel::getItem(const QModelIndex& index) const {
+  if (!index.isValid()) return nullptr;
+  int idx = index.row() * column_count + index.column();
+  return (idx >= 0 && idx < (int)items.size()) ? &items[idx] : nullptr;
+}
+
 void BinaryModel::setMessage(const MessageId& message_id) {
   msg_id = message_id;
   rebuild();
@@ -324,8 +330,11 @@ QVariant BinaryModel::headerData(int section, Qt::Orientation orientation, int r
 }
 
 QVariant BinaryModel::data(const QModelIndex& index, int role) const {
-  auto item = (const BinaryModel::Item*)index.internalPointer();
-  return role == Qt::ToolTipRole && item && !item->sigs.empty() ? signalToolTip(item->sigs.back()) : QVariant();
+  if (role == Qt::ToolTipRole) {
+    const auto *item = getItem(index);
+    return item && !item->sigs.empty() ? signalToolTip(item->sigs.back()) : QVariant();
+  }
+  return QVariant();
 }
 
 QString signalToolTip(const dbc::Signal* sig) {
