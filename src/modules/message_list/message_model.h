@@ -12,15 +12,7 @@ class MessageModel : public QAbstractTableModel {
   Q_OBJECT
 
  public:
-  enum Column {
-    NAME = 0,
-    SOURCE,
-    ADDRESS,
-    NODE,
-    FREQ,
-    COUNT,
-    DATA,
-  };
+  enum Column { NAME = 0, SOURCE, ADDRESS, NODE, FREQ, COUNT, DATA, MAX_COLUMN };
 
   struct Item {
     MessageId id;
@@ -34,6 +26,10 @@ class MessageModel : public QAbstractTableModel {
 
   MessageModel(QObject* parent);
   inline bool isInactiveMessagesVisible() const { return show_inactive_; }
+  const Item* getItem(const QModelIndex& index) const {
+    if (!index.isValid() || index.row() >= static_cast<int>(items_.size())) return nullptr;
+    return &items_[index.row()];
+  }
   inline int getDbcMessageCount() const { return dbc_msg_count_; }
   inline int getSignalCount() const { return signal_count_; }
   inline int getRowForMessageId(const MessageId& id) const {
@@ -47,11 +43,7 @@ class MessageModel : public QAbstractTableModel {
 
   // QAbstractTableModel overrides
   QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const override;
-  int columnCount(const QModelIndex& parent = QModelIndex()) const override { return Column::DATA + 1; }
-  QModelIndex index(int row, int column, const QModelIndex& parent = QModelIndex()) const override {
-    if (!hasIndex(row, column, parent)) return {};
-    return createIndex(row, column, (void*)(&items_[row]));
-  }
+  int columnCount(const QModelIndex& parent = QModelIndex()) const override { return Column::MAX_COLUMN; }
   QVariant data(const QModelIndex& index, int role = Qt::DisplayRole) const;
   int rowCount(const QModelIndex& parent = QModelIndex()) const override { return items_.size(); }
   void sort(int column, Qt::SortOrder order = Qt::AscendingOrder) override;

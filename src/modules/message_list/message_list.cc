@@ -138,7 +138,7 @@ void MessageList::updateTitle() {
 
 void MessageList::handleSelectionChanged(const QModelIndex& current) {
   if (current.isValid()) {
-    auto* item = static_cast<MessageModel::Item*>(current.internalPointer());
+    auto* item = model->getItem(current);
     if (!current_msg_id || item->id != *current_msg_id) {
       current_msg_id = item->id;
       emit msgSelectionChanged(*current_msg_id);

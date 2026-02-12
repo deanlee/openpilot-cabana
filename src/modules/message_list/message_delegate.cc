@@ -21,11 +21,11 @@ struct MessageDataRef {
 
 MessageDataRef getDataRef(CallerType type, const QModelIndex& index) {
   if (type == CallerType::MessageList) {
-    const auto* item = static_cast<const MessageModel::Item*>(index.internalPointer());
+    const auto* item = static_cast<const MessageModel*>(index.model())->getItem(index);
     return item->data ? MessageDataRef{item->data->size, &item->data->data, &item->data->colors}
                       : MessageDataRef{0, nullptr, nullptr};
   } else {
-    const auto* msg = static_cast<const MessageHistoryModel::LogEntry*>(index.internalPointer());
+    const auto* msg = static_cast<const MessageHistoryModel*>(index.model())->getItem(index);
     return msg ? MessageDataRef{msg->size, &msg->data, &msg->colors} : MessageDataRef{0, nullptr, nullptr};
   }
 }
