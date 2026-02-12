@@ -15,10 +15,6 @@ class BinaryView : public QTableView {
   BinaryView(QWidget* parent = nullptr);
   void setModel(QAbstractItemModel* newModel) override;
   void highlight(const dbc::Signal* sig);
-  void paintEvent(QPaintEvent* event) override {
-    is_message_active = StreamManager::stream()->snapshot(model->msg_id)->is_active;
-    QTableView::paintEvent(event);
-  }
   QSize minimumSizeHint() const override;
 
  signals:
@@ -41,7 +37,6 @@ class BinaryView : public QTableView {
   QModelIndex anchor_index;
   BinaryModel* model;
   MessageBytesDelegate* delegate;
-  bool is_message_active = false;
   const dbc::Signal* resize_sig = nullptr;
   const dbc::Signal* hovered_sig = nullptr;
   friend class MessageBytesDelegate;
