@@ -320,22 +320,8 @@ void Chart::updateSeriesPoints() {
   if (range_sec <= 0 || plot_width <= 0) return;
 
   const double sec_per_px = range_sec / plot_width;
-
   for (auto& s : sigs_) {
-    if (s.vals.size() < 2) continue;
-
-    // Average time between data points
-    double avg_period = (s.vals.back().x() - s.vals.front().x()) / s.vals.size();
-
-    if (series_type == SeriesType::Scatter) {
-      // Scale dot size by DPR so it looks consistent on all screens
-      qreal size = std::clamp(avg_period / sec_per_px / 2.0, 2.0, 8.0);
-      static_cast<QScatterSeries*>(s.series)->setMarkerSize(size);
-      s.series->setPointsVisible(false);  // Hide points for scatter series to improve performance; markers are still visible
-    } else {
-      // Threshold: Hide points if they are closer than 15 logical pixels
-      s.series->setPointsVisible(avg_period > (sec_per_px * 15.0));
-    }
+    s.updatePointsVisible(sec_per_px);
   }
 }
 

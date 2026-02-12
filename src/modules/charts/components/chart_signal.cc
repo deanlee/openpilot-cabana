@@ -87,6 +87,24 @@ void ChartSignal::updateRange(double min_x, double max_x) {
   }
 }
 
+void ChartSignal::updatePointsVisible(double sec_per_px) {
+  if (vals.size() < 2) return;
+
+  // Average time between data points
+  double avg_period = (vals.back().x() - vals.front().x()) / vals.size();
+
+  if (dynamic_cast<QScatterSeries*>(series)) {
+    // Scale dot size by DPR so it looks consistent on all screens
+    qreal size = std::clamp(avg_period / sec_per_px / 2.0, 2.0, 8.0);
+    static_cast<QScatterSeries*>(series)->setMarkerSize(size);
+    // Hide points for scatter series to improve performance; markers are still visible
+    series->setPointsVisible(false);
+  } else {
+    // Threshold: Hide points if they are closer than 15 logical pixels
+    series->setPointsVisible(avg_period > (sec_per_px * 15.0));
+  }
+}
+
 std::tuple<double, double, int> getNiceAxisNumbers(qreal min, qreal max, int tick_count) {
   qreal range = niceNumber((max - min), true);  // range with ceiling
   qreal step = niceNumber(range / (tick_count - 1), false);

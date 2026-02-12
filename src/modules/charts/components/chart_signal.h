@@ -16,7 +16,6 @@ enum class SeriesType { Line = 0, StepLine, Scatter };
 
 class ChartSignal {
  public:
-  ChartSignal(const MessageId& id, const dbc::Signal* s, QXYSeries* ser) : msg_id(id), sig(s), series(ser) {}
   MessageId msg_id;
   const dbc::Signal* sig = nullptr;
   QXYSeries* series = nullptr;
@@ -25,9 +24,13 @@ class ChartSignal {
   QPointF track_pt{};
   double min_value = 0;
   double max_value = 0;
+
+
+  ChartSignal(const MessageId& id, const dbc::Signal* s, QXYSeries* ser) : msg_id(id), sig(s), series(ser) {}
   void prepareData(const MessageEventsMap* msg_new_events, double min_x, double max_x);
   void updateRange(double main_x, double max_x);
   void updateSeries(SeriesType series_type);
+  void updatePointsVisible(double sec_per_px);
 
  private:
   SeriesBounds series_bounds;
