@@ -203,6 +203,7 @@ void SignalEditor::updateColumnWidths() {
     }
 
     max_content_w = std::max(max_content_w, w);
+    if (max_content_w > width() / 3) break;  // No need to calculate further
   }
 
   int maxAllowedWidth = std::max(150, this->width() / 3);
@@ -218,5 +219,7 @@ void SignalEditor::updateColumnWidths() {
 
 void SignalEditor::resizeEvent(QResizeEvent* event) {
   QFrame::resizeEvent(event);
-  updateColumnWidths();
+  if (event->oldSize().width() != event->size().width()) {
+    updateColumnWidths();
+  }
 }
