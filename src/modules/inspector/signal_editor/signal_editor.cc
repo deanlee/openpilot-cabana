@@ -193,21 +193,17 @@ void SignalEditor::updateColumnWidths() {
   auto* m = GetDBC()->msg(model->messageId());
   if (!m) return;
 
+  const int limit = std::max(150, tree->viewport()->width() / 3);
   int max_content_w = 0;
   int indentation = tree->indentation();
 
   for (const auto* sig : m->getSignals()) {
-    int w = delegate->nameColumnWidth(sig);
-    if (sig->type == dbc::Signal::Type::Multiplexed) {
-      w += indentation;
-    }
-
+    int w = delegate->nameColumnWidth(sig) + indentation;
     max_content_w = std::max(max_content_w, w);
-    if (max_content_w > width() / 3) break;  // No need to calculate further
+    if (max_content_w > limit) break;  // No need to calculate further
   }
 
-  int maxAllowedWidth = std::max(150, this->width() / 3);
-  int finalWidth = std::clamp(max_content_w, 150, maxAllowedWidth);
+  int finalWidth = std::clamp(max_content_w, 150, limit);
 
   // Block signals to prevent resizeEvent recursion
   tree->header()->blockSignals(true);
