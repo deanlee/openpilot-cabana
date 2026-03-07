@@ -1,4 +1,4 @@
-#include "open_asc_log.h"
+#include "asc_log.h"
 
 #include <QApplication>
 #include <QFileDialog>
@@ -11,7 +11,7 @@
 #include "core/streams/asc_log_stream.h"
 #include "modules/settings/settings.h"
 
-OpenAscLogWidget::OpenAscLogWidget(QWidget* parent) : AbstractStreamWidget(parent) {
+AscLogWidget::AscLogWidget(QWidget* parent) : AbstractStreamWidget(parent) {
   QVBoxLayout* main_layout = new QVBoxLayout(this);
   main_layout->addStretch(1);
 
@@ -44,7 +44,7 @@ OpenAscLogWidget::OpenAscLogWidget(QWidget* parent) : AbstractStreamWidget(paren
   });
 }
 
-AbstractStream* OpenAscLogWidget::open() {
+AbstractStream* AscLogWidget::open() {
   if (file_paths_.isEmpty()) {
     QMessageBox::warning(this, tr("No file selected"), tr("Please select an ASC log file."));
     return nullptr;

@@ -1,4 +1,4 @@
-#include "open_device.h"
+#include "device.h"
 
 #include <QApplication>
 #include <QButtonGroup>
@@ -9,7 +9,7 @@
 
 #include "core/streams/device_stream.h"
 
-OpenDeviceWidget::OpenDeviceWidget(QWidget* parent) : AbstractStreamWidget(parent) {
+DeviceWidget::DeviceWidget(QWidget* parent) : AbstractStreamWidget(parent) {
   QRadioButton* msgq = new QRadioButton(tr("MSGQ"));
   QRadioButton* zmq = new QRadioButton(tr("ZMQ"));
   ip_address = new QLineEdit(this);
@@ -33,7 +33,7 @@ OpenDeviceWidget::OpenDeviceWidget(QWidget* parent) : AbstractStreamWidget(paren
   zmq->setChecked(true);
 }
 
-AbstractStream* OpenDeviceWidget::open() {
+AbstractStream* DeviceWidget::open() {
   QString ip = ip_address->text().isEmpty() ? "127.0.0.1" : ip_address->text();
   bool msgq = group->checkedId() == 0;
   return new DeviceStream(qApp, msgq ? "" : ip);

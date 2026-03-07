@@ -5,11 +5,11 @@
 #include "abstract.h"
 #include "core/streams/socket_can_stream.h"
 
-class OpenSocketCanWidget : public AbstractStreamWidget {
+class SocketCanWidget : public AbstractStreamWidget {
   Q_OBJECT
 
  public:
-  OpenSocketCanWidget(QWidget* parent = nullptr);
+  SocketCanWidget(QWidget* parent = nullptr);
   AbstractStream* open() override;
 
  private:

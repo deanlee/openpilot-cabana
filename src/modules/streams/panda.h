@@ -6,11 +6,11 @@
 #include "abstract.h"
 #include "core/streams/panda_stream.h"
 
-class OpenPandaWidget : public AbstractStreamWidget {
+class PandaWidget : public AbstractStreamWidget {
   Q_OBJECT
 
  public:
-  OpenPandaWidget(QWidget* parent = nullptr);
+  PandaWidget(QWidget* parent = nullptr);
   AbstractStream* open() override;
 
  private:

@@ -5,13 +5,13 @@
 #include <QPushButton>
 
 #include "modules/settings/settings.h"
-#include "open_asc_log.h"
-#include "open_candump_log.h"
-#include "open_device.h"
-#include "open_panda.h"
-#include "open_replay.h"
-#include "open_socketcan.h"
-#include "open_trc_log.h"
+#include "asc_log.h"
+#include "candump_log.h"
+#include "device.h"
+#include "panda.h"
+#include "route.h"
+#include "socketcan.h"
+#include "trc_log.h"
 
 StreamSelector::StreamSelector(QWidget* parent) : QDialog(parent) {
   setWindowTitle(tr("Open stream"));
@@ -43,15 +43,15 @@ StreamSelector::StreamSelector(QWidget* parent) : QDialog(parent) {
     }
   });
 
-  addStreamWidget(new OpenReplayWidget, tr("&Replay"));
-  addStreamWidget(new OpenAscLogWidget, tr("&ASC Log"));
-  addStreamWidget(new OpenCandumpLogWidget, tr("&candump"));
-  addStreamWidget(new OpenTrcLogWidget, tr("&TRC"));
-  addStreamWidget(new OpenPandaWidget, tr("&Panda"));
+  addStreamWidget(new RouteWidget, tr("&Route"));
+  addStreamWidget(new AscLogWidget, tr("&ASC Log"));
+  addStreamWidget(new CandumpLogWidget, tr("&candump"));
+  addStreamWidget(new TrcLogWidget, tr("&TRC"));
+  addStreamWidget(new PandaWidget, tr("&Panda"));
   if (SocketCanStream::available()) {
-    addStreamWidget(new OpenSocketCanWidget, tr("&SocketCAN"));
+    addStreamWidget(new SocketCanWidget, tr("&SocketCAN"));
   }
-  addStreamWidget(new OpenDeviceWidget, tr("&Device"));
+  addStreamWidget(new DeviceWidget, tr("&Device"));
 
   connect(btn_box, &QDialogButtonBox::rejected, this, &QDialog::reject);
   connect(btn_box, &QDialogButtonBox::accepted, [=]() {
