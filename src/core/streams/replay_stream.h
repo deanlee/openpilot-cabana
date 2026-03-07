@@ -27,11 +27,11 @@ class ReplayStream : public AbstractStream {
   inline QString routeName() const override { return QString::fromStdString(replay->route().name()); }
   inline QString carFingerprint() const override { return replay->carFingerprint().c_str(); }
   double minSeconds() const override { return replay->minSeconds(); }
-  double maxSeconds() const { return replay->maxSeconds(); }
+  double maxSeconds() const override { return replay->maxSeconds(); }
   inline QDateTime beginDateTime() const { return QDateTime::fromSecsSinceEpoch(replay->routeDateTime()); }
   inline uint64_t beginMonoNs() const override { return replay->routeStartNanos(); }
   inline void setSpeed(float speed) override { replay->setSpeed(speed); }
-  inline float getSpeed() const { return replay->getSpeed(); }
+  inline double getSpeed() const override { return replay->getSpeed(); }
   inline Replay* getReplay() const { return replay.get(); }
   inline bool isPaused() const override { return replay->isPaused(); }
   void pause(bool pause) override;

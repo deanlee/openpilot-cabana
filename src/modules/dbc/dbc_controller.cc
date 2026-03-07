@@ -180,7 +180,7 @@ void DbcController::populateManageMenu(QMenu* manage_menu) {
   auto stream = StreamManager::stream();
   if (!stream) return;
 
-  for (int source : stream->sources) {
+  for (int source : stream->sources()) {
     if (source >= 64) continue;  // Sent and blocked buses are handled implicitly
 
     // Define the SourceSet for this specific physical bus

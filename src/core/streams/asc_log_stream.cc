@@ -3,11 +3,6 @@
 #include <QFile>
 #include <QRegularExpression>
 #include <QTextStream>
-#include <QThread>
-#include <QTimer>
-
-#include "common/timing.h"
-#include "modules/settings/settings.h"
 
 namespace {
 // Temporary struct used only during file parsing.
@@ -20,8 +15,7 @@ struct ParsedFrame {
 }  // namespace
 
 AscLogStream::AscLogStream(QObject* parent, const QStringList& file_paths)
-    : AbstractStream(parent), file_paths_(file_paths) {
-  begin_mono_ns_ = nanos_since_boot();
+    : FileStream(parent, file_paths) {
 
   // Parse all .asc files into ParsedFrame, apply timestamp stitching for
   // split files, then allocate CanEvent objects and call mergeEvents() so the
@@ -93,106 +87,6 @@ AscLogStream::AscLogStream(QObject* parent, const QStringList& file_paths)
   if (!events.empty()) {
     duration_s_ = (events.back()->mono_ns - begin_mono_ns_) / 1e9;
     mergeEvents(events);
-  }
-}
-
-AscLogStream::~AscLogStream() {
-  if (playback_thread_) {
-    playback_thread_->requestInterruption();
-    playback_thread_->quit();
-    playback_thread_->wait();
-  }
-}
-
-void AscLogStream::start() {
-  if (all_events_.empty()) return;
-
-  // Drive UI updates at settings.fps on the main thread, decoupled from
-  // event dispatch density (mirrors how ReplayStream uses its ui_update_timer).
-  auto* timer = new QTimer(this);
-  timer->setInterval(1000 / settings.fps);
-  connect(timer, &QTimer::timeout, this, [this]() { commitSnapshots(); });
-  connect(&settings, &Settings::changed, this, [timer]() {
-    timer->setInterval(1000 / settings.fps);
-  });
-  timer->start();
-
-  playback_thread_ = QThread::create([this]() { playbackThread(); });
-  playback_thread_->setParent(this);
-  connect(playback_thread_, &QThread::finished, playback_thread_, &QThread::deleteLater);
-  playback_thread_->start();
-}
-
-void AscLogStream::seekTo(double sec) {
-  seek_to_.store(std::max(0.0, sec));
-  emit seekedTo(sec);
-}
-
-void AscLogStream::pause(bool pause) {
-  paused_.store(pause);
-  emit(pause ? paused() : resume());
-}
-
-void AscLogStream::playbackThread() {
-  // Real-time replay (scaled by speed_) of all_events_, emitting live snapshot
-  // updates via processNewMessage() + commitSnapshots() for the current position.
-  size_t idx = 0;
-  uint64_t playback_start_ns = nanos_since_boot();
-  uint64_t file_start_ns = 0;  // mono_ns of first event at current seek position
-
-  auto do_seek = [&](double sec) {
-    uint64_t target_ns = begin_mono_ns_ + static_cast<uint64_t>(sec * 1e9);
-    auto it = std::lower_bound(all_events_.begin(), all_events_.end(), target_ns,
-                               [](const CanEvent* e, uint64_t t) { return e->mono_ns < t; });
-    idx = std::distance(all_events_.begin(), it);
-    file_start_ns = (idx < all_events_.size()) ? all_events_[idx]->mono_ns : begin_mono_ns_;
-    playback_start_ns = nanos_since_boot();
-  };
-
-  do_seek(0.0);
-
-  while (!QThread::currentThread()->isInterruptionRequested()) {
-    // Handle pending seek.
-    double requested = seek_to_.exchange(-1.0);
-    if (requested >= 0.0) {
-      do_seek(requested);
-      std::set<MessageId> empty;
-      emit snapshotsUpdated(&empty, true);
-    }
-
-    if (paused_.load()) {
-      QThread::msleep(33);
-      playback_start_ns = nanos_since_boot();
-      file_start_ns = (idx < all_events_.size()) ? all_events_[idx]->mono_ns : file_start_ns;
-      continue;
-    }
-
-    if (idx >= all_events_.size()) {
-      QThread::msleep(100);
-      continue;
-    }
-
-    const float spd = speed_.load();
-    const uint64_t wall_elapsed = static_cast<uint64_t>((nanos_since_boot() - playback_start_ns) * spd);
-    const uint64_t file_elapsed = all_events_[idx]->mono_ns - file_start_ns;
-
-    if (file_elapsed > wall_elapsed) {
-      // Not yet time for the next event; sleep up to 50 ms.
-      uint64_t wait_ns = std::min<uint64_t>((file_elapsed - wall_elapsed) / spd, 50'000'000ULL);
-      QThread::usleep(wait_ns / 1000);
-      continue;
-    }
-
-    // Dispatch all events that are due.
-    while (idx < all_events_.size()) {
-      if (all_events_[idx]->mono_ns - file_start_ns > wall_elapsed) break;
-      const CanEvent* e = all_events_[idx++];
-      processNewMessage({e->src, e->address}, e->mono_ns, e->dat, e->size);
-    }
-
-    if (idx > 0) {
-      emit seeking(toSeconds(all_events_[idx - 1]->mono_ns));
-    }
   }
 }
 
