@@ -32,7 +32,7 @@ AbstractStream::AbstractStream(QObject* parent) : QObject(parent) {
 void AbstractStream::commitSnapshots() {
   std::set<MessageId> msgs;
   bool structure_changed = false;
-  size_t prev_src_count = sources.size();
+  size_t prev_src_count = sources_.size();
 
   {
     std::lock_guard lk(mutex_);
@@ -48,7 +48,7 @@ void AbstractStream::commitSnapshots() {
       } else {
         target = std::make_unique<MessageSnapshot>(state);
         structure_changed = true;
-        sources.insert(id.source);
+        sources_.insert(id.source);
       }
       state.dirty = false;
     }
@@ -62,8 +62,8 @@ void AbstractStream::commitSnapshots() {
     return;
   }
 
-  if (sources.size() != prev_src_count) {
-    emit sourcesUpdated(sources);
+  if (sources_.size() != prev_src_count) {
+    emit sourcesUpdated(sources_);
   }
   emit snapshotsUpdated(&msgs, structure_changed);
 }
@@ -251,7 +251,7 @@ void AbstractStream::updateMasks() {
   auto* dbc_manager = GetDBC();
 
   // Rebuild the mask cache
-  for (uint8_t s : sources) {
+  for (uint8_t s : sources_) {
     for (const auto& [address, m] : dbc_manager->getMessages(s)) {
       shared_state_.masks[{s, address}] = m.mask;
     }
@@ -267,7 +267,7 @@ void AbstractStream::updateMessageMask(const MessageId& id) {
   auto* dbc_manager = GetDBC();
   std::lock_guard lk(mutex_);
 
-  for (const uint8_t s : sources) {
+  for (const uint8_t s : sources_) {
     const MessageId target_id(s, id.address);
     if (const auto* m = dbc_manager->msg(target_id)) {
       shared_state_.masks[target_id] = m->mask;

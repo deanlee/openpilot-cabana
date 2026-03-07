@@ -48,7 +48,7 @@ class AbstractStream : public QObject {
   virtual double minSeconds() const { return 0; }
   virtual double maxSeconds() const { return 0; }
   virtual void setSpeed(float speed) {}
-  virtual double getSpeed() { return 1; }
+  virtual double getSpeed() const { return 1; }
   virtual bool isPaused() const { return false; }
   virtual void pause(bool pause) {}
   void setTimeRange(const std::optional<std::pair<double, double>>& range);
@@ -66,6 +66,7 @@ class AbstractStream : public QObject {
   }
   inline const MessageEventsMap& eventsMap() const { return events_; }
   inline const std::vector<const CanEvent*>& allEvents() const { return all_events_; }
+  inline const SourceSet& sources() const { return sources_; }
   const MessageSnapshot* snapshot(const MessageId& id) const;
   const std::vector<const CanEvent*>& events(const MessageId& id) const;
   std::pair<CanEventIter, CanEventIter> eventsInRange(const MessageId& id,
@@ -86,10 +87,8 @@ class AbstractStream : public QObject {
   void sourcesUpdated(const SourceSet& s);
   void qLogLoaded(std::shared_ptr<LogReader> qlog);
 
- public:
-  SourceSet sources;
-
  protected:
+  SourceSet sources_;
   void commitSnapshots();
   void mergeEvents(const std::vector<const CanEvent*>& events);
   const CanEvent* newEvent(uint64_t mono_ns, const cereal::CanData::Reader& c);

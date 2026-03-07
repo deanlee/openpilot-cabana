@@ -19,7 +19,7 @@ class LiveStream : public AbstractStream {
   inline uint64_t beginMonoNs() const override { return begin_event_ts; }
   double maxSeconds() const override { return std::max(1.0, (lastest_event_ts - begin_event_ts) / 1e9); }
   void setSpeed(float speed) override { speed_ = speed; }
-  double getSpeed() override { return speed_; }
+  double getSpeed() const override { return speed_; }
   bool isPaused() const override { return paused_; }
   void pause(bool pause) override;
   void seekTo(double sec) override;
