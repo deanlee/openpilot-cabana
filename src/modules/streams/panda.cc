@@ -1,4 +1,4 @@
-#include "open_panda.h"
+#include "panda.h"
 
 #include <QApplication>
 #include <QCheckBox>
@@ -10,7 +10,7 @@
 
 #include "modules/system/stream_manager.h"
 
-OpenPandaWidget::OpenPandaWidget(QWidget* parent) : AbstractStreamWidget(parent) {
+PandaWidget::PandaWidget(QWidget* parent) : AbstractStreamWidget(parent) {
   form_layout = new QFormLayout(this);
   if (dynamic_cast<PandaStream*>(StreamManager::stream()) != nullptr) {
     form_layout->addWidget(new QLabel(tr("Already connected to %1.").arg(StreamManager::stream()->routeName())));
@@ -28,8 +28,8 @@ OpenPandaWidget::OpenPandaWidget(QWidget* parent) : AbstractStreamWidget(parent)
   serial_layout->addWidget(refresh);
   form_layout->addRow(tr("Serial"), serial_layout);
 
-  connect(refresh, &QPushButton::clicked, this, &OpenPandaWidget::refreshSerials);
-  connect(serial_edit, &QComboBox::currentTextChanged, this, &OpenPandaWidget::buildConfigForm);
+  connect(refresh, &QPushButton::clicked, this, &PandaWidget::refreshSerials);
+  connect(serial_edit, &QComboBox::currentTextChanged, this, &PandaWidget::buildConfigForm);
 
   setFocusProxy(serial_edit);
   // Populate serials
@@ -37,14 +37,14 @@ OpenPandaWidget::OpenPandaWidget(QWidget* parent) : AbstractStreamWidget(parent)
   buildConfigForm();
 }
 
-void OpenPandaWidget::refreshSerials() {
+void PandaWidget::refreshSerials() {
   serial_edit->clear();
   for (auto serial : Panda::list()) {
     serial_edit->addItem(QString::fromStdString(serial));
   }
 }
 
-void OpenPandaWidget::buildConfigForm() {
+void PandaWidget::buildConfigForm() {
   for (int i = form_layout->rowCount() - 1; i > 0; --i) {
     form_layout->removeRow(i);
   }
@@ -114,7 +114,7 @@ void OpenPandaWidget::buildConfigForm() {
   }
 }
 
-AbstractStream* OpenPandaWidget::open() {
+AbstractStream* PandaWidget::open() {
   try {
     return new PandaStream(qApp, config);
   } catch (std::exception& e) {

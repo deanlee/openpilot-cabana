@@ -5,11 +5,11 @@
 
 #include "abstract.h"
 
-class OpenTrcLogWidget : public AbstractStreamWidget {
+class TrcLogWidget : public AbstractStreamWidget {
   Q_OBJECT
 
  public:
-  OpenTrcLogWidget(QWidget* parent = nullptr);
+  TrcLogWidget(QWidget* parent = nullptr);
   AbstractStream* open() override;
 
  private:

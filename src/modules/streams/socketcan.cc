@@ -1,4 +1,4 @@
-#include "open_socketcan.h"
+#include "socketcan.h"
 
 #include <QApplication>
 #include <QFormLayout>
@@ -6,7 +6,7 @@
 #include <QMessageBox>
 #include <QPushButton>
 
-OpenSocketCanWidget::OpenSocketCanWidget(QWidget* parent) : AbstractStreamWidget(parent) {
+SocketCanWidget::SocketCanWidget(QWidget* parent) : AbstractStreamWidget(parent) {
   QVBoxLayout* main_layout = new QVBoxLayout(this);
   main_layout->addStretch(1);
 
@@ -26,21 +26,21 @@ OpenSocketCanWidget::OpenSocketCanWidget(QWidget* parent) : AbstractStreamWidget
   main_layout->addStretch(1);
   setFocusProxy(device_edit);
 
-  connect(refresh, &QPushButton::clicked, this, &OpenSocketCanWidget::refreshDevices);
+  connect(refresh, &QPushButton::clicked, this, &SocketCanWidget::refreshDevices);
   connect(device_edit, &QComboBox::currentTextChanged, this, [=] { config.device = device_edit->currentText(); });
 
   // Populate devices
   refreshDevices();
 }
 
-void OpenSocketCanWidget::refreshDevices() {
+void SocketCanWidget::refreshDevices() {
   device_edit->clear();
   for (auto device : QCanBus::instance()->availableDevices(QStringLiteral("socketcan"))) {
     device_edit->addItem(device.name());
   }
 }
 
-AbstractStream* OpenSocketCanWidget::open() {
+AbstractStream* SocketCanWidget::open() {
   try {
     return new SocketCanStream(qApp, config);
   } catch (std::exception& e) {

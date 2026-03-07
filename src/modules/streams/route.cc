@@ -1,4 +1,4 @@
-#include "open_replay.h"
+#include "route.h"
 
 #include <QApplication>
 #include <QFileDialog>
@@ -12,7 +12,7 @@
 #include "modules/settings/settings.h"
 #include "route_browser.h"
 
-OpenReplayWidget::OpenReplayWidget(QWidget* parent) : AbstractStreamWidget(parent) {
+RouteWidget::RouteWidget(QWidget* parent) : AbstractStreamWidget(parent) {
   QGridLayout* grid_layout = new QGridLayout(this);
   grid_layout->addWidget(new QLabel(tr("Route")), 0, 0);
   grid_layout->addWidget(route_edit = new QLineEdit(this), 0, 1);
@@ -47,7 +47,7 @@ OpenReplayWidget::OpenReplayWidget(QWidget* parent) : AbstractStreamWidget(paren
   });
 }
 
-AbstractStream* OpenReplayWidget::open() {
+AbstractStream* RouteWidget::open() {
   QString route = route_edit->text();
   QString data_dir;
   if (int idx = route.lastIndexOf('/'); idx != -1 && util::file_exists(route.toStdString())) {

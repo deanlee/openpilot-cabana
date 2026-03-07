@@ -5,11 +5,11 @@
 
 #include "abstract.h"
 
-class OpenCandumpLogWidget : public AbstractStreamWidget {
+class CandumpLogWidget : public AbstractStreamWidget {
   Q_OBJECT
 
  public:
-  OpenCandumpLogWidget(QWidget* parent = nullptr);
+  CandumpLogWidget(QWidget* parent = nullptr);
   AbstractStream* open() override;
 
  private:

@@ -5,11 +5,11 @@
 
 #include "abstract.h"
 
-class OpenReplayWidget : public AbstractStreamWidget {
+class RouteWidget : public AbstractStreamWidget {
   Q_OBJECT
 
  public:
-  OpenReplayWidget(QWidget* parent = nullptr);
+  RouteWidget(QWidget* parent = nullptr);
   AbstractStream* open() override;
 
  private:

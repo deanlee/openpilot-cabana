@@ -5,11 +5,11 @@
 
 #include "abstract.h"
 
-class OpenAscLogWidget : public AbstractStreamWidget {
+class AscLogWidget : public AbstractStreamWidget {
   Q_OBJECT
 
  public:
-  OpenAscLogWidget(QWidget* parent = nullptr);
+  AscLogWidget(QWidget* parent = nullptr);
   AbstractStream* open() override;
 
  private:

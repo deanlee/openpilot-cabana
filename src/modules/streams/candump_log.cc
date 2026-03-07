@@ -1,4 +1,4 @@
-#include "open_candump_log.h"
+#include "candump_log.h"
 
 #include <QApplication>
 #include <QFileDialog>
@@ -11,7 +11,7 @@
 #include "core/streams/candump_log_stream.h"
 #include "modules/settings/settings.h"
 
-OpenCandumpLogWidget::OpenCandumpLogWidget(QWidget* parent) : AbstractStreamWidget(parent) {
+CandumpLogWidget::CandumpLogWidget(QWidget* parent) : AbstractStreamWidget(parent) {
   QVBoxLayout* main_layout = new QVBoxLayout(this);
   main_layout->addStretch(1);
 
@@ -44,7 +44,7 @@ OpenCandumpLogWidget::OpenCandumpLogWidget(QWidget* parent) : AbstractStreamWidg
   });
 }
 
-AbstractStream* OpenCandumpLogWidget::open() {
+AbstractStream* CandumpLogWidget::open() {
   if (file_paths_.isEmpty()) {
     QMessageBox::warning(this, tr("No file selected"), tr("Please select a candump log file."));
     return nullptr;

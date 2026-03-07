@@ -1,4 +1,4 @@
-#include "open_trc_log.h"
+#include "trc_log.h"
 
 #include <QApplication>
 #include <QFileDialog>
@@ -11,7 +11,7 @@
 #include "core/streams/trc_log_stream.h"
 #include "modules/settings/settings.h"
 
-OpenTrcLogWidget::OpenTrcLogWidget(QWidget* parent) : AbstractStreamWidget(parent) {
+TrcLogWidget::TrcLogWidget(QWidget* parent) : AbstractStreamWidget(parent) {
   QVBoxLayout* main_layout = new QVBoxLayout(this);
   main_layout->addStretch(1);
 
@@ -44,7 +44,7 @@ OpenTrcLogWidget::OpenTrcLogWidget(QWidget* parent) : AbstractStreamWidget(paren
   });
 }
 
-AbstractStream* OpenTrcLogWidget::open() {
+AbstractStream* TrcLogWidget::open() {
   if (file_paths_.isEmpty()) {
     QMessageBox::warning(this, tr("No file selected"), tr("Please select a PEAK TRC log file."));
     return nullptr;

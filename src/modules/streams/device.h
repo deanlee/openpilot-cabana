@@ -5,11 +5,11 @@
 #include "abstract.h"
 #include "core/streams/abstract_stream.h"
 
-class OpenDeviceWidget : public AbstractStreamWidget {
+class DeviceWidget : public AbstractStreamWidget {
   Q_OBJECT
 
  public:
-  OpenDeviceWidget(QWidget* parent = nullptr);
+  DeviceWidget(QWidget* parent = nullptr);
   AbstractStream* open() override;
 
  private:
