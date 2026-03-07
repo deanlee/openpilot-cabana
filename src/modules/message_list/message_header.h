@@ -1,3 +1,5 @@
+#pragma once
+
 #include <QHeaderView>
 #include <QMap>
 #include <QPointer>
@@ -24,7 +26,6 @@ class MessageHeader : public QHeaderView {
   QString getFilterTooltip(int col) const;
 
   QMap<int, QPointer<DebouncedLineEdit>> editors;
-  QTimer filter_timer;
   int cached_editor_height = 0;
   bool is_updating = false;
 };
