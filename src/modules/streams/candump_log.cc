@@ -18,10 +18,10 @@ CandumpLogWidget::CandumpLogWidget(QWidget* parent) : AbstractStreamWidget(paren
   QHBoxLayout* file_layout = new QHBoxLayout();
   file_edit_ = new QLineEdit(this);
   file_edit_->setReadOnly(true);
-  file_edit_->setPlaceholderText(tr("Select one or more candump log files (.log)"));
+  file_edit_->setPlaceholderText(tr("Select candump log file(s) (.log)"));
 
   QPushButton* browse_btn = new QPushButton(tr("Browse..."), this);
-  file_layout->addWidget(new QLabel(tr("candump file"), this));
+  file_layout->addWidget(new QLabel(tr("candump file(s)"), this));
   file_layout->addWidget(file_edit_, 1);
   file_layout->addWidget(browse_btn);
   main_layout->addLayout(file_layout);

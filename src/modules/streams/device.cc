@@ -13,7 +13,7 @@ DeviceWidget::DeviceWidget(QWidget* parent) : AbstractStreamWidget(parent) {
   QRadioButton* msgq = new QRadioButton(tr("MSGQ"));
   QRadioButton* zmq = new QRadioButton(tr("ZMQ"));
   ip_address = new QLineEdit(this);
-  ip_address->setPlaceholderText(tr("Enter device Ip Address"));
+  ip_address->setPlaceholderText(tr("Enter device IP address"));
   QString ip_range = "(?:[0-1]?[0-9]?[0-9]|2[0-4][0-9]|25[0-5])";
   QString pattern("^" + ip_range + "\\." + ip_range + "\\." + ip_range + "\\." + ip_range + "$");
   QRegularExpression re(pattern);

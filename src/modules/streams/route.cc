@@ -17,9 +17,9 @@ RouteWidget::RouteWidget(QWidget* parent) : AbstractStreamWidget(parent) {
   grid_layout->addWidget(new QLabel(tr("Route")), 0, 0);
   grid_layout->addWidget(route_edit = new QLineEdit(this), 0, 1);
   route_edit->setPlaceholderText(tr("Enter route name or browse for local/remote route"));
-  auto browse_remote_btn = new QPushButton(tr("Remote route..."), this);
+  auto browse_remote_btn = new QPushButton(tr("Browse remote..."), this);
   grid_layout->addWidget(browse_remote_btn, 0, 2);
-  auto browse_local_btn = new QPushButton(tr("Local route..."), this);
+  auto browse_local_btn = new QPushButton(tr("Browse local..."), this);
   grid_layout->addWidget(browse_local_btn, 0, 3);
 
   QHBoxLayout* camera_layout = new QHBoxLayout();
