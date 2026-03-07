@@ -11,6 +11,7 @@
 #include "open_panda.h"
 #include "open_replay.h"
 #include "open_socketcan.h"
+#include "open_trc_log.h"
 
 StreamSelector::StreamSelector(QWidget* parent) : QDialog(parent) {
   setWindowTitle(tr("Open stream"));
@@ -45,6 +46,7 @@ StreamSelector::StreamSelector(QWidget* parent) : QDialog(parent) {
   addStreamWidget(new OpenReplayWidget, tr("&Replay"));
   addStreamWidget(new OpenAscLogWidget, tr("&ASC Log"));
   addStreamWidget(new OpenCandumpLogWidget, tr("&candump"));
+  addStreamWidget(new OpenTrcLogWidget, tr("&TRC"));
   addStreamWidget(new OpenPandaWidget, tr("&Panda"));
   if (SocketCanStream::available()) {
     addStreamWidget(new OpenSocketCanWidget, tr("&SocketCAN"));
