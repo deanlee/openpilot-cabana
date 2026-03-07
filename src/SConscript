@@ -85,7 +85,10 @@ qt_flags = [
 qt_env['CXXFLAGS'] += qt_flags
 
 base_frameworks = qt_env.get('FRAMEWORKS', [])
-base_libs = [common, messaging, cereal, visionipc, 'm', 'ssl', 'crypto', 'pthread'] + qt_libs
+# Use explicit .so names to force dynamic linking — avoids picking up system
+# libssl.a/libcrypto.a which would conflict with libcurl's system libssl.so.
+ssl_libs = [':libssl.so', ':libcrypto.so'] if arch != 'Darwin' else ['ssl', 'crypto']
+base_libs = [common, messaging, cereal, visionipc, 'm'] + ssl_libs + ['pthread'] + qt_libs
 
 if arch == "Darwin":
     base_frameworks += ['OpenCL', 'QtCharts', 'QtSerialBus']
