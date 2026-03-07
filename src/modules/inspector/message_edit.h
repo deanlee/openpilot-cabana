@@ -11,7 +11,6 @@
 class MessageEdit : public QDialog {
  public:
   MessageEdit(const MessageId& msg_id, const QString& title, int size, QWidget* parent);
-  void validateName(const QString& text);
 
   MessageId msg_id;
   QString original_name;
@@ -21,4 +20,7 @@ class MessageEdit : public QDialog {
   QTextEdit* comment_edit;
   QLabel* error_label;
   QSpinBox* size_spin;
+
+ private:
+  void validateName(const QString& text);
 };
