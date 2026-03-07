@@ -32,7 +32,7 @@ MessageDataRef getDataRef(CallerType type, const QModelIndex& index) {
 }  // namespace
 
 MessageDelegate::MessageDelegate(QObject* parent, CallerType caller_type)
-    : caller_type_(caller_type), QStyledItemDelegate(parent) {
+    : QStyledItemDelegate(parent), caller_type_(caller_type) {
   fixed_font = QFontDatabase::systemFont(QFontDatabase::FixedFont);
 
   QFontMetrics fm(fixed_font);
@@ -145,7 +145,7 @@ void MessageDelegate::updatePixmapCache(const QPalette& palette) const {
       palette.color(QPalette::Disabled, QPalette::Text)};
 
   for (int i = 0; i < 256; ++i) {
-    const QString hex = QStringLiteral("%1").arg(i, 2, 16, QLatin1Char('0')).toUpper();
+    const QString hex = QString::asprintf("%02X", i);
     for (int s = 0; s < StateCount; ++s) {
       QPixmap pix(byte_size * dpr);
       pix.setDevicePixelRatio(dpr);
