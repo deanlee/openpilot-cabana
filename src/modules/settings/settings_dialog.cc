@@ -11,13 +11,13 @@
 #include "settings.h"
 #include "utils/util.h"
 
-const int MIN_CACHE_MINIUTES = 30;
-const int MAX_CACHE_MINIUTES = 120;
+constexpr int MIN_CACHE_MINUTES = 30;
+constexpr int MAX_CACHE_MINUTES = 120;
 
 SettingsDialog::SettingsDialog(QWidget* parent) : QDialog(parent) {
   setWindowTitle(tr("Settings"));
   QVBoxLayout* main_layout = new QVBoxLayout(this);
-  QGroupBox* groupbox = new QGroupBox("General");
+  QGroupBox* groupbox = new QGroupBox(tr("General"));
   QFormLayout* form_layout = new QFormLayout(groupbox);
 
   form_layout->addRow(tr("Color Theme"), theme = new QComboBox(this));
@@ -31,19 +31,19 @@ SettingsDialog::SettingsDialog(QWidget* parent) : QDialog(parent) {
   fps->setValue(settings.fps);
 
   form_layout->addRow(tr("Max Cached Minutes"), cached_minutes = new QSpinBox(this));
-  cached_minutes->setRange(MIN_CACHE_MINIUTES, MAX_CACHE_MINIUTES);
+  cached_minutes->setRange(MIN_CACHE_MINUTES, MAX_CACHE_MINUTES);
   cached_minutes->setSingleStep(1);
   cached_minutes->setValue(settings.max_cached_minutes);
   main_layout->addWidget(groupbox);
 
-  groupbox = new QGroupBox("New Signal Settings");
+  groupbox = new QGroupBox(tr("New Signal Settings"));
   form_layout = new QFormLayout(groupbox);
   form_layout->addRow(tr("Drag Direction"), drag_direction = new QComboBox(this));
   drag_direction->addItems({tr("MSB First"), tr("LSB First"), tr("Always Little Endian"), tr("Always Big Endian")});
   drag_direction->setCurrentIndex(settings.drag_direction);
   main_layout->addWidget(groupbox);
 
-  groupbox = new QGroupBox("Chart");
+  groupbox = new QGroupBox(tr("Chart"));
   form_layout = new QFormLayout(groupbox);
   form_layout->addRow(tr("Chart Height"), chart_height = new QSpinBox(this));
   chart_height->setRange(100, 500);
