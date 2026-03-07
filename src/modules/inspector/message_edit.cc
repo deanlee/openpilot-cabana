@@ -24,7 +24,7 @@ MessageEdit::MessageEdit(const MessageId& msg_id, const QString& title, int size
   size_spin->setValue(size);
 
   form_layout->addRow(tr("Node"), node = new QLineEdit(this));
-  node->setValidator(new NameValidator(name_edit));
+  node->setValidator(new NameValidator(node));
   form_layout->addRow(tr("Comment"), comment_edit = new QTextEdit(this));
   form_layout->addRow(btn_box = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel));
 
@@ -41,6 +41,7 @@ MessageEdit::MessageEdit(const MessageId& msg_id, const QString& title, int size
 
 void MessageEdit::validateName(const QString& text) {
   bool valid = text.compare(UNDEFINED, Qt::CaseInsensitive) != 0;
+  error_label->setText({});
   error_label->setVisible(false);
   if (!text.isEmpty() && valid && text != original_name) {
     valid = GetDBC()->msg(msg_id.source, text) == nullptr;
