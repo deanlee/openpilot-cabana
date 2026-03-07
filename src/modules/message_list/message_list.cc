@@ -43,7 +43,6 @@ MessageList::MessageList(QWidget* parent) : QWidget(parent) {
 
   setWhatsThis(tr(R"(
     <b>Message View</b><br/>
-    <!-- TODO: add descprition here -->
     <span style="color:gray">Byte color</span><br />
     <span style="color:gray;">■ </span> constant changing<br />
     <span style="color:blue;">■ </span> increasing<br />

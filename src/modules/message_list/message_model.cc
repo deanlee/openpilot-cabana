@@ -1,7 +1,6 @@
 #include "message_model.h"
 
 #include <QApplication>
-#include <QPalette>
 #include <cmath>
 #include <unordered_set>
 
@@ -31,7 +30,7 @@ QVariant MessageModel::headerData(int section, Qt::Orientation orientation, int 
 }
 
 QVariant MessageModel::data(const QModelIndex& index, int role) const {
-  if (!index.isValid() || index.row() >= items_.size()) return {};
+  if (!index.isValid() || index.row() >= static_cast<int>(items_.size())) return {};
 
   const auto& item = items_[index.row()];
   if (role == Qt::DisplayRole) {

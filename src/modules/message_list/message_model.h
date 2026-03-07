@@ -44,7 +44,7 @@ class MessageModel : public QAbstractTableModel {
   // QAbstractTableModel overrides
   QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const override;
   int columnCount(const QModelIndex& parent = QModelIndex()) const override { return Column::MAX_COLUMN; }
-  QVariant data(const QModelIndex& index, int role = Qt::DisplayRole) const;
+  QVariant data(const QModelIndex& index, int role = Qt::DisplayRole) const override;
   int rowCount(const QModelIndex& parent = QModelIndex()) const override { return items_.size(); }
   void sort(int column, Qt::SortOrder order = Qt::AscendingOrder) override;
 
