@@ -12,6 +12,7 @@ It supports multiple CAN data sources, including:
 | :--- | :--- |
 | **Openpilot route** | Replay a recorded openpilot drive (local or via comma connect) |
 | **Vector ASC log** | Open one or more `.asc` log files captured with CANalyzer, CANoe, or any compatible logger |
+| **candump log** | Open one or more `.log` files recorded with `candump -l` (SocketCAN) |
 | **SocketCAN** | Live capture from a SocketCAN interface (e.g. `can0`) |
 | **comma.ai Panda** | Live capture from a USB-connected Panda device |
 | **ZMQ / Msgq** | Live streaming from a comma device over the network |
@@ -161,6 +162,20 @@ cabana
 ```
 
 Segmented recordings (where a logger restarts timestamps at each file boundary) are stitched seamlessly into a single continuous timeline.
+
+### Opening a candump Log File
+
+Cabana supports logs captured with the Linux `candump` utility using the `-l` (log) flag:
+
+```shell
+# Record on the device
+candump -l can0
+# produces: candump-2026-03-08_120000.log
+```
+
+Select the **candump** tab in the stream selector and browse for one or more `.log` files. Multiple files are merged and sorted by timestamp automatically — useful when a long capture is split across several segments.
+
+Each unique CAN interface name in the file (e.g. `can0`, `can1`) is mapped to a separate bus channel.
 
 ### Using the Stream Selector Dialog
 

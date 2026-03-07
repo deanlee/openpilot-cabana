@@ -6,6 +6,7 @@
 
 #include "modules/settings/settings.h"
 #include "open_asc_log.h"
+#include "open_candump_log.h"
 #include "open_device.h"
 #include "open_panda.h"
 #include "open_replay.h"
@@ -43,6 +44,7 @@ StreamSelector::StreamSelector(QWidget* parent) : QDialog(parent) {
 
   addStreamWidget(new OpenReplayWidget, tr("&Replay"));
   addStreamWidget(new OpenAscLogWidget, tr("&ASC Log"));
+  addStreamWidget(new OpenCandumpLogWidget, tr("&candump"));
   addStreamWidget(new OpenPandaWidget, tr("&Panda"));
   if (SocketCanStream::available()) {
     addStreamWidget(new OpenSocketCanWidget, tr("&SocketCAN"));
