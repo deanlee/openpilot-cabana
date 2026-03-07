@@ -18,10 +18,10 @@ AscLogWidget::AscLogWidget(QWidget* parent) : AbstractStreamWidget(parent) {
   QHBoxLayout* file_layout = new QHBoxLayout();
   file_edit_ = new QLineEdit(this);
   file_edit_->setReadOnly(true);
-  file_edit_->setPlaceholderText(tr("Select one or more Vector ASC log files (.asc)"));
+  file_edit_->setPlaceholderText(tr("Select Vector ASC log file(s) (.asc)"));
 
   QPushButton* browse_btn = new QPushButton(tr("Browse..."), this);
-  file_layout->addWidget(new QLabel(tr("ASC file"), this));
+  file_layout->addWidget(new QLabel(tr("ASC file(s)"), this));
   file_layout->addWidget(file_edit_, 1);
   file_layout->addWidget(browse_btn);
   main_layout->addLayout(file_layout);

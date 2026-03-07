@@ -18,10 +18,10 @@ TrcLogWidget::TrcLogWidget(QWidget* parent) : AbstractStreamWidget(parent) {
   QHBoxLayout* file_layout = new QHBoxLayout();
   file_edit_ = new QLineEdit(this);
   file_edit_->setReadOnly(true);
-  file_edit_->setPlaceholderText(tr("Select one or more PEAK TRC log files (.trc)"));
+  file_edit_->setPlaceholderText(tr("Select PEAK TRC log file(s) (.trc)"));
 
   QPushButton* browse_btn = new QPushButton(tr("Browse..."), this);
-  file_layout->addWidget(new QLabel(tr("TRC file"), this));
+  file_layout->addWidget(new QLabel(tr("TRC file(s)"), this));
   file_layout->addWidget(file_edit_, 1);
   file_layout->addWidget(browse_btn);
   main_layout->addLayout(file_layout);
