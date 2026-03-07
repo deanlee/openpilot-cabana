@@ -28,9 +28,7 @@ class MessageState {
   std::array<uint8_t, MAX_CAN_LEN> data = {0};  // Raw payload
   std::array<uint32_t, MAX_CAN_LEN> colors = {0};
 
-  // Stats (only accessed on change, so we keep them slightly separate)
   std::array<std::array<uint32_t, 8>, MAX_CAN_LEN> bit_flips = {};
-  std::array<std::array<uint32_t, 8>, MAX_CAN_LEN> bit_high_counts = {};
 
  private:
   void analyzeByteMutation(int byte_index, uint8_t old_val, uint8_t new_val, uint8_t diff, double current_ts);
@@ -44,6 +42,7 @@ class MessageState {
   std::array<int32_t, MAX_CAN_LEN> trend_weight = {0};
   std::array<uint8_t, MAX_CAN_LEN> is_suppressed = {0};  // Use uint8 for better packing than bool
   std::array<DataPattern, MAX_CAN_LEN> detected_patterns = {DataPattern::None};
+  std::array<std::array<uint32_t, 8>, MAX_CAN_LEN> bit_high_counts = {};
   std::array<uint64_t, 8> last_data_64 = {0};
   std::array<uint64_t, 8> ignore_bit_mask = {0};
 };

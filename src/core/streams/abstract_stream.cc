@@ -85,13 +85,14 @@ void AbstractStream::processNewMessage(const MessageId& id, uint64_t mono_ns, co
   if (state.size != size) {
     state.init(data, size, sec);
     applyCurrentPolicy(state, id);
+  } else {
+    state.update(data, size, sec);
   }
 
   if (!state.dirty) {
     state.dirty = true;
     shared_state_.dirty_ids.insert(id);
   }
-  state.update(data, size, sec);
 }
 
 const std::vector<const CanEvent*>& AbstractStream::events(const MessageId& id) const {
