@@ -186,19 +186,11 @@ void MessageState::analyzeByteMutation(int i, uint8_t old_v, uint8_t new_v, uint
 
 void MessageState::updateAllPatternColors(double current_can_sec) {
   for (size_t i = 0; i < size; ++i) {
-    // Clear stale patterns that have long outlived their color decay
     if (current_can_sec - last_change_ts[i] > PATTERN_STALE_SEC) {
       detected_patterns[i] = DataPattern::None;
-    }
-    // Entropy-based noise detection, deferred here from the per-change hot path
-    // to avoid redundant computation on high-rate buses.
-    // Runs when trend analysis hasn't classified the byte as Toggle/Inc/Dec,
-    // matching the original else-if priority where entropy shared a branch
-    // with weight > LIMIT_NOISY.
-    else if (change_count_[i] >= MIN_SAMPLES_FOR_ENTROPY &&
-             detected_patterns[i] != DataPattern::Increasing &&
-             detected_patterns[i] != DataPattern::Decreasing &&
-             detected_patterns[i] != DataPattern::Toggle) {
+    } else if (change_count_[i] >= MIN_SAMPLES_FOR_ENTROPY && trend_weight[i] <= LIMIT_TREND) {
+      // Entropy-based noise detection, deferred from the per-change hot path.
+      // Only runs when trend analysis hasn't strongly classified the byte.
       float total_entropy = 0.0f;
       for (int bit = 0; bit < 8; ++bit) {
         total_entropy += getEntropy(bit_high_counts[i][bit], change_count_[i]);
