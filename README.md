@@ -8,10 +8,13 @@ Cabana was originally developed by the repository author for the [openpilot](htt
 
 It supports multiple CAN data sources, including:
 
-- SocketCAN interfaces
-- comma.ai panda hardware
-- Live streaming via ZMQ/Msgq
-- Recorded logs (openpilot routes or custom formats)
+| Source | Description |
+| :--- | :--- |
+| **Openpilot route** | Replay a recorded openpilot drive (local or via comma connect) |
+| **Vector ASC log** | Open one or more `.asc` log files captured with CANalyzer, CANoe, or any compatible logger |
+| **SocketCAN** | Live capture from a SocketCAN interface (e.g. `can0`) |
+| **comma.ai Panda** | Live capture from a USB-connected Panda device |
+| **ZMQ / Msgq** | Live streaming from a comma device over the network |
 
 No openpilot installation is required. Cabana is suitable for automotive diagnostics, CAN reverse-engineering, research, and any project involving CAN networks.
 
@@ -147,9 +150,21 @@ To read CAN messages from a connected Panda, use the following command:
 cabana --panda
 ```
 
+### Opening a Vector ASC Log File
+
+Cabana can open CAN logs recorded in the Vector ASC format (produced by CANalyzer, CANoe, PEAK, and many other tools).
+
+Launch Cabana without arguments and select the **ASC Log** tab in the stream selector, or open multiple files to stitch split logs together automatically:
+
+```shell
+cabana
+```
+
+Segmented recordings (where a logger restarts timestamps at each file boundary) are stitched seamlessly into a single continuous timeline.
+
 ### Using the Stream Selector Dialog
 
-If you run Cabana without any arguments, a stream selector dialog will pop up, allowing you to choose the stream.
+If you run Cabana without any arguments, a stream selector dialog will pop up, allowing you to choose the data source.
 
 ```shell
 cabana
