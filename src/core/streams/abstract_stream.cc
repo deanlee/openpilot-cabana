@@ -1,6 +1,7 @@
 #include "abstract_stream.h"
 
 #include <QApplication>
+#include <QTimer>
 #include <cstring>
 #include <limits>
 #include <utility>
@@ -171,6 +172,16 @@ const CanEvent* AbstractStream::newEvent(uint64_t mono_ns, const cereal::CanData
   return e;
 }
 
+const CanEvent* AbstractStream::newEvent(uint64_t mono_ns, uint8_t src, uint32_t address, const uint8_t* data, uint8_t size) {
+  CanEvent* e = (CanEvent*)event_buffer_->allocate(sizeof(CanEvent) + sizeof(uint8_t) * size);
+  e->src = src;
+  e->address = address;
+  e->mono_ns = mono_ns;
+  e->size = size;
+  memcpy(e->dat, data, size);
+  return e;
+}
+
 void AbstractStream::mergeEvents(const std::vector<const CanEvent*>& events) {
   if (events.empty()) return;
 
@@ -202,7 +213,7 @@ void AbstractStream::mergeEvents(const std::vector<const CanEvent*>& events) {
     // Sync the time index (rebuild only if it wasn't a simple append)
     time_index_map_[id].sync(e, e.front()->mono_ns, e.back()->mono_ns, !was_append);
   }
-  emit eventsMerged(msg_events);
+  QTimer::singleShot(0, this, [this, msg_events = std::move(msg_events)]() mutable { emit eventsMerged(msg_events); });
 }
 
 std::pair<CanEventIter, CanEventIter> AbstractStream::eventsInRange(

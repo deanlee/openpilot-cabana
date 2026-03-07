@@ -19,9 +19,9 @@ static const QStringList SIGNAL_PROPERTY_LABELS = {
 
 QString signalTypeToString(dbc::Signal::Type type) {
   switch (type) {
-    case dbc::Signal::Type::Multiplexor: return "Multiplexor Signal";
-    case dbc::Signal::Type::Multiplexed: return "Multiplexed Signal";
-    default: return "Normal Signal";
+    case dbc::Signal::Type::Multiplexor: return QStringLiteral("Multiplexor Signal");
+    case dbc::Signal::Type::Multiplexed: return QStringLiteral("Multiplexed Signal");
+    default: return QStringLiteral("Normal Signal");
   }
 }
 
@@ -44,7 +44,7 @@ void SignalTreeModel::insertItem(SignalTreeModel::Item* root_item, int pos, cons
 
 void SignalTreeModel::setMessage(const MessageId& id) {
   msg_id = id;
-  filter_str = "";
+  filter_str.clear();
   rebuild();
 }
 
@@ -244,7 +244,7 @@ QVariant SignalTreeModel::data(const QModelIndex& index, int role) const {
       case Item::ValueTable: {
         QStringList value_table;
         for (auto& [val, desc] : item->sig->value_table) {
-          value_table << QString("%1 \"%2\"").arg(val).arg(desc);
+          value_table << QString::number(val) + " \"" + desc + "\"";
         }
         return value_table.join(" ");
       }
@@ -279,7 +279,7 @@ bool SignalTreeModel::setData(const QModelIndex& index, const QVariant& value, i
     case Item::Name: s.name = value.toString(); break;
     case Item::Size: s.size = value.toInt(); break;
     case Item::Node: s.receiver_name = value.toString().trimmed(); break;
-    case Item::SignalType: s.type = (dbc::Signal::Type)value.toInt(); break;
+    case Item::SignalType: s.type = static_cast<dbc::Signal::Type>(value.toInt()); break;
     case Item::MultiplexValue: s.multiplex_value = value.toInt(); break;
     case Item::Endian: s.is_little_endian = value.toBool(); break;
     case Item::Signed: s.is_signed = value.toBool(); break;
@@ -302,8 +302,7 @@ void SignalTreeModel::highlightSignalRow(const dbc::Signal* sig) {
     const bool highlight = (root->children[i]->sig == sig);
     if (root->children[i]->highlight != highlight) {
       root->children[i]->highlight = highlight;
-      emit dataChanged(index(i, 0), index(i, 0), {Qt::DecorationRole});
-      emit dataChanged(index(i, 1), index(i, 1), {Qt::DisplayRole});
+      emit dataChanged(index(i, 0), index(i, 1), {Qt::DecorationRole, Qt::DisplayRole});
     }
   }
 }
