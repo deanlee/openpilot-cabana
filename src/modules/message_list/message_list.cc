@@ -175,7 +175,7 @@ void MessageList::menuAboutToShow() {
   for (int i = 0; i < header->count(); ++i) {
     int logical_index = header->logicalIndex(i);
     auto action = menu->addAction(model->headerData(logical_index, Qt::Horizontal).toString(),
-                                  [=](bool checked) { header->setSectionHidden(logical_index, !checked); });
+                                  [this, logical_index](bool checked) { header->setSectionHidden(logical_index, !checked); });
     action->setCheckable(true);
     action->setChecked(!header->isSectionHidden(logical_index));
     // Can't hide the name column

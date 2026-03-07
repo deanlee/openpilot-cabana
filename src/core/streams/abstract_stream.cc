@@ -127,7 +127,7 @@ void AbstractStream::updateSnapshotsTo(double sec) {
     auto& m = shared_state_.master_state[id];
     m.dirty = false;
     m.init(prev_ev->dat, prev_ev->size, toSeconds(prev_ev->mono_ns));
-    m.count = std::distance(ev.begin(), it);
+    m.count = it - ev.begin();
     m.updateAllPatternColors(sec);  // Important: Update colors before snapshotting
 
     auto& snap_ptr = snapshot_map_[id];
@@ -162,7 +162,7 @@ void AbstractStream::waitForSeekFinished() {
 
 const CanEvent* AbstractStream::newEvent(uint64_t mono_ns, const cereal::CanData::Reader& c) {
   auto dat = c.getDat();
-  CanEvent* e = (CanEvent*)event_buffer_->allocate(sizeof(CanEvent) + sizeof(uint8_t) * dat.size());
+  CanEvent* e = static_cast<CanEvent*>(event_buffer_->allocate(sizeof(CanEvent) + sizeof(uint8_t) * dat.size()));
   e->src = c.getSrc();
   e->address = c.getAddress();
   e->mono_ns = mono_ns;
@@ -272,15 +272,14 @@ void AbstractStream::updateMessageMask(const MessageId& id) {
 }
 
 void AbstractStream::applyCurrentPolicy(MessageState& state, const MessageId& id) {
+  state.mask.clear();
   if (shared_state_.mute_defined_signals) {
     auto it = shared_state_.masks.find(id);
     if (it != shared_state_.masks.end()) {
-      state.applyMask(it->second);
-      return;
+      state.mask = it->second;
     }
   }
-  static const std::vector<uint8_t> empty_mask;
-  state.applyMask(empty_mask);
+  state.applyMask();
 }
 
 void AbstractStream::suppressDefinedSignals(bool suppress) {
@@ -298,7 +297,7 @@ size_t AbstractStream::suppressHighlighted() {
   std::lock_guard lk(mutex_);
   size_t cnt = 0;
   for (auto& [id, m] : shared_state_.master_state) {
-    cnt += m.muteActiveBits(shared_state_.masks[id]);
+    cnt += m.muteActiveBits();
   }
   return cnt;
 }
@@ -306,6 +305,6 @@ size_t AbstractStream::suppressHighlighted() {
 void AbstractStream::clearSuppressed() {
   std::lock_guard lk(mutex_);
   for (auto& [id, m] : shared_state_.master_state) {
-    m.unmuteActiveBits(shared_state_.masks[id]);
+    m.unmuteActiveBits();
   }
 }

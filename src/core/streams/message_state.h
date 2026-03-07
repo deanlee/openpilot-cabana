@@ -15,9 +15,11 @@ class MessageState {
   void init(const uint8_t* new_data, uint8_t data_size, double current_ts);
   void update(const uint8_t* new_data, uint8_t data_size, double current_ts, double manual_freq = 0, bool is_seek = false);
   void updateAllPatternColors(double current_ts);
-  void applyMask(const std::vector<uint8_t>& mask);
-  size_t muteActiveBits(const std::vector<uint8_t>& mask);
-  void unmuteActiveBits(const std::vector<uint8_t>& mask);
+  void applyMask();
+  size_t muteActiveBits();
+  void unmuteActiveBits();
+
+  std::vector<uint8_t> mask;  // DBC signal mask (effective: empty when muting is off)
 
   double ts = 0.0;     // Latest message timestamp
   double freq = 0.0;   // Message frequency (Hz)

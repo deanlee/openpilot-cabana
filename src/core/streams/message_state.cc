@@ -135,11 +135,11 @@ void MessageState::analyzeByteMutation(int i, uint8_t old_v, uint8_t new_v, uint
   const int delta = static_cast<int>(new_v) - static_cast<int>(old_v);
 
   // 1. Bit Stats
-  uint8_t mask = 0x80;  // 1000 0000
+  uint8_t bit_mask = 0x80;
   for (int bit = 0; bit < 8; ++bit) {
-    if (new_v & mask) bit_high_counts[i][bit]++;
-    if (diff & mask) bit_flips[i][bit]++;
-    mask >>= 1;
+    if (new_v & bit_mask) bit_high_counts[i][bit]++;
+    if (diff & bit_mask) bit_flips[i][bit]++;
+    bit_mask >>= 1;
   }
 
   // 2. Entropy
@@ -189,7 +189,7 @@ void MessageState::updateAllPatternColors(double current_can_sec) {
   }
 }
 
-void MessageState::applyMask(const std::vector<uint8_t>& mask) {
+void MessageState::applyMask() {
   ignore_bit_mask.fill(0);
 
   for (size_t i = 0; i < size; ++i) {
@@ -210,26 +210,25 @@ void MessageState::applyMask(const std::vector<uint8_t>& mask) {
   }
 }
 
-size_t MessageState::muteActiveBits(const std::vector<uint8_t>& mask) {
+size_t MessageState::muteActiveBits() {
   bool modified = false;
   size_t cnt = 0;
   for (size_t i = 0; i < size; ++i) {
     if (!is_suppressed[i] && (ts - last_change_ts[i] < kMuteActivityWindowSec)) {
-      is_suppressed[i] = 1;  // Mark as suppressed
+      is_suppressed[i] = 1;
       modified = true;
     }
     cnt += is_suppressed[i];
   }
   if (modified) {
-    applyMask(mask);
+    applyMask();
   }
   return cnt;
 }
 
-void MessageState::unmuteActiveBits(const std::vector<uint8_t>& mask) {
+void MessageState::unmuteActiveBits() {
   is_suppressed.fill(0);
-  // Refresh the mask (this will re-allow highlights for these bits)
-  applyMask(mask);
+  applyMask();
 }
 
 uint32_t colorFromDataPattern(DataPattern pattern, double current_ts, double last_ts, double freq) {

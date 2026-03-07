@@ -32,7 +32,7 @@ MessageDataRef getDataRef(CallerType type, const QModelIndex& index) {
 }  // namespace
 
 MessageDelegate::MessageDelegate(QObject* parent, CallerType caller_type)
-    : caller_type_(caller_type), QStyledItemDelegate(parent) {
+    : QStyledItemDelegate(parent), caller_type_(caller_type) {
   fixed_font = QFontDatabase::systemFont(QFontDatabase::FixedFont);
 
   QFontMetrics fm(fixed_font);

@@ -200,10 +200,13 @@ bool MessageModel::match(const MessageModel::Item& item) const {
   return true;
 }
 
-std::vector<MessageModel::Item> MessageModel::fetchItems() const {
+std::vector<MessageModel::Item> MessageModel::fetchItems() {
   const auto& snapshots = StreamManager::stream()->snapshots();
   const auto* dbc = GetDBC();
   const auto& dbc_messages = dbc->getMessages();
+
+  dbc_msg_count_ = 0;
+  signal_count_ = 0;
 
   std::vector<Item> new_items;
   new_items.reserve(snapshots.size() + dbc_messages.size());
@@ -222,6 +225,10 @@ std::vector<MessageModel::Item> MessageModel::fetchItems() const {
     };
 
     if (match(item)) {
+      if (msg) {
+        dbc_msg_count_++;
+        signal_count_ += msg->sigs.size();
+      }
       new_items.push_back(std::move(item));
     }
   };
@@ -250,21 +257,10 @@ std::vector<MessageModel::Item> MessageModel::fetchItems() const {
 void MessageModel::rebuild() {
   std::vector<Item> new_items = fetchItems();
 
-  dbc_msg_count_ = 0;
-  signal_count_ = 0;
-  const auto* dbc = GetDBC();
-  for (const auto& item : new_items) {
-    if (auto* m = dbc->msg(item.id)) {
-      dbc_msg_count_++;
-      signal_count_ += m->sigs.size();
-    }
-  }
-
   // Check if the IDs or count changed (affects UI structure)
   const bool structureChanged =
       (items_.size() != new_items.size()) || !std::ranges::equal(items_, new_items, {}, &Item::id, &Item::id);
   if (structureChanged) {
-    // IDs changed or items added/removed: reset is necessary
     beginResetModel();
     items_ = std::move(new_items);
     endResetModel();
@@ -272,7 +268,6 @@ void MessageModel::rebuild() {
     // Structure is identical: just update the data pointers and repaint
     items_ = std::move(new_items);
     emit dataChanged(index(0, 0), index(rowCount() - 1, columnCount() - 1));
-    emit layoutChanged();
   }
 }
 
@@ -287,9 +282,7 @@ void MessageModel::onSnapshotsUpdated(const std::set<MessageId>* ids, bool needs
 
   for (int i = 0; i < items_.size(); ++i) {
     if (!ids || ids->contains(items_[i].id)) {
-      for (int c = Column::FREQ; c <= Column::DATA; ++c) {
-        emit dataChanged(index(i, c), index(i, c));
-      }
+      emit dataChanged(index(i, Column::FREQ), index(i, Column::DATA));
     }
   }
 }
