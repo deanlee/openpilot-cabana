@@ -56,7 +56,7 @@ class MessageModel : public QAbstractTableModel {
   };
 
   std::optional<FilterRange> parseFilter(QString filter, int base = 10);
-  std::vector<Item> fetchItems() const;
+  std::vector<Item> fetchItems();
   void sortItems(std::vector<MessageModel::Item>& items) const;
   bool match(const MessageModel::Item& id) const;
   QString formatFreq(const Item& item) const;
