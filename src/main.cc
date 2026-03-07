@@ -54,42 +54,25 @@ int main(int argc, char* argv[]) {
 
   QCommandLineParser parser;
   parser.addHelpOption();
-  parser.addPositionalArgument("route",
-                               "the drive to replay. find your "
-                               "drives at connect.comma.ai");
-  parser.addOptions({{"demo",
-                      "use a demo route instead of "
-                      "providing your own"},
-                     {"auto",
-                      "Auto load the route from the "
-                      "best available source (no "
-                      "video): internal, "
-                      "openpilotci, "
-                      "comma_api, car_segments, "
-                      "testing_closet"},
-                     {"qcam", "load qcamera"},
-                     {"ecam", "load wide road camera"},
-                     {"dcam", "load driver camera"},
-                     {"msgq",
-                      "read can messages from the "
-                      "msgq"},
-                     {"panda", "read can messages from panda"},
-                     {{"panda-serial", "s"},
-                      "read can messages from panda "
-                      "with given serial",
-                      "panda-serial"},
-                     {{"zmq", "z"},
-                      "read can messages from zmq at "
-                      "the specified ip-address",
-                      "ip-address"},
-                     {{"data_dir", "d"}, "local directory with routes", "data_dir"},
-                     {"no-vipc", "do not output video"},
-                     {{"dbc", "b"}, "dbc file to open", "dbc"}});
-  if (SocketCanStream::available())
-    parser.addOption({"socketcan",
-                      "read can messages from given "
-                      "SocketCAN device",
-                      "socketcan"});
+  parser.addPositionalArgument("route", "the drive to replay. find your drives at connect.comma.ai");
+  parser.addOptions({
+      {"demo", "use a demo route instead of providing your own"},
+      {"auto", "Auto load the route from the best available source (no video)"},
+      {"qcam", "load qcamera"},
+      {"ecam", "load wide road camera"},
+      {"dcam", "load driver camera"},
+      {"msgq", "read can messages from the msgq"},
+      {"panda", "read can messages from panda"},
+      {{"panda-serial", "s"}, "read can messages from panda with given serial", "panda-serial"},
+      {{"zmq", "z"}, "read can messages from zmq at the specified ip-address", "ip-address"},
+      {{"data_dir", "d"}, "local directory with routes", "data_dir"},
+      {"no-vipc", "do not output video"},
+      {{"dbc", "b"}, "dbc file to open", "dbc"}
+  });
+
+  if (SocketCanStream::available()) {
+    parser.addOption({"socketcan", "read can messages from given SocketCAN device", "socketcan"});
+  }
 
   parser.process(app);
 
