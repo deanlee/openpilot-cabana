@@ -11,8 +11,9 @@ It supports multiple CAN data sources, including:
 | Source | Description |
 | :--- | :--- |
 | **Openpilot route** | Replay a recorded openpilot drive (local or via comma connect) |
-| **Vector ASC log** | Open one or more `.asc` log files captured with CANalyzer, CANoe, or any compatible logger |
-| **candump log** | Open one or more `.log` files recorded with `candump -l` (SocketCAN) |
+| **Vector ASC log** | `.asc` files from CANalyzer, CANoe, or any compatible logger |
+| **candump log** | `.log` files recorded with `candump -l` (SocketCAN) |
+| **PEAK TRC log** | `.trc` files from PEAK PCAN-View / PCAN-Explorer (v1.x and v2.x) |
 | **SocketCAN** | Live capture from a SocketCAN interface (e.g. `can0`) |
 | **comma.ai Panda** | Live capture from a USB-connected Panda device |
 | **ZMQ / Msgq** | Live streaming from a comma device over the network |
@@ -176,6 +177,16 @@ candump -l can0
 Select the **candump** tab in the stream selector and browse for one or more `.log` files. Multiple files are merged and sorted by timestamp automatically — useful when a long capture is split across several segments.
 
 Each unique CAN interface name in the file (e.g. `can0`, `can1`) is mapped to a separate bus channel.
+
+### Opening a PEAK TRC Log File
+
+Cabana supports CAN logs recorded with PEAK hardware tools such as PCAN-View and PCAN-Explorer.
+
+Both format versions are supported:
+- **v1.x** — timestamps are millisecond offsets from log start, single channel
+- **v2.x** — timestamps are `hh:mm:ss.sss` wall-clock, with an optional per-frame channel column
+
+Select the **TRC** tab in the stream selector and browse for one or more `.trc` files. Multiple files are stitched automatically, and the channel number (1-based in the file) is mapped to a 0-based bus index in Cabana.
 
 ### Using the Stream Selector Dialog
 
