@@ -9,21 +9,21 @@
 
 namespace {
 
-static constexpr int TOGGLE_DECAY = 40;
-static constexpr int TREND_INC = 40;
-static constexpr int JITTER_DECAY = 100;
-static constexpr int TREND_MAX = 255;
+constexpr int TOGGLE_DECAY = 40;
+constexpr int TREND_INC = 40;
+constexpr int JITTER_DECAY = 100;
+constexpr int TREND_MAX = 255;
 
-static constexpr int LIMIT_NOISY = 60;
-static constexpr int LIMIT_TOGGLE = 100;
-static constexpr int LIMIT_TREND = 160;
+constexpr int LIMIT_NOISY = 60;
+constexpr int LIMIT_TOGGLE = 100;
+constexpr int LIMIT_TREND = 160;
 
-static constexpr double ENTROPY_THRESHOLD = 0.85;
-static constexpr int MIN_SAMPLES_FOR_ENTROPY = 16;
-static constexpr double FREQ_JITTER_THRESHOLD = 0.0001;  // Intervals below this are considered jitter
+constexpr double ENTROPY_THRESHOLD = 0.85;
+constexpr int MIN_SAMPLES_FOR_ENTROPY = 16;
+constexpr double FREQ_JITTER_THRESHOLD = 0.0001;  // Intervals below this are considered jitter
 
 // Precomputed Shannon Entropy Table: H(p) = -p*log2(p) - (1-p)*log2(1-p)
-static const std::array<float, 256> ENTROPY_LOOKUP = [] {
+const std::array<float, 256> ENTROPY_LOOKUP = [] {
   std::array<float, 256> table;
   for (int i = 0; i < 256; ++i) {
     double p = i / 255.0;
@@ -34,8 +34,8 @@ static const std::array<float, 256> ENTROPY_LOOKUP = [] {
 }();
 
 // Calculates Shannon Entropy for a single bit based on the probability 'p'
-double getEntropy(uint32_t highs, uint32_t total) {
-  if (total < MIN_SAMPLES_FOR_ENTROPY) return 0.0;
+float getEntropy(uint32_t highs, uint32_t total) {
+  if (total < MIN_SAMPLES_FOR_ENTROPY) return 0.0f;
 
   int index = std::clamp(static_cast<int>((static_cast<float>(highs) / total) * 255.0f), 0, 255);
   return ENTROPY_LOOKUP[index];
@@ -63,6 +63,8 @@ void MessageState::init(const uint8_t* new_data, uint8_t data_size, double curre
   for (auto& f : bit_flips) f.fill(0);
   for (auto& h : bit_high_counts) h.fill(0);
 
+  is_suppressed.fill(0);
+  ignore_bit_mask.fill(0);
   last_data_64.fill(0);
   std::memcpy(last_data_64.data(), new_data, size);
 }
@@ -127,7 +129,10 @@ void MessageState::updateFrequency(double current_ts, double manual_freq, bool i
       double alpha = (interval < 0.1) ? 0.1 : 0.6;
       freq = (freq == 0.0) ? instant_freq : (freq * (1.0 - alpha)) + (instant_freq * alpha);
     }
-    last_freq_ts = current_ts;
+    // Don't regress last_freq_ts on out-of-order timestamps
+    if (interval >= 0) {
+      last_freq_ts = current_ts;
+    }
   }
 }
 
@@ -152,7 +157,7 @@ void MessageState::analyzeByteMutation(int i, uint8_t old_v, uint8_t new_v, uint
   // 3. Trends (Using SoA arrays last_delta[i] and trend_weight[i])
   const bool is_toggle = (delta == -last_delta[i]) && (delta != 0);
   const bool is_constant_step = (delta == last_delta[i]) && (delta != 0);
-  const bool same_direction = (delta > 0) == (last_delta[i] > 0);
+  const bool same_direction = last_delta[i] != 0 && ((delta > 0) == (last_delta[i] > 0));
 
   int& weight = trend_weight[i];
   if (is_constant_step) {
