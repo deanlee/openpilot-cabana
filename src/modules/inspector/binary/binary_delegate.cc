@@ -14,7 +14,7 @@ MessageBytesDelegate::MessageBytesDelegate(QObject* parent) : QStyledItemDelegat
   bin_text_table[0].setText("0");
   bin_text_table[1].setText("1");
   for (int i = 0; i < 256; ++i) {
-    hex_text_table[i].setText(QStringLiteral("%1").arg(i, 2, 16, QLatin1Char('0')).toUpper());
+    hex_text_table[i].setText(QString::asprintf("%02X", i));
     hex_text_table[i].prepare({}, hex_font);
   }
 }
