@@ -3,14 +3,11 @@
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QMenu>
-#include <QRadioButton>
-#include <QSplitter>
 #include <QVBoxLayout>
 
 #include "core/commands/commands.h"
 #include "mainwin.h"
 #include "message_edit.h"
-#include "message_inspector.h"
 #include "modules/system/stream_manager.h"
 
 MessageView::MessageView(ChartsPanel* charts, QWidget* parent) : charts(charts), QWidget(parent) {
@@ -74,7 +71,7 @@ void MessageView::setupConnections() {
   connect(binary_view, &BinaryView::showChart, charts, &ChartsPanel::showChart);
   connect(signal_editor, &SignalEditor::showChart, charts, &ChartsPanel::showChart);
   connect(signal_editor, &SignalEditor::highlight, binary_view, &BinaryView::highlight);
-  connect(tab_widget, &QTabWidget::currentChanged, [this]() { updateState(); });
+  connect(tab_widget, &QTabWidget::currentChanged, [this] { updateState(); });
   connect(&StreamManager::instance(), &StreamManager::snapshotsUpdated, this, &MessageView::updateState);
   connect(GetDBC(), &dbc::Manager::DBCFileChanged, this, &MessageView::refresh);
   connect(UndoStack::instance(), &QUndoStack::indexChanged, this, &MessageView::refresh);
@@ -182,9 +179,7 @@ void MessageView::setMessage(const MessageId& message_id) {
 void MessageView::resetState() {
   msg_id = MessageId();
   tabbar->blockSignals(true);
-  for (int i = tabbar->count() - 1; i >= 0; --i) {
-    tabbar->removeTab(i);
-  }
+  while (tabbar->count()) tabbar->removeTab(0);
   tabbar->blockSignals(false);
   binary_model->setMessage({});
   signal_editor->clearMessage();
@@ -197,7 +192,7 @@ std::pair<QString, QStringList> MessageView::serializeMessageIds() const {
     MessageId id = tabbar->tabData(i).value<MessageId>();
     msgs.append(id.toString());
   }
-  return std::make_pair(msg_id.toString(), msgs);
+  return {msg_id.toString(), msgs};
 }
 
 void MessageView::restoreTabs(const QString active_msg_id, const QStringList& msg_ids) {
@@ -267,21 +262,16 @@ void MessageView::editMsg() {
 void MessageView::removeMsg() { UndoStack::push(new RemoveMsgCommand(msg_id)); }
 
 void MessageView::toggleCenterOrientation() {
-  bool willBeHorizontal = splitter->orientation() == Qt::Vertical;
-  if (willBeHorizontal) {
+  if (splitter->orientation() == Qt::Vertical) {
     splitter->setOrientation(Qt::Horizontal);
     emit requestDockCompression();
-
-    int totalWidth = splitter->width();
-    splitter->setSizes({totalWidth / 2, totalWidth / 2});
-    toggle_orientation_btn_->setIcon(("rows-2"));
+    int w = splitter->width();
+    splitter->setSizes({w / 2, w / 2});
   } else {
     splitter->setOrientation(Qt::Vertical);
-    int totalHeight = splitter->height();
-    int bin_height = binary_view->sizeHint().height();
-    splitter->setSizes({bin_height, totalHeight - bin_height});
-    // emit requestDockExpansion();
-    toggle_orientation_btn_->setIcon(("columns-2"));
+    int h = splitter->height();
+    int bin_h = binary_view->sizeHint().height();
+    splitter->setSizes({bin_h, h - bin_h});
   }
   updateOrientationButton();
 }
