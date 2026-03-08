@@ -10,12 +10,13 @@
 #include "widgets/validators.h"
 
 MessageEdit::MessageEdit(const MessageId& msg_id, const QString& title, int size, QWidget* parent)
-    : original_name(title), msg_id(msg_id), QDialog(parent) {
+    : QDialog(parent), msg_id(msg_id), original_name(title) {
   setWindowTitle(tr("Edit message: %1").arg(msg_id.toString()));
   QFormLayout* form_layout = new QFormLayout(this);
 
-  form_layout->addRow("", error_label = new QLabel);
+  error_label = new QLabel(this);
   error_label->setVisible(false);
+  form_layout->addWidget(error_label);
   form_layout->addRow(tr("Name"), name_edit = new QLineEdit(title, this));
   name_edit->setValidator(new NameValidator(name_edit));
 
@@ -41,14 +42,14 @@ MessageEdit::MessageEdit(const MessageId& msg_id, const QString& title, int size
 
 void MessageEdit::validateName(const QString& text) {
   bool valid = text.compare(UNDEFINED, Qt::CaseInsensitive) != 0;
-  error_label->setText({});
-  error_label->setVisible(false);
+  QString error;
   if (!text.isEmpty() && valid && text != original_name) {
-    valid = GetDBC()->msg(msg_id.source, text) == nullptr;
-    if (!valid) {
-      error_label->setText(tr("Name already exists"));
-      error_label->setVisible(true);
+    if (GetDBC()->msg(msg_id.source, text) != nullptr) {
+      error = tr("Name already exists");
+      valid = false;
     }
   }
+  error_label->setText(error);
+  error_label->setVisible(!error.isEmpty());
   btn_box->button(QDialogButtonBox::Ok)->setEnabled(valid);
 }
