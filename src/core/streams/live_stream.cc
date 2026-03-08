@@ -35,118 +35,134 @@ struct LiveStream::Logger {
 
 LiveStream::LiveStream(QObject* parent) : AbstractStream(parent) {
   if (settings.log_livestream) {
-    logger = std::make_unique<Logger>();
+    logger_ = std::make_unique<Logger>();
   }
-  stream_thread = new QThread(this);
+  stream_thread_ = new QThread(this);
 
-  connect(&settings, &Settings::changed, this, &LiveStream::startUpdateTimer);
-  connect(stream_thread, &QThread::started, [=]() { streamThread(); });
-  connect(stream_thread, &QThread::finished, stream_thread, &QThread::deleteLater);
+  connect(&settings, &Settings::changed, this, &LiveStream::startFrameTimer);
+  connect(stream_thread_, &QThread::started, [this]() { streamThread(); });
+  connect(stream_thread_, &QThread::finished, stream_thread_, &QThread::deleteLater);
 }
 
 LiveStream::~LiveStream() { stop(); }
 
-void LiveStream::startUpdateTimer() {
-  update_timer.stop();
-  update_timer.start(1000.0 / settings.fps, this);
-  timer_id = update_timer.timerId();
-}
-
 void LiveStream::start() {
-  stream_thread->start();
-  startUpdateTimer();
-  begin_date_time = QDateTime::currentDateTime();
+  stream_thread_->start();
+  startFrameTimer();
+  begin_date_time_ = QDateTime::currentDateTime();
 }
 
 void LiveStream::stop() {
-  if (!stream_thread) return;
+  if (!stream_thread_) return;
 
-  update_timer.stop();
-  stream_thread->requestInterruption();
-  stream_thread->quit();
-  stream_thread->wait();
-  stream_thread = nullptr;
+  frame_timer_.stop();
+  stream_thread_->requestInterruption();
+  stream_thread_->quit();
+  stream_thread_->wait();
+  stream_thread_ = nullptr;
 }
 
-// called in streamThread
+void LiveStream::startFrameTimer() {
+  frame_timer_.stop();
+  frame_timer_.start(1000.0 / settings.fps, this);
+}
+
+// Called from the stream thread
 void LiveStream::handleEvent(kj::ArrayPtr<capnp::word> data) {
-  if (logger) {
-    logger->write(data);
+  if (logger_) {
+    logger_->write(data);
   }
 
   capnp::FlatArrayMessageReader reader(data);
   auto event = reader.getRoot<cereal::Event>();
   if (event.which() == cereal::Event::Which::CAN) {
     const uint64_t mono_ns = event.getLogMonoTime();
-    std::lock_guard lk(lock);
+    std::lock_guard lk(recv_mutex_);
     for (const auto& c : event.getCan()) {
-      received_events_.push_back(newEvent(mono_ns, c));
+      recv_queue_.push_back(newEvent(mono_ns, c));
     }
   }
 }
 
 void LiveStream::timerEvent(QTimerEvent* event) {
-  if (event->timerId() == timer_id) {
-    std::vector<const CanEvent*> local_queue;
-    {
-      std::lock_guard lk(lock);
-      local_queue.swap(received_events_);
-    }
-
-    if (!local_queue.empty()) {
-      mergeEvents(local_queue);
-      lastest_event_ts = std::max(lastest_event_ts, local_queue.back()->mono_ns);
-    }
-
-    if (!all_events_.empty()) {
-      begin_event_ts = all_events_.front()->mono_ns;
-      processNewMessages();
-      return;
-    }
-  }
-  QObject::timerEvent(event);
-}
-
-void LiveStream::processNewMessages() {
-  static double prev_speed = 1.0;
-
-  if (first_update_ts == 0) {
-    first_update_ts = nanos_since_boot();
-    first_event_ts = current_event_ts = all_events_.back()->mono_ns;
-  }
-
-  if (paused_ || prev_speed != speed_) {
-    prev_speed = speed_;
-    first_update_ts = nanos_since_boot();
-    first_event_ts = current_event_ts;
+  if (event->timerId() != frame_timer_.timerId()) {
+    QObject::timerEvent(event);
     return;
   }
 
-  uint64_t last_ts = post_last_event && speed_ == 1.0
-                         ? all_events_.back()->mono_ns
-                         : first_event_ts + (nanos_since_boot() - first_update_ts) * speed_;
-  auto first = std::ranges::upper_bound(all_events_, current_event_ts, {}, &CanEvent::mono_ns);
-  auto last = std::ranges::upper_bound(first, all_events_.end(), last_ts, {}, &CanEvent::mono_ns);
+  drainQueue();
+  if (!all_events_.empty()) {
+    begin_ns_ = all_events_.front()->mono_ns;
+    advancePlayback();
+  }
+}
+
+void LiveStream::drainQueue() {
+  std::vector<const CanEvent*> batch;
+  {
+    std::lock_guard lk(recv_mutex_);
+    batch.swap(recv_queue_);
+  }
+  if (!batch.empty()) {
+    mergeEvents(batch);
+    latest_ns_ = std::max(latest_ns_, batch.back()->mono_ns);
+  }
+}
+
+void LiveStream::advancePlayback() {
+  // Initialize anchor on the first frame with data
+  if (anchor_wall_ns_ == 0) {
+    cursor_ns_ = all_events_.back()->mono_ns;
+    resetAnchor();
+  }
+
+  if (paused_) return;
+
+  const uint64_t target = playbackTarget();
+  auto first = std::ranges::upper_bound(all_events_, cursor_ns_, {}, &CanEvent::mono_ns);
+  auto last = std::ranges::upper_bound(first, all_events_.end(), target, {}, &CanEvent::mono_ns);
 
   for (auto it = first; it != last; ++it) {
     const CanEvent* e = *it;
-    MessageId id(e->src, e->address);
-    processNewMessage(id, e->mono_ns, e->dat, e->size);
-    current_event_ts = e->mono_ns;
+    processNewMessage({e->src, e->address}, e->mono_ns, e->dat, e->size);
+    cursor_ns_ = e->mono_ns;
   }
 
   commitSnapshots();
 }
 
+void LiveStream::resetAnchor() {
+  anchor_wall_ns_ = nanos_since_boot();
+  anchor_can_ns_ = cursor_ns_;
+}
+
+uint64_t LiveStream::playbackTarget() const {
+  // At normal speed on the live edge, skip clock math and process all available events
+  if (at_live_edge_ && speed_ == 1.0) {
+    return latest_ns_;
+  }
+  return anchor_can_ns_ + static_cast<uint64_t>((nanos_since_boot() - anchor_wall_ns_) * speed_);
+}
+
+void LiveStream::setSpeed(float speed) {
+  if (speed_ != speed) {
+    resetAnchor();
+    speed_ = speed;
+  }
+}
+
 void LiveStream::seekTo(double sec) {
   sec = std::max(0.0, sec);
-  first_update_ts = nanos_since_boot();
-  current_event_ts = first_event_ts = std::min<uint64_t>(sec * 1e9 + begin_event_ts, lastest_event_ts);
-  post_last_event = (first_event_ts == lastest_event_ts);
-  emit seekedTo((current_event_ts - begin_event_ts) / 1e9);
+  cursor_ns_ = std::min<uint64_t>(sec * 1e9 + begin_ns_, latest_ns_);
+  at_live_edge_ = (cursor_ns_ >= latest_ns_);
+  resetAnchor();
+  emit seekedTo((cursor_ns_ - begin_ns_) / 1e9);
 }
 
 void LiveStream::pause(bool pause) {
-  paused_ = pause;
-  emit(pause ? paused() : resume());
+  if (paused_ != pause) {
+    paused_ = pause;
+    resetAnchor();
+    emit(pause ? paused() : resume());
+  }
 }
