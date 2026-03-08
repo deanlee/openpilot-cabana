@@ -255,7 +255,7 @@ void MessageView::editMsg() {
   MessageEdit dlg(msg_id, msgName(msg_id), size, this);
   if (dlg.exec()) {
     UndoStack::push(new EditMsgCommand(msg_id, dlg.name_edit->text().trimmed(), dlg.size_spin->value(),
-                                       dlg.node->text().trimmed(), dlg.comment_edit->toPlainText().trimmed()));
+                                       dlg.node_edit->currentText().trimmed(), dlg.comment_edit->toPlainText().trimmed()));
   }
 }
 
