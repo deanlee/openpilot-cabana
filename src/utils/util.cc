@@ -194,10 +194,11 @@ QString formatSeconds(double sec, bool include_milliseconds, bool absolute_time)
   char buf[32];
   int len;
   if (h > 0) {
-    len = include_milliseconds ? std::sprintf(buf, "%02d:%02d:%02d.%03d", h, m, s, ms)
-                               : std::sprintf(buf, "%02d:%02d:%02d", h, m, s);
+    len = include_milliseconds ? std::snprintf(buf, sizeof(buf), "%02d:%02d:%02d.%03d", h, m, s, ms)
+                               : std::snprintf(buf, sizeof(buf), "%02d:%02d:%02d", h, m, s);
   } else {
-    len = include_milliseconds ? std::sprintf(buf, "%02d:%02d.%03d", m, s, ms) : std::sprintf(buf, "%02d:%02d", m, s);
+    len = include_milliseconds ? std::snprintf(buf, sizeof(buf), "%02d:%02d.%03d", m, s, ms)
+                               : std::snprintf(buf, sizeof(buf), "%02d:%02d", m, s);
   }
 
   return QString::fromLatin1(buf, len);

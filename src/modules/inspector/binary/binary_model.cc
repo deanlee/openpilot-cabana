@@ -339,7 +339,7 @@ QVariant BinaryModel::data(const QModelIndex& index, int role) const {
 
 QString signalToolTip(const dbc::Signal* sig) {
   return QObject::tr(R"(
-    %1<br /><span font-size:small">
+    %1<br /><span style="font-size:small">
     Start Bit: %2 Size: %3<br />
     MSB: %4 LSB: %5<br />
     Little Endian: %6 Signed: %7</span>
