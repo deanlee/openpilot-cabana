@@ -1,5 +1,6 @@
 #pragma once
 
+#include <QComboBox>
 #include <QDialog>
 #include <QDialogButtonBox>
 #include <QLabel>
@@ -14,7 +15,7 @@ class MessageEdit : public QDialog {
   MessageEdit(const MessageId& msg_id, const QString& title, int size, QWidget* parent);
 
   QLineEdit* name_edit;
-  QLineEdit* node;
+  QComboBox* node_edit;
   QTextEdit* comment_edit;
   QSpinBox* size_spin;
 

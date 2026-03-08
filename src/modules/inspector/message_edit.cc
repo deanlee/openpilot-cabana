@@ -1,8 +1,10 @@
 #include "message_edit.h"
 
+#include <QCompleter>
 #include <QFormLayout>
 #include <QLineEdit>
 #include <QPushButton>
+#include <set>
 
 #include "core/dbc/dbc_manager.h"
 #include "core/streams/message_state.h"
@@ -15,6 +17,7 @@ MessageEdit::MessageEdit(const MessageId& msg_id, const QString& title, int size
   QFormLayout* form_layout = new QFormLayout(this);
 
   error_label = new QLabel(this);
+  error_label->setStyleSheet("color: red;");
   error_label->setVisible(false);
   form_layout->addWidget(error_label);
   form_layout->addRow(tr("Name"), name_edit = new QLineEdit(title, this));
@@ -24,13 +27,26 @@ MessageEdit::MessageEdit(const MessageId& msg_id, const QString& title, int size
   size_spin->setRange(1, MAX_CAN_LEN);
   size_spin->setValue(size);
 
-  form_layout->addRow(tr("Node"), node = new QLineEdit(this));
-  node->setValidator(new NameValidator(node));
+  node_edit = new QComboBox(this);
+  node_edit->setEditable(true);
+  node_edit->setInsertPolicy(QComboBox::NoInsert);
+  node_edit->completer()->setCompletionMode(QCompleter::PopupCompletion);
+  std::set<QString> nodes;
+  for (const auto& [_, msg] : GetDBC()->getMessages(msg_id.source)) {
+    if (!msg.transmitter.isEmpty()) {
+      nodes.insert(msg.transmitter);
+    }
+  }
+  for (const auto& node : nodes) {
+    node_edit->addItem(node);
+  }
+  form_layout->addRow(tr("Node"), node_edit);
+
   form_layout->addRow(tr("Comment"), comment_edit = new QTextEdit(this));
   form_layout->addRow(btn_box = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel));
 
   if (auto msg = GetDBC()->msg(msg_id)) {
-    node->setText(msg->transmitter);
+    node_edit->setCurrentText(msg->transmitter);
     comment_edit->setText(msg->comment);
   }
   validateName(name_edit->text());
@@ -45,7 +61,7 @@ void MessageEdit::validateName(const QString& text) {
   QString error;
   if (!text.isEmpty() && valid && text != original_name) {
     if (GetDBC()->msg(msg_id.source, text) != nullptr) {
-      error = tr("Name already exists");
+      error = tr("A message named %1 already exists on this bus.").arg(text);
       valid = false;
     }
   }
