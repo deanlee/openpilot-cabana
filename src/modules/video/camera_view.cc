@@ -1,12 +1,21 @@
-#include "camera_view.h"
 
+#include <QApplication>
+#include <QCoreApplication>
 #ifdef __APPLE__
 #include <OpenGL/gl3.h>
 #else
 #include <GLES3/gl3.h>
 #endif
+#include "camera_view.h"
 
-#include <QApplication>
+void VipcWorker::stop() {
+  running_ = false;
+  QThread *thread = QThread::currentThread();
+  QThread *mainThread = QCoreApplication::instance() ? QCoreApplication::instance()->thread() : nullptr;
+  if (thread && thread != mainThread) {
+    thread->requestInterruption();
+  }
+}
 
 namespace {
 
@@ -16,12 +25,12 @@ const char frame_vertex_shader[] =
 #else
     "#version 300 es\n"
 #endif
-    "layout(location = 0) in vec4 aPosition;\n"
+    "layout(location = 0) in vec2 aPosition;\n"
     "layout(location = 1) in vec2 aTexCoord;\n"
     "uniform mat4 uTransform;\n"
     "out vec2 vTexCoord;\n"
     "void main() {\n"
-    "  gl_Position = uTransform * aPosition;\n"
+    "  gl_Position = uTransform * vec4(aPosition, 0.0, 1.0);\n"
     "  vTexCoord = aTexCoord;\n"
     "}\n";
 
@@ -48,19 +57,18 @@ const char frame_fragment_shader[] =
 }  // namespace
 
 CameraView::CameraView(std::string stream_name, VisionStreamType type, QWidget* parent)
-    : stream_name(stream_name), active_stream_type(type), requested_stream_type(type), QOpenGLWidget(parent) {
+    : QOpenGLWidget(parent),
+      stream_name(std::move(stream_name)),
+      active_stream_type(type),
+      requested_stream_type(type) {
   setAttribute(Qt::WA_OpaquePaintEvent);
   qRegisterMetaType<std::set<VisionStreamType>>("availableStreams");
-  connect(this, &CameraView::vipcThreadConnected, this, &CameraView::vipcConnected, Qt::BlockingQueuedConnection);
-  connect(this, &CameraView::vipcThreadFrameReceived, this, &CameraView::vipcFrameReceived, Qt::QueuedConnection);
-  connect(this, &CameraView::vipcAvailableStreamsUpdated, this, &CameraView::availableStreamsUpdated,
-          Qt::QueuedConnection);
   connect(QApplication::instance(), &QCoreApplication::aboutToQuit, this, &CameraView::stopVipcThread);
 }
 
 CameraView::~CameraView() {
-  makeCurrent();
   stopVipcThread();
+  makeCurrent();
   if (isValid()) {
     glDeleteVertexArrays(1, &frame_vao);
     glDeleteBuffers(1, &frame_vbo);
@@ -75,9 +83,15 @@ void CameraView::initializeGL() {
   initializeOpenGLFunctions();
 
   shader_program_ = std::make_unique<QOpenGLShaderProgram>(context());
-  shader_program_->addShaderFromSourceCode(QOpenGLShader::Vertex, frame_vertex_shader);
-  shader_program_->addShaderFromSourceCode(QOpenGLShader::Fragment, frame_fragment_shader);
-  shader_program_->link();
+  bool ok = shader_program_->addShaderFromSourceCode(QOpenGLShader::Vertex, frame_vertex_shader);
+  assert(ok);
+  ok = shader_program_->addShaderFromSourceCode(QOpenGLShader::Fragment, frame_fragment_shader);
+  assert(ok);
+  ok = shader_program_->link();
+  assert(ok);
+
+  transform_loc_ = shader_program_->uniformLocation("uTransform");
+  assert(transform_loc_ != -1);
 
   GLint frame_pos_loc = shader_program_->attributeLocation("aPosition");
   GLint frame_texcoord_loc = shader_program_->attributeLocation("aTexCoord");
@@ -116,36 +130,62 @@ void CameraView::initializeGL() {
   shader_program_->release();
 }
 
-void CameraView::showEvent(QShowEvent* event) {
-  if (!vipc_thread) {
-    clearFrames();
-    vipc_thread = new QThread();
-    connect(vipc_thread, &QThread::started, [=]() { vipcThread(); });
-    connect(vipc_thread, &QThread::finished, vipc_thread, &QObject::deleteLater);
-    vipc_thread->start();
-  }
+void CameraView::showEvent(QShowEvent* event) { startVipcThread(); }
+
+void CameraView::hideEvent(QHideEvent* event) { stopVipcThread(); }
+
+void CameraView::startVipcThread() {
+  if (vipc_thread_) return;
+
+  worker_ = new VipcWorker(this);
+  vipc_thread_ = new QThread(this);
+  worker_->moveToThread(vipc_thread_);
+
+  connect(vipc_thread_, &QThread::started, worker_, &VipcWorker::run);
+  connect(worker_, &VipcWorker::connected, this, &CameraView::onVipcConnected);
+  connect(worker_, &VipcWorker::frameReceived, this, &CameraView::onFrameReceived);
+  connect(worker_, &VipcWorker::availableStreamsUpdated, this, &CameraView::onAvailableStreamsUpdated);
+  connect(vipc_thread_, &QThread::finished, worker_, &QObject::deleteLater);
+
+  vipc_thread_->start();
 }
 
 void CameraView::stopVipcThread() {
-  makeCurrent();
-  if (vipc_thread) {
-    vipc_thread->requestInterruption();
-    vipc_thread->quit();
-    vipc_thread->wait();
-    vipc_thread = nullptr;
+  if (!vipc_thread_) return;
+
+  // Signal the worker to stop and interrupt the thread
+  worker_->stop();
+  vipc_thread_->requestInterruption();
+  vipc_thread_->quit(); // in case an event loop is running
+
+  // Wait for the thread to finish, but with a timeout to avoid deadlock
+  if (!vipc_thread_->wait(500)) {
+    qWarning("CameraView: vipc_thread_ did not exit in time, forcing termination");
+    // As a last resort, terminate (not recommended, but avoids app hang)
+    vipc_thread_->terminate();
+    vipc_thread_->wait(100);
   }
+  vipc_thread_->deleteLater();
+  vipc_thread_ = nullptr;
+  worker_ = nullptr;
+
+  std::lock_guard lk(frame_lock);
+  current_frame_ = nullptr;
+  available_streams.clear();
 }
 
-void CameraView::availableStreamsUpdated(std::set<VisionStreamType> streams) { available_streams = streams; }
+void CameraView::onAvailableStreamsUpdated(std::set<VisionStreamType> streams) {
+  available_streams = streams;
+  emit vipcAvailableStreamsUpdated(streams);
+}
 
 void CameraView::paintGL() {
   glClearColor(bg.redF(), bg.greenF(), bg.blueF(), bg.alphaF());
   glClear(GL_STENCIL_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 
   std::lock_guard lk(frame_lock);
-  if (!current_frame_) return;
+  if (!current_frame_ || stream_width <= 0 || stream_height <= 0 || height() <= 0) return;
 
-  // Scale for aspect ratio
   float widget_ratio = (float)width() / height();
   float frame_ratio = (float)stream_width / stream_height;
   float scale_x = std::min(frame_ratio / widget_ratio, 1.0f);
@@ -156,18 +196,18 @@ void CameraView::paintGL() {
   shader_program_->bind();
   QMatrix4x4 transform;
   transform.scale(scale_x, scale_y, 1.0f);
-  shader_program_->setUniformValue("uTransform", transform);
+  shader_program_->setUniformValue(transform_loc_, transform);
 
   glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
-  glPixelStorei(GL_UNPACK_ROW_LENGTH, stream_stride);
   glActiveTexture(GL_TEXTURE0);
   glBindTexture(GL_TEXTURE_2D, textures[0]);
+  glPixelStorei(GL_UNPACK_ROW_LENGTH, stream_stride);
   glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, stream_width, stream_height, GL_RED, GL_UNSIGNED_BYTE, current_frame_->y);
 
-  glPixelStorei(GL_UNPACK_ROW_LENGTH, stream_stride / 2);
   glActiveTexture(GL_TEXTURE1);
   glBindTexture(GL_TEXTURE_2D, textures[1]);
+  glPixelStorei(GL_UNPACK_ROW_LENGTH, stream_stride / 2);
   glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, stream_width / 2, stream_height / 2, GL_RG, GL_UNSIGNED_BYTE,
                   current_frame_->uv);
 
@@ -175,7 +215,6 @@ void CameraView::paintGL() {
   glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_BYTE, nullptr);
   glBindVertexArray(0);
 
-  // Reset both texture units
   glActiveTexture(GL_TEXTURE1);
   glBindTexture(GL_TEXTURE_2D, 0);
   glActiveTexture(GL_TEXTURE0);
@@ -186,74 +225,85 @@ void CameraView::paintGL() {
   shader_program_->release();
 }
 
-void CameraView::vipcConnected(VisionIpcClient* vipc_client) {
-  makeCurrent();
-  stream_width = vipc_client->buffers[0].width;
-  stream_height = vipc_client->buffers[0].height;
-  stream_stride = vipc_client->buffers[0].stride;
-
-  glBindTexture(GL_TEXTURE_2D, textures[0]);
+void CameraView::initTexture(GLuint texture, GLint internal_format, int width, int height, GLenum format) {
+  glBindTexture(GL_TEXTURE_2D, texture);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-  glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-  glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, stream_width, stream_height, 0, GL_RED, GL_UNSIGNED_BYTE, nullptr);
-  assert(glGetError() == GL_NO_ERROR);
-
-  glBindTexture(GL_TEXTURE_2D, textures[1]);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-  glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-  glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RG8, stream_width / 2, stream_height / 2, 0, GL_RG, GL_UNSIGNED_BYTE, nullptr);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+  glTexImage2D(GL_TEXTURE_2D, 0, internal_format, width, height, 0, format, GL_UNSIGNED_BYTE, nullptr);
   assert(glGetError() == GL_NO_ERROR);
 }
 
-void CameraView::vipcFrameReceived() { update(); }
+void CameraView::onVipcConnected(int width, int height, int stride) {
+  makeCurrent();
+  stream_width = width;
+  stream_height = height;
+  stream_stride = stride;
 
-void CameraView::vipcThread() {
-  VisionStreamType cur_stream = requested_stream_type;
+  initTexture(textures[0], GL_R8, stream_width, stream_height, GL_RED);
+  initTexture(textures[1], GL_RG8, stream_width / 2, stream_height / 2, GL_RG);
+  glBindTexture(GL_TEXTURE_2D, 0);
+  doneCurrent();
+}
+
+void CameraView::onFrameReceived() { update(); }
+
+// --- VipcWorker ---
+
+VipcWorker::VipcWorker(CameraView* view) : view_(view) {}
+
+void VipcWorker::clearFrame() {
+  std::lock_guard lk(view_->frame_lock);
+  view_->current_frame_ = nullptr;
+}
+
+void VipcWorker::run() {
+  VisionStreamType cur_stream = view_->requested_stream_type;
   std::unique_ptr<VisionIpcClient> vipc_client;
-  VisionIpcBufExtra frame_meta = {};
 
-  while (!QThread::currentThread()->isInterruptionRequested()) {
-    if (!vipc_client || cur_stream != requested_stream_type) {
-      clearFrames();
-      qDebug().nospace() << "connecting to stream " << requested_stream_type << ", was connected to " << cur_stream;
-      cur_stream = requested_stream_type;
-      vipc_client.reset(new VisionIpcClient(stream_name, cur_stream, false));
+  while (running_ && !QThread::currentThread()->isInterruptionRequested()) {
+    if (!vipc_client || cur_stream != view_->requested_stream_type) {
+      clearFrame();
+      cur_stream = view_->requested_stream_type;
+      vipc_client = std::make_unique<VisionIpcClient>(view_->stream_name, cur_stream, false);
     }
-    active_stream_type = cur_stream;
+    view_->active_stream_type = cur_stream;
 
     if (!vipc_client->connected) {
-      clearFrames();
-      auto streams = VisionIpcClient::getAvailableStreams(stream_name, false);
+      clearFrame();
+      auto streams = VisionIpcClient::getAvailableStreams(view_->stream_name, false);
       if (streams.empty()) {
-        QThread::msleep(100);
+        for (int i = 0; i < 10; ++i) {
+          if (!running_ || QThread::currentThread()->isInterruptionRequested()) return;
+          QThread::msleep(10);
+        }
         continue;
       }
-      emit vipcAvailableStreamsUpdated(streams);
+      emit availableStreamsUpdated(streams);
 
       if (!vipc_client->connect(false)) {
-        QThread::msleep(100);
+        for (int i = 0; i < 10; ++i) {
+          if (!running_ || QThread::currentThread()->isInterruptionRequested()) return;
+          QThread::msleep(10);
+        }
         continue;
       }
-      emit vipcThreadConnected(vipc_client.get());
+      emit connected(vipc_client->buffers[0].width, vipc_client->buffers[0].height, vipc_client->buffers[0].stride);
     }
 
-    if (VisionBuf* buf = vipc_client->recv(&frame_meta, 100)) {
+    VisionIpcBufExtra meta = {};
+    if (VisionBuf* buf = vipc_client->recv(&meta, 20)) { // shorter timeout for responsiveness
       {
-        std::lock_guard lk(frame_lock);
-        current_frame_ = buf;
-        frame_meta_ = frame_meta;
+        std::lock_guard lk(view_->frame_lock);
+        view_->current_frame_ = buf;
+        view_->frame_meta_ = meta;
       }
-      emit vipcThreadFrameReceived();
+      emit frameReceived();
     }
+    if (!running_ || QThread::currentThread()->isInterruptionRequested()) break;
   }
-}
 
-void CameraView::clearFrames() {
-  std::lock_guard lk(frame_lock);
-  current_frame_ = nullptr;
-  available_streams.clear();
+  // Ensure frame pointer is cleared before client is destroyed
+  clearFrame();
 }
