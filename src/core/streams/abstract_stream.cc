@@ -32,7 +32,7 @@ AbstractStream::AbstractStream(QObject* parent) : QObject(parent) {
 void AbstractStream::commitSnapshots() {
   std::set<MessageId> updated_ids;
   bool structure_changed = false;
-  const size_t initial_source_count = sources_.size();
+  const size_t prev_source_count = sources_.size();
 
   {
     std::lock_guard lk(mutex_);
@@ -58,13 +58,13 @@ void AbstractStream::commitSnapshots() {
 
   updateActivityStates();
 
-  // Range check
+  // Range Enforcement: Ensure we don't drift out of the set view
   if (time_range_ && (current_sec_ < time_range_->first || current_sec_ >= time_range_->second)) {
     seekTo(time_range_->first);
     return;
   }
 
-  if (sources_.size() != initial_source_count) {
+  if (sources_.size() != prev_source_count) {
     emit sourcesUpdated(sources_);
   }
   emit snapshotsUpdated(&updated_ids, structure_changed);
@@ -181,13 +181,7 @@ void AbstractStream::waitForSeekFinished() {
 
 const CanEvent* AbstractStream::newEvent(uint64_t mono_ns, const cereal::CanData::Reader& c) {
   auto dat = c.getDat();
-  CanEvent* e = (CanEvent*)event_buffer_->allocate(sizeof(CanEvent) + sizeof(uint8_t) * dat.size());
-  e->src = c.getSrc();
-  e->address = c.getAddress();
-  e->mono_ns = mono_ns;
-  e->size = dat.size();
-  memcpy(e->dat, dat.begin(), e->size);
-  return e;
+  return newEvent(mono_ns, c.getSrc(), c.getAddress(), dat.begin(), dat.size());
 }
 
 const CanEvent* AbstractStream::newEvent(uint64_t mono_ns, uint8_t src, uint32_t address, const uint8_t* data, uint8_t size) {
