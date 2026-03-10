@@ -37,12 +37,14 @@ class MessageState {
   static constexpr double kMuteActivityWindowSec = 2.0;
 
   double last_freq_ts = 0;
+  double avg_period_ = 0;
   std::array<double, MAX_CAN_LEN> last_change_ts = {0};
   std::array<int32_t, MAX_CAN_LEN> last_delta = {0};
   std::array<int32_t, MAX_CAN_LEN> trend_weight = {0};
   std::array<uint8_t, MAX_CAN_LEN> is_suppressed = {0};  // Use uint8 for better packing than bool
   std::array<DataPattern, MAX_CAN_LEN> detected_patterns = {DataPattern::None};
   std::array<std::array<uint32_t, 8>, MAX_CAN_LEN> bit_high_counts = {};
+  std::array<uint32_t, MAX_CAN_LEN> change_count_ = {0};
   std::array<uint64_t, 8> last_data_64 = {0};
   std::array<uint64_t, 8> ignore_bit_mask = {0};
 };

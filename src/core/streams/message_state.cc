@@ -21,6 +21,7 @@ constexpr int LIMIT_TREND = 160;
 constexpr double ENTROPY_THRESHOLD = 0.85;
 constexpr int MIN_SAMPLES_FOR_ENTROPY = 16;
 constexpr double FREQ_JITTER_THRESHOLD = 0.0001;  // Intervals below this are considered jitter
+constexpr double PATTERN_STALE_SEC = 5.0;           // Seconds after last change before pattern clears
 
 // Precomputed Shannon Entropy Table: H(p) = -p*log2(p) - (1-p)*log2(1-p)
 const std::array<float, 256> ENTROPY_LOOKUP = [] {
@@ -49,6 +50,7 @@ void MessageState::init(const uint8_t* new_data, uint8_t data_size, double curre
   count = 1;
   freq = 0;
   last_freq_ts = current_ts;
+  avg_period_ = 0;
 
   // Wipe arrays for the new message length
   std::memset(data.data(), 0, MAX_CAN_LEN);
@@ -63,6 +65,7 @@ void MessageState::init(const uint8_t* new_data, uint8_t data_size, double curre
   for (auto& f : bit_flips) f.fill(0);
   for (auto& h : bit_high_counts) h.fill(0);
 
+  change_count_.fill(0);
   is_suppressed.fill(0);
   ignore_bit_mask.fill(0);
   last_data_64.fill(0);
@@ -115,19 +118,19 @@ void MessageState::update(const uint8_t* new_data, uint8_t data_size, double cur
 void MessageState::updateFrequency(double current_ts, double manual_freq, bool is_seek) {
   if (manual_freq > 0) {
     freq = manual_freq;
+    avg_period_ = (freq > 0) ? 1.0 / freq : 0;
   } else if (is_seek || last_freq_ts == 0) {
     last_freq_ts = current_ts;
   } else {
     double interval = current_ts - last_freq_ts;
 
-    // Skip interval math if it's too small (jitter)
     if (interval > FREQ_JITTER_THRESHOLD) {
-      double instant_freq = 1.0 / interval;
-      // Adaptive Filter:
-      // High freq (interval < 0.1s) -> Alpha 0.1 (Heavy smoothing)
-      // Low freq (interval >= 0.1s) -> Alpha 0.6 (Fast response)
-      double alpha = (interval < 0.1) ? 0.1 : 0.6;
-      freq = (freq == 0.0) ? instant_freq : (freq * (1.0 - alpha)) + (instant_freq * alpha);
+      // Smooth the period via EWMA then invert for frequency.
+      // Averaging 1/period directly is biased (Jensen's inequality);
+      // averaging the period and inverting gives a stable estimate.
+      double alpha = std::clamp(interval * 2.0, 0.05, 0.5);
+      avg_period_ = (avg_period_ == 0.0) ? interval : avg_period_ * (1.0 - alpha) + interval * alpha;
+      freq = 1.0 / avg_period_;
     }
     // Don't regress last_freq_ts on out-of-order timestamps
     if (interval >= 0) {
@@ -139,22 +142,15 @@ void MessageState::updateFrequency(double current_ts, double manual_freq, bool i
 void MessageState::analyzeByteMutation(int i, uint8_t old_v, uint8_t new_v, uint8_t diff, double current_ts) {
   const int delta = static_cast<int>(new_v) - static_cast<int>(old_v);
 
-  // 1. Bit Stats
-  uint8_t mask = 0x80;  // 1000 0000
+  // Bit stats (branchless: shift-and-mask avoids unpredictable branches)
   for (int bit = 0; bit < 8; ++bit) {
-    if (new_v & mask) bit_high_counts[i][bit]++;
-    if (diff & mask) bit_flips[i][bit]++;
-    mask >>= 1;
+    const int shift = 7 - bit;
+    bit_high_counts[i][bit] += (new_v >> shift) & 1;
+    bit_flips[i][bit] += (diff >> shift) & 1;
   }
+  change_count_[i]++;
 
-  // 2. Entropy
-  float total_entropy = 0.0f;
-  for (int bit = 0; bit < 8; ++bit) {
-    total_entropy += getEntropy(bit_high_counts[i][bit], count);
-  }
-  const float avg_entropy = total_entropy / 8.0;
-
-  // 3. Trends (Using SoA arrays last_delta[i] and trend_weight[i])
+  // Trend tracking
   const bool is_toggle = (delta == -last_delta[i]) && (delta != 0);
   const bool is_constant_step = (delta == last_delta[i]) && (delta != 0);
   const bool same_direction = last_delta[i] != 0 && ((delta > 0) == (last_delta[i] > 0));
@@ -170,13 +166,13 @@ void MessageState::analyzeByteMutation(int i, uint8_t old_v, uint8_t new_v, uint
     weight = std::max(0, weight - JITTER_DECAY);
   }
 
-  // 4. Pattern logic
+  // Classify from trend state; entropy-based noise is deferred to display path
   DataPattern new_p = DataPattern::None;
   if (is_toggle && weight < LIMIT_TOGGLE) {
     new_p = DataPattern::Toggle;
   } else if (weight > LIMIT_TREND) {
     new_p = (delta > 0) ? DataPattern::Increasing : DataPattern::Decreasing;
-  } else if (avg_entropy > ENTROPY_THRESHOLD || weight > LIMIT_NOISY) {
+  } else if (weight > LIMIT_NOISY) {
     new_p = DataPattern::RandomlyNoisy;
   }
 
@@ -190,6 +186,20 @@ void MessageState::analyzeByteMutation(int i, uint8_t old_v, uint8_t new_v, uint
 
 void MessageState::updateAllPatternColors(double current_can_sec) {
   for (size_t i = 0; i < size; ++i) {
+    if (current_can_sec - last_change_ts[i] > PATTERN_STALE_SEC) {
+      detected_patterns[i] = DataPattern::None;
+    } else if (change_count_[i] >= MIN_SAMPLES_FOR_ENTROPY && trend_weight[i] <= LIMIT_TREND) {
+      // Entropy-based noise detection, deferred from the per-change hot path.
+      // Only runs when trend analysis hasn't strongly classified the byte.
+      float total_entropy = 0.0f;
+      for (int bit = 0; bit < 8; ++bit) {
+        total_entropy += getEntropy(bit_high_counts[i][bit], change_count_[i]);
+      }
+      if (total_entropy / 8.0f > ENTROPY_THRESHOLD) {
+        detected_patterns[i] = DataPattern::RandomlyNoisy;
+      }
+    }
+
     colors[i] = colorFromDataPattern(detected_patterns[i], current_can_sec, last_change_ts[i], freq);
   }
 }
@@ -210,6 +220,7 @@ void MessageState::applyMask(const std::vector<uint8_t>& mask) {
       if (m == 0xFF) {
         bit_flips[i].fill(0);
         bit_high_counts[i].fill(0);
+        change_count_[i] = 0;
       }
     }
   }
