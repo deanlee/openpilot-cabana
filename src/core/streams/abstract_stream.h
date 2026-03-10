@@ -96,15 +96,6 @@ class AbstractStream : public QObject {
   void processNewMessage(const MessageId& id, uint64_t mono_ns, const uint8_t* data, uint8_t size);
   void waitForSeekFinished();
 
-  struct SharedState {
-    double current_sec = 0;
-    std::set<MessageId> dirty_ids;
-    std::unordered_map<MessageId, MessageState> master_state;
-    std::unordered_map<MessageId, std::vector<uint8_t>> masks;
-    bool mute_defined_signals = false;
-    bool seek_finished = false;
-  };
-
   std::vector<const CanEvent*> all_events_;
   double current_sec_ = 0;
   std::optional<std::pair<double, double>> time_range_;
@@ -114,9 +105,23 @@ class AbstractStream : public QObject {
 
   void updateSnapshotsTo(double sec);
   void updateMasks();
-  void updateActiveStates();
+  void updateActivityStates();
   void updateMessageMask(const MessageId& id);
-  void applyCurrentPolicy(MessageState& state, const MessageId& id);
+  void applyMaskPolicy(MessageState& state, const MessageId& id);
+
+  // Internal state shared between threads, protected by mutex_
+  struct SharedState {
+    double current_sec = 0;
+    std::set<MessageId> dirty_ids;
+    std::unordered_map<MessageId, MessageState> master_state;
+    std::unordered_map<MessageId, std::vector<uint8_t>> masks;
+    bool mute_defined_signals = false;
+    bool seek_finished = false;
+  };
+
+  std::mutex mutex_;
+  SharedState shared_state_;
+  std::condition_variable seek_finished_cv_;
 
   std::unordered_map<MessageId, std::unique_ptr<MessageSnapshot>> snapshot_map_;
 
@@ -125,9 +130,6 @@ class AbstractStream : public QObject {
   std::unordered_map<MessageId, TimeIndex<const CanEvent*>> time_index_map_;
 
   double last_activity_update_ms_ = 0;
-  std::mutex mutex_;
-  SharedState shared_state_;
-  std::condition_variable seek_finished_cv_;
 };
 
 class DummyStream : public AbstractStream {

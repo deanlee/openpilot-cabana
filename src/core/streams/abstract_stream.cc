@@ -30,9 +30,9 @@ AbstractStream::AbstractStream(QObject* parent) : QObject(parent) {
 }
 
 void AbstractStream::commitSnapshots() {
-  std::set<MessageId> msgs;
+  std::set<MessageId> updated_ids;
   bool structure_changed = false;
-  size_t prev_src_count = sources_.size();
+  const size_t initial_source_count = sources_.size();
 
   {
     std::lock_guard lk(mutex_);
@@ -42,30 +42,32 @@ void AbstractStream::commitSnapshots() {
     for (const auto& id : shared_state_.dirty_ids) {
       auto& state = shared_state_.master_state[id];
       state.updateAllPatternColors(current_sec_);
-      auto& target = snapshot_map_[id];
-      if (target) {
-        target->updateFrom(state);
-      } else {
-        target = std::make_unique<MessageSnapshot>(state);
+
+      auto& snap = snapshot_map_[id];
+      if (!snap) {
+        snap = std::make_unique<MessageSnapshot>(state);
         structure_changed = true;
         sources_.insert(id.source);
+      } else {
+        snap->updateFrom(state);
       }
       state.dirty = false;
     }
-    msgs = std::move(shared_state_.dirty_ids);
+    updated_ids = std::move(shared_state_.dirty_ids);
   }
 
-  updateActiveStates();
+  updateActivityStates();
 
+  // Range check
   if (time_range_ && (current_sec_ < time_range_->first || current_sec_ >= time_range_->second)) {
     seekTo(time_range_->first);
     return;
   }
 
-  if (sources_.size() != prev_src_count) {
+  if (sources_.size() != initial_source_count) {
     emit sourcesUpdated(sources_);
   }
-  emit snapshotsUpdated(&msgs, structure_changed);
+  emit snapshotsUpdated(&updated_ids, structure_changed);
 }
 
 void AbstractStream::setTimeRange(const std::optional<std::pair<double, double>>& range) {
@@ -84,7 +86,7 @@ void AbstractStream::processNewMessage(const MessageId& id, uint64_t mono_ns, co
   auto& state = shared_state_.master_state[id];
   if (state.size != size) {
     state.init(data, size, sec);
-    applyCurrentPolicy(state, id);
+    applyMaskPolicy(state, id);
   } else {
     state.update(data, size, sec);
   }
@@ -108,6 +110,8 @@ const MessageSnapshot* AbstractStream::snapshot(const MessageId& id) const {
 }
 
 void AbstractStream::updateSnapshotsTo(double sec) {
+  std::unique_lock lk(mutex_);
+
   current_sec_ = sec;
 
   bool has_erased = false;
@@ -142,11 +146,13 @@ void AbstractStream::updateSnapshotsTo(double sec) {
 
   shared_state_.dirty_ids.clear();
   shared_state_.seek_finished = true;
+  lk.unlock();
   seek_finished_cv_.notify_one();
+
   emit snapshotsUpdated(nullptr, origin_snapshot_size != snapshot_map_.size() || has_erased);
 }
 
-void AbstractStream::updateActiveStates() {
+void AbstractStream::updateActivityStates() {
   const double now = millis_since_boot();
   if (now - last_activity_update_ms_ > kActivityCheckIntervalMs) {
     for (auto& [_, m] : snapshot_map_) {
@@ -249,18 +255,18 @@ void AbstractStream::updateMasks() {
   std::lock_guard lk(mutex_);
 
   shared_state_.masks.clear();
-  auto* dbc_manager = GetDBC();
+  auto* dbc = GetDBC();
 
   // Rebuild the mask cache
   for (uint8_t s : sources_) {
-    for (const auto& [address, m] : dbc_manager->getMessages(s)) {
-      shared_state_.masks[{s, address}] = m.mask;
+    for (const auto& [address, msg] : dbc->getMessages(s)) {
+      shared_state_.masks[{s, address}] = msg.mask;
     }
   }
 
   // Refresh all states based on the new cache
   for (auto& [id, state] : shared_state_.master_state) {
-    applyCurrentPolicy(state, id);
+    applyMaskPolicy(state, id);
   }
 }
 
@@ -278,12 +284,12 @@ void AbstractStream::updateMessageMask(const MessageId& id) {
 
     auto it = shared_state_.master_state.find(target_id);
     if (it != shared_state_.master_state.end()) {
-      applyCurrentPolicy(it->second, target_id);
+      applyMaskPolicy(it->second, target_id);
     }
   }
 }
 
-void AbstractStream::applyCurrentPolicy(MessageState& state, const MessageId& id) {
+void AbstractStream::applyMaskPolicy(MessageState& state, const MessageId& id) {
   if (shared_state_.mute_defined_signals) {
     auto it = shared_state_.masks.find(id);
     if (it != shared_state_.masks.end()) {
