@@ -9,7 +9,7 @@
 #include "common/timing.h"
 #include "modules/settings/settings.h"
 
-static constexpr int EVENT_NEXT_BUFFER_SIZE = 6 * 1024 * 1024;  // 6MB
+static constexpr int EVENT_BUFFER_CHUNK_SIZE = 6 * 1024 * 1024;  // 6MB
 
 template <>
 uint64_t TimeIndex<const CanEvent*>::get_timestamp(const CanEvent* const& e) {
@@ -18,7 +18,7 @@ uint64_t TimeIndex<const CanEvent*>::get_timestamp(const CanEvent* const& e) {
 
 AbstractStream::AbstractStream(QObject* parent) : QObject(parent) {
   assert(parent != nullptr);
-  event_buffer_ = std::make_unique<MonotonicBuffer>(EVENT_NEXT_BUFFER_SIZE);
+  event_buffer_ = std::make_unique<MonotonicBuffer>(EVENT_BUFFER_CHUNK_SIZE);
   snapshot_map_.reserve(1024);
   time_index_map_.reserve(1024);
   shared_state_.master_state.reserve(1024);
@@ -113,17 +113,18 @@ void AbstractStream::updateSnapshotsTo(double sec) {
   std::unique_lock lk(mutex_);
 
   current_sec_ = sec;
+  const uint64_t target_ns = toMonoNs(sec);
 
+  SourceSet active_sources;
   bool has_erased = false;
   size_t origin_snapshot_size = snapshot_map_.size();
-  const uint64_t last_ts = toMonoNs(sec);
 
-  for (const auto& [id, ev] : events_) {
-    if (ev.empty()) continue;
+  for (const auto& [id, ev_list] : events_) {
+    if (ev_list.empty()) continue;
 
-    auto [s_min, s_max] = time_index_map_[id].getBounds(ev.front()->mono_ns, last_ts, ev.size());
-    auto it = std::ranges::upper_bound(ev.begin() + s_min, ev.begin() + s_max, last_ts, {}, &CanEvent::mono_ns);
-    if (it == ev.begin()) {
+    auto [s_min, s_max] = time_index_map_[id].getBounds(ev_list.front()->mono_ns, target_ns, ev_list.size());
+    auto it = std::ranges::upper_bound(ev_list.begin() + s_min, ev_list.begin() + s_max, target_ns, {}, &CanEvent::mono_ns);
+    if (it == ev_list.begin()) {
       has_erased |= (shared_state_.master_state.erase(id) > 0);
       has_erased |= (snapshot_map_.erase(id) > 0);
       continue;
@@ -133,7 +134,7 @@ void AbstractStream::updateSnapshotsTo(double sec) {
     auto& m = shared_state_.master_state[id];
     m.dirty = false;
     m.init(prev_ev->dat, prev_ev->size, toSeconds(prev_ev->mono_ns));
-    m.count = std::distance(ev.begin(), it);
+    m.count = std::distance(ev_list.begin(), it);
     m.updateAllPatternColors(sec);  // Important: Update colors before snapshotting
 
     auto& snap_ptr = snapshot_map_[id];
@@ -142,6 +143,13 @@ void AbstractStream::updateSnapshotsTo(double sec) {
     } else {
       snap_ptr->updateFrom(m);
     }
+
+    active_sources.insert(id.source);
+  }
+
+  bool sources_changed = (active_sources != sources_);
+  if (sources_changed) {
+    sources_ = std::move(active_sources);
   }
 
   shared_state_.dirty_ids.clear();
@@ -149,6 +157,9 @@ void AbstractStream::updateSnapshotsTo(double sec) {
   lk.unlock();
   seek_finished_cv_.notify_one();
 
+  if (sources_changed) {
+    emit sourcesUpdated(sources_);
+  }
   emit snapshotsUpdated(nullptr, origin_snapshot_size != snapshot_map_.size() || has_erased);
 }
 
