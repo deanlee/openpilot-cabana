@@ -104,7 +104,7 @@ void MessageState::update(const uint8_t* new_data, uint8_t data_size, double cur
         uint8_t old_byte = static_cast<uint8_t>((last_data_64[b] >> (byte_in_block * 8)) & 0xFF);
         uint8_t new_byte = new_data[global_idx];
 
-        analyzeByteMutation(global_idx, old_byte, new_byte, byte_diff, current_ts);
+        updateByteActivity(global_idx, old_byte, new_byte, byte_diff, current_ts);
 
         // Clear the entire byte from the analysis mask to find the next changed byte
         analysis_diff_64 &= ~(0xFFULL << (byte_in_block * 8));
@@ -139,7 +139,7 @@ void MessageState::updateFrequency(double current_ts, double manual_freq, bool i
   }
 }
 
-void MessageState::analyzeByteMutation(int i, uint8_t old_v, uint8_t new_v, uint8_t diff, double current_ts) {
+void MessageState::updateByteActivity(int i, uint8_t old_v, uint8_t new_v, uint8_t diff, double current_ts) {
   const int delta = static_cast<int>(new_v) - static_cast<int>(old_v);
 
   // 1. Bit Stats & Bit-level Timestamps

@@ -31,7 +31,7 @@ class MessageState {
   std::array<std::array<uint32_t, 8>, MAX_CAN_LEN> bit_flips = {};
 
  private:
-  void analyzeByteMutation(int byte_index, uint8_t old_val, uint8_t new_val, uint8_t diff, double current_ts);
+  void updateByteActivity(int byte_index, uint8_t old_val, uint8_t new_val, uint8_t diff, double current_ts);
   void updateFrequency(double current_ts, double manual_freq, bool is_seek);
 
   static constexpr double kMuteActivityWindowSec = 2.0;
