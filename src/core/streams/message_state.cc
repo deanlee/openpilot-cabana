@@ -1,6 +1,7 @@
 #include "message_state.h"
 
 #include <algorithm>
+#include <bit>
 #include <cmath>
 #include <cstring>
 
@@ -54,7 +55,9 @@ void MessageState::init(const uint8_t* new_data, uint8_t data_size, double curre
   std::memset(data.data(), 0, MAX_CAN_LEN);
   std::memcpy(data.data(), new_data, size);
 
-  last_change_ts.fill(current_ts);
+  // Bit-level activity initialization
+  for (auto& byte_ts : last_bit_change_ts) byte_ts.fill(current_ts);
+
   last_delta.fill(0);
   trend_weight.fill(0);
   colors.fill(0);
@@ -63,7 +66,7 @@ void MessageState::init(const uint8_t* new_data, uint8_t data_size, double curre
   for (auto& f : bit_flips) f.fill(0);
   for (auto& h : bit_high_counts) h.fill(0);
 
-  is_suppressed.fill(0);
+  is_suppressed_mask.fill(0);
   ignore_bit_mask.fill(0);
   last_data_64.fill(0);
   std::memcpy(last_data_64.data(), new_data, size);
@@ -139,12 +142,18 @@ void MessageState::updateFrequency(double current_ts, double manual_freq, bool i
 void MessageState::analyzeByteMutation(int i, uint8_t old_v, uint8_t new_v, uint8_t diff, double current_ts) {
   const int delta = static_cast<int>(new_v) - static_cast<int>(old_v);
 
-  // 1. Bit Stats
-  uint8_t mask = 0x80;  // 1000 0000
+  // 1. Bit Stats & Bit-level Timestamps
+  // MSB-first: index 0 is bit 7 (0x80)
+  uint8_t bit_mask = 0x80;  // 1000 0000
   for (int bit = 0; bit < 8; ++bit) {
-    if (new_v & mask) bit_high_counts[i][bit]++;
-    if (diff & mask) bit_flips[i][bit]++;
-    mask >>= 1;
+    if (new_v & bit_mask) {
+      bit_high_counts[i][bit]++;
+    }
+    if (diff & bit_mask) {
+      bit_flips[i][bit]++;
+      last_bit_change_ts[i][bit] = current_ts;
+    }
+    bit_mask >>= 1;
   }
 
   // 2. Entropy
@@ -152,9 +161,9 @@ void MessageState::analyzeByteMutation(int i, uint8_t old_v, uint8_t new_v, uint
   for (int bit = 0; bit < 8; ++bit) {
     total_entropy += getEntropy(bit_high_counts[i][bit], count);
   }
-  const float avg_entropy = total_entropy / 8.0;
+  const float avg_entropy = total_entropy / 8.0f;
 
-  // 3. Trends (Using SoA arrays last_delta[i] and trend_weight[i])
+  // 3. Trends
   const bool is_toggle = (delta == -last_delta[i]) && (delta != 0);
   const bool is_constant_step = (delta == last_delta[i]) && (delta != 0);
   const bool same_direction = last_delta[i] != 0 && ((delta > 0) == (last_delta[i] > 0));
@@ -185,56 +194,67 @@ void MessageState::analyzeByteMutation(int i, uint8_t old_v, uint8_t new_v, uint
   }
 
   last_delta[i] = delta;
-  last_change_ts[i] = current_ts;
+}
+
+void MessageState::applyMask(const std::vector<uint8_t>& dbc_mask) {
+  ignore_bit_mask.fill(0);
+
+  for (size_t i = 0; i < size; ++i) {
+    // Combine the permanent mask with the bit-level suppression mask
+    uint8_t user_mask = (i < dbc_mask.size()) ? dbc_mask[i] : 0;
+    uint8_t combined_mask = user_mask | is_suppressed_mask[i];
+
+    if (combined_mask != 0) {
+      ignore_bit_mask[i / 8] |= (static_cast<uint64_t>(combined_mask) << ((i % 8) * 8));
+    }
+  }
+}
+
+size_t MessageState::muteActiveBits(const std::vector<uint8_t>& dbc_mask) {
+  bool modified = false;
+  size_t total_suppressed_bits = 0;
+
+  for (size_t i = 0; i < size; ++i) {
+    uint8_t currently_active_bits = 0;
+    for (int bit = 0; bit < 8; ++bit) {
+      // Check if this specific bit flipped within the last 2 seconds
+      if (ts - last_bit_change_ts[i][bit] < kMuteActivityWindowSec) {
+        currently_active_bits |= (0x80 >> bit);
+      }
+    }
+
+    // Add newly active bits to the suppression mask
+    uint8_t old_mask = is_suppressed_mask[i];
+    is_suppressed_mask[i] |= currently_active_bits;
+
+    if (is_suppressed_mask[i] != old_mask) {
+      modified = true;
+    }
+
+    // Count total 1s in the mask for UI reporting
+    total_suppressed_bits += std::popcount(is_suppressed_mask[i]);
+  }
+
+  if (modified) {
+    applyMask(dbc_mask);
+  }
+  return total_suppressed_bits;
+}
+
+void MessageState::unmuteActiveBits(const std::vector<uint8_t>& dbc_mask) {
+  is_suppressed_mask.fill(0);
+  applyMask(dbc_mask);
 }
 
 void MessageState::updateAllPatternColors(double current_can_sec) {
   for (size_t i = 0; i < size; ++i) {
-    colors[i] = colorFromDataPattern(detected_patterns[i], current_can_sec, last_change_ts[i], freq);
-  }
-}
-
-void MessageState::applyMask(const std::vector<uint8_t>& mask) {
-  ignore_bit_mask.fill(0);
-
-  for (size_t i = 0; i < size; ++i) {
-    uint8_t m = 0;
-    if (is_suppressed[i]) {
-      m = 0xFF;
-    } else if (i < mask.size()) {
-      m = mask[i];
+    // We use the "most recent bit change" in the byte to drive the byte-level color fade
+    double latest_bit_ts = 0;
+    for (int bit = 0; bit < 8; ++bit) {
+      latest_bit_ts = std::max(latest_bit_ts, last_bit_change_ts[i][bit]);
     }
-
-    if (m != 0) {
-      ignore_bit_mask[i / 8] |= (static_cast<uint64_t>(m) << ((i % 8) * 8));
-      if (m == 0xFF) {
-        bit_flips[i].fill(0);
-        bit_high_counts[i].fill(0);
-      }
-    }
+    colors[i] = colorFromDataPattern(detected_patterns[i], current_can_sec, latest_bit_ts, freq);
   }
-}
-
-size_t MessageState::muteActiveBits(const std::vector<uint8_t>& mask) {
-  bool modified = false;
-  size_t cnt = 0;
-  for (size_t i = 0; i < size; ++i) {
-    if (!is_suppressed[i] && (ts - last_change_ts[i] < kMuteActivityWindowSec)) {
-      is_suppressed[i] = 1;  // Mark as suppressed
-      modified = true;
-    }
-    cnt += is_suppressed[i];
-  }
-  if (modified) {
-    applyMask(mask);
-  }
-  return cnt;
-}
-
-void MessageState::unmuteActiveBits(const std::vector<uint8_t>& mask) {
-  is_suppressed.fill(0);
-  // Refresh the mask (this will re-allow highlights for these bits)
-  applyMask(mask);
 }
 
 uint32_t colorFromDataPattern(DataPattern pattern, double current_ts, double last_ts, double freq) {

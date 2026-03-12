@@ -321,7 +321,7 @@ size_t AbstractStream::suppressHighlighted() {
   std::lock_guard lk(mutex_);
   size_t cnt = 0;
   for (auto& [id, m] : shared_state_.master_state) {
-    cnt += m.muteActiveBits(shared_state_.masks[id]);
+    cnt += m.muteActiveBits(shared_state_.mute_defined_signals ? shared_state_.masks[id] : std::vector<uint8_t>{});
   }
   return cnt;
 }
@@ -329,6 +329,6 @@ size_t AbstractStream::suppressHighlighted() {
 void AbstractStream::clearSuppressed() {
   std::lock_guard lk(mutex_);
   for (auto& [id, m] : shared_state_.master_state) {
-    m.unmuteActiveBits(shared_state_.masks[id]);
+    m.unmuteActiveBits(shared_state_.mute_defined_signals ? shared_state_.masks[id] : std::vector<uint8_t>{});
   }
 }

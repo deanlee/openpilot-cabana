@@ -15,9 +15,9 @@ class MessageState {
   void init(const uint8_t* new_data, uint8_t data_size, double current_ts);
   void update(const uint8_t* new_data, uint8_t data_size, double current_ts, double manual_freq = 0, bool is_seek = false);
   void updateAllPatternColors(double current_ts);
-  void applyMask(const std::vector<uint8_t>& mask);
-  size_t muteActiveBits(const std::vector<uint8_t>& mask);
-  void unmuteActiveBits(const std::vector<uint8_t>& mask);
+  void applyMask(const std::vector<uint8_t>& dbc_mask);
+  size_t muteActiveBits(const std::vector<uint8_t>& dbc_mask);
+  void unmuteActiveBits(const std::vector<uint8_t>& dbc_mask);
 
   double ts = 0.0;     // Latest message timestamp
   double freq = 0.0;   // Message frequency (Hz)
@@ -37,10 +37,10 @@ class MessageState {
   static constexpr double kMuteActivityWindowSec = 2.0;
 
   double last_freq_ts = 0;
-  std::array<double, MAX_CAN_LEN> last_change_ts = {0};
+  std::array<std::array<double, 8>, MAX_CAN_LEN> last_bit_change_ts = {};
   std::array<int32_t, MAX_CAN_LEN> last_delta = {0};
   std::array<int32_t, MAX_CAN_LEN> trend_weight = {0};
-  std::array<uint8_t, MAX_CAN_LEN> is_suppressed = {0};  // Use uint8 for better packing than bool
+  std::array<uint8_t, MAX_CAN_LEN> is_suppressed_mask = {0};  // a bitmask per byte (0xFF = all bits suppressed)
   std::array<DataPattern, MAX_CAN_LEN> detected_patterns = {DataPattern::None};
   std::array<std::array<uint32_t, 8>, MAX_CAN_LEN> bit_high_counts = {};
   std::array<uint64_t, 8> last_data_64 = {0};
