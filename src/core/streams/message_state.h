@@ -38,11 +38,11 @@ class MessageState {
 
   double last_freq_ts = 0;
   std::array<std::array<double, 8>, MAX_CAN_LEN> last_bit_change_ts = {};
-  std::array<int32_t, MAX_CAN_LEN> last_delta = {0};
-  std::array<int32_t, MAX_CAN_LEN> trend_weight = {0};
+  std::array<float, MAX_CAN_LEN> toggle_ema = {};       // EMA of byte change rate [0,1]
+  std::array<int8_t, MAX_CAN_LEN> trend_streak = {};    // Signed saturating streak counter
+  std::array<int16_t, MAX_CAN_LEN> last_delta = {};     // Previous byte delta for toggle detection
   std::array<uint8_t, MAX_CAN_LEN> is_suppressed_mask = {0};  // a bitmask per byte (0xFF = all bits suppressed)
   std::array<DataPattern, MAX_CAN_LEN> detected_patterns = {DataPattern::None};
-  std::array<std::array<uint32_t, 8>, MAX_CAN_LEN> bit_high_counts = {};
   std::array<uint64_t, 8> last_data_64 = {0};
   std::array<uint64_t, 8> ignore_bit_mask = {0};
 };

@@ -10,37 +10,12 @@
 
 namespace {
 
-constexpr int TOGGLE_DECAY = 40;
-constexpr int TREND_INC = 40;
-constexpr int JITTER_DECAY = 100;
-constexpr int TREND_MAX = 255;
+constexpr float TOGGLE_EMA_ALPHA = 0.15f;  // ~6-sample half-life for change rate EMA
+constexpr int8_t TREND_STREAK_MAX = 8;     // Saturating streak limit
+constexpr int8_t TREND_STREAK_THRESHOLD = 4;  // Consecutive same-direction changes for trend
+constexpr float NOISE_EMA_THRESHOLD = 0.55f;  // Above this = noisy
 
-constexpr int LIMIT_NOISY = 60;
-constexpr int LIMIT_TOGGLE = 100;
-constexpr int LIMIT_TREND = 160;
-
-constexpr double ENTROPY_THRESHOLD = 0.85;
-constexpr int MIN_SAMPLES_FOR_ENTROPY = 16;
 constexpr double FREQ_JITTER_THRESHOLD = 0.0001;  // Intervals below this are considered jitter
-
-// Precomputed Shannon Entropy Table: H(p) = -p*log2(p) - (1-p)*log2(1-p)
-const std::array<float, 256> ENTROPY_LOOKUP = [] {
-  std::array<float, 256> table;
-  for (int i = 0; i < 256; ++i) {
-    double p = i / 255.0;
-    table[i] =
-        (p <= 0.001 || p >= 0.999) ? 0.0f : static_cast<float>(-(p * std::log2(p) + (1.0 - p) * std::log2(1.0 - p)));
-  }
-  return table;
-}();
-
-// Calculates Shannon Entropy for a single bit based on the probability 'p'
-float getEntropy(uint32_t highs, uint32_t total) {
-  if (total < MIN_SAMPLES_FOR_ENTROPY) return 0.0f;
-
-  int index = std::clamp(static_cast<int>((static_cast<float>(highs) / total) * 255.0f), 0, 255);
-  return ENTROPY_LOOKUP[index];
-}
 
 }  // namespace
 
@@ -55,16 +30,16 @@ void MessageState::init(const uint8_t* new_data, uint8_t data_size, double curre
   std::memset(data.data(), 0, MAX_CAN_LEN);
   std::memcpy(data.data(), new_data, size);
 
-  // Bit-level activity initialization
-  for (auto& byte_ts : last_bit_change_ts) byte_ts.fill(current_ts);
+  // Bit-level activity initialization — 0.0 means "never changed"
+  for (auto& byte_ts : last_bit_change_ts) byte_ts.fill(0.0);
 
+  toggle_ema.fill(0.0f);
+  trend_streak.fill(0);
   last_delta.fill(0);
-  trend_weight.fill(0);
   colors.fill(0);
   detected_patterns.fill(DataPattern::None);
 
   for (auto& f : bit_flips) f.fill(0);
-  for (auto& h : bit_high_counts) h.fill(0);
 
   is_suppressed_mask.fill(0);
   ignore_bit_mask.fill(0);
@@ -82,6 +57,12 @@ void MessageState::update(const uint8_t* new_data, uint8_t data_size, double cur
   count++;
   updateFrequency(current_ts, manual_freq, is_seek);
 
+  // Decay EMA for all bytes (changed bytes get corrected in updateByteActivity)
+  const float decay = 1.0f - TOGGLE_EMA_ALPHA;
+  for (int i = 0; i < size; ++i) {
+    toggle_ema[i] *= decay;
+  }
+
   const int num_blocks = (size + 7) / 8;
   for (int b = 0; b < num_blocks; ++b) {
     const int offset = b * 8;
@@ -94,19 +75,16 @@ void MessageState::update(const uint8_t* new_data, uint8_t data_size, double cur
     if (raw_diff_64 != 0) {
       uint64_t analysis_diff_64 = raw_diff_64 & ~ignore_bit_mask[b];
       while (analysis_diff_64 != 0) {
-        // Find first byte with an unmasked change
         int first_bit = __builtin_ctzll(analysis_diff_64);
         int byte_in_block = first_bit / 8;
         int global_idx = offset + byte_in_block;
 
-        // Extract byte-level values for specific mutation analysis
         uint8_t byte_diff = static_cast<uint8_t>((analysis_diff_64 >> (byte_in_block * 8)) & 0xFF);
         uint8_t old_byte = static_cast<uint8_t>((last_data_64[b] >> (byte_in_block * 8)) & 0xFF);
         uint8_t new_byte = new_data[global_idx];
 
         updateByteActivity(global_idx, old_byte, new_byte, byte_diff, current_ts);
 
-        // Clear the entire byte from the analysis mask to find the next changed byte
         analysis_diff_64 &= ~(0xFFULL << (byte_in_block * 8));
       }
       std::memcpy(data.data() + offset, new_data + offset, block_len);
@@ -140,60 +118,40 @@ void MessageState::updateFrequency(double current_ts, double manual_freq, bool i
 }
 
 void MessageState::updateByteActivity(int i, uint8_t old_v, uint8_t new_v, uint8_t diff, double current_ts) {
-  const int delta = static_cast<int>(new_v) - static_cast<int>(old_v);
-
-  // 1. Bit Stats & Bit-level Timestamps
-  // MSB-first: index 0 is bit 7 (0x80)
-  uint8_t bit_mask = 0x80;  // 1000 0000
+  // 1. Bit stats & timestamps (MSB-first: index 0 is bit 7)
+  uint8_t bit_mask = 0x80;
   for (int bit = 0; bit < 8; ++bit) {
-    if (new_v & bit_mask) {
-      bit_high_counts[i][bit]++;
-    }
-    if (diff & bit_mask) {
-      bit_flips[i][bit]++;
-      last_bit_change_ts[i][bit] = current_ts;
-    }
+    if (diff & bit_mask) { bit_flips[i][bit]++; last_bit_change_ts[i][bit] = current_ts; }
     bit_mask >>= 1;
   }
 
-  // 2. Entropy
-  float total_entropy = 0.0f;
-  for (int bit = 0; bit < 8; ++bit) {
-    total_entropy += getEntropy(bit_high_counts[i][bit], count);
-  }
-  const float avg_entropy = total_entropy / 8.0f;
+  // 2. EMA toggle rate — already decayed in update(), add change contribution
+  toggle_ema[i] += TOGGLE_EMA_ALPHA;  // Undo decay and add 1.0 sample: decay*old + alpha*1.0
 
-  // 3. Trends
-  const bool is_toggle = (delta == -last_delta[i]) && (delta != 0);
-  const bool is_constant_step = (delta == last_delta[i]) && (delta != 0);
-  const bool same_direction = last_delta[i] != 0 && ((delta > 0) == (last_delta[i] > 0));
+  // 3. Trend streak & toggle detection
+  const int delta = static_cast<int>(new_v) - static_cast<int>(old_v);
+  const bool is_toggle = (delta != 0) && (delta == -last_delta[i]);
 
-  int& weight = trend_weight[i];
-  if (is_constant_step) {
-    weight = std::min(TREND_MAX, weight + (TREND_INC * 2));
-  } else if (delta != 0 && same_direction) {
-    weight = std::min(TREND_MAX, weight + TREND_INC);
-  } else if (is_toggle) {
-    weight = std::max(0, weight - TOGGLE_DECAY);
-  } else {
-    weight = std::max(0, weight - JITTER_DECAY);
+  int8_t& streak = trend_streak[i];
+  if (is_toggle) {
+    streak = 0;  // alternating delta breaks any trend
+  } else if (delta > 0) {
+    streak = (streak > 0) ? std::min<int8_t>(streak + 1, TREND_STREAK_MAX) : 1;
+  } else if (delta < 0) {
+    streak = (streak < 0) ? std::max<int8_t>(streak - 1, -TREND_STREAK_MAX) : -1;
   }
 
-  // 4. Pattern logic
+  // 4. Pattern classification — always reassign to prevent stale patterns
   DataPattern new_p = DataPattern::None;
-  if (is_toggle && weight < LIMIT_TOGGLE) {
+  if (std::abs(streak) >= TREND_STREAK_THRESHOLD) {
+    new_p = (streak > 0) ? DataPattern::Increasing : DataPattern::Decreasing;
+  } else if (is_toggle) {
     new_p = DataPattern::Toggle;
-  } else if (weight > LIMIT_TREND) {
-    new_p = (delta > 0) ? DataPattern::Increasing : DataPattern::Decreasing;
-  } else if (avg_entropy > ENTROPY_THRESHOLD || weight > LIMIT_NOISY) {
+  } else if (toggle_ema[i] > NOISE_EMA_THRESHOLD) {
     new_p = DataPattern::RandomlyNoisy;
   }
-
-  if (new_p != DataPattern::None) {
-    detected_patterns[i] = new_p;
-  }
-
-  last_delta[i] = delta;
+  detected_patterns[i] = new_p;
+  last_delta[i] = static_cast<int16_t>(delta);
 }
 
 void MessageState::applyMask(const std::vector<uint8_t>& dbc_mask) {
@@ -217,8 +175,8 @@ size_t MessageState::muteActiveBits(const std::vector<uint8_t>& dbc_mask) {
   for (size_t i = 0; i < size; ++i) {
     uint8_t currently_active_bits = 0;
     for (int bit = 0; bit < 8; ++bit) {
-      // Check if this specific bit flipped within the last 2 seconds
-      if (ts - last_bit_change_ts[i][bit] < kMuteActivityWindowSec) {
+      // Check if this specific bit actually flipped within the last 2 seconds
+      if (last_bit_change_ts[i][bit] > 0 && ts - last_bit_change_ts[i][bit] < kMuteActivityWindowSec) {
         currently_active_bits |= (0x80 >> bit);
       }
     }
