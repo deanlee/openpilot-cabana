@@ -79,22 +79,22 @@ QWidget* MessageList::createToolBar() {
 
   layout->addWidget(suppress_add = new ToolButton("ban"));
   suppress_add->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
-  suppress_add->setText(tr("Mute Current"));
+  suppress_add->setText(tr("Mute Active"));
   suppress_add->setToolTip(
-      tr("Mute Current Activity.\n"
-         "Silences bytes currently changing to help you detect new bit transitions."));
+      tr("Mute Active Bits\n"
+         "Silences currently changing bits to isolate new transitions."));
   layout->addWidget(suppress_clear = new ToolButton("refresh-ccw"));
   suppress_clear->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
-  suppress_clear->setText(tr("Reset Activity"));
+  suppress_clear->setText(tr("Unmute All"));
   suppress_clear->setToolTip(
-      tr("Reset Activity.\n"
-         "Restore highlighting for all bytes."));
+      tr("Unmute All Bits\n"
+         "Restores highlighting for all data bits."));
 
   suppress_defined_signals = new QCheckBox(tr("Mute Defined"), this);
   suppress_defined_signals->setFocusPolicy(Qt::NoFocus);
   suppress_defined_signals->setToolTip(
-      tr("Mute Defined Signals.\n"
-         "Focus on unknown data by hiding activity for bits already assigned to a signal."));
+      tr("Mute Defined Signals\n"
+         "Silences bits already assigned to DBC signals to focus on unknown data."));
   layout->addWidget(suppress_defined_signals);
 
   layout->addStretch(1);
@@ -121,7 +121,7 @@ void MessageList::resetState() {
   }
   model->rebuild();
 
-  suppress_clear->setText(tr("Reset Activity"));
+  suppress_clear->setText(tr("Unmute All"));
   suppress_clear->setEnabled(false);
 
   updateTitle();
@@ -163,7 +163,7 @@ void MessageList::suppressHighlighted(bool suppress) {
   } else {
     StreamManager::stream()->clearSuppressed();
   }
-  suppress_clear->setText(n > 0 ? tr("Reset Activity (%1)").arg(n) : tr("Reset Activity"));
+  suppress_clear->setText(n > 0 ? tr("Unmute (%1 bits)").arg(n) : tr("Unmute All"));
   suppress_clear->setEnabled(n > 0);
 }
 
