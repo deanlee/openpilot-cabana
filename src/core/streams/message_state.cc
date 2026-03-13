@@ -24,7 +24,7 @@ uint8_t clearIgnoredBits(uint8_t value, uint8_t ignore_mask) {
 }  // namespace
 
 void MessageState::init(const uint8_t* new_data, uint8_t data_size, double current_ts) {
-  const auto preserved_suppressed_mask = is_suppressed_mask;
+  const auto preserved_mask = suppressed_mask;
 
   size = std::min<uint8_t>(data_size, MAX_CAN_LEN);
   ts = current_ts;
@@ -32,27 +32,18 @@ void MessageState::init(const uint8_t* new_data, uint8_t data_size, double curre
   freq = 0;
   last_freq_ts = current_ts;
 
-  // Wipe arrays for the new message length
   std::memset(data.data(), 0, MAX_CAN_LEN);
   std::memcpy(data.data(), new_data, size);
 
-  // Bit-level activity initialization — 0.0 means "never changed"
-  for (auto& byte_ts : last_bit_change_ts) byte_ts.fill(0.0);
-  last_byte_change_ts.fill(0.0);
-
-  toggle_ema.fill(0.0f);
-  trend_streak.fill(0);
-  last_delta.fill(0);
+  analysis.fill({});
   colors.fill(0);
-  detected_patterns.fill(DataPattern::None);
-
   for (auto& f : bit_flips) f.fill(0);
 
-  is_suppressed_mask.fill(0);
-  std::copy_n(preserved_suppressed_mask.begin(), size, is_suppressed_mask.begin());
-  ignore_bit_mask.fill(0);
-  last_data_64.fill(0);
-  std::memcpy(last_data_64.data(), new_data, size);
+  suppressed_mask.fill(0);
+  std::copy_n(preserved_mask.begin(), size, suppressed_mask.begin());
+  ignore_mask_64.fill(0);
+  prev_data_64.fill(0);
+  std::memcpy(prev_data_64.data(), new_data, size);
 }
 
 void MessageState::update(const uint8_t* new_data, uint8_t data_size, double current_ts, double manual_freq, bool is_seek) {
@@ -65,18 +56,19 @@ void MessageState::update(const uint8_t* new_data, uint8_t data_size, double cur
   count++;
   updateFrequency(current_ts, manual_freq, is_seek);
 
-  // Decay EMA for all bytes. When EMA falls below noise threshold the byte has gone quiet:
-  // decay trend_streak toward 0 so old trend history doesn't bias future classifications,
-  // and clear detected_patterns so the field isn't stale (color fade handles visual expiry).
+  // Decay EMA for all bytes. When EMA decays below noise threshold, the byte has gone
+  // quiet: halve trend_streak so old history doesn't bias future classifications.
   const float decay = 1.0f - TOGGLE_EMA_ALPHA;
   for (int i = 0; i < size; ++i) {
-    toggle_ema[i] *= decay;
-    if (toggle_ema[i] <= NOISE_EMA_THRESHOLD) {
-      if (trend_streak[i] != 0) trend_streak[i] /= 2;
-      if (trend_streak[i] == 0) detected_patterns[i] = DataPattern::None;
+    auto& a = analysis[i];
+    a.toggle_ema *= decay;
+    if (a.toggle_ema <= NOISE_EMA_THRESHOLD) {
+      if (a.trend_streak != 0) a.trend_streak /= 2;
+      if (a.trend_streak == 0) a.pattern = DataPattern::None;
     }
   }
 
+  // Scan in 8-byte blocks: skip unchanged blocks in O(1) via uint64_t XOR
   const int num_blocks = (size + 7) / 8;
   for (int b = 0; b < num_blocks; ++b) {
     const int offset = b * 8;
@@ -85,25 +77,25 @@ void MessageState::update(const uint8_t* new_data, uint8_t data_size, double cur
     uint64_t cur_64 = 0;
     std::memcpy(&cur_64, new_data + offset, block_len);
 
-    const uint64_t raw_diff = cur_64 ^ last_data_64[b];
+    const uint64_t raw_diff = cur_64 ^ prev_data_64[b];
     if (raw_diff != 0) {
-      const uint64_t ignored_mask = ignore_bit_mask[b];
-      const uint64_t analysis_diff = raw_diff & ~ignored_mask;
-      if (analysis_diff != 0) {
+      const uint64_t ignored = ignore_mask_64[b];
+      const uint64_t changed = raw_diff & ~ignored;
+      if (changed != 0) {
         for (int j = 0; j < block_len; ++j) {
           const int shift = j * 8;
-          if (static_cast<uint8_t>(analysis_diff >> shift) == 0) continue;
+          if (static_cast<uint8_t>(changed >> shift) == 0) continue;
 
-          const int global_idx = offset + j;
-          const uint8_t ignore_byte = static_cast<uint8_t>(ignored_mask >> shift);
-          updateByteActivity(global_idx,
-                             clearIgnoredBits(static_cast<uint8_t>(last_data_64[b] >> shift), ignore_byte),
-                             clearIgnoredBits(new_data[global_idx], ignore_byte),
+          const int idx = offset + j;
+          const uint8_t mask = static_cast<uint8_t>(ignored >> shift);
+          updateByteActivity(idx,
+                             clearIgnoredBits(static_cast<uint8_t>(prev_data_64[b] >> shift), mask),
+                             clearIgnoredBits(new_data[idx], mask),
                              current_ts);
         }
       }
       std::memcpy(data.data() + offset, new_data + offset, block_len);
-      last_data_64[b] = cur_64;
+      prev_data_64[b] = cur_64;
     }
   }
 }
@@ -133,54 +125,51 @@ void MessageState::updateFrequency(double current_ts, double manual_freq, bool i
 }
 
 void MessageState::updateByteActivity(int byte_idx, uint8_t old_byte, uint8_t new_byte, double current_ts) {
-  // 1. Bit flip counters & timestamps (bit_flips[][0] = MSB = bit 7).
+  auto& a = analysis[byte_idx];
+
+  // Bit flip counters & timestamps (index 0 = MSB = bit 7 of the byte)
   for (uint8_t bits = old_byte ^ new_byte; bits != 0; bits &= bits - 1) {
-    const int flip_idx = 7 - std::countr_zero(bits);  // LSB pos → MSB-first index
-    bit_flips[byte_idx][flip_idx]++;
-    last_bit_change_ts[byte_idx][flip_idx] = current_ts;
+    const int bit = 7 - std::countr_zero(bits);
+    bit_flips[byte_idx][bit]++;
+    a.bit_change_ts[bit] = current_ts;
   }
 
-  // 2. EMA toggle rate (already decayed in update(); add one change sample)
-  toggle_ema[byte_idx] += TOGGLE_EMA_ALPHA;
-  last_byte_change_ts[byte_idx] = current_ts;
+  // EMA toggle rate (already decayed in update(); add one change sample)
+  a.toggle_ema += TOGGLE_EMA_ALPHA;
+  a.last_change_ts = current_ts;
 
-  // 3. Trend streak: track consecutive same-direction changes.
-  //    Only classify as Toggle when not already in an established trend, so a single
-  int8_t& streak = trend_streak[byte_idx];
+  // Trend streak: track consecutive same-direction changes.
+  // Only classify as Toggle when not already in an established trend.
   const int delta = static_cast<int>(new_byte) - static_cast<int>(old_byte);
-  // delta != 0 is guaranteed: caller only invokes us when unmasked bits changed.
-  const bool is_toggle = (delta == -last_delta[byte_idx]) && (std::abs(streak) < TREND_STREAK_THRESHOLD);
+  const bool is_toggle = (delta == -a.last_delta) && (std::abs(a.trend_streak) < TREND_STREAK_THRESHOLD);
   if (is_toggle) {
-    streak = 0;
+    a.trend_streak = 0;
   } else if (delta > 0) {
-    streak = (streak > 0) ? std::min<int8_t>(streak + 1, TREND_STREAK_MAX) : 1;
+    a.trend_streak = (a.trend_streak > 0) ? std::min<int8_t>(a.trend_streak + 1, TREND_STREAK_MAX) : 1;
   } else if (delta < 0) {
-    streak = (streak < 0) ? std::max<int8_t>(streak - 1, -TREND_STREAK_MAX) : -1;
+    a.trend_streak = (a.trend_streak < 0) ? std::max<int8_t>(a.trend_streak - 1, -TREND_STREAK_MAX) : -1;
   }
 
-  // 4. Pattern classification
+  // Pattern classification
   DataPattern pattern = DataPattern::None;
-  if (std::abs(streak) >= TREND_STREAK_THRESHOLD) {
-    pattern = (streak > 0) ? DataPattern::Increasing : DataPattern::Decreasing;
+  if (std::abs(a.trend_streak) >= TREND_STREAK_THRESHOLD) {
+    pattern = (a.trend_streak > 0) ? DataPattern::Increasing : DataPattern::Decreasing;
   } else if (is_toggle) {
     pattern = DataPattern::Toggle;
-  } else if (toggle_ema[byte_idx] > NOISE_EMA_THRESHOLD) {
+  } else if (a.toggle_ema > NOISE_EMA_THRESHOLD) {
     pattern = DataPattern::RandomlyNoisy;
   }
-  detected_patterns[byte_idx] = pattern;
-  last_delta[byte_idx] = static_cast<int16_t>(delta);
+  a.pattern = pattern;
+  a.last_delta = static_cast<int16_t>(delta);
 }
 
 void MessageState::applyMask(const std::vector<uint8_t>& dbc_mask) {
-  ignore_bit_mask.fill(0);
-
+  ignore_mask_64.fill(0);
   for (size_t i = 0; i < size; ++i) {
-    // Combine the permanent mask with the bit-level suppression mask
     uint8_t user_mask = (i < dbc_mask.size()) ? dbc_mask[i] : 0;
-    uint8_t combined_mask = user_mask | is_suppressed_mask[i];
-
-    if (combined_mask != 0) {
-      ignore_bit_mask[i / 8] |= (static_cast<uint64_t>(combined_mask) << ((i % 8) * 8));
+    uint8_t combined = user_mask | suppressed_mask[i];
+    if (combined != 0) {
+      ignore_mask_64[i / 8] |= static_cast<uint64_t>(combined) << ((i % 8) * 8);
     }
   }
 }
@@ -190,40 +179,33 @@ size_t MessageState::muteActiveBits(const std::vector<uint8_t>& dbc_mask) {
   size_t total_suppressed_bits = 0;
 
   for (size_t i = 0; i < size; ++i) {
-    uint8_t currently_active_bits = 0;
+    const auto& a = analysis[i];
+    uint8_t active_bits = 0;
     for (int bit = 0; bit < 8; ++bit) {
-      // Check if this specific bit actually flipped within the last 2 seconds
-      if (last_bit_change_ts[i][bit] > 0 && ts - last_bit_change_ts[i][bit] < kMuteActivityWindowSec) {
-        currently_active_bits |= (0x80 >> bit);
+      if (a.bit_change_ts[bit] > 0 && ts - a.bit_change_ts[bit] < kMuteActivityWindowSec) {
+        active_bits |= (0x80 >> bit);
       }
     }
 
-    // Add newly active bits to the suppression mask
-    uint8_t old_mask = is_suppressed_mask[i];
-    is_suppressed_mask[i] |= currently_active_bits;
-
-    if (is_suppressed_mask[i] != old_mask) {
-      modified = true;
-    }
-
-    // Count total 1s in the mask for UI reporting
-    total_suppressed_bits += std::popcount(is_suppressed_mask[i]);
+    uint8_t old_mask = suppressed_mask[i];
+    suppressed_mask[i] |= active_bits;
+    if (suppressed_mask[i] != old_mask) modified = true;
+    total_suppressed_bits += std::popcount(suppressed_mask[i]);
   }
 
-  if (modified) {
-    applyMask(dbc_mask);
-  }
+  if (modified) applyMask(dbc_mask);
   return total_suppressed_bits;
 }
 
 void MessageState::unmuteActiveBits(const std::vector<uint8_t>& dbc_mask) {
-  is_suppressed_mask.fill(0);
+  suppressed_mask.fill(0);
   applyMask(dbc_mask);
 }
 
 void MessageState::updateAllPatternColors(double current_can_sec) {
   for (size_t i = 0; i < size; ++i) {
-    colors[i] = colorFromDataPattern(detected_patterns[i], current_can_sec, last_byte_change_ts[i], freq);
+    const auto& a = analysis[i];
+    colors[i] = colorFromDataPattern(a.pattern, current_can_sec, a.last_change_ts, freq);
   }
 }
 
