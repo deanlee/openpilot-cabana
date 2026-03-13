@@ -107,6 +107,7 @@ class AbstractStream : public QObject {
   void updateMasks();
   void updateActivityStates();
   void updateMessageMask(const MessageId& id);
+  const std::vector<uint8_t>& getMask(const MessageId& id) const;
   void applyMaskPolicy(MessageState& state, const MessageId& id);
 
   // Internal state shared between threads, protected by mutex_
