@@ -1,6 +1,7 @@
 #include "message_state.h"
 
 #include <algorithm>
+#include <bit>
 #include <cmath>
 #include <cstring>
 
@@ -88,17 +89,18 @@ void MessageState::update(const uint8_t* new_data, uint8_t data_size, double cur
     if (raw_diff != 0) {
       const uint64_t ignored_mask = ignore_bit_mask[b];
       const uint64_t analysis_diff = raw_diff & ~ignored_mask;
-      for (int j = 0; j < block_len; ++j) {
-        const int shift = j * 8;
-        const uint8_t byte_diff = static_cast<uint8_t>((analysis_diff >> shift) & 0xFF);
-        if (byte_diff == 0) continue;
+      if (analysis_diff != 0) {
+        for (int j = 0; j < block_len; ++j) {
+          const int shift = j * 8;
+          if (static_cast<uint8_t>(analysis_diff >> shift) == 0) continue;
 
-        const int global_idx = offset + j;
-        const uint8_t ignore_byte = static_cast<uint8_t>((ignored_mask >> shift) & 0xFF);
-        updateByteActivity(global_idx,
-                           clearIgnoredBits(static_cast<uint8_t>((last_data_64[b] >> shift) & 0xFF), ignore_byte),
-                           clearIgnoredBits(new_data[global_idx], ignore_byte),
-                           byte_diff, current_ts);
+          const int global_idx = offset + j;
+          const uint8_t ignore_byte = static_cast<uint8_t>(ignored_mask >> shift);
+          updateByteActivity(global_idx,
+                             clearIgnoredBits(static_cast<uint8_t>(last_data_64[b] >> shift), ignore_byte),
+                             clearIgnoredBits(new_data[global_idx], ignore_byte),
+                             current_ts);
+        }
       }
       std::memcpy(data.data() + offset, new_data + offset, block_len);
       last_data_64[b] = cur_64;
@@ -130,44 +132,43 @@ void MessageState::updateFrequency(double current_ts, double manual_freq, bool i
   }
 }
 
-void MessageState::updateByteActivity(int i, uint8_t old_v, uint8_t new_v, uint8_t diff, double current_ts) {
-  // 1. Bit stats & timestamps (MSB-first: index 0 is bit 7)
-  uint8_t bit_mask = 0x80;
-  for (int bit = 0; bit < 8; ++bit) {
-    if (diff & bit_mask) { bit_flips[i][bit]++; last_bit_change_ts[i][bit] = current_ts; }
-    bit_mask >>= 1;
+void MessageState::updateByteActivity(int byte_idx, uint8_t old_byte, uint8_t new_byte, double current_ts) {
+  // 1. Bit flip counters & timestamps (bit_flips[][0] = MSB = bit 7).
+  for (uint8_t bits = old_byte ^ new_byte; bits != 0; bits &= bits - 1) {
+    const int flip_idx = 7 - std::countr_zero(bits);  // LSB pos → MSB-first index
+    bit_flips[byte_idx][flip_idx]++;
+    last_bit_change_ts[byte_idx][flip_idx] = current_ts;
   }
 
-  // 2. EMA toggle rate — already decayed in update(), add change contribution
-  toggle_ema[i] += TOGGLE_EMA_ALPHA;  // Undo decay and add 1.0 sample: decay*old + alpha*1.0
-  last_byte_change_ts[i] = current_ts;
+  // 2. EMA toggle rate (already decayed in update(); add one change sample)
+  toggle_ema[byte_idx] += TOGGLE_EMA_ALPHA;
+  last_byte_change_ts[byte_idx] = current_ts;
 
-  // 3. Trend streak & toggle detection.
-  // Guard: only accept a toggle if the byte is not already in an established trend.
-  // This prevents a single correction in a trend from triggering a one-frame Toggle flash.
-  int8_t& streak = trend_streak[i];
-  const int delta = static_cast<int>(new_v) - static_cast<int>(old_v);
-  const bool is_toggle = (delta != 0) && (delta == -last_delta[i]) &&
-                         (std::abs(streak) < TREND_STREAK_THRESHOLD);
+  // 3. Trend streak: track consecutive same-direction changes.
+  //    Only classify as Toggle when not already in an established trend, so a single
+  int8_t& streak = trend_streak[byte_idx];
+  const int delta = static_cast<int>(new_byte) - static_cast<int>(old_byte);
+  // delta != 0 is guaranteed: caller only invokes us when unmasked bits changed.
+  const bool is_toggle = (delta == -last_delta[byte_idx]) && (std::abs(streak) < TREND_STREAK_THRESHOLD);
   if (is_toggle) {
-    streak = 0;  // alternating delta breaks any trend
+    streak = 0;
   } else if (delta > 0) {
     streak = (streak > 0) ? std::min<int8_t>(streak + 1, TREND_STREAK_MAX) : 1;
   } else if (delta < 0) {
     streak = (streak < 0) ? std::max<int8_t>(streak - 1, -TREND_STREAK_MAX) : -1;
   }
 
-  // 4. Pattern classification — always reassign to prevent stale patterns
-  DataPattern new_p = DataPattern::None;
+  // 4. Pattern classification
+  DataPattern pattern = DataPattern::None;
   if (std::abs(streak) >= TREND_STREAK_THRESHOLD) {
-    new_p = (streak > 0) ? DataPattern::Increasing : DataPattern::Decreasing;
+    pattern = (streak > 0) ? DataPattern::Increasing : DataPattern::Decreasing;
   } else if (is_toggle) {
-    new_p = DataPattern::Toggle;
-  } else if (toggle_ema[i] > NOISE_EMA_THRESHOLD) {
-    new_p = DataPattern::RandomlyNoisy;
+    pattern = DataPattern::Toggle;
+  } else if (toggle_ema[byte_idx] > NOISE_EMA_THRESHOLD) {
+    pattern = DataPattern::RandomlyNoisy;
   }
-  detected_patterns[i] = new_p;
-  last_delta[i] = static_cast<int16_t>(delta);
+  detected_patterns[byte_idx] = pattern;
+  last_delta[byte_idx] = static_cast<int16_t>(delta);
 }
 
 void MessageState::applyMask(const std::vector<uint8_t>& dbc_mask) {
