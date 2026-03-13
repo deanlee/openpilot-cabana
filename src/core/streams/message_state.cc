@@ -1,7 +1,6 @@
 #include "message_state.h"
 
 #include <algorithm>
-#include <bit>
 #include <cmath>
 #include <cstring>
 
@@ -85,24 +84,21 @@ void MessageState::update(const uint8_t* new_data, uint8_t data_size, double cur
     uint64_t cur_64 = 0;
     std::memcpy(&cur_64, new_data + offset, block_len);
 
-    uint64_t raw_diff_64 = (cur_64 ^ last_data_64[b]);
-    if (raw_diff_64 != 0) {
-      const uint64_t ignored_bits_64 = ignore_bit_mask[b];
-      uint64_t analysis_diff_64 = raw_diff_64 & ~ignored_bits_64;
-      while (analysis_diff_64 != 0) {
-        int first_bit = std::countr_zero(analysis_diff_64);
-        int byte_in_block = first_bit / 8;
-        int global_idx = offset + byte_in_block;
+    const uint64_t raw_diff = cur_64 ^ last_data_64[b];
+    if (raw_diff != 0) {
+      const uint64_t ignored_mask = ignore_bit_mask[b];
+      const uint64_t analysis_diff = raw_diff & ~ignored_mask;
+      for (int j = 0; j < block_len; ++j) {
+        const int shift = j * 8;
+        const uint8_t byte_diff = static_cast<uint8_t>((analysis_diff >> shift) & 0xFF);
+        if (byte_diff == 0) continue;
 
-        uint8_t byte_diff = static_cast<uint8_t>((analysis_diff_64 >> (byte_in_block * 8)) & 0xFF);
-        uint8_t old_byte = static_cast<uint8_t>((last_data_64[b] >> (byte_in_block * 8)) & 0xFF);
-        uint8_t new_byte = new_data[global_idx];
-        uint8_t ignored_byte_mask = static_cast<uint8_t>((ignored_bits_64 >> (byte_in_block * 8)) & 0xFF);
-
-        updateByteActivity(global_idx, clearIgnoredBits(old_byte, ignored_byte_mask),
-                           clearIgnoredBits(new_byte, ignored_byte_mask), byte_diff, current_ts);
-
-        analysis_diff_64 &= ~(0xFFULL << (byte_in_block * 8));
+        const int global_idx = offset + j;
+        const uint8_t ignore_byte = static_cast<uint8_t>((ignored_mask >> shift) & 0xFF);
+        updateByteActivity(global_idx,
+                           clearIgnoredBits(static_cast<uint8_t>((last_data_64[b] >> shift) & 0xFF), ignore_byte),
+                           clearIgnoredBits(new_data[global_idx], ignore_byte),
+                           byte_diff, current_ts);
       }
       std::memcpy(data.data() + offset, new_data + offset, block_len);
       last_data_64[b] = cur_64;
