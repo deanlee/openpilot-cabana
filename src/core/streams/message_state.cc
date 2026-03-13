@@ -17,9 +17,15 @@ constexpr float NOISE_EMA_THRESHOLD = 0.55f;  // Above this = noisy
 
 constexpr double FREQ_JITTER_THRESHOLD = 0.0001;  // Intervals below this are considered jitter
 
+uint8_t applyByteMask(uint8_t value, uint8_t ignore_mask) {
+  return value & static_cast<uint8_t>(~ignore_mask);
+}
+
 }  // namespace
 
 void MessageState::init(const uint8_t* new_data, uint8_t data_size, double current_ts) {
+  const auto preserved_suppressed_mask = is_suppressed_mask;
+
   size = std::min<uint8_t>(data_size, MAX_CAN_LEN);
   ts = current_ts;
   count = 1;
@@ -42,6 +48,7 @@ void MessageState::init(const uint8_t* new_data, uint8_t data_size, double curre
   for (auto& f : bit_flips) f.fill(0);
 
   is_suppressed_mask.fill(0);
+  std::copy_n(preserved_suppressed_mask.begin(), size, is_suppressed_mask.begin());
   ignore_bit_mask.fill(0);
   last_data_64.fill(0);
   std::memcpy(last_data_64.data(), new_data, size);
@@ -73,17 +80,20 @@ void MessageState::update(const uint8_t* new_data, uint8_t data_size, double cur
 
     uint64_t raw_diff_64 = (cur_64 ^ last_data_64[b]);
     if (raw_diff_64 != 0) {
-      uint64_t analysis_diff_64 = raw_diff_64 & ~ignore_bit_mask[b];
+      const uint64_t ignored_bits_64 = ignore_bit_mask[b];
+      uint64_t analysis_diff_64 = raw_diff_64 & ~ignored_bits_64;
       while (analysis_diff_64 != 0) {
-        int first_bit = __builtin_ctzll(analysis_diff_64);
+        int first_bit = std::countr_zero(analysis_diff_64);
         int byte_in_block = first_bit / 8;
         int global_idx = offset + byte_in_block;
 
         uint8_t byte_diff = static_cast<uint8_t>((analysis_diff_64 >> (byte_in_block * 8)) & 0xFF);
         uint8_t old_byte = static_cast<uint8_t>((last_data_64[b] >> (byte_in_block * 8)) & 0xFF);
         uint8_t new_byte = new_data[global_idx];
+        uint8_t ignored_byte_mask = static_cast<uint8_t>((ignored_bits_64 >> (byte_in_block * 8)) & 0xFF);
 
-        updateByteActivity(global_idx, old_byte, new_byte, byte_diff, current_ts);
+        updateByteActivity(global_idx, applyByteMask(old_byte, ignored_byte_mask),
+                           applyByteMask(new_byte, ignored_byte_mask), byte_diff, current_ts);
 
         analysis_diff_64 &= ~(0xFFULL << (byte_in_block * 8));
       }

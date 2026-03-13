@@ -134,6 +134,7 @@ void AbstractStream::updateSnapshotsTo(double sec) {
     auto& m = shared_state_.master_state[id];
     m.dirty = false;
     m.init(prev_ev->dat, prev_ev->size, toSeconds(prev_ev->mono_ns));
+    applyMaskPolicy(m, id);
     m.count = std::distance(ev_list.begin(), it);
     m.updateAllPatternColors(sec);  // Important: Update colors before snapshotting
 
@@ -143,6 +144,7 @@ void AbstractStream::updateSnapshotsTo(double sec) {
     } else {
       snap_ptr->updateFrom(m);
     }
+    snap_ptr->updateActiveState(sec);
 
     active_sources.insert(id.source);
   }
