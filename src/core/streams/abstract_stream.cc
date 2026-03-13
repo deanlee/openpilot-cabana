@@ -296,16 +296,17 @@ void AbstractStream::updateMessageMask(const MessageId& id) {
   }
 }
 
-void AbstractStream::applyMaskPolicy(MessageState& state, const MessageId& id) {
+const std::vector<uint8_t>& AbstractStream::getMask(const MessageId& id) const {
+  static const std::vector<uint8_t> empty;
   if (shared_state_.mute_defined_signals) {
-    auto it = shared_state_.masks.find(id);
-    if (it != shared_state_.masks.end()) {
-      state.applyMask(it->second);
-      return;
-    }
+    if (auto it = shared_state_.masks.find(id); it != shared_state_.masks.end())
+      return it->second;
   }
-  static const std::vector<uint8_t> empty_mask;
-  state.applyMask(empty_mask);
+  return empty;
+}
+
+void AbstractStream::applyMaskPolicy(MessageState& state, const MessageId& id) {
+  state.applyMask(getMask(id));
 }
 
 void AbstractStream::suppressDefinedSignals(bool suppress) {
@@ -321,20 +322,16 @@ void AbstractStream::suppressDefinedSignals(bool suppress) {
 
 size_t AbstractStream::suppressHighlighted() {
   std::lock_guard lk(mutex_);
-  static const std::vector<uint8_t> empty;
   size_t cnt = 0;
   for (auto& [id, m] : shared_state_.master_state) {
-    const auto it = shared_state_.mute_defined_signals ? shared_state_.masks.find(id) : shared_state_.masks.end();
-    cnt += m.muteActiveBits(it != shared_state_.masks.end() ? it->second : empty);
+    cnt += m.muteActiveBits(getMask(id));
   }
   return cnt;
 }
 
 void AbstractStream::clearSuppressed() {
   std::lock_guard lk(mutex_);
-  static const std::vector<uint8_t> empty;
   for (auto& [id, m] : shared_state_.master_state) {
-    const auto it = shared_state_.mute_defined_signals ? shared_state_.masks.find(id) : shared_state_.masks.end();
-    m.unmuteActiveBits(it != shared_state_.masks.end() ? it->second : empty);
+    m.unmuteActiveBits(getMask(id));
   }
 }
