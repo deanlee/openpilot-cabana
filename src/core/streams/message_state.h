@@ -31,21 +31,26 @@ class MessageState {
   std::array<std::array<uint32_t, 8>, MAX_CAN_LEN> bit_flips = {};
 
  private:
+  // Per-byte analysis state for pattern detection and activity tracking
+  struct ByteAnalysis {
+    std::array<double, 8> bit_change_ts = {};  // Per-bit last-change timestamps (index 0 = MSB)
+    double last_change_ts = 0.0;               // Last time any bit in this byte changed
+    float toggle_ema = 0.0f;                   // EMA of byte change rate [0,1]
+    int16_t last_delta = 0;                    // Previous byte delta for toggle detection
+    int8_t trend_streak = 0;                   // Signed saturating streak counter
+    DataPattern pattern = DataPattern::None;
+  };
+
   void updateByteActivity(int byte_idx, uint8_t old_byte, uint8_t new_byte, double current_ts);
   void updateFrequency(double current_ts, double manual_freq, bool is_seek);
 
   static constexpr double kMuteActivityWindowSec = 2.0;
 
   double last_freq_ts = 0;
-  std::array<std::array<double, 8>, MAX_CAN_LEN> last_bit_change_ts = {};  // per-bit, for muting
-  std::array<double, MAX_CAN_LEN> last_byte_change_ts = {};                 // max of above, for color fading
-  std::array<float, MAX_CAN_LEN> toggle_ema = {};       // EMA of byte change rate [0,1]
-  std::array<int8_t, MAX_CAN_LEN> trend_streak = {};    // Signed saturating streak counter
-  std::array<int16_t, MAX_CAN_LEN> last_delta = {};     // Previous byte delta for toggle detection
-  std::array<uint8_t, MAX_CAN_LEN> is_suppressed_mask = {0};  // a bitmask per byte (0xFF = all bits suppressed)
-  std::array<DataPattern, MAX_CAN_LEN> detected_patterns = {DataPattern::None};
-  std::array<uint64_t, 8> last_data_64 = {0};
-  std::array<uint64_t, 8> ignore_bit_mask = {0};
+  std::array<ByteAnalysis, MAX_CAN_LEN> analysis = {};
+  std::array<uint8_t, MAX_CAN_LEN> suppressed_mask = {};       // Per-byte bit suppression (0xFF = all suppressed)
+  std::array<uint64_t, 8> prev_data_64 = {};                   // Previous data packed as 8-byte blocks
+  std::array<uint64_t, 8> ignore_mask_64 = {};                 // Packed ignore masks per 8-byte block
 };
 
 class MessageSnapshot {
