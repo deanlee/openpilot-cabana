@@ -17,7 +17,7 @@ constexpr float NOISE_EMA_THRESHOLD = 0.55f;  // Above this = noisy
 
 constexpr double FREQ_JITTER_THRESHOLD = 0.0001;  // Intervals below this are considered jitter
 
-uint8_t applyByteMask(uint8_t value, uint8_t ignore_mask) {
+uint8_t clearIgnoredBits(uint8_t value, uint8_t ignore_mask) {
   return value & static_cast<uint8_t>(~ignore_mask);
 }
 
@@ -38,6 +38,7 @@ void MessageState::init(const uint8_t* new_data, uint8_t data_size, double curre
 
   // Bit-level activity initialization — 0.0 means "never changed"
   for (auto& byte_ts : last_bit_change_ts) byte_ts.fill(0.0);
+  last_byte_change_ts.fill(0.0);
 
   toggle_ema.fill(0.0f);
   trend_streak.fill(0);
@@ -64,10 +65,16 @@ void MessageState::update(const uint8_t* new_data, uint8_t data_size, double cur
   count++;
   updateFrequency(current_ts, manual_freq, is_seek);
 
-  // Decay EMA for all bytes (changed bytes get corrected in updateByteActivity)
+  // Decay EMA for all bytes. When EMA falls below noise threshold the byte has gone quiet:
+  // decay trend_streak toward 0 so old trend history doesn't bias future classifications,
+  // and clear detected_patterns so the field isn't stale (color fade handles visual expiry).
   const float decay = 1.0f - TOGGLE_EMA_ALPHA;
   for (int i = 0; i < size; ++i) {
     toggle_ema[i] *= decay;
+    if (toggle_ema[i] <= NOISE_EMA_THRESHOLD) {
+      if (trend_streak[i] != 0) trend_streak[i] /= 2;
+      if (trend_streak[i] == 0) detected_patterns[i] = DataPattern::None;
+    }
   }
 
   const int num_blocks = (size + 7) / 8;
@@ -92,8 +99,8 @@ void MessageState::update(const uint8_t* new_data, uint8_t data_size, double cur
         uint8_t new_byte = new_data[global_idx];
         uint8_t ignored_byte_mask = static_cast<uint8_t>((ignored_bits_64 >> (byte_in_block * 8)) & 0xFF);
 
-        updateByteActivity(global_idx, applyByteMask(old_byte, ignored_byte_mask),
-                           applyByteMask(new_byte, ignored_byte_mask), byte_diff, current_ts);
+        updateByteActivity(global_idx, clearIgnoredBits(old_byte, ignored_byte_mask),
+                           clearIgnoredBits(new_byte, ignored_byte_mask), byte_diff, current_ts);
 
         analysis_diff_64 &= ~(0xFFULL << (byte_in_block * 8));
       }
@@ -137,12 +144,15 @@ void MessageState::updateByteActivity(int i, uint8_t old_v, uint8_t new_v, uint8
 
   // 2. EMA toggle rate — already decayed in update(), add change contribution
   toggle_ema[i] += TOGGLE_EMA_ALPHA;  // Undo decay and add 1.0 sample: decay*old + alpha*1.0
+  last_byte_change_ts[i] = current_ts;
 
-  // 3. Trend streak & toggle detection
-  const int delta = static_cast<int>(new_v) - static_cast<int>(old_v);
-  const bool is_toggle = (delta != 0) && (delta == -last_delta[i]);
-
+  // 3. Trend streak & toggle detection.
+  // Guard: only accept a toggle if the byte is not already in an established trend.
+  // This prevents a single correction in a trend from triggering a one-frame Toggle flash.
   int8_t& streak = trend_streak[i];
+  const int delta = static_cast<int>(new_v) - static_cast<int>(old_v);
+  const bool is_toggle = (delta != 0) && (delta == -last_delta[i]) &&
+                         (std::abs(streak) < TREND_STREAK_THRESHOLD);
   if (is_toggle) {
     streak = 0;  // alternating delta breaks any trend
   } else if (delta > 0) {
@@ -216,12 +226,7 @@ void MessageState::unmuteActiveBits(const std::vector<uint8_t>& dbc_mask) {
 
 void MessageState::updateAllPatternColors(double current_can_sec) {
   for (size_t i = 0; i < size; ++i) {
-    // We use the "most recent bit change" in the byte to drive the byte-level color fade
-    double latest_bit_ts = 0;
-    for (int bit = 0; bit < 8; ++bit) {
-      latest_bit_ts = std::max(latest_bit_ts, last_bit_change_ts[i][bit]);
-    }
-    colors[i] = colorFromDataPattern(detected_patterns[i], current_can_sec, latest_bit_ts, freq);
+    colors[i] = colorFromDataPattern(detected_patterns[i], current_can_sec, last_byte_change_ts[i], freq);
   }
 }
 

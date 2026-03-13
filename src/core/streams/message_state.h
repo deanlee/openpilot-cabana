@@ -37,7 +37,8 @@ class MessageState {
   static constexpr double kMuteActivityWindowSec = 2.0;
 
   double last_freq_ts = 0;
-  std::array<std::array<double, 8>, MAX_CAN_LEN> last_bit_change_ts = {};
+  std::array<std::array<double, 8>, MAX_CAN_LEN> last_bit_change_ts = {};  // per-bit, for muting
+  std::array<double, MAX_CAN_LEN> last_byte_change_ts = {};                 // max of above, for color fading
   std::array<float, MAX_CAN_LEN> toggle_ema = {};       // EMA of byte change rate [0,1]
   std::array<int8_t, MAX_CAN_LEN> trend_streak = {};    // Signed saturating streak counter
   std::array<int16_t, MAX_CAN_LEN> last_delta = {};     // Previous byte delta for toggle detection
