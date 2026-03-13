@@ -321,16 +321,20 @@ void AbstractStream::suppressDefinedSignals(bool suppress) {
 
 size_t AbstractStream::suppressHighlighted() {
   std::lock_guard lk(mutex_);
+  static const std::vector<uint8_t> empty;
   size_t cnt = 0;
   for (auto& [id, m] : shared_state_.master_state) {
-    cnt += m.muteActiveBits(shared_state_.mute_defined_signals ? shared_state_.masks[id] : std::vector<uint8_t>{});
+    const auto it = shared_state_.mute_defined_signals ? shared_state_.masks.find(id) : shared_state_.masks.end();
+    cnt += m.muteActiveBits(it != shared_state_.masks.end() ? it->second : empty);
   }
   return cnt;
 }
 
 void AbstractStream::clearSuppressed() {
   std::lock_guard lk(mutex_);
+  static const std::vector<uint8_t> empty;
   for (auto& [id, m] : shared_state_.master_state) {
-    m.unmuteActiveBits(shared_state_.mute_defined_signals ? shared_state_.masks[id] : std::vector<uint8_t>{});
+    const auto it = shared_state_.mute_defined_signals ? shared_state_.masks.find(id) : shared_state_.masks.end();
+    m.unmuteActiveBits(it != shared_state_.masks.end() ? it->second : empty);
   }
 }
