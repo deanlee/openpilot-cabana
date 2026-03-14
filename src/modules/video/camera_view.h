@@ -25,7 +25,7 @@ class CameraView : public QOpenGLWidget, protected QOpenGLFunctions {
 
  signals:
   void clicked();
-  void vipcThreadConnected(VisionIpcClient*);
+  void vipcThreadConnected(int stream_width, int stream_height, int stream_stride);
   void vipcThreadFrameReceived();
   void vipcAvailableStreamsUpdated(std::set<VisionStreamType>);
 
@@ -55,7 +55,7 @@ class CameraView : public QOpenGLWidget, protected QOpenGLFunctions {
   VisionIpcBufExtra frame_meta_ = {};
 
  protected slots:
-  void vipcConnected(VisionIpcClient* vipc_client);
+  void vipcConnected(int stream_width, int stream_height, int stream_stride);
   void vipcFrameReceived();
   void availableStreamsUpdated(std::set<VisionStreamType> streams);
 };
