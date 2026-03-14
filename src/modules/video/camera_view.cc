@@ -48,10 +48,10 @@ const char frame_fragment_shader[] =
 }  // namespace
 
 CameraView::CameraView(std::string stream_name, VisionStreamType type, QWidget* parent)
-    : stream_name(stream_name), active_stream_type(type), requested_stream_type(type), QOpenGLWidget(parent) {
+    : QOpenGLWidget(parent), stream_name(stream_name), active_stream_type(type), requested_stream_type(type) {
   setAttribute(Qt::WA_OpaquePaintEvent);
   qRegisterMetaType<std::set<VisionStreamType>>("availableStreams");
-  connect(this, &CameraView::vipcThreadConnected, this, &CameraView::vipcConnected, Qt::BlockingQueuedConnection);
+  connect(this, &CameraView::vipcThreadConnected, this, &CameraView::vipcConnected);
   connect(this, &CameraView::vipcThreadFrameReceived, this, &CameraView::vipcFrameReceived, Qt::QueuedConnection);
   connect(this, &CameraView::vipcAvailableStreamsUpdated, this, &CameraView::availableStreamsUpdated,
           Qt::QueuedConnection);
@@ -59,8 +59,9 @@ CameraView::CameraView(std::string stream_name, VisionStreamType type, QWidget* 
 }
 
 CameraView::~CameraView() {
-  makeCurrent();
   stopVipcThread();
+
+  makeCurrent();
   if (isValid()) {
     glDeleteVertexArrays(1, &frame_vao);
     glDeleteBuffers(1, &frame_vbo);
@@ -84,7 +85,7 @@ void CameraView::initializeGL() {
 
   auto [x1, x2, y1, y2] =
       requested_stream_type == VISION_STREAM_DRIVER ? std::tuple(0.f, 1.f, 1.f, 0.f) : std::tuple(1.f, 0.f, 1.f, 0.f);
-  const uint8_t frame_indicies[] = {0, 1, 2, 0, 2, 3};
+  const uint8_t frame_indices[] = {0, 1, 2, 0, 2, 3};
   const float frame_coords[4][4] = {
       {-1.0, -1.0, x2, y1},  // bl
       {-1.0, 1.0, x2, y2},   // tl
@@ -94,17 +95,22 @@ void CameraView::initializeGL() {
 
   glGenVertexArrays(1, &frame_vao);
   glBindVertexArray(frame_vao);
+
   glGenBuffers(1, &frame_vbo);
   glBindBuffer(GL_ARRAY_BUFFER, frame_vbo);
   glBufferData(GL_ARRAY_BUFFER, sizeof(frame_coords), frame_coords, GL_STATIC_DRAW);
+
   glEnableVertexAttribArray(frame_pos_loc);
   glVertexAttribPointer(frame_pos_loc, 2, GL_FLOAT, GL_FALSE, sizeof(frame_coords[0]), (const void*)0);
+
   glEnableVertexAttribArray(frame_texcoord_loc);
   glVertexAttribPointer(frame_texcoord_loc, 2, GL_FLOAT, GL_FALSE, sizeof(frame_coords[0]),
                         (const void*)(sizeof(float) * 2));
-  glGenBuffers(1, &frame_ibo);
+
+                        glGenBuffers(1, &frame_ibo);
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, frame_ibo);
-  glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(frame_indicies), frame_indicies, GL_STATIC_DRAW);
+  glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(frame_indices), frame_indices, GL_STATIC_DRAW);
+
   glBindBuffer(GL_ARRAY_BUFFER, 0);
   glBindVertexArray(0);
 
@@ -117,6 +123,7 @@ void CameraView::initializeGL() {
 }
 
 void CameraView::showEvent(QShowEvent* event) {
+  QOpenGLWidget::showEvent(event);
   if (!vipc_thread) {
     clearFrames();
     vipc_thread = new QThread();
@@ -127,7 +134,6 @@ void CameraView::showEvent(QShowEvent* event) {
 }
 
 void CameraView::stopVipcThread() {
-  makeCurrent();
   if (vipc_thread) {
     vipc_thread->requestInterruption();
     vipc_thread->quit();
@@ -180,17 +186,18 @@ void CameraView::paintGL() {
   glBindTexture(GL_TEXTURE_2D, 0);
   glActiveTexture(GL_TEXTURE0);
   glBindTexture(GL_TEXTURE_2D, 0);
+
   glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
   glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
 
   shader_program_->release();
 }
 
-void CameraView::vipcConnected(VisionIpcClient* vipc_client) {
+void CameraView::vipcConnected(int width, int height, int stride) {
   makeCurrent();
-  stream_width = vipc_client->buffers[0].width;
-  stream_height = vipc_client->buffers[0].height;
-  stream_stride = vipc_client->buffers[0].stride;
+  stream_width = width;
+  stream_height = height;
+  stream_stride = stride;
 
   glBindTexture(GL_TEXTURE_2D, textures[0]);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -238,7 +245,9 @@ void CameraView::vipcThread() {
         QThread::msleep(100);
         continue;
       }
-      emit vipcThreadConnected(vipc_client.get());
+
+      const auto &buf = vipc_client.get()->buffers[0];
+      emit vipcThreadConnected(buf.width, buf.height, buf.stride);
     }
 
     if (VisionBuf* buf = vipc_client->recv(&frame_meta, 100)) {
