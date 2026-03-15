@@ -3,17 +3,28 @@
 #include <QThread>
 
 #include "cereal/services.h"
+#include "cereal/messaging/impl_zmq.h"
 
 DeviceStream::DeviceStream(QObject* parent, QString address) : zmq_address(address), LiveStream(parent) {}
 
 void DeviceStream::streamThread() {
   zmq_address.isEmpty() ? unsetenv("ZMQ") : setenv("ZMQ", "1", 1);
 
-  std::unique_ptr<Context> context(Context::create());
+
+  std::unique_ptr<Context> context;
   std::string address = zmq_address.isEmpty() ? "127.0.0.1" : zmq_address.toStdString();
-  std::unique_ptr<SubSocket> sock(
-      SubSocket::create(context.get(), "can", address, false, true, services.at("can").queue_size));
+  std::unique_ptr<SubSocket> sock;
+
+  if (zmq_address.isEmpty()) {
+    context.reset(Context::create());
+    sock.reset(SubSocket::create(context.get(), "can", address, false, true, services.at("can").queue_size));
+  } else {
+    context.reset(new ZMQContext());
+    sock.reset(new ZMQSubSocket());
+    sock->connect(context.get(), "can", address, false, true, services.at("can").queue_size);
+  }
   assert(sock != NULL);
+
   // run as fast as messages come in
   while (!QThread::currentThread()->isInterruptionRequested()) {
     std::unique_ptr<Message> msg(sock->receive(true));
