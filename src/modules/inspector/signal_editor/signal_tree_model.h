@@ -97,7 +97,8 @@ class SignalTreeModel : public QAbstractItemModel {
   QMap<MessageId, QSet<const dbc::Signal*>> charted_signals_;
   std::unique_ptr<Item> root;
 
-  SparklineContext sparkline_context_;
+  uint64_t prev_sparkline_ns_ = 0;
+  QSize prev_sparkline_size_;
 };
 
 QString signalTypeToString(dbc::Signal::Type type);

@@ -81,17 +81,46 @@ void SignalTreeModel::updateSparklines(const MessageSnapshot* msg, int first_row
     return;
   }
 
+  auto* stream = StreamManager::stream();
+  const uint64_t current_ns = stream->toMonoNs(msg->ts);
+
+  // Detect jump (seek backward or gap > 1s)
+  bool jump_detected = (prev_sparkline_ns_ != 0) &&
+                       ((current_ns < prev_sparkline_ns_) || (current_ns > prev_sparkline_ns_ + 1000000000ULL));
+  bool time_shifted = (current_ns != prev_sparkline_ns_);
+  bool size_changed = (size != prev_sparkline_size_);
+
+  // Collect visible items and check if any are stale (never updated or lagging behind current time)
   QVector<SignalTreeModel::Item*> items;
   items.reserve(last_row - first_row + 1);
+  bool has_stale_items = false;
   for (int i = first_row; i <= last_row; ++i) {
-    items << itemFromIndex(index(i, 1));
+    auto* item = itemFromIndex(index(i, 1));
+    items << item;
+    if (!item->sparkline->isUpToDate(current_ns)) has_stale_items = true;
   }
-  if (sparkline_context_.update(msg_id, StreamManager::stream()->toMonoNs(msg->ts), settings.sparkline_range, size)) {
-    QtConcurrent::blockingMap(
-        items, [&](SignalTreeModel::Item* item) { item->sparkline->update(item->sig, sparkline_context_); });
 
-    emit dataChanged(index(first_row, 1), index(last_row, 1), {Qt::DisplayRole});
+  if (!time_shifted && !size_changed && !jump_detected && !has_stale_items) return;
+
+  if (jump_detected) {
+    for (auto* item : root->children) {
+      item->sparkline->clearHistory();
+    }
   }
+
+  prev_sparkline_ns_ = current_ns;
+  prev_sparkline_size_ = size;
+
+  // Fetch events once for the full window
+  const uint64_t range_ns = static_cast<uint64_t>(settings.sparkline_range) * 1000000000ULL;
+  uint64_t win_start = (current_ns > range_ns) ? (current_ns - range_ns) : 0;
+  auto range = stream->eventsInRange(msg_id, std::make_pair(stream->toSeconds(win_start), stream->toSeconds(current_ns)));
+
+  QtConcurrent::blockingMap(items, [&](SignalTreeModel::Item* item) {
+    item->sparkline->update(item->sig, range.first, range.second, current_ns, settings.sparkline_range, size);
+  });
+
+  emit dataChanged(index(first_row, 1), index(last_row, 1), {Qt::DisplayRole});
 }
 
 void SignalTreeModel::updateChartedSignals(const QMap<MessageId, QSet<const dbc::Signal*>>& opened) {
@@ -367,7 +396,8 @@ void SignalTreeModel::handleSignalRemoved(const dbc::Signal* sig) {
 }
 
 void SignalTreeModel::resetSparklines() {
-  sparkline_context_ = {};
+  prev_sparkline_ns_ = 0;
+  prev_sparkline_size_ = {};
   for (auto* item : root->children) {
     item->sparkline->clearHistory();
   }
