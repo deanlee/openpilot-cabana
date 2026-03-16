@@ -104,11 +104,13 @@ void SignalEditor::setupConnections(ChartsPanel* charts) {
 void SignalEditor::setMessage(const MessageId& id) {
   filter_edit->clear();
   model->setMessage(id);
+  tree->scrollToTop();
 }
 
 void SignalEditor::clearMessage() {
   filter_edit->clear();
   model->setMessage(MessageId());
+  tree->scrollToTop();
 }
 
 void SignalEditor::updateState(const std::set<MessageId>* msgs) {
