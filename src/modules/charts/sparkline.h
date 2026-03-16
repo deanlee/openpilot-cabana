@@ -1,8 +1,8 @@
 #pragma once
 
+#include <QColor>
 #include <QImage>
 #include <QPointF>
-#include <deque>
 #include <vector>
 
 #include "core/dbc/dbc_message.h"
@@ -46,37 +46,34 @@ class Sparkline {
   };
   void update(const dbc::Signal* sig, CanEventIter first, CanEventIter last,
               uint64_t current_ns, int time_window, const QSize& size);
-  bool isEmpty() const { return image.isNull(); }
+  bool isEmpty() const { return image_.isNull(); }
   bool isUpToDate(uint64_t current_ns) const { return last_processed_ns_ == current_ns; }
   void setHighlight(bool highlight);
   void clearHistory();
 
-  QImage image;
-  double min_val = 0;
-  double max_val = 0;
+  const QImage& image() const { return image_; }
+  double minVal() const { return min_val_; }
+  double maxVal() const { return max_val_; }
 
  private:
+  static constexpr double kFlatnessEps = 1e-9;
+
+  // Tracks per-pixel extremes in signal-value space (M4 downsampling algorithm).
   struct Bucket {
     double entry = 0.0, exit = 0.0;
-    double min = std::numeric_limits<double>::max();
-    double max = std::numeric_limits<double>::lowest();
-    uint64_t min_ts = 0, max_ts = 0;
+    double val_min = std::numeric_limits<double>::max();
+    double val_max = std::numeric_limits<double>::lowest();
+    uint64_t val_min_ts = 0, val_max_ts = 0;
 
-    void init(double y, uint64_t ts) {
-      entry = exit = min = max = y;
-      min_ts = max_ts = ts;
+    void init(double value, uint64_t ts) {
+      entry = exit = val_min = val_max = value;
+      val_min_ts = val_max_ts = ts;
     }
 
-    void update(double y, uint64_t ts) {
-      exit = y;
-      if (y < min) {
-        min = y;
-        min_ts = ts;
-      }
-      if (y > max) {
-        max = y;
-        max_ts = ts;
-      }
+    void update(double value, uint64_t ts) {
+      exit = value;
+      if (value < val_min) { val_min = value; val_min_ts = ts; }
+      if (value > val_max) { val_max = value; val_max_ts = ts; }
     }
   };
 
@@ -84,7 +81,7 @@ class Sparkline {
   void updateDataPoints(const dbc::Signal* sig, CanEventIter first, CanEventIter last);
   void mapHistoryToPoints();
   void updateValueBounds();
-  void flushBucket(int x, const Bucket& b);
+  void flushBucket(int x, const Bucket& b, float base_y, double y_scale);
   void addUniquePoint(int x, float y);
   void render();
   void mapFlatPath();
@@ -107,5 +104,8 @@ class Sparkline {
   bool bounds_dirty_ = true;
   bool is_highlighted_ = false;
   uint64_t last_processed_ns_ = 0;
-  const dbc::Signal* signal_ = nullptr;
+  QColor signal_color_;
+  QImage image_;
+  double min_val_ = std::numeric_limits<double>::max();
+  double max_val_ = std::numeric_limits<double>::lowest();
 };

@@ -23,7 +23,7 @@ void Sparkline::prepareWindow(uint64_t current_ns, int time_window, const QSize&
 
 void Sparkline::update(const dbc::Signal* sig, CanEventIter first, CanEventIter last,
                        uint64_t current_ns, int time_window, const QSize& size) {
-  signal_ = sig;
+  signal_color_ = sig->color;
   prepareWindow(current_ns, time_window, size);
   updateDataPoints(sig, first, last);
   last_processed_ns_ = win_end_ns_;
@@ -32,11 +32,11 @@ void Sparkline::update(const dbc::Signal* sig, CanEventIter first, CanEventIter 
     const qreal dpr = qApp->devicePixelRatio();
     QSize pixelSize = widget_size_ * dpr;
 
-    if (image.size() != pixelSize) {
-      image = QImage(pixelSize, QImage::Format_ARGB32_Premultiplied);
-      image.setDevicePixelRatio(dpr);
+    if (image_.size() != pixelSize) {
+      image_ = QImage(pixelSize, QImage::Format_ARGB32_Premultiplied);
+      image_.setDevicePixelRatio(dpr);
     }
-    image.fill(Qt::transparent);
+    image_.fill(Qt::transparent);
 
     mapHistoryToPoints();
     render();
@@ -54,8 +54,8 @@ void Sparkline::updateDataPoints(const dbc::Signal* sig, CanEventIter first, Can
     if (sig->parse(e->dat, e->size, &val)) {
       history_.push_back({e->mono_ns, val});
       // Update running bounds
-      if (val < min_val) min_val = val;
-      if (val > max_val) max_val = val;
+      if (val < min_val_) min_val_ = val;
+      if (val > max_val_) max_val_ = val;
     }
   }
 
@@ -75,7 +75,7 @@ void Sparkline::mapHistoryToPoints() {
   render_pts_.clear();
 
   updateValueBounds();
-  bool is_flat = (max_val - min_val) < 1e-9;
+  const bool is_flat = (max_val_ - min_val_) < kFlatnessEps;
 
   if (is_flat) {
     mapFlatPath();
@@ -84,7 +84,8 @@ void Sparkline::mapHistoryToPoints() {
   }
 
   if (render_pts_.size() == 1) {
-    render_pts_.insert(render_pts_.begin(), render_pts_[0] - QPointF(1.0f, 0));
+    render_pts_.push_back(render_pts_[0]);
+    render_pts_[0].setX(render_pts_[1].x() - 1.0);
   }
 }
 
@@ -102,10 +103,11 @@ void Sparkline::mapFlatPath() {
   }
 }
 
-// O(N) Path: M4 Algorithm to reduce high-frequency data into pixel buckets
+// O(N) Path: M4 Algorithm to reduce high-frequency data into pixel buckets.
+// Bucket tracks extremes in signal-value space; canvas-Y conversion happens in flushBucket.
 void Sparkline::mapNoisyPath() {
   const float eff_h = std::max(1.0f, widget_size_.height() - (2.0f * pad_));
-  const double y_scale = static_cast<double>(eff_h) / (max_val - min_val);
+  const double y_scale = static_cast<double>(eff_h) / (max_val_ - min_val_);
   const float base_y = widget_size_.height() - pad_;
 
   size_t max_expected_points = static_cast<size_t>(widget_size_.width()) * 4;
@@ -117,45 +119,45 @@ void Sparkline::mapNoisyPath() {
   for (size_t i = 0; i < history_.size(); ++i) {
     const auto& pt = history_[i];
     int x = static_cast<int>(getX(pt.mono_ns));
-    float y = base_y - static_cast<float>((pt.value - min_val) * y_scale);
 
     if (x != last_x) {
       if (last_x != -1) {
-        flushBucket(last_x, b);
+        flushBucket(last_x, b, base_y, y_scale);
       }
-      b.init(y, pt.mono_ns);
+      b.init(pt.value, pt.mono_ns);
       last_x = x;
     } else {
-      b.update(y, pt.mono_ns);
+      b.update(pt.value, pt.mono_ns);
     }
   }
-  flushBucket(last_x, b);
+  flushBucket(last_x, b, base_y, y_scale);
 
-  // IMPORTANT: Ensure the very last point in history is mapped to current_ns
-  // This prevents the line from "stopping" early due to bucket alignment.
+  // Pin the very last point to the right edge to prevent the line from stopping
+  // short due to pixel-bucket alignment.
   if (!history_.empty()) {
-    float final_y = base_y - static_cast<float>((history_.back().value - min_val) * y_scale);
-    addUniquePoint(right_edge_, final_y);
+    const double last_value = history_.back().value;
+    float final_y = base_y - static_cast<float>((last_value - min_val_) * y_scale);
+    addUniquePoint(static_cast<int>(right_edge_), final_y);
   }
 }
 
-void Sparkline::flushBucket(int x, const Bucket& b) {
-  if (x == -1) return;
+void Sparkline::flushBucket(int x, const Bucket& b, float base_y, double y_scale) {
+  auto toY = [&](double value) -> float {
+    return base_y - static_cast<float>((value - min_val_) * y_scale);
+  };
 
-  // Always add the entry point
-  addUniquePoint(x, b.entry);
+  addUniquePoint(x, toY(b.entry));
 
-  // Determine the order of min/max based on their timestamps
-  if (b.min_ts < b.max_ts) {
-    if (b.min != b.entry && b.min != b.exit) addUniquePoint(x, b.min);
-    if (b.max != b.entry && b.max != b.exit) addUniquePoint(x, b.max);
+  // Emit val_min and val_max in chronological order to preserve the visual shape.
+  if (b.val_min_ts < b.val_max_ts) {
+    if (b.val_min != b.entry && b.val_min != b.exit) addUniquePoint(x, toY(b.val_min));
+    if (b.val_max != b.entry && b.val_max != b.exit) addUniquePoint(x, toY(b.val_max));
   } else {
-    if (b.max != b.entry && b.max != b.exit) addUniquePoint(x, b.max);
-    if (b.min != b.entry && b.min != b.exit) addUniquePoint(x, b.min);
+    if (b.val_max != b.entry && b.val_max != b.exit) addUniquePoint(x, toY(b.val_max));
+    if (b.val_min != b.entry && b.val_min != b.exit) addUniquePoint(x, toY(b.val_min));
   }
 
-  // Always add the exit point (addUniquePoint handles the x/y check)
-  addUniquePoint(x, b.exit);
+  addUniquePoint(x, toY(b.exit));
 }
 
 void Sparkline::addUniquePoint(int x, float y) {
@@ -186,8 +188,8 @@ void Sparkline::addUniquePoint(int x, float y) {
 void Sparkline::render() {
   if (render_pts_.empty()) return;
 
-  QPainter p(&image);
-  const QColor color = is_highlighted_ ? qApp->palette().color(QPalette::HighlightedText) : signal_->color;
+  QPainter p(&image_);
+  const QColor color = is_highlighted_ ? qApp->palette().color(QPalette::HighlightedText) : signal_color_;
 
   if (render_pts_.size() > 1) {
     // Line Rendering: Aliasing OFF for crisp 1px lines
@@ -208,8 +210,8 @@ void Sparkline::updateValueBounds() {
   bounds_dirty_ = false;
 
   if (history_.empty()) {
-    min_val = 0;
-    max_val = 0;
+    min_val_ = std::numeric_limits<double>::max();
+    max_val_ = std::numeric_limits<double>::lowest();
     return;
   }
 
@@ -220,23 +222,22 @@ void Sparkline::updateValueBounds() {
     if (v < lo) lo = v;
     if (v > hi) hi = v;
   }
-  min_val = lo;
-  max_val = hi;
+  min_val_ = lo;
+  max_val_ = hi;
 }
 
 void Sparkline::clearHistory() {
   history_.clear();
   render_pts_.clear();
-  image = QImage();
-  min_val = std::numeric_limits<double>::max();
-  max_val = std::numeric_limits<double>::lowest();
+  image_ = QImage();
+  min_val_ = std::numeric_limits<double>::max();
+  max_val_ = std::numeric_limits<double>::lowest();
   bounds_dirty_ = false;
   last_processed_ns_ = 0;
 }
 
 void Sparkline::setHighlight(bool highlight) {
-  if (is_highlighted_ != highlight) {
-    is_highlighted_ = highlight;
-    render();
-  }
+  if (is_highlighted_ == highlight) return;
+  is_highlighted_ = highlight;
+  if (!render_pts_.empty()) render();
 }
