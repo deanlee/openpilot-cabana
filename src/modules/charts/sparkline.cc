@@ -45,8 +45,8 @@ void Sparkline::update(const dbc::Signal* sig, CanEventIter first, CanEventIter 
 
 void Sparkline::updateDataPoints(const dbc::Signal* sig, CanEventIter first, CanEventIter last) {
   // Skip events already processed by this sparkline
-  auto it = first;
-  while (it != last && (*it)->mono_ns <= last_processed_ns_) ++it;
+  auto it = std::lower_bound(first, last, last_processed_ns_ + 1,
+                             [](const CanEvent* e, uint64_t ns) { return e->mono_ns < ns; });
 
   double val = 0.0;
   for (; it != last; ++it) {
