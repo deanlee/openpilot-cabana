@@ -3,6 +3,8 @@
 #include <QStringList>
 #include <QThread>
 #include <atomic>
+#include <condition_variable>
+#include <mutex>
 
 #include "abstract_stream.h"
 
@@ -22,7 +24,7 @@ class FileStream : public AbstractStream {
   void seekTo(double sec) override;
   bool isPaused() const override { return paused_; }
   void pause(bool pause) override;
-  void setSpeed(float speed) override { speed_ = speed; }
+  void setSpeed(float speed) override;
   double getSpeed() const override { return speed_; }
 
  protected:
@@ -37,4 +39,6 @@ class FileStream : public AbstractStream {
   std::atomic<double> seek_to_{-1.0};
   std::atomic<bool> paused_{false};
   std::atomic<float> speed_{1.0f};
+  std::mutex pause_mutex_;
+  std::condition_variable pause_cv_;
 };
