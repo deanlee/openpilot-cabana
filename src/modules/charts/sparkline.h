@@ -38,38 +38,16 @@ class RingBuffer {
   size_t count = 0;
 };
 
-class SparklineContext {
- public:
-  float pad = 2.0f;
-  uint64_t last_processed_mono_ns = 0;
-  uint64_t win_start_ns = 0;
-  uint64_t win_end_ns = 0;
-  bool jump_detected = false;
-  float right_edge = 0.0f;
-
-  CanEventIter first;
-  CanEventIter last;
-
-  QSize widget_size = {};
-  float px_per_ns = 0;
-
-  bool update(const MessageId& msg_id, uint64_t current_ns, int time_window, const QSize& size);
-  inline float getX(uint64_t ts) const {
-    if (ts >= win_end_ns) return right_edge;
-
-    float x = pad + static_cast<float>(static_cast<double>(ts - win_start_ns) * px_per_ns);
-    return (x < pad) ? pad : x;
-  }
-};
-
 class Sparkline {
  public:
   struct DataPoint {
     uint64_t mono_ns;
     double value;
   };
-  void update(const dbc::Signal* sig, const SparklineContext& params);
+  void update(const dbc::Signal* sig, CanEventIter first, CanEventIter last,
+              uint64_t current_ns, int time_window, const QSize& size);
   bool isEmpty() const { return image.isNull(); }
+  bool isUpToDate(uint64_t current_ns) const { return last_processed_ns_ == current_ns; }
   void setHighlight(bool highlight);
   void clearHistory();
 
@@ -102,18 +80,32 @@ class Sparkline {
     }
   };
 
-  void updateDataPoints(const dbc::Signal* sig, const SparklineContext& ctx);
-  void mapHistoryToPoints(const SparklineContext& ctx);
+  void prepareWindow(uint64_t current_ns, int time_window, const QSize& size);
+  void updateDataPoints(const dbc::Signal* sig, CanEventIter first, CanEventIter last);
+  void mapHistoryToPoints();
   void updateValueBounds();
   void flushBucket(int x, const Bucket& b);
   void addUniquePoint(int x, float y);
   void render();
-  void mapFlatPath(const SparklineContext& ctx);
-  void mapNoisyPath(const SparklineContext& ctx);
+  void mapFlatPath();
+  void mapNoisyPath();
+  inline float getX(uint64_t ts) const {
+    if (ts >= win_end_ns_) return right_edge_;
+    float x = pad_ + static_cast<float>(static_cast<double>(ts - win_start_ns_) * px_per_ns_);
+    return (x < pad_) ? pad_ : x;
+  }
+
+  static constexpr float pad_ = 2.0f;
+  uint64_t win_start_ns_ = 0;
+  uint64_t win_end_ns_ = 0;
+  float right_edge_ = 0.0f;
+  float px_per_ns_ = 0;
+  QSize widget_size_;
 
   RingBuffer<DataPoint> history_;
   std::vector<QPointF> render_pts_;
   bool bounds_dirty_ = true;
   bool is_highlighted_ = false;
+  uint64_t last_processed_ns_ = 0;
   const dbc::Signal* signal_ = nullptr;
 };
