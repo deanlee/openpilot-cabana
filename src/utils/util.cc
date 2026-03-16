@@ -26,31 +26,15 @@ static bool dark_theme = false;
 bool isDarkTheme() { return dark_theme; }
 
 QString doubleToString(double value, int precision) {
-  if (value == 0.0) {
-    return QStringLiteral("0");
+  if (value == 0.0) return QStringLiteral("0");  // handles both +0 and -0
+  char buf[64];
+  int len = std::snprintf(buf, sizeof(buf), "%.*f", precision, value);
+  if (len <= 0 || len >= (int)sizeof(buf)) return QString::number(value);
+  if (precision > 0) {
+    while (buf[len - 1] == '0') --len;
+    if (buf[len - 1] == '.') --len;
   }
-
-  QString s = QString::number(value, 'f', precision);
-
-  int dotIdx = s.indexOf('.');
-  if (dotIdx != -1) {
-    int i = s.length() - 1;
-    // Walk back to remove trailing zeros
-    while (i > dotIdx && s[i] == '0') i--;
-    // Remove the dot if no decimals remain
-    if (i == dotIdx) i--;
-
-    // Only truncate if we actually removed something
-    if (i < s.length() - 1) {
-      s.truncate(i + 1);
-    }
-  }
-
-  if (s == "0" || s == "-0" || s.isEmpty()) {
-    return QStringLiteral("0");
-  }
-
-  return s;
+  return QString::fromLatin1(buf, len);
 }
 
 int num_decimals(double num) {
