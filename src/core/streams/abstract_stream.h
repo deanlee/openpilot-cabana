@@ -22,11 +22,11 @@
 #include "utils/util.h"
 
 struct CanEvent {
-  uint8_t src;
-  uint32_t address;
-  uint64_t mono_ns;
-  uint8_t size;
-  uint8_t dat[];
+  uint64_t mono_ns;   // 8 bytes — largest member first; no internal padding
+  uint32_t address;   // 4 bytes
+  uint8_t src;        // 1 byte
+  uint8_t size;       // 1 byte
+  uint8_t dat[];      // FAM — starts at offset 14; sizeof(CanEvent) == 16
 };
 
 using MessageEventsMap = std::unordered_map<MessageId, std::vector<const CanEvent*>>;
