@@ -15,7 +15,8 @@ struct LiveStream::Logger {
 
   void write(kj::ArrayPtr<capnp::word> data) {
     int n = (seconds_since_epoch() - start_ts) / 60.0;
-    if (std::exchange(segment_num, n) != segment_num) {
+    if (segment_num != n) {
+      segment_num = n;
       QString dir = QString("%1/%2--%3")
                         .arg(settings.log_path)
                         .arg(QDateTime::fromSecsSinceEpoch(start_ts).toString("yyyy-MM-dd--hh-mm-ss"))

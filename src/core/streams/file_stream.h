@@ -5,8 +5,20 @@
 #include <atomic>
 #include <condition_variable>
 #include <mutex>
+#include <vector>
 
 #include "abstract_stream.h"
+
+// Lightweight parsed frame used during file loading.
+// Each file-format subclass produces these; the base class handles
+// timestamp stitching, sorting, CanEvent allocation, and mergeEvents().
+struct ParsedCanFrame {
+  uint64_t rel_ns;    // file-relative nanoseconds (or absolute, normalized later)
+  uint32_t address;
+  uint8_t bus;
+  uint8_t size;
+  uint8_t data[64];   // inline storage avoids per-frame heap allocation
+};
 
 class FileStream : public AbstractStream {
   Q_OBJECT
@@ -28,6 +40,14 @@ class FileStream : public AbstractStream {
   double getSpeed() const override { return speed_; }
 
  protected:
+  // Subclasses implement this to parse a single file into ParsedCanFrames.
+  // Timestamps should be file-relative nanoseconds (from 0).
+  // The base class handles stitching, sorting, and event allocation.
+  virtual std::vector<ParsedCanFrame> parseFile(const QString& file_path) = 0;
+
+  // Call from subclass constructor after parsing to build the event timeline.
+  void loadParsedFiles();
+
   QStringList file_paths_;
   uint64_t begin_mono_ns_ = 0;
   double duration_s_ = 0;

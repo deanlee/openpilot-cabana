@@ -5,7 +5,7 @@
 #include "cereal/services.h"
 #include "cereal/messaging/impl_zmq.h"
 
-DeviceStream::DeviceStream(QObject* parent, QString address) : zmq_address(address), LiveStream(parent) {}
+DeviceStream::DeviceStream(QObject* parent, QString address) : LiveStream(parent), zmq_address(address) {}
 
 void DeviceStream::streamThread() {
   zmq_address.isEmpty() ? unsetenv("ZMQ") : setenv("ZMQ", "1", 1);

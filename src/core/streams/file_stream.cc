@@ -28,6 +28,41 @@ QString FileStream::routeName() const {
   return file_paths_.size() == 1 ? file_paths_.first() : tr("%1 files").arg(file_paths_.size());
 }
 
+void FileStream::loadParsedFiles() {
+  std::vector<ParsedCanFrame> all_parsed;
+
+  for (const QString& file_path : file_paths_) {
+    auto file_frames = parseFile(file_path);
+    if (file_frames.empty()) continue;
+
+    // Stitch: if this file's timestamps restart (overlap with already-parsed frames),
+    // shift the new frames to follow the previous file's end by 1 ms.
+    if (!all_parsed.empty() && file_frames.front().rel_ns <= all_parsed.back().rel_ns) {
+      uint64_t shift = all_parsed.back().rel_ns + 1'000'000ULL - file_frames.front().rel_ns;
+      for (auto& f : file_frames) f.rel_ns += shift;
+    }
+
+    all_parsed.insert(all_parsed.end(),
+                      std::make_move_iterator(file_frames.begin()),
+                      std::make_move_iterator(file_frames.end()));
+  }
+
+  // Sort handles files provided out of order.
+  std::sort(all_parsed.begin(), all_parsed.end(),
+            [](const ParsedCanFrame& a, const ParsedCanFrame& b) { return a.rel_ns < b.rel_ns; });
+
+  std::vector<const CanEvent*> events;
+  events.reserve(all_parsed.size());
+  for (const auto& f : all_parsed) {
+    events.push_back(newEvent(begin_mono_ns_ + f.rel_ns, f.bus, f.address, f.data, f.size));
+  }
+
+  if (!events.empty()) {
+    duration_s_ = (events.back()->mono_ns - begin_mono_ns_) / 1e9;
+    mergeEvents(events);
+  }
+}
+
 void FileStream::start() {
   if (all_events_.empty()) return;
 
