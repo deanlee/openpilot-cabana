@@ -96,7 +96,7 @@ class AbstractStream : public QObject {
   void processNewMessage(const MessageId& id, uint64_t mono_ns, const uint8_t* data, uint8_t size);
   void waitForSeekFinished();
 
-  std::vector<const CanEvent*> all_events_;
+  std::vector<const CanEvent*> all_events_;  // Main thread only
   double current_sec_ = 0;
   std::optional<std::pair<double, double>> time_range_;
 
@@ -124,6 +124,7 @@ class AbstractStream : public QObject {
   SharedState shared_state_;
   std::condition_variable seek_finished_cv_;
 
+  // All members below are main-thread-only (read/written from Qt event loop)
   std::unordered_map<MessageId, std::unique_ptr<MessageSnapshot>> snapshot_map_;
 
   MessageEventsMap events_;

@@ -3,7 +3,7 @@
 #include <QDebug>
 #include <QThread>
 
-SocketCanStream::SocketCanStream(QObject* parent, SocketCanStreamConfig config_) : config(config_), LiveStream(parent) {
+SocketCanStream::SocketCanStream(QObject* parent, SocketCanStreamConfig config_) : LiveStream(parent), config(config_) {
   if (!available()) {
     throw std::runtime_error("SocketCAN plugin not available");
   }
@@ -43,18 +43,27 @@ void SocketCanStream::streamThread() {
     auto frames = device->readAllFrames();
     if (frames.size() == 0) continue;
 
+    // Count valid frames first to avoid ghost entries in the capnp message
+    size_t valid_count = 0;
+    for (const auto& f : frames) {
+      if (f.isValid()) ++valid_count;
+    }
+    if (valid_count == 0) continue;
+
     MessageBuilder msg;
     auto evt = msg.initEvent();
-    auto canData = evt.initCan(frames.size());
+    auto canData = evt.initCan(valid_count);
 
-    for (uint i = 0; i < frames.size(); i++) {
-      if (!frames[i].isValid()) continue;
+    size_t j = 0;
+    for (const auto& frame : frames) {
+      if (!frame.isValid()) continue;
 
-      canData[i].setAddress(frames[i].frameId());
-      canData[i].setSrc(0);
+      canData[j].setAddress(frame.frameId());
+      canData[j].setSrc(0);
 
-      auto payload = frames[i].payload();
-      canData[i].setDat(kj::arrayPtr((uint8_t*)payload.data(), payload.size()));
+      auto payload = frame.payload();
+      canData[j].setDat(kj::arrayPtr((uint8_t*)payload.data(), payload.size()));
+      ++j;
     }
 
     handleEvent(capnp::messageToFlatArray(msg));

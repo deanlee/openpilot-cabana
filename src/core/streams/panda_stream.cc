@@ -4,7 +4,7 @@
 #include <QThread>
 #include <QTimer>
 
-PandaStream::PandaStream(QObject* parent, PandaStreamConfig config_) : config(config_), LiveStream(parent) {
+PandaStream::PandaStream(QObject* parent, PandaStreamConfig config_) : LiveStream(parent), config(config_) {
   if (!connect()) {
     throw std::runtime_error("Failed to connect to panda");
   }
