@@ -167,11 +167,12 @@ void AbstractStream::updateSnapshotsTo(double sec) {
 
 void AbstractStream::updateActivityStates() {
   const double now = millis_since_boot();
-  if (now - last_activity_update_ms_ > kActivityCheckIntervalMs) {
-    for (auto& [_, m] : snapshot_map_) {
-      m->updateActiveState(current_sec_);
-    }
-    last_activity_update_ms_ = now;
+  if (now - last_activity_update_ms_ <= kActivityCheckIntervalMs) return;
+  last_activity_update_ms_ = now;
+
+  for (auto& [id, snap] : snapshot_map_) {
+    if (!snap->is_active) continue;  // Already inactive
+    snap->updateActiveState(current_sec_);
   }
 }
 
