@@ -20,6 +20,7 @@ class MessageModel : public QAbstractTableModel {
     QString node;
     const MessageSnapshot* data = nullptr;
     QString address_hex;
+    bool is_active = false;
     mutable float last_freq = -1.0f;
     mutable QString freq_str;
   };

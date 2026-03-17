@@ -53,10 +53,6 @@ QVariant MessageModel::data(const QModelIndex& index, int role) const {
     return item.name;
   }
 
-  if (role == ColumnTypeRole::MsgActiveRole) {
-    return item.data && item.data->is_active;
-  }
-
   if (role == ColumnTypeRole::IsHexColumn) {
     return index.column() == Column::DATA;
   }
@@ -221,6 +217,7 @@ std::vector<MessageModel::Item> MessageModel::fetchItems() {
         .node = (msg && !msg->transmitter.isEmpty()) ? msg->transmitter : DASH,
         .data = data,
         .address_hex = addr_hex,
+        .is_active = data && data->is_active,
     };
 
     if (match(item)) {
@@ -283,8 +280,15 @@ void MessageModel::onSnapshotsUpdated(const std::set<MessageId>* ids, bool needs
 
   for (int i = 0; i < items_.size(); ++i) {
     if (!ids || ids->contains(items_[i].id)) {
-      for (int c = Column::FREQ; c <= Column::DATA; ++c) {
-        emit dataChanged(index(i, c), index(i, c));
+      auto& item = items_[i];
+      const bool was_active = item.is_active;
+      item.is_active = item.data && item.data->is_active;
+      if (was_active != item.is_active) {
+        // Active state changed — repaint entire row (text appearance changes)
+        emit dataChanged(index(i, 0), index(i, Column::MAX_COLUMN - 1));
+      } else {
+        // Only dynamic columns changed (freq, count, bytes)
+        emit dataChanged(index(i, Column::FREQ), index(i, Column::DATA));
       }
     }
   }

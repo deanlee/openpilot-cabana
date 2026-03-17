@@ -9,7 +9,6 @@ enum class CallerType { MessageList, HistoryView };
 
 enum ColumnTypeRole {
   IsHexColumn = Qt::UserRole + 11,
-  MsgActiveRole,
 };
 
 class MessageDelegate : public QStyledItemDelegate {
