@@ -21,11 +21,46 @@ if arch == "Darwin":
     brew_prefix = subprocess.check_output(['brew', '--prefix'], encoding='utf8').strip()
     qt_env['QTDIR'] = f"{brew_prefix}/opt/qt@6"
     qt_dirs = [os.path.join(qt_env['QTDIR'], "include")]
-    qt_dirs += [f"{qt_env['QTDIR']}/include/Qt{m}" for m in qt_modules]
-    qt_env["LINKFLAGS"] += ["-F" + os.path.join(qt_env['QTDIR'], "lib")]
+    qt_framework_dirs = [os.path.join(qt_env['QTDIR'], "lib"), os.path.join(brew_prefix, "lib")]
+
+    for m in qt_modules:
+        qt_mod_include = Path(qt_env['QTDIR']) / "include" / f"Qt{m}"
+        qt_framework_header = Path(qt_env['QTDIR']) / "lib" / f"Qt{m}.framework" / "Headers"
+        brew_framework_header = Path(brew_prefix) / "lib" / f"Qt{m}.framework" / "Headers"
+        if qt_mod_include.exists():
+            qt_dirs.append(str(qt_mod_include))
+        elif qt_framework_header.exists():
+            qt_dirs.append(str(qt_framework_header))
+        elif brew_framework_header.exists():
+            qt_dirs.append(str(brew_framework_header))
+
+    # Homebrew Qt frameworks can miss QtCore/... style include paths.
+    # Create a small include shim under build/ to keep includes portable.
+    qt_headers_root = Path(build_dir) / "qt_headers"
+    qt_headers_root.mkdir(parents=True, exist_ok=True)
+    for m in qt_modules:
+        header_candidates = [
+            Path(qt_env['QTDIR']) / "lib" / f"Qt{m}.framework" / "Headers",
+            Path(brew_prefix) / "lib" / f"Qt{m}.framework" / "Headers",
+        ]
+        header_dir = next((p for p in header_candidates if p.exists()), None)
+        if header_dir is None:
+            continue
+        link_path = qt_headers_root / f"Qt{m}"
+        if link_path.is_symlink() and os.readlink(link_path) == str(header_dir):
+            continue
+        if link_path.exists() or link_path.is_symlink():
+            link_path.unlink()
+        os.symlink(str(header_dir), str(link_path))
+    qt_dirs.append(str(qt_headers_root))
+
+    qt_env["LINKFLAGS"] += ["-F" + d for d in qt_framework_dirs]
+    qt_env["CCFLAGS"] += ["-F" + d for d in qt_framework_dirs]
     qt_env["FRAMEWORKS"] += [f"Qt{m}" for m in qt_modules] + ["OpenGL"]
     qt_env.AppendENVPath('PATH', os.path.join(qt_env['QTDIR'], "bin"))
     qt_host_bins = os.path.join(qt_env['QTDIR'], "bin")
+    if not Path(qt_host_bins, "moc").exists():
+        qt_host_bins = os.path.join(qt_env['QTDIR'], "share", "qt", "libexec")
 else:
     # Use qmake6 to find paths
     qt_install_prefix = subprocess.check_output(['qmake6', '-query', 'QT_INSTALL_PREFIX'], encoding='utf8').strip()

@@ -44,7 +44,7 @@ MainWindow::MainWindow(AbstractStream* stream, const QString& dbc_file) : QMainW
 
   setupConnections();
 
-  QTimer::singleShot(0, this, [=]() { stream ? openStream(stream, dbc_file) : selectAndOpenStream(); });
+  QTimer::singleShot(0, this, [this, stream, dbc_file]() { stream ? openStream(stream, dbc_file) : selectAndOpenStream(); });
   show();
 }
 
@@ -82,8 +82,8 @@ void MainWindow::createFileMenu() {
   export_to_csv_act_->setEnabled(false);
   file_menu->addSeparator();
 
-  file_menu->addAction(tr("New DBC File"), [this]() { dbc_controller_->newFile(); }, QKeySequence::New);
-  file_menu->addAction(tr("Open DBC File..."), [this]() { dbc_controller_->openFile(); }, QKeySequence::Open);
+  file_menu->addAction(tr("New DBC File"), QKeySequence::New, [this]() { dbc_controller_->newFile(); });
+  file_menu->addAction(tr("Open DBC File..."), QKeySequence::Open, [this]() { dbc_controller_->openFile(); });
 
   manage_dbcs_menu_ = file_menu->addMenu(tr("Manage &DBC Files"));
   connect(manage_dbcs_menu_, &QMenu::aboutToShow, this,
@@ -97,20 +97,20 @@ void MainWindow::createFileMenu() {
   QMenu* load_opendbc_menu = file_menu->addMenu(tr("Load DBC from commaai/opendbc"));
   dbc_controller_->populateOpendbcFiles(load_opendbc_menu);
 
-  file_menu->addAction(tr("Load DBC From Clipboard"), [=]() { dbc_controller_->loadFromClipboard(); });
+  file_menu->addAction(tr("Load DBC From Clipboard"), [this]() { dbc_controller_->loadFromClipboard(); });
 
   file_menu->addSeparator();
-  save_dbc_ = file_menu->addAction(tr("Save DBC..."), dbc_controller_, &DbcController::save, QKeySequence::Save);
+  save_dbc_ = file_menu->addAction(tr("Save DBC..."), QKeySequence::Save, dbc_controller_, &DbcController::save);
   save_dbc_as_ =
-      file_menu->addAction(tr("Save DBC As..."), dbc_controller_, &DbcController::saveAs, QKeySequence::SaveAs);
+      file_menu->addAction(tr("Save DBC As..."), QKeySequence::SaveAs, dbc_controller_, &DbcController::saveAs);
   copy_dbc_to_clipboard_ =
       file_menu->addAction(tr("Copy DBC To Clipboard"), dbc_controller_, &DbcController::saveToClipboard);
 
   file_menu->addSeparator();
-  file_menu->addAction(tr("Settings..."), this, &MainWindow::setOption, QKeySequence::Preferences);
+  file_menu->addAction(tr("Settings..."), QKeySequence::Preferences, this, &MainWindow::setOption);
 
   file_menu->addSeparator();
-  file_menu->addAction(tr("E&xit"), qApp, &QApplication::closeAllWindows, QKeySequence::Quit);
+  file_menu->addAction(tr("E&xit"), QKeySequence::Quit, qApp, &QApplication::closeAllWindows);
 }
 
 void MainWindow::createEditMenu() {
@@ -133,7 +133,7 @@ void MainWindow::createEditMenu() {
 
 void MainWindow::createViewMenu() {
   QMenu* view_menu = menuBar()->addMenu(tr("&View"));
-  auto act = view_menu->addAction(tr("Full Screen"), this, &MainWindow::toggleFullScreen, QKeySequence::FullScreen);
+  auto act = view_menu->addAction(tr("Full Screen"), QKeySequence::FullScreen, this, &MainWindow::toggleFullScreen);
   addAction(act);
   view_menu->addSeparator();
   view_menu->addAction(messages_dock_->toggleViewAction());
@@ -150,7 +150,7 @@ void MainWindow::createToolsMenu() {
 
 void MainWindow::createHelpMenu() {
   QMenu* help_menu = menuBar()->addMenu(tr("&Help"));
-  help_menu->addAction(tr("Help"), this, &MainWindow::onlineHelp, QKeySequence::HelpContents);
+  help_menu->addAction(tr("Help"), QKeySequence::HelpContents, this, &MainWindow::onlineHelp);
   help_menu->addAction(tr("About &Qt"), qApp, &QApplication::aboutQt);
 }
 

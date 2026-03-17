@@ -1,6 +1,7 @@
 #include "system_signal_handler.h"
 
 #include <sys/socket.h>
+#include <unistd.h>
 
 #include <QApplication>
 #include <csignal>

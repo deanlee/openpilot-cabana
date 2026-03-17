@@ -171,7 +171,7 @@ FindSignalDlg::FindSignalDlg(QWidget* parent) : QDialog(parent, Qt::WindowFlags(
   connect(view, &QTableView::doubleClicked, [this](const QModelIndex& index) {
     if (index.isValid()) emit openMessage(model->filtered_signals[index.row()].id);
   });
-  connect(compare_cb, qOverload<int>(&QComboBox::currentIndexChanged), [=](int index) {
+  connect(compare_cb, qOverload<int>(&QComboBox::currentIndexChanged), [this](int index) {
     to_label->setVisible(index == compare_cb->count() - 1);
     value2->setVisible(index == compare_cb->count() - 1);
   });
@@ -198,7 +198,7 @@ void FindSignalDlg::search() {
   search_btn->setEnabled(false);
   stats_label->setVisible(false);
   search_btn->setText("Finding ....");
-  QTimer::singleShot(0, this, [=]() { model->search(cmp); });
+  QTimer::singleShot(0, this, [this, cmp]() { model->search(cmp); });
 }
 
 void FindSignalDlg::setInitialSignals() {

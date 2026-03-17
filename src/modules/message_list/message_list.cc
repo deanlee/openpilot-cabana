@@ -106,7 +106,7 @@ QWidget* MessageList::createToolBar() {
 
   connect(suppress_add, &ToolButton::clicked, this, [this]() { suppressHighlighted(true); });
   connect(suppress_clear, &ToolButton::clicked, this, [this]() { suppressHighlighted(false); });
-  connect(suppress_defined_signals, &QCheckBox::stateChanged, this,
+  connect(suppress_defined_signals, &QCheckBox::toggled, this,
           [this]() { StreamManager::stream()->suppressDefinedSignals(suppress_defined_signals->isChecked()); });
 
   suppressHighlighted(false);
@@ -174,7 +174,7 @@ void MessageList::menuAboutToShow() {
   for (int i = 0; i < header->count(); ++i) {
     int logical_index = header->logicalIndex(i);
     auto action = menu->addAction(model->headerData(logical_index, Qt::Horizontal).toString(),
-                                  [=](bool checked) { header->setSectionHidden(logical_index, !checked); });
+                                  [this, logical_index](bool checked) { header->setSectionHidden(logical_index, !checked); });
     action->setCheckable(true);
     action->setChecked(!header->isSectionHidden(logical_index));
     // Can't hide the name column

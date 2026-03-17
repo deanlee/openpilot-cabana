@@ -58,8 +58,8 @@ SignalPicker::SignalPicker(QString title, QWidget* parent) : QDialog(parent) {
 
 void SignalPicker::setupConnections() {
   connect(msgs_combo, qOverload<int>(&QComboBox::currentIndexChanged), this, &SignalPicker::updateAvailableList);
-  connect(available_list, &QListWidget::currentRowChanged, [=](int row) { add_btn->setEnabled(row != -1); });
-  connect(selected_list, &QListWidget::currentRowChanged, [=](int row) { remove_btn->setEnabled(row != -1); });
+  connect(available_list, &QListWidget::currentRowChanged, [this](int row) { add_btn->setEnabled(row != -1); });
+  connect(selected_list, &QListWidget::currentRowChanged, [this](int row) { remove_btn->setEnabled(row != -1); });
   connect(available_list, &QListWidget::itemDoubleClicked, this, &SignalPicker::add);
   connect(selected_list, &QListWidget::itemDoubleClicked, this, &SignalPicker::remove);
   connect(add_btn, &QPushButton::clicked, [this]() {

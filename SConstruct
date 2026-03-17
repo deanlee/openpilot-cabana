@@ -90,13 +90,18 @@ if arch == "larch64":
   env.Append(CCFLAGS=arch_flags)
   env.Append(CXXFLAGS=arch_flags)
 elif arch == "Darwin":
+  env.Replace(CC="/usr/bin/clang", CXX="/usr/bin/clang++")
   env.Append(LIBPATH=[
     f"{brew_prefix}/lib",
     f"{brew_prefix}/opt/openssl@3.0/lib",
     f"{brew_prefix}/opt/llvm/lib/c++",
     "/System/Library/Frameworks/OpenGL.framework/Libraries",
   ])
-  env.Append(CCFLAGS=["-DGL_SILENCE_DEPRECATION"])
+  env.Append(CCFLAGS=[
+    "-DGL_SILENCE_DEPRECATION",
+    "-Wno-deprecated-declarations",
+    "-Wno-deprecated-this-capture",
+  ])
   env.Append(CXXFLAGS=["-DGL_SILENCE_DEPRECATION"])
   env.Append(CPPPATH=[
     f"{brew_prefix}/include",
