@@ -128,6 +128,7 @@ void LiveStream::advancePlayback() {
     cursor_ns_ = e->mono_ns;
   }
 
+  at_live_edge_ = (cursor_ns_ >= latest_ns_);
   commitSnapshots();
 }
 
