@@ -42,15 +42,7 @@ void AbstractStream::commitSnapshots() {
     for (const auto& id : shared_state_.dirty_ids) {
       auto& state = shared_state_.master_state[id];
       state.updateAllPatternColors(current_sec_);
-
-      auto& snap = snapshot_map_[id];
-      if (!snap) {
-        snap = std::make_unique<MessageSnapshot>(state);
-        structure_changed = true;
-        sources_.insert(id.source);
-      } else {
-        snap->updateFrom(state);
-      }
+      structure_changed |= updateSnapshot(id, state);
       state.dirty = false;
     }
     updated_ids = std::move(shared_state_.dirty_ids);
@@ -86,7 +78,7 @@ void AbstractStream::processNewMessage(const MessageId& id, uint64_t mono_ns, co
   auto& state = shared_state_.master_state[id];
   if (state.size != size) {
     state.init(data, size, sec);
-    applyMaskPolicy(state, id);
+    state.applyMask(getMask(id));
   } else {
     state.update(data, size, sec);
   }
@@ -134,17 +126,12 @@ void AbstractStream::updateSnapshotsTo(double sec) {
     auto& m = shared_state_.master_state[id];
     m.dirty = false;
     m.init(prev_ev->dat, prev_ev->size, toSeconds(prev_ev->mono_ns));
-    applyMaskPolicy(m, id);
+    m.applyMask(getMask(id));
     m.count = std::distance(ev_list.begin(), it);
     m.updateAllPatternColors(sec);  // Important: Update colors before snapshotting
 
-    auto& snap_ptr = snapshot_map_[id];
-    if (!snap_ptr) {
-      snap_ptr = std::make_unique<MessageSnapshot>(m);
-    } else {
-      snap_ptr->updateFrom(m);
-    }
-    snap_ptr->updateActiveState(sec);
+    updateSnapshot(id, m);
+    snapshot_map_[id]->updateActiveState(sec);
 
     active_sources.insert(id.source);
   }
@@ -180,11 +167,6 @@ void AbstractStream::waitForSeekFinished() {
   std::unique_lock lock(mutex_);
   seek_finished_cv_.wait(lock, [this]() { return shared_state_.seek_finished; });
   shared_state_.seek_finished = false;
-}
-
-const CanEvent* AbstractStream::newEvent(uint64_t mono_ns, const cereal::CanData::Reader& c) {
-  auto dat = c.getDat();
-  return newEvent(mono_ns, c.getSrc(), c.getAddress(), dat.begin(), dat.size());
 }
 
 const CanEvent* AbstractStream::newEvent(uint64_t mono_ns, uint8_t src, uint32_t address, const uint8_t* data, uint8_t size) {
@@ -274,7 +256,7 @@ void AbstractStream::updateMasks() {
 
   // Refresh all states based on the new cache
   for (auto& [id, state] : shared_state_.master_state) {
-    applyMaskPolicy(state, id);
+    state.applyMask(getMask(id));
   }
 }
 
@@ -292,7 +274,7 @@ void AbstractStream::updateMessageMask(const MessageId& id) {
 
     auto it = shared_state_.master_state.find(target_id);
     if (it != shared_state_.master_state.end()) {
-      applyMaskPolicy(it->second, target_id);
+      it->second.applyMask(getMask(target_id));
     }
   }
 }
@@ -306,8 +288,15 @@ const std::vector<uint8_t>& AbstractStream::getMask(const MessageId& id) const {
   return empty;
 }
 
-void AbstractStream::applyMaskPolicy(MessageState& state, const MessageId& id) {
-  state.applyMask(getMask(id));
+bool AbstractStream::updateSnapshot(const MessageId& id, const MessageState& state) {
+  auto& snap = snapshot_map_[id];
+  if (!snap) {
+    snap = std::make_unique<MessageSnapshot>(state);
+    sources_.insert(id.source);
+    return true;
+  }
+  snap->updateFrom(state);
+  return false;
 }
 
 void AbstractStream::suppressDefinedSignals(bool suppress) {

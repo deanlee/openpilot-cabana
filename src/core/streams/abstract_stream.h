@@ -91,7 +91,10 @@ class AbstractStream : public QObject {
   SourceSet sources_;
   void commitSnapshots();
   void mergeEvents(const std::vector<const CanEvent*>& events);
-  const CanEvent* newEvent(uint64_t mono_ns, const cereal::CanData::Reader& c);
+  const CanEvent* newEvent(uint64_t mono_ns, const cereal::CanData::Reader& c) {
+    auto dat = c.getDat();
+    return newEvent(mono_ns, c.getSrc(), c.getAddress(), dat.begin(), dat.size());
+  }
   const CanEvent* newEvent(uint64_t mono_ns, uint8_t src, uint32_t address, const uint8_t* data, uint8_t size);
   void processNewMessage(const MessageId& id, uint64_t mono_ns, const uint8_t* data, uint8_t size);
   void waitForSeekFinished();
@@ -108,7 +111,7 @@ class AbstractStream : public QObject {
   void updateActivityStates();
   void updateMessageMask(const MessageId& id);
   const std::vector<uint8_t>& getMask(const MessageId& id) const;
-  void applyMaskPolicy(MessageState& state, const MessageId& id);
+  bool updateSnapshot(const MessageId& id, const MessageState& state);
 
   // Internal state shared between threads, protected by mutex_
   struct SharedState {
