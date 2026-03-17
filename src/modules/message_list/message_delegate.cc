@@ -75,8 +75,12 @@ void MessageDelegate::paint(QPainter* painter, const QStyleOptionViewItem& optio
     painter->fillRect(option.rect, option.palette.highlight());
   }
 
-  const QVariant active_data = index.data(ColumnTypeRole::MsgActiveRole);
-  const bool is_active = active_data.isValid() ? active_data.toBool() : true;
+  bool is_active = true;
+  if (caller_type_ == CallerType::MessageList) {
+    if (const auto* item = static_cast<const MessageModel*>(index.model())->getItem(index)) {
+      is_active = item->is_active;
+    }
+  }
 
   const bool is_data_col = index.data(ColumnTypeRole::IsHexColumn).toBool();
   if (!is_data_col) {
