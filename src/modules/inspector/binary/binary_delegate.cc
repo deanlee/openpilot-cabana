@@ -7,94 +7,94 @@
 #include "utils/util.h"
 
 MessageBytesDelegate::MessageBytesDelegate(QObject* parent) : QStyledItemDelegate(parent) {
-  small_font.setPixelSize(8);
+  label_font.setPixelSize(8);
   hex_font = QFontDatabase::systemFont(QFontDatabase::FixedFont);
   hex_font.setBold(true);
 
-  bin_text_table[0].setText("0");
-  bin_text_table[1].setText("1");
+  bit_text_cache[0].setText("0");
+  bit_text_cache[1].setText("1");
   for (int i = 0; i < 256; ++i) {
-    hex_text_table[i].setText(QString::asprintf("%02X", i));
-    hex_text_table[i].prepare({}, hex_font);
+    hex_text_cache[i].setText(QString::asprintf("%02X", i));
+    hex_text_cache[i].prepare({}, hex_font);
   }
 }
 
 void MessageBytesDelegate::paint(QPainter* painter, const QStyleOptionViewItem& option,
                                  const QModelIndex& index) const {
   const auto* item = static_cast<const BinaryModel*>(index.model())->getItem(index);
-  const auto* bin_view = static_cast<const BinaryView*>(parent());
+  const auto* binary_view = static_cast<const BinaryView*>(parent());
   const bool is_hex = (index.column() == 8);
   const bool is_selected = option.state & QStyle::State_Selected;
-  const bool has_valid_val = item->val != BinaryModel::INVALID_BIT;
+  const bool has_valid_value = item->value != BinaryModel::INVALID_BIT;
 
   // 1. Background
   if (is_hex) {
-    if (has_valid_val) {
+    if (has_valid_value) {
       painter->setFont(hex_font);
       painter->fillRect(option.rect, item->bg_color);
     }
   } else if (is_selected) {
-    auto color = bin_view->resize_sig ? bin_view->resize_sig->color
+    auto color = binary_view->resizing_signal ? binary_view->resizing_signal->color
                                       : option.palette.color(QPalette::Active, QPalette::Highlight);
     painter->fillRect(option.rect, color);
-  } else if (!item->sigs.empty()) {
-    for (const auto* s : item->sigs) {
-      if (s == bin_view->hovered_sig) {
+  } else if (!item->signal_list.empty()) {
+    for (const auto* s : item->signal_list) {
+      if (s == binary_view->hovered_signal) {
         painter->fillRect(option.rect, s->color.darker(125));
       } else {
         drawSignalCell(painter, option, item, s);
       }
     }
-  } else if (has_valid_val && item->bg_color.alpha() > 0) {
+  } else if (has_valid_value && item->bg_color.alpha() > 0) {
     painter->fillRect(option.rect, item->bg_color);
   }
 
   // 2. Overlap indicator
-  if (item->sigs.size() > 1) {
+  if (item->signal_list.size() > 1) {
     painter->fillRect(option.rect, QBrush(Qt::darkGray, Qt::Dense7Pattern));
   }
 
   // 3. Text
-  const bool bright = is_selected || item->sigs.contains(bin_view->hovered_sig);
-  painter->setPen(option.palette.color(bright ? QPalette::BrightText : QPalette::Text));
-  if (has_valid_val) {
+  const bool use_bright_text = is_selected || item->signal_list.contains(binary_view->hovered_signal);
+  painter->setPen(option.palette.color(use_bright_text ? QPalette::BrightText : QPalette::Text));
+  if (has_valid_value) {
     painter->setFont(is_hex ? hex_font : option.font);
-    utils::drawStaticText(painter, option.rect, is_hex ? hex_text_table[item->val] : bin_text_table[item->val]);
+    utils::drawStaticText(painter, option.rect, is_hex ? hex_text_cache[item->value] : bit_text_cache[item->value]);
   } else {
     painter->setFont(option.font);
     painter->drawText(option.rect, Qt::AlignCenter, QStringLiteral("-"));
   }
 
   // 4. MSB/LSB label
-  if ((item->is_msb || item->is_lsb) && item->sigs.size() == 1 && item->sigs[0]->size > 1) {
-    painter->setFont(small_font);
+  if ((item->is_msb || item->is_lsb) && item->signal_list.size() == 1 && item->signal_list[0]->size > 1) {
+    painter->setFont(label_font);
     painter->drawText(option.rect.adjusted(8, 0, -8, -3), Qt::AlignRight | Qt::AlignBottom, item->is_msb ? "M" : "L");
   }
 }
 
 void MessageBytesDelegate::drawSignalCell(QPainter* painter, const QStyleOptionViewItem& option,
                                           const BinaryModel::Item* item, const dbc::Signal* sig) const {
-  const auto& b = item->borders;
-  constexpr int h_space = 3, v_space = 2;
+  const auto& borders = item->borders;
+  constexpr int h_pad = 3, v_pad = 2;
 
-  const QRect rc = option.rect.adjusted(b.left * h_space, b.top * v_space, b.right * -h_space, b.bottom * -v_space);
+  const QRect cell_rect = option.rect.adjusted(borders.left * h_pad, borders.top * v_pad, borders.right * -h_pad, borders.bottom * -v_pad);
 
   // Logic: Fill center, then fill top/bottom rows with calculated widths to "carve" corners
-  if (b.top_left || b.top_right || b.bottom_left || b.bottom_right) {
+  if (borders.top_left || borders.top_right || borders.bottom_left || borders.bottom_right) {
     // Fill vertical center (area between top and bottom padding rows)
-    painter->fillRect(rc.left(), rc.top() + v_space, rc.width(), rc.height() - (2 * v_space), item->bg_color);
+    painter->fillRect(cell_rect.left(), cell_rect.top() + v_pad, cell_rect.width(), cell_rect.height() - (2 * v_pad), item->bg_color);
 
     // Top padding row
-    int tx = rc.left() + ((!b.top && !b.left && b.top_left) ? h_space : 0);
-    int tw = rc.width() - (tx - rc.left()) - ((!b.top && !b.right && b.top_right) ? h_space : 0);
-    painter->fillRect(tx, rc.top(), tw, v_space, item->bg_color);
+    int top_x = cell_rect.left() + ((!borders.top && !borders.left && borders.top_left) ? h_pad : 0);
+    int top_width = cell_rect.width() - (top_x - cell_rect.left()) - ((!borders.top && !borders.right && borders.top_right) ? h_pad : 0);
+    painter->fillRect(top_x, cell_rect.top(), top_width, v_pad, item->bg_color);
 
     // Bottom padding row
-    int bx = rc.left() + ((!b.bottom && !b.left && b.bottom_left) ? h_space : 0);
-    int bw = rc.width() - (bx - rc.left()) - ((!b.bottom && !b.right && b.bottom_right) ? h_space : 0);
-    painter->fillRect(bx, rc.bottom() - v_space + 1, bw, v_space, item->bg_color);
+    int bottom_x = cell_rect.left() + ((!borders.bottom && !borders.left && borders.bottom_left) ? h_pad : 0);
+    int bottom_width = cell_rect.width() - (bottom_x - cell_rect.left()) - ((!borders.bottom && !borders.right && borders.bottom_right) ? h_pad : 0);
+    painter->fillRect(bottom_x, cell_rect.bottom() - v_pad + 1, bottom_width, v_pad, item->bg_color);
   } else {
-    painter->fillRect(rc, item->bg_color);
+    painter->fillRect(cell_rect, item->bg_color);
   }
 
   // Batched Border Drawing
@@ -102,36 +102,36 @@ void MessageBytesDelegate::drawSignalCell(QPainter* painter, const QStyleOptionV
   painter->setPen(borderPen);
 
   QLine lines[8];  // Max 4 borders + 4 corner pieces
-  int l_idx = 0;
+  int line_count = 0;
 
-  if (b.left) lines[l_idx++] = QLine(rc.topLeft(), rc.bottomLeft());
-  if (b.right) lines[l_idx++] = QLine(rc.topRight(), rc.bottomRight());
-  if (b.top) lines[l_idx++] = QLine(rc.topLeft(), rc.topRight());
-  if (b.bottom) lines[l_idx++] = QLine(rc.bottomLeft(), rc.bottomRight());
+  if (borders.left) lines[line_count++] = QLine(cell_rect.topLeft(), cell_rect.bottomLeft());
+  if (borders.right) lines[line_count++] = QLine(cell_rect.topRight(), cell_rect.bottomRight());
+  if (borders.top) lines[line_count++] = QLine(cell_rect.topLeft(), cell_rect.topRight());
+  if (borders.bottom) lines[line_count++] = QLine(cell_rect.bottomLeft(), cell_rect.bottomRight());
 
   // L-Shaped Corner Borders (only if no main border exists)
-  if (!b.top) {
-    if (!b.left && b.top_left) {
-      lines[l_idx++] = QLine(rc.left(), rc.top() + v_space, rc.left() + h_space, rc.top() + v_space);
-      lines[l_idx++] = QLine(rc.left() + h_space, rc.top(), rc.left() + h_space, rc.top() + v_space);
+  if (!borders.top) {
+    if (!borders.left && borders.top_left) {
+      lines[line_count++] = QLine(cell_rect.left(), cell_rect.top() + v_pad, cell_rect.left() + h_pad, cell_rect.top() + v_pad);
+      lines[line_count++] = QLine(cell_rect.left() + h_pad, cell_rect.top(), cell_rect.left() + h_pad, cell_rect.top() + v_pad);
     }
-    if (!b.right && b.top_right) {
-      lines[l_idx++] = QLine(rc.right() - h_space, rc.top(), rc.right() - h_space, rc.top() + v_space);
-      lines[l_idx++] = QLine(rc.right() - h_space, rc.top() + v_space, rc.right(), rc.top() + v_space);
+    if (!borders.right && borders.top_right) {
+      lines[line_count++] = QLine(cell_rect.right() - h_pad, cell_rect.top(), cell_rect.right() - h_pad, cell_rect.top() + v_pad);
+      lines[line_count++] = QLine(cell_rect.right() - h_pad, cell_rect.top() + v_pad, cell_rect.right(), cell_rect.top() + v_pad);
     }
   }
-  if (!b.bottom) {
-    if (!b.left && b.bottom_left) {
-      lines[l_idx++] = QLine(rc.left(), rc.bottom() - v_space, rc.left() + h_space, rc.bottom() - v_space);
-      lines[l_idx++] = QLine(rc.left() + h_space, rc.bottom() - v_space, rc.left() + h_space, rc.bottom());
+  if (!borders.bottom) {
+    if (!borders.left && borders.bottom_left) {
+      lines[line_count++] = QLine(cell_rect.left(), cell_rect.bottom() - v_pad, cell_rect.left() + h_pad, cell_rect.bottom() - v_pad);
+      lines[line_count++] = QLine(cell_rect.left() + h_pad, cell_rect.bottom() - v_pad, cell_rect.left() + h_pad, cell_rect.bottom());
     }
-    if (!b.right && b.bottom_right) {
-      lines[l_idx++] = QLine(rc.right() - h_space, rc.bottom() - v_space, rc.right(), rc.bottom() - v_space);
-      lines[l_idx++] = QLine(rc.right() - h_space, rc.bottom() - v_space, rc.right() - h_space, rc.bottom());
+    if (!borders.right && borders.bottom_right) {
+      lines[line_count++] = QLine(cell_rect.right() - h_pad, cell_rect.bottom() - v_pad, cell_rect.right(), cell_rect.bottom() - v_pad);
+      lines[line_count++] = QLine(cell_rect.right() - h_pad, cell_rect.bottom() - v_pad, cell_rect.right() - h_pad, cell_rect.bottom());
     }
   }
 
-  if (l_idx > 0) {
-    painter->drawLines(lines, l_idx);
+  if (line_count > 0) {
+    painter->drawLines(lines, line_count);
   }
 }

@@ -14,30 +14,30 @@ class BinaryView : public QTableView {
  public:
   BinaryView(QWidget* parent = nullptr);
   void setModel(QAbstractItemModel* newModel) override;
-  void highlight(const dbc::Signal* sig);
+  void highlightSignal(const dbc::Signal* sig);
   QSize minimumSizeHint() const override;
 
  signals:
   void signalClicked(const dbc::Signal* sig);
   void signalHovered(const dbc::Signal* sig);
-  void editSignal(const dbc::Signal* origin_s, dbc::Signal& s);
+  void editSignal(const dbc::Signal* original_signal, dbc::Signal& s);
   void showChart(const MessageId& id, const dbc::Signal* sig, bool show, bool merge);
 
  private:
   void resetInternalState();
-  void addShortcuts();
-  std::tuple<int, int, bool> getSelection(QModelIndex index);
+  void setupShortcuts();
+  std::tuple<int, int, bool> calculateSelection(QModelIndex index);
   void setSelection(const QRect& rect, QItemSelectionModel::SelectionFlags flags) override;
   void mousePressEvent(QMouseEvent* event) override;
   void mouseMoveEvent(QMouseEvent* event) override;
   void mouseReleaseEvent(QMouseEvent* event) override;
   void leaveEvent(QEvent* event) override;
-  void highlightPosition(const QPoint& pt);
+  void highlightSignalAtPosition(const QPoint& pt);
 
-  QModelIndex anchor_index;
+  QModelIndex anchor_index_;
   BinaryModel* model;
   MessageBytesDelegate* delegate;
-  const dbc::Signal* resize_sig = nullptr;
-  const dbc::Signal* hovered_sig = nullptr;
+  const dbc::Signal* resizing_signal = nullptr;
+  const dbc::Signal* hovered_signal = nullptr;
   friend class MessageBytesDelegate;
 };

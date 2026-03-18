@@ -70,7 +70,7 @@ void MessageView::setupConnections() {
   connect(binary_view, &BinaryView::editSignal, signal_editor->model, &SignalTreeModel::saveSignal);
   connect(binary_view, &BinaryView::showChart, charts, &ChartsPanel::showChart);
   connect(signal_editor, &SignalEditor::showChart, charts, &ChartsPanel::showChart);
-  connect(signal_editor, &SignalEditor::highlight, binary_view, &BinaryView::highlight);
+  connect(signal_editor, &SignalEditor::highlight, binary_view, &BinaryView::highlightSignal);
   connect(tab_widget, &QTabWidget::currentChanged, [this] { updateState(); });
   connect(&StreamManager::instance(), &StreamManager::snapshotsUpdated, this, &MessageView::updateState);
   connect(GetDBC(), &dbc::Manager::DBCFileChanged, this, &MessageView::refresh);
@@ -222,7 +222,7 @@ void MessageView::refresh() {
     } else if (can_msg->ts > 0 && msg->size != can_msg->size) {
       warnings.push_back(tr("Message size (%1) is incorrect.").arg(msg->size));
     }
-    for (auto s : binary_model->getOverlappingSignals()) {
+    for (auto s : binary_model->findOverlappingSignals()) {
       warnings.push_back(tr("%1 has overlapping bits.").arg(s->name));
     }
   }

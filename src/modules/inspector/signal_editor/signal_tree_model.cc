@@ -288,7 +288,7 @@ QVariant SignalTreeModel::data(const QModelIndex& index, int role) const {
   }
 
   if (role == Qt::ToolTipRole && item->type == Item::Sig && index.column() == 0) {
-    return signalToolTip(item->sig);
+    return formatSignalToolTip(item->sig);
   }
 
   if (role == IsChartedRole && item->type == Item::Sig) {

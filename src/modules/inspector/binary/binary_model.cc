@@ -26,8 +26,8 @@ const BinaryModel::Item* BinaryModel::getItem(const QModelIndex& index) const {
   return (idx >= 0 && idx < (int)items.size()) ? &items[idx] : nullptr;
 }
 
-void BinaryModel::setMessage(const MessageId& message_id) {
-  msg_id = message_id;
+void BinaryModel::setMessage(const MessageId& id) {
+  message_id = id;
   rebuild();
 }
 
@@ -40,7 +40,7 @@ void BinaryModel::rebuild() {
   beginResetModel();
   initializeItems();
 
-  auto dbc_msg = GetDBC()->msg(msg_id);
+  auto dbc_msg = GetDBC()->msg(message_id);
   if (dbc_msg) {
     mapSignalsToItems(dbc_msg);
   }
@@ -54,8 +54,8 @@ void BinaryModel::initializeItems() {
   bit_flip_tracker = {};
   items.clear();
 
-  auto snapshot = StreamManager::stream()->snapshot(msg_id);
-  auto dbc_msg = GetDBC()->msg(msg_id);
+  auto snapshot = StreamManager::stream()->snapshot(message_id);
+  auto dbc_msg = GetDBC()->msg(message_id);
 
   // Prefer DBC size, fallback to message snapshot size
   row_count = dbc_msg ? dbc_msg->size : (snapshot ? snapshot->size : 8);
@@ -81,48 +81,48 @@ void BinaryModel::mapSignalsToItems(const dbc::Msg* msg) {
       item.bg_color = sig->color;  // Last signal in list sets the primary color
       item.bg_color.setAlpha(100);
 
-      item.sigs.push_back(sig);
+      item.signal_list.push_back(sig);
 
       // Sort overlapping signals: Smallest (inner) signals last
       // so they are prioritized for hover/interaction
-      if (item.sigs.size() > 1) {
-        std::ranges::sort(item.sigs, std::ranges::greater{}, &dbc::Signal::size);
+      if (item.signal_list.size() > 1) {
+        std::ranges::sort(item.signal_list, std::ranges::greater{}, &dbc::Signal::size);
       }
     }
   }
 }
 
 void BinaryModel::updateBorders() {
-  for (int r = 0; r < row_count; ++r) {
-    for (int c = 0; c < column_count; ++c) {
-      auto& item = items[r * column_count + c];
-      if (item.sigs.isEmpty()) {
+  for (int row = 0; row < row_count; ++row) {
+    for (int col = 0; col < column_count; ++col) {
+      auto& item = items[row * column_count + col];
+      if (item.signal_list.isEmpty()) {
         item.borders = {};
         continue;
       }
 
-      auto matches = [&](int nr, int nc) {
-        if (nr < 0 || nr >= row_count || nc < 0 || nc >= column_count) return false;
-        return items[nr * column_count + nc].sigs == item.sigs;
+      auto matches = [&](int neighbor_row, int neighbor_col) {
+        if (neighbor_row < 0 || neighbor_row >= row_count || neighbor_col < 0 || neighbor_col >= column_count) return false;
+        return items[neighbor_row * column_count + neighbor_col].signal_list == item.signal_list;
       };
 
-      item.borders.left = !matches(r, c - 1);
-      item.borders.right = !matches(r, c + 1);
-      item.borders.top = !matches(r - 1, c);
-      item.borders.bottom = !matches(r + 1, c);
+      item.borders.left = !matches(row, col - 1);
+      item.borders.right = !matches(row, col + 1);
+      item.borders.top = !matches(row - 1, col);
+      item.borders.bottom = !matches(row + 1, col);
 
-      item.borders.top_left = !matches(r - 1, c - 1);
-      item.borders.top_right = !matches(r - 1, c + 1);
-      item.borders.bottom_left = !matches(r + 1, c - 1);
-      item.borders.bottom_right = !matches(r + 1, c + 1);
+      item.borders.top_left = !matches(row - 1, col - 1);
+      item.borders.top_right = !matches(row - 1, col + 1);
+      item.borders.bottom_left = !matches(row + 1, col - 1);
+      item.borders.bottom_right = !matches(row + 1, col + 1);
     }
   }
 }
 
 bool BinaryModel::updateItem(int row, int col, uint8_t val, const QColor& color) {
   auto& item = items[row * column_count + col];
-  if (item.val != val || item.bg_color != color) {
-    item.val = val;
+  if (item.value != val || item.bg_color != color) {
+    item.value = val;
     item.bg_color = color;
     return true;
   }
@@ -130,11 +130,11 @@ bool BinaryModel::updateItem(int row, int col, uint8_t val, const QColor& color)
 }
 
 void BinaryModel::updateState() {
-  const auto* last_msg = StreamManager::stream()->snapshot(msg_id);
+  const auto* last_msg = StreamManager::stream()->snapshot(message_id);
   const size_t msg_size = last_msg->size;
   if (msg_size == 0) {
     for (auto& item : items) {
-      item.val = INVALID_BIT;
+      item.value = INVALID_BIT;
     }
     emit dataChanged(index(0, 0), index(row_count - 1, column_count - 1), {Qt::DisplayRole});
     return;
@@ -160,7 +160,7 @@ void BinaryModel::updateState() {
     decay_factor = std::pow(0.1f, 1.0f / (fps * persistence));
   }
 
-  const auto& bit_flips = heatmap_live_mode ? last_msg->bit_flips : getBitFlipChanges(msg_size);
+  const auto& bit_flips = heatmap_live_mode ? last_msg->bit_flips : computeBitFlipCounts(msg_size);
 
   // Find max flips for relative scaling
   uint32_t max_flips = 1;
@@ -174,7 +174,7 @@ void BinaryModel::updateState() {
   int first_dirty = -1, last_dirty = -1;
 
   for (size_t i = 0; i < msg_size; ++i) {
-    if (syncRowItems(i, last_msg, bit_flips[i], log_max, is_light_theme, base_bg, decay_factor)) {
+    if (updateRowCells(i, last_msg, bit_flips[i], log_max, is_light_theme, base_bg, decay_factor)) {
       if (first_dirty == -1) first_dirty = i;
       last_dirty = i;
     }
@@ -187,18 +187,18 @@ void BinaryModel::updateState() {
 
 void BinaryModel::updateSignalCells(const dbc::Signal* sig) {
   for (int i = 0; i < items.size(); ++i) {
-    if (items[i].sigs.contains(sig)) {
+    if (items[i].signal_list.contains(sig)) {
       auto index = this->index(i / column_count, i % column_count);
       emit dataChanged(index, index, {Qt::DisplayRole});
     }
   }
 }
 
-QSet<const dbc::Signal*> BinaryModel::getOverlappingSignals() const {
+QSet<const dbc::Signal*> BinaryModel::findOverlappingSignals() const {
   QSet<const dbc::Signal*> overlapping;
   for (const auto& item : items) {
-    if (item.sigs.size() > 1) {
-      for (auto s : item.sigs) {
+    if (item.signal_list.size() > 1) {
+      for (auto s : item.signal_list) {
         if (s->type == dbc::Signal::Type::Normal) overlapping += s;
       }
     }
@@ -206,8 +206,8 @@ QSet<const dbc::Signal*> BinaryModel::getOverlappingSignals() const {
   return overlapping;
 }
 
-bool BinaryModel::syncRowItems(int row, const MessageSnapshot* msg, const std::array<uint32_t, 8>& row_flips,
-                               float log_max, bool is_light, const QColor& base_bg, float decay) {
+bool BinaryModel::updateRowCells(int row, const MessageSnapshot* msg, const std::array<uint32_t, 8>& row_flips,
+                               float log_max, bool is_light_theme, const QColor& base_bg, float decay_factor) {
   bool row_dirty = false;
   const uint8_t byte_val = msg->data[row];
   const size_t row_offset = row * column_count;
@@ -217,7 +217,7 @@ bool BinaryModel::syncRowItems(int row, const MessageSnapshot* msg, const std::a
     auto& item = items[row_offset + j];
     const int bit_val = (byte_val >> (7 - j)) & 1;
 
-    QColor heat_color = calculateBitHeatColor(item, row_flips[j], log_max, is_light, base_bg, decay);
+    QColor heat_color = calculateBitHeatColor(item, row_flips[j], log_max, is_light_theme, base_bg, decay_factor);
     row_dirty |= updateItem(row, j, bit_val, heat_color);
   }
 
@@ -228,7 +228,7 @@ bool BinaryModel::syncRowItems(int row, const MessageSnapshot* msg, const std::a
   return row_dirty;
 }
 
-QColor BinaryModel::calculateBitHeatColor(Item& item, uint32_t flips, float log_max, bool is_light,
+QColor BinaryModel::calculateBitHeatColor(Item& item, uint32_t flips, float log_max, bool is_light_theme,
                                           const QColor& base_bg, float decay_factor) {
   float target = std::clamp(std::log2(static_cast<float>(flips) + 1.0f) / log_max, 0.0f, 1.0f);
   if (heatmap_live_mode) {
@@ -243,11 +243,11 @@ QColor BinaryModel::calculateBitHeatColor(Item& item, uint32_t flips, float log_
   }
 
   const float i = item.intensity;
-  const bool is_in_signal = !item.sigs.empty();
+  const bool is_in_signal = !item.signal_list.empty();
 
   // 2. Signal Coloring Logic (Hue Preservation)
   if (is_in_signal) {
-    QColor c = item.sigs.back()->color;
+    QColor c = item.signal_list.back()->color;
 
     // Minimum Alpha Floor (100) so signals are always identifiable
     // Maximum Alpha (255) for high activity
@@ -270,9 +270,9 @@ QColor BinaryModel::calculateBitHeatColor(Item& item, uint32_t flips, float log_
   // 3. Empty Space Heatmap Logic (Background -> Red)
   if (i < 0.01f) return Qt::transparent;
 
-  QColor hot = is_light ? QColor(255, 0, 0) : QColor(255, 80, 80);
+  QColor hot = is_light_theme ? QColor(255, 0, 0) : QColor(255, 80, 80);
   float inv_i = 1.0f - i;
-  int min_alpha = is_light ? 40 : 60;
+  int min_alpha = is_light_theme ? 40 : 60;
 
   return QColor(static_cast<int>(base_bg.red() * inv_i + hot.red() * i),
                 static_cast<int>(base_bg.green() * inv_i + hot.green() * i),
@@ -280,7 +280,7 @@ QColor BinaryModel::calculateBitHeatColor(Item& item, uint32_t flips, float log_
                 static_cast<int>(min_alpha * inv_i + 220 * i));
 }
 
-const std::array<std::array<uint32_t, 8>, MAX_CAN_LEN>& BinaryModel::getBitFlipChanges(size_t msg_size) {
+const std::array<std::array<uint32_t, 8>, MAX_CAN_LEN>& BinaryModel::computeBitFlipCounts(size_t msg_size) {
   // Return cached results if time range and data are unchanged
   auto* stream = StreamManager::stream();
   auto time_range = stream->timeRange();
@@ -295,7 +295,7 @@ const std::array<std::array<uint32_t, 8>, MAX_CAN_LEN>& BinaryModel::getBitFlipC
   bit_flip_tracker.flip_counts.fill({});
 
   // Iterate over events within the specified time range and calculate bit flips
-  auto [first, last] = stream->eventsInRange(msg_id, time_range);
+  auto [first, last] = stream->eventsInRange(message_id, time_range);
   if (std::distance(first, last) <= 1) return bit_flip_tracker.flip_counts;
 
   std::vector<uint8_t> prev_values((*first)->dat, (*first)->dat + (*first)->size);
@@ -332,12 +332,12 @@ QVariant BinaryModel::headerData(int section, Qt::Orientation orientation, int r
 QVariant BinaryModel::data(const QModelIndex& index, int role) const {
   if (role == Qt::ToolTipRole) {
     const auto *item = getItem(index);
-    return item && !item->sigs.empty() ? signalToolTip(item->sigs.back()) : QVariant();
+    return item && !item->signal_list.empty() ? formatSignalToolTip(item->signal_list.back()) : QVariant();
   }
   return QVariant();
 }
 
-QString signalToolTip(const dbc::Signal* sig) {
+QString formatSignalToolTip(const dbc::Signal* sig) {
   return QObject::tr(R"(
     %1<br /><span font-size:small">
     Start Bit: %2 Size: %3<br />
