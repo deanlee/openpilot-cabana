@@ -68,11 +68,11 @@ void MessageModel::setInactiveMessagesVisible(bool show) {
 void MessageModel::sortItems(std::vector<MessageModel::Item>& items) const {
   if (items.empty()) return;
 
-  const auto comp = [order = sort_order](const auto& a, const auto& b) {
+  const auto comp = [order = sort_order_](const auto& a, const auto& b) {
     return order == Qt::AscendingOrder ? a < b : a > b;
   };
 
-  switch (sort_column) {
+  switch (sort_column_) {
     case Column::NAME: std::ranges::sort(items, comp, [](const Item& i) { return std::tie(i.name, i.id); }); break;
     case Column::SOURCE:
       std::ranges::sort(items, comp, [](const Item& i) { return std::tie(i.id.source, i.id.address); });
@@ -148,7 +148,7 @@ std::optional<MessageModel::FilterRange> MessageModel::parseFilter(QString filte
   return ok ? std::optional<FilterRange>(r) : std::nullopt;
 }
 
-bool MessageModel::match(const MessageModel::Item& item) const {
+bool MessageModel::matchesFilter(const MessageModel::Item& item) const {
   for (auto it = filters_.cbegin(); it != filters_.cend(); ++it) {
     const int col = it.key();
     const QString& txt = it.value();
@@ -220,7 +220,7 @@ std::vector<MessageModel::Item> MessageModel::fetchItems() {
         .is_active = data && data->is_active,
     };
 
-    if (match(item)) {
+    if (matchesFilter(item)) {
       if (msg) {
         dbc_msg_count_++;
         signal_count_ += msg->sigs.size();
@@ -296,8 +296,8 @@ void MessageModel::onSnapshotsUpdated(const std::set<MessageId>* ids, bool needs
 
 void MessageModel::sort(int column, Qt::SortOrder order) {
   if (column != Column::DATA) {
-    sort_column = column;
-    sort_order = order;
+    sort_column_ = column;
+    sort_order_ = order;
     emit layoutAboutToBeChanged();
     sortItems(items_);
     emit layoutChanged();

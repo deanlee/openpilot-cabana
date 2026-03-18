@@ -22,7 +22,7 @@ void MessageHeader::updateFilters() {
   if (!m) return;
 
   QMap<int, QString> filters;
-  for (auto it = editors.begin(); it != editors.end(); ++it) {
+  for (auto it = editors_.begin(); it != editors_.end(); ++it) {
     if (it.value() && !it.value()->text().isEmpty()) {
       filters[it.key()] = it.value()->text();
     }
@@ -31,16 +31,16 @@ void MessageHeader::updateFilters() {
 }
 
 void MessageHeader::updateGeometries() {
-  if (is_updating || !model() || count() <= 0) {
+  if (is_updating_ || !model() || count() <= 0) {
     QHeaderView::updateGeometries();
     return;
   }
 
-  is_updating = true;
+  is_updating_ = true;
 
   // 1. Sync Editors with Column Count
   for (int i = 0; i < count(); ++i) {
-    if (editors.contains(i)) continue;
+    if (editors_.contains(i)) continue;
 
     QString col_name = model()->headerData(i, Qt::Horizontal).toString();
     auto* edit = new DebouncedLineEdit(this);
@@ -48,26 +48,26 @@ void MessageHeader::updateGeometries() {
     edit->setPlaceholderText(tr("Filter %1").arg(col_name));
     edit->setToolTip(getFilterTooltip(i));
     connect(edit, &DebouncedLineEdit::debouncedTextEdited, this, &MessageHeader::updateFilters);
-    editors[i] = edit;
+    editors_[i] = edit;
   }
 
   // 2. Update Viewport Margins
-  if (auto first = editors.value(0)) {
+  if (auto first = editors_.value(0)) {
     int required_h = first->sizeHint().height();
     if (viewportMargins().bottom() != required_h) {
-      cached_editor_height = required_h;
+      cached_editor_height_ = required_h;
       setViewportMargins(0, 0, 0, required_h);
     }
   }
 
   QHeaderView::updateGeometries();
   updateHeaderPositions();
-  is_updating = false;
+  is_updating_ = false;
 }
 
 void MessageHeader::updateHeaderPositions() {
   const int header_h = QHeaderView::sizeHint().height();
-  for (auto it = editors.begin(); it != editors.end(); ++it) {
+  for (auto it = editors_.begin(); it != editors_.end(); ++it) {
     if (auto edit = it.value()) {
       int col = it.key();
       edit->setGeometry(sectionViewportPosition(col), header_h, sectionSize(col), edit->sizeHint().height());
@@ -79,7 +79,7 @@ void MessageHeader::updateHeaderPositions() {
 QSize MessageHeader::sizeHint() const {
   QSize sz = QHeaderView::sizeHint();
   int extra_h =
-      cached_editor_height > 0 ? cached_editor_height : (editors.isEmpty() ? 0 : editors.first()->sizeHint().height());
+      cached_editor_height_ > 0 ? cached_editor_height_ : (editors_.isEmpty() ? 0 : editors_.first()->sizeHint().height());
   if (extra_h > 0) {
     sz.setHeight(sz.height() + extra_h + 1);
   }

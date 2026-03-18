@@ -25,7 +25,7 @@ class MessageHeader : public QHeaderView {
  private:
   QString getFilterTooltip(int col) const;
 
-  QMap<int, QPointer<DebouncedLineEdit>> editors;
-  int cached_editor_height = 0;
-  bool is_updating = false;
+  QMap<int, QPointer<DebouncedLineEdit>> editors_;
+  int cached_editor_height_ = 0;
+  bool is_updating_ = false;
 };

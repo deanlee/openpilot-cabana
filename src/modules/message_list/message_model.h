@@ -59,15 +59,15 @@ class MessageModel : public QAbstractTableModel {
   std::optional<FilterRange> parseFilter(QString filter, int base = 10);
   std::vector<Item> fetchItems();
   void sortItems(std::vector<MessageModel::Item>& items) const;
-  bool match(const MessageModel::Item& id) const;
+  bool matchesFilter(const MessageModel::Item& item) const;
   QString formatFreq(const Item& item) const;
 
   std::vector<Item> items_;
   QMap<int, QString> filters_;
   QMap<int, FilterRange> filter_ranges_;
   bool show_inactive_ = true;
-  int sort_column = 0;
-  Qt::SortOrder sort_order = Qt::AscendingOrder;
+  int sort_column_ = 0;
+  Qt::SortOrder sort_order_ = Qt::AscendingOrder;
   int sort_threshold_ = 0;
   int dbc_msg_count_ = 0;
   int signal_count_ = 0;

@@ -17,8 +17,8 @@ class MessageList : public QWidget {
 
  public:
   MessageList(QWidget* parent);
-  QByteArray saveHeaderState() const { return view->header()->saveState(); }
-  bool restoreHeaderState(const QByteArray& state) const { return view->header()->restoreState(state); }
+  QByteArray saveHeaderState() const { return table_->header()->saveState(); }
+  bool restoreHeaderState(const QByteArray& state) const { return table_->header()->restoreState(state); }
   void suppressHighlighted(bool suppress);
   void selectMessage(const MessageId& message_id) { selectMessageForced(message_id, false); }
 
@@ -31,18 +31,18 @@ class MessageList : public QWidget {
   void selectMessageForced(const MessageId& msg_id, bool force);
   QWidget* createToolBar();
   void resetState();
-  void headerContextMenuEvent(const QPoint& pos);
-  void menuAboutToShow();
+  void onHeaderContextMenuRequested(const QPoint& pos);
+  void onMenuAboutToShow();
   void updateTitle();
-  void handleSelectionChanged(const QModelIndex& current);
+  void onCurrentChanged(const QModelIndex& current);
 
-  MessageTable* view;
-  MessageHeader* header;
-  MessageDelegate* delegate;
-  std::optional<MessageId> current_msg_id;
-  MessageModel* model;
-  ToolButton* suppress_add;
-  ToolButton* suppress_clear;
-  QCheckBox* suppress_defined_signals;
-  QMenu* menu;
+  MessageTable* table_;
+  MessageHeader* header_;
+  MessageDelegate* delegate_;
+  std::optional<MessageId> current_msg_id_;
+  MessageModel* model_;
+  ToolButton* mute_active_btn_;
+  ToolButton* unmute_all_btn_;
+  QCheckBox* suppress_defined_signals_;
+  QMenu* menu_;
 };
