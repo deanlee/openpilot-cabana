@@ -27,11 +27,11 @@ class MessageDelegate : public QStyledItemDelegate {
   void drawItemText(QPainter* p, const QStyleOptionViewItem& opt, const QModelIndex& idx, bool sel, bool active) const;
   void drawHexData(QPainter* p, const QStyleOptionViewItem& opt, const QModelIndex& idx, bool sel, bool active) const;
 
-  QFont fixed_font;
-  QSize byte_size = {};
   CallerType caller_type_;
-  int h_margin, v_margin;
+  QFont fixed_font_;
+  QSize byte_size_ = {};
+  int h_margin_, v_margin_;
 
-  mutable std::array<std::array<QPixmap, StateCount>, 256> hex_pixmap_table;
-  mutable qint64 cached_palette_key = 0;
+  mutable std::array<std::array<QPixmap, StateCount>, 256> hex_pixmap_table_;
+  mutable qint64 cached_palette_key_ = 0;
 };
