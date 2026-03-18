@@ -15,7 +15,7 @@ class MessageBytesDelegate : public QStyledItemDelegate {
   void drawSignalCell(QPainter* painter, const QStyleOptionViewItem& option, const BinaryModel::Item* item,
                       const dbc::Signal* sig) const;
 
-  QFont small_font, hex_font;
-  std::array<QStaticText, 256> hex_text_table;
-  std::array<QStaticText, 2> bin_text_table;
+  QFont label_font, hex_font;
+  std::array<QStaticText, 256> hex_text_cache;
+  std::array<QStaticText, 2> bit_text_cache;
 };

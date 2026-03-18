@@ -10,7 +10,7 @@
 #include "core/commands/commands.h"
 #include "modules/settings/settings.h"
 
-inline int get_abs_bit(const QModelIndex& index) { return index.row() * 8 + (7 - index.column()); }
+inline int absoluteBitIndex(const QModelIndex& index) { return index.row() * 8 + (7 - index.column()); }
 
 BinaryView::BinaryView(QWidget* parent) : QTableView(parent) {
   delegate = new MessageBytesDelegate(this);
@@ -30,7 +30,7 @@ BinaryView::BinaryView(QWidget* parent) : QTableView(parent) {
   setMouseTracking(true);
   setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 
-  addShortcuts();
+  setupShortcuts();
   setWhatsThis(R"(
     <b>Binary View</b><br/>
     <!-- TODO: add descprition here -->
@@ -56,7 +56,7 @@ void BinaryView::setModel(QAbstractItemModel* newModel) {
   }
 }
 
-void BinaryView::addShortcuts() {
+void BinaryView::setupShortcuts() {
   auto bindKeys = [this](const QList<Qt::Key>& keys, auto&& func) {
     for (auto key : keys) {
       QShortcut* s = new QShortcut(QKeySequence(key), this);
@@ -66,33 +66,33 @@ void BinaryView::addShortcuts() {
 
   // Delete Signal (x, backspace, delete)
   bindKeys({Qt::Key_X, Qt::Key_Backspace, Qt::Key_Delete}, [this] {
-    if (hovered_sig) {
-      UndoStack::push(new RemoveSigCommand(model->msg_id, hovered_sig));
-      hovered_sig = nullptr;
+    if (hovered_signal) {
+      UndoStack::push(new RemoveSigCommand(model->message_id, hovered_signal));
+      hovered_signal = nullptr;
     }
   });
 
   // Change endianness (e)
   bindKeys({Qt::Key_E}, [this] {
-    if (hovered_sig) {
-      dbc::Signal s = *hovered_sig;
+    if (hovered_signal) {
+      dbc::Signal s = *hovered_signal;
       s.is_little_endian = !s.is_little_endian;
-      emit editSignal(hovered_sig, s);
+      emit editSignal(hovered_signal, s);
     }
   });
 
   // Change signedness (s)
   bindKeys({Qt::Key_S}, [this] {
-    if (hovered_sig) {
-      dbc::Signal s = *hovered_sig;
+    if (hovered_signal) {
+      dbc::Signal s = *hovered_signal;
       s.is_signed = !s.is_signed;
-      emit editSignal(hovered_sig, s);
+      emit editSignal(hovered_signal, s);
     }
   });
 
   // Open chart (c, p, g)
   bindKeys({Qt::Key_P, Qt::Key_G, Qt::Key_C}, [this] {
-    if (hovered_sig) emit showChart(model->msg_id, hovered_sig, true, false);
+    if (hovered_signal) emit showChart(model->message_id, hovered_signal, true, false);
   });
 }
 
@@ -104,27 +104,27 @@ QSize BinaryView::minimumSizeHint() const {
   return {totalWidth, totalHeight};
 }
 
-void BinaryView::highlight(const dbc::Signal* sig) {
-  if (sig != hovered_sig) {
+void BinaryView::highlightSignal(const dbc::Signal* sig) {
+  if (sig != hovered_signal) {
     if (sig) model->updateSignalCells(sig);
-    if (hovered_sig) model->updateSignalCells(hovered_sig);
+    if (hovered_signal) model->updateSignalCells(hovered_signal);
 
-    hovered_sig = sig;
-    emit signalHovered(hovered_sig);
+    hovered_signal = sig;
+    emit signalHovered(hovered_signal);
   }
 }
 
 void BinaryView::mousePressEvent(QMouseEvent* event) {
-  resize_sig = nullptr;
+  resizing_signal = nullptr;
   if (auto index = indexAt(event->pos()); index.isValid() && index.column() != 8) {
-    anchor_index = index;
-    const auto *item = model->getItem(anchor_index);
-    int clicked_bit = get_abs_bit(anchor_index);
-    for (auto s : item->sigs) {
+    anchor_index_ = index;
+    const auto *item = model->getItem(anchor_index_);
+    int clicked_bit = absoluteBitIndex(anchor_index_);
+    for (auto s : item->signal_list) {
       if (clicked_bit == s->lsb || clicked_bit == s->msb) {
         int other_bit = (clicked_bit == s->lsb) ? s->msb : s->lsb;
-        anchor_index = model->index(other_bit / 8, 7 - (other_bit % 8));
-        resize_sig = s;
+        anchor_index_ = model->index(other_bit / 8, 7 - (other_bit % 8));
+        resizing_signal = s;
         break;
       }
     }
@@ -132,16 +132,16 @@ void BinaryView::mousePressEvent(QMouseEvent* event) {
   event->accept();
 }
 
-void BinaryView::highlightPosition(const QPoint& pos) {
+void BinaryView::highlightSignalAtPosition(const QPoint& pos) {
   if (auto index = indexAt(viewport()->mapFromGlobal(pos)); index.isValid()) {
     const auto *item = model->getItem(index);
-    const dbc::Signal* sig = item->sigs.isEmpty() ? nullptr : item->sigs.back();
-    highlight(sig);
+    const dbc::Signal* sig = item->signal_list.isEmpty() ? nullptr : item->signal_list.back();
+    highlightSignal(sig);
   }
 }
 
 void BinaryView::mouseMoveEvent(QMouseEvent* event) {
-  highlightPosition(event->globalPosition().toPoint());
+  highlightSignalAtPosition(event->globalPosition().toPoint());
   QTableView::mouseMoveEvent(event);
 }
 
@@ -149,52 +149,52 @@ void BinaryView::mouseReleaseEvent(QMouseEvent* event) {
   QTableView::mouseReleaseEvent(event);
 
   auto release_index = indexAt(event->position().toPoint());
-  if (release_index.isValid() && anchor_index.isValid()) {
+  if (release_index.isValid() && anchor_index_.isValid()) {
     if (selectionModel()->hasSelection()) {
-      auto sig = resize_sig ? *resize_sig : dbc::Signal{};
-      std::tie(sig.start_bit, sig.size, sig.is_little_endian) = getSelection(release_index);
-      resize_sig ? emit editSignal(resize_sig, sig) : UndoStack::push(new AddSigCommand(model->msg_id, sig));
+      auto sig = resizing_signal ? *resizing_signal : dbc::Signal{};
+      std::tie(sig.start_bit, sig.size, sig.is_little_endian) = calculateSelection(release_index);
+      resizing_signal ? emit editSignal(resizing_signal, sig) : UndoStack::push(new AddSigCommand(model->message_id, sig));
     } else {
-      const auto *item = model->getItem(anchor_index);
-      if (item && item->sigs.size() > 0) emit signalClicked(item->sigs.back());
+      const auto *item = model->getItem(anchor_index_);
+      if (item && item->signal_list.size() > 0) emit signalClicked(item->signal_list.back());
     }
   }
   clearSelection();
-  anchor_index = QModelIndex();
-  resize_sig = nullptr;
+  anchor_index_ = QModelIndex();
+  resizing_signal = nullptr;
 }
 
 void BinaryView::leaveEvent(QEvent* event) {
-  highlight(nullptr);
+  highlightSignal(nullptr);
   QTableView::leaveEvent(event);
 }
 
 void BinaryView::resetInternalState() {
-  anchor_index = QModelIndex();
-  resize_sig = nullptr;
-  hovered_sig = nullptr;
+  anchor_index_ = QModelIndex();
+  resizing_signal = nullptr;
+  hovered_signal = nullptr;
   verticalScrollBar()->setValue(0);
-  highlightPosition(QCursor::pos());
+  highlightSignalAtPosition(QCursor::pos());
 }
 
-std::tuple<int, int, bool> BinaryView::getSelection(QModelIndex index) {
+std::tuple<int, int, bool> BinaryView::calculateSelection(QModelIndex index) {
   if (index.column() == 8) index = model->index(index.row(), 7);
 
   bool is_le = true;
-  if (resize_sig) {
-    is_le = resize_sig->is_little_endian;
+  if (resizing_signal) {
+    is_le = resizing_signal->is_little_endian;
   } else if (settings.drag_direction == Settings::DragDirection::MsbFirst) {
-    is_le = index < anchor_index;
+    is_le = index < anchor_index_;
   } else if (settings.drag_direction == Settings::DragDirection::LsbFirst) {
-    is_le = !(index < anchor_index);
+    is_le = !(index < anchor_index_);
   } else if (settings.drag_direction == Settings::DragDirection::AlwaysLE) {
     is_le = true;
   } else if (settings.drag_direction == Settings::DragDirection::AlwaysBE) {
     is_le = false;
   }
 
-  int cur_bit = get_abs_bit(index);
-  int anchor_bit = get_abs_bit(anchor_index);
+  int cur_bit = absoluteBitIndex(index);
+  int anchor_bit = absoluteBitIndex(anchor_index_);
 
   int start_bit, size;
   if (is_le) {
@@ -203,12 +203,12 @@ std::tuple<int, int, bool> BinaryView::getSelection(QModelIndex index) {
     size = std::abs(cur_bit - anchor_bit) + 1;
   } else {
     // Motorola: Start bit is "Visual Top-Left".
-    auto pos_cur = std::make_pair(index.row(), index.column());
-    auto pos_anchor = std::make_pair(anchor_index.row(), anchor_index.column());
+    auto cursor_pos = std::make_pair(index.row(), index.column());
+    auto anchor_pos = std::make_pair(anchor_index_.row(), anchor_index_.column());
 
-    QModelIndex topLeft = (pos_cur < pos_anchor) ? index : anchor_index;
+    QModelIndex top_left_index = (cursor_pos < anchor_pos) ? index : anchor_index_;
 
-    start_bit = get_abs_bit(topLeft);
+    start_bit = absoluteBitIndex(top_left_index);
     size = std::abs(flipBitPos(cur_bit) - flipBitPos(anchor_bit)) + 1;
   }
 
@@ -217,9 +217,9 @@ std::tuple<int, int, bool> BinaryView::getSelection(QModelIndex index) {
 
 void BinaryView::setSelection(const QRect& rect, QItemSelectionModel::SelectionFlags flags) {
   auto cur_idx = indexAt(viewport()->mapFromGlobal(QCursor::pos()));
-  if (!anchor_index.isValid() || !cur_idx.isValid()) return;
+  if (!anchor_index_.isValid() || !cur_idx.isValid()) return;
 
-  auto [start, size, is_le] = getSelection(cur_idx);
+  auto [start, size, is_le] = calculateSelection(cur_idx);
   QItemSelection selection;
 
   for (int j = 0; j < size; ++j) {

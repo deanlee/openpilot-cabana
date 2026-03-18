@@ -23,8 +23,8 @@ class BinaryModel : public QAbstractTableModel {
     QColor bg_color = QColor(102, 86, 169, 255);
     bool is_msb = false;
     bool is_lsb = false;
-    uint8_t val = INVALID_BIT;
-    QList<const dbc::Signal*> sigs;
+    uint8_t value = INVALID_BIT;
+    QList<const dbc::Signal*> signal_list;
     float intensity = 0.0f;
     uint32_t last_flips = 0;
 
@@ -44,8 +44,8 @@ class BinaryModel : public QAbstractTableModel {
   void updateBorders();
   void updateState();
   void updateSignalCells(const dbc::Signal* sig);
-  QSet<const dbc::Signal*> getOverlappingSignals() const;
-  const std::array<std::array<uint32_t, 8>, MAX_CAN_LEN>& getBitFlipChanges(size_t msg_size);
+  QSet<const dbc::Signal*> findOverlappingSignals() const;
+  const std::array<std::array<uint32_t, 8>, MAX_CAN_LEN>& computeBitFlipCounts(size_t msg_size);
 
   // QAbstractTableModel overrides
   QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const override;
@@ -56,7 +56,7 @@ class BinaryModel : public QAbstractTableModel {
     return (index.column() == column_count - 1) ? Qt::ItemIsEnabled : Qt::ItemIsEnabled | Qt::ItemIsSelectable;
   }
 
-  MessageId msg_id;
+  MessageId message_id;
 
  private:
   struct BitFlipTracker {
@@ -70,11 +70,11 @@ class BinaryModel : public QAbstractTableModel {
   std::vector<Item> items;
   QFont header_font_;
 
-  bool syncRowItems(int row, const MessageSnapshot* msg, const std::array<uint32_t, 8>& row_flips, float log_max,
-                    bool is_light, const QColor& base_bg, float decay);
-  QColor calculateBitHeatColor(Item& item, uint32_t flips, float log_max, bool is_light, const QColor& base_bg,
+  bool updateRowCells(int row, const MessageSnapshot* msg, const std::array<uint32_t, 8>& row_flips, float log_max,
+                    bool is_light_theme, const QColor& base_bg, float decay_factor);
+  QColor calculateBitHeatColor(Item& item, uint32_t flips, float log_max, bool is_light_theme, const QColor& base_bg,
                                float decay_factor);
   bool updateItem(int row, int col, uint8_t val, const QColor& color);
 };
 
-QString signalToolTip(const dbc::Signal* sig);
+QString formatSignalToolTip(const dbc::Signal* sig);
