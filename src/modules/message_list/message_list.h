@@ -27,20 +27,25 @@ class MessageList : public QWidget {
   void titleChanged(const QString& title);
 
  protected:
-  void setupConnections();
-  void selectMessageForced(const MessageId& msg_id, bool force);
+  // Construction helpers
   QWidget* createToolBar();
+  void setupConnections();
+  // State management
   void resetState();
+  void updateTitle();
+  void selectMessageForced(const MessageId& msg_id, bool force);
+  // Event handlers
+  void onCurrentChanged(const QModelIndex& current);
   void onHeaderContextMenuRequested(const QPoint& pos);
   void onMenuAboutToShow();
-  void updateTitle();
-  void onCurrentChanged(const QModelIndex& current);
 
+  // Core model/view
+  MessageModel* model_;
   MessageTable* table_;
   MessageHeader* header_;
   MessageDelegate* delegate_;
   std::optional<MessageId> current_msg_id_;
-  MessageModel* model_;
+  // Toolbar widgets
   ToolButton* mute_active_btn_;
   ToolButton* unmute_all_btn_;
   QCheckBox* suppress_defined_signals_;

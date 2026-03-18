@@ -27,9 +27,9 @@ class MessageDelegate : public QStyledItemDelegate {
   void drawItemText(QPainter* p, const QStyleOptionViewItem& opt, const QModelIndex& idx, bool sel, bool active) const;
   void drawHexData(QPainter* p, const QStyleOptionViewItem& opt, const QModelIndex& idx, bool sel, bool active) const;
 
+  CallerType caller_type_;
   QFont fixed_font_;
   QSize byte_size_ = {};
-  CallerType caller_type_;
   int h_margin_, v_margin_;
 
   mutable std::array<std::array<QPixmap, StateCount>, 256> hex_pixmap_table_;

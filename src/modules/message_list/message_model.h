@@ -26,21 +26,6 @@ class MessageModel : public QAbstractTableModel {
   };
 
   MessageModel(QObject* parent);
-  inline bool isInactiveMessagesVisible() const { return show_inactive_; }
-  const Item* getItem(const QModelIndex& index) const {
-    if (!index.isValid() || index.row() >= static_cast<int>(items_.size())) return nullptr;
-    return &items_[index.row()];
-  }
-  inline int getDbcMessageCount() const { return dbc_msg_count_; }
-  inline int getSignalCount() const { return signal_count_; }
-  inline int getRowForMessageId(const MessageId& id) const {
-    auto it = std::ranges::find(items_, id, &Item::id);
-    return (it != items_.end()) ? std::distance(items_.begin(), it) : -1;
-  }
-  void setFilterStrings(const QMap<int, QString>& filters);
-  void setInactiveMessagesVisible(bool show);
-  void onSnapshotsUpdated(const std::set<MessageId>* ids, bool needs_rebuild);
-  void rebuild();
 
   // QAbstractTableModel overrides
   QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const override;
@@ -48,6 +33,25 @@ class MessageModel : public QAbstractTableModel {
   QVariant data(const QModelIndex& index, int role = Qt::DisplayRole) const override;
   int rowCount(const QModelIndex& parent = QModelIndex()) const override { return items_.size(); }
   void sort(int column, Qt::SortOrder order = Qt::AscendingOrder) override;
+
+  // Accessors
+  bool isInactiveMessagesVisible() const { return show_inactive_; }
+  const Item* getItem(const QModelIndex& index) const {
+    if (!index.isValid() || index.row() >= static_cast<int>(items_.size())) return nullptr;
+    return &items_[index.row()];
+  }
+  int getDbcMessageCount() const { return dbc_msg_count_; }
+  int getSignalCount() const { return signal_count_; }
+  int getRowForMessageId(const MessageId& id) const {
+    auto it = std::ranges::find(items_, id, &Item::id);
+    return (it != items_.end()) ? std::distance(items_.begin(), it) : -1;
+  }
+
+  // Mutators / slots
+  void setFilterStrings(const QMap<int, QString>& filters);
+  void setInactiveMessagesVisible(bool show);
+  void onSnapshotsUpdated(const std::set<MessageId>* ids, bool needs_rebuild);
+  void rebuild();
 
  private:
   struct FilterRange {

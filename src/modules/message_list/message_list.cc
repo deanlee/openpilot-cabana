@@ -54,23 +54,6 @@ MessageList::MessageList(QWidget* parent) : QWidget(parent) {
   setupConnections();
 }
 
-void MessageList::setupConnections() {
-  connect(menu_, &QMenu::aboutToShow, this, &MessageList::onMenuAboutToShow);
-  connect(header_, &MessageHeader::customContextMenuRequested, this, &MessageList::onHeaderContextMenuRequested);
-  connect(table_->horizontalScrollBar(), &QScrollBar::valueChanged, header_, &MessageHeader::updateHeaderPositions);
-  connect(&StreamManager::instance(), &StreamManager::snapshotsUpdated, model_, &MessageModel::onSnapshotsUpdated);
-  connect(&StreamManager::instance(), &StreamManager::streamChanged, this, &MessageList::resetState);
-  connect(GetDBC(), &dbc::Manager::DBCFileChanged, model_, &MessageModel::rebuild);
-  connect(UndoStack::instance(), &QUndoStack::indexChanged, model_, &MessageModel::rebuild);
-  connect(table_->selectionModel(), &QItemSelectionModel::currentChanged, this, &MessageList::onCurrentChanged);
-  connect(model_, &MessageModel::modelReset, [this]() {
-    if (current_msg_id_) {
-      selectMessageForced(*current_msg_id_, true);
-    }
-    updateTitle();
-  });
-}
-
 QWidget* MessageList::createToolBar() {
   QWidget* toolbar = new QWidget(this);
   QHBoxLayout* layout = new QHBoxLayout(toolbar);
@@ -113,6 +96,45 @@ QWidget* MessageList::createToolBar() {
   return toolbar;
 }
 
+void MessageList::setupConnections() {
+  connect(menu_, &QMenu::aboutToShow, this, &MessageList::onMenuAboutToShow);
+  connect(header_, &MessageHeader::customContextMenuRequested, this, &MessageList::onHeaderContextMenuRequested);
+  connect(table_->horizontalScrollBar(), &QScrollBar::valueChanged, header_, &MessageHeader::updateHeaderPositions);
+  connect(&StreamManager::instance(), &StreamManager::snapshotsUpdated, model_, &MessageModel::onSnapshotsUpdated);
+  connect(&StreamManager::instance(), &StreamManager::streamChanged, this, &MessageList::resetState);
+  connect(GetDBC(), &dbc::Manager::DBCFileChanged, model_, &MessageModel::rebuild);
+  connect(UndoStack::instance(), &QUndoStack::indexChanged, model_, &MessageModel::rebuild);
+  connect(table_->selectionModel(), &QItemSelectionModel::currentChanged, this, &MessageList::onCurrentChanged);
+  connect(model_, &MessageModel::modelReset, [this]() {
+    if (current_msg_id_) {
+      selectMessageForced(*current_msg_id_, true);
+    }
+    updateTitle();
+  });
+}
+
+void MessageList::suppressHighlighted(bool suppress) {
+  int n = 0;
+  if (suppress) {
+    n = StreamManager::stream()->suppressHighlighted();
+  } else {
+    StreamManager::stream()->clearSuppressed();
+  }
+  unmute_all_btn_->setText(n > 0 ? tr("Unmute (%1 bits)").arg(n) : tr("Unmute All"));
+  unmute_all_btn_->setEnabled(n > 0);
+}
+
+void MessageList::selectMessageForced(const MessageId& msg_id, bool force) {
+  if (!force && current_msg_id_ && *current_msg_id_ == msg_id) return;
+
+  int row = model_->getRowForMessageId(msg_id);
+  if (row != -1) {
+    QModelIndex index = model_->index(row, 0);
+    table_->setCurrentIndex(index);
+    table_->scrollTo(index, QAbstractItemView::PositionAtCenter);
+  }
+}
+
 void MessageList::resetState() {
   current_msg_id_.reset();
   if (table_->selectionModel()) {
@@ -143,28 +165,6 @@ void MessageList::onCurrentChanged(const QModelIndex& current) {
       emit msgSelectionChanged(*current_msg_id_);
     }
   }
-}
-
-void MessageList::selectMessageForced(const MessageId& msg_id, bool force) {
-  if (!force && current_msg_id_ && *current_msg_id_ == msg_id) return;
-
-  int row = model_->getRowForMessageId(msg_id);
-  if (row != -1) {
-    QModelIndex index = model_->index(row, 0);
-    table_->setCurrentIndex(index);
-    table_->scrollTo(index, QAbstractItemView::PositionAtCenter);
-  }
-}
-
-void MessageList::suppressHighlighted(bool suppress) {
-  int n = 0;
-  if (suppress) {
-    n = StreamManager::stream()->suppressHighlighted();
-  } else {
-    StreamManager::stream()->clearSuppressed();
-  }
-  unmute_all_btn_->setText(n > 0 ? tr("Unmute (%1 bits)").arg(n) : tr("Unmute All"));
-  unmute_all_btn_->setEnabled(n > 0);
 }
 
 void MessageList::onHeaderContextMenuRequested(const QPoint& pos) { menu_->exec(header_->mapToGlobal(pos)); }
