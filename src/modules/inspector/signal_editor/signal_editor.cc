@@ -13,122 +13,126 @@
 
 SignalEditor::SignalEditor(ChartsPanel* charts, QWidget* parent) : QFrame(parent) {
   setFrameStyle(QFrame::NoFrame);
-  tree = new SignalTree(this);
-  tree->setModel(model = new SignalTreeModel(this));
-  tree->setItemDelegate(delegate = new SignalTreeDelegate(this));
-  tree->setMinimumHeight(300);
+  tree_ = new SignalTree(this);
+  tree_->setModel(model = new SignalTreeModel(this));
+  tree_->setItemDelegate(delegate_ = new SignalTreeDelegate(this));
+  tree_->setMinimumHeight(300);
 
-  QHeaderView* header = tree->header();
+  QHeaderView* header = tree_->header();
   header->setCascadingSectionResizes(false);
   header->setStretchLastSection(true);
   header->setSectionResizeMode(0, QHeaderView::Interactive);
   header->setSectionResizeMode(1, QHeaderView::Stretch);
 
-  QVBoxLayout* main_layout = new QVBoxLayout(this);
-  main_layout->setContentsMargins(0, 0, 0, 0);
-  main_layout->setSpacing(0);
-  main_layout->addWidget(createToolbar());
+  QVBoxLayout* mainLayout = new QVBoxLayout(this);
+  mainLayout->setContentsMargins(0, 0, 0, 0);
+  mainLayout->setSpacing(0);
+  mainLayout->addWidget(createToolbar());
 
   QFrame* line = new QFrame(this);
   line->setFrameStyle(QFrame::HLine | QFrame::Sunken);
-  main_layout->addWidget(line);
+  mainLayout->addWidget(line);
 
-  main_layout->addWidget(tree);
+  mainLayout->addWidget(tree_);
 
   updateToolBar();
   setupConnections(charts);
 
   setWhatsThis(tr(R"(
     <b>Signal view</b><br />
-    <!-- TODO: add descprition here -->
+    <!-- TODO: add description here -->
   )"));
 }
 
 QWidget* SignalEditor::createToolbar() {
   QWidget* toolbar = new QWidget(this);
-  QHBoxLayout* hl = new QHBoxLayout(toolbar);
-  hl->setContentsMargins(4, 4, 4, 4);
+  QHBoxLayout* layout = new QHBoxLayout(toolbar);
+  layout->setContentsMargins(4, 4, 4, 4);
 
-  hl->addWidget(signal_count_lb = new QLabel());
-  filter_edit = new DebouncedLineEdit(this);
+  layout->addWidget(signalCountLabel_ = new QLabel());
 
+  filterEdit_ = new DebouncedLineEdit(this);
   QRegularExpression re("\\S+");
-  filter_edit->setValidator(new QRegularExpressionValidator(re, this));
-  filter_edit->setClearButtonEnabled(true);
-  filter_edit->setPlaceholderText(tr("Filter signal..."));
-  filter_edit->setToolTip(tr("Filter signals by name"));
-  hl->addWidget(filter_edit, 0, Qt::AlignCenter);
-  hl->addStretch(1);
+  filterEdit_->setValidator(new QRegularExpressionValidator(re, this));
+  filterEdit_->setClearButtonEnabled(true);
+  filterEdit_->setPlaceholderText(tr("Filter signal..."));
+  filterEdit_->setToolTip(tr("Filter signals by name"));
+  layout->addWidget(filterEdit_, 0, Qt::AlignCenter);
+  layout->addStretch(1);
 
-  // WARNING: increasing the maximum range can result in severe performance degradation.
-  // 30s is a reasonable value at present.
-  const int max_range = 30;  // 30s
-  settings.sparkline_range = std::clamp(settings.sparkline_range, 1, max_range);
-  hl->addWidget(sparkline_label = new QLabel());
-  hl->addWidget(sparkline_range_slider = new QSlider(Qt::Horizontal, this));
-  sparkline_range_slider->setMinimumWidth(100);
-  sparkline_range_slider->setRange(1, max_range);
-  sparkline_range_slider->setValue(settings.sparkline_range);
-  sparkline_range_slider->setToolTip(tr("Adjust sparkline history duration"));
+  // Sparkline range slider (max 30s to avoid performance issues)
+  const int maxRange = 30;
+  settings.sparkline_range = std::clamp(settings.sparkline_range, 1, maxRange);
+  layout->addWidget(sparklineLabel_ = new QLabel());
+  layout->addWidget(sparklineRangeSlider_ = new QSlider(Qt::Horizontal, this));
+  sparklineRangeSlider_->setMinimumWidth(100);
+  sparklineRangeSlider_->setRange(1, maxRange);
+  sparklineRangeSlider_->setValue(settings.sparkline_range);
+  sparklineRangeSlider_->setToolTip(tr("Adjust sparkline history duration"));
 
-  collapse_btn = new ToolButton("fold-vertical", tr("Collapse All"));
-  hl->addWidget(collapse_btn);
+  collapseBtn_ = new ToolButton("fold-vertical", tr("Collapse All"));
+  layout->addWidget(collapseBtn_);
 
   return toolbar;
 }
 
 void SignalEditor::setupConnections(ChartsPanel* charts) {
-  connect(filter_edit, &DebouncedLineEdit::debouncedTextEdited, model, &SignalTreeModel::setFilter);
-  connect(sparkline_range_slider, &QSlider::valueChanged, this, &SignalEditor::setSparklineRange);
-  connect(collapse_btn, &QPushButton::clicked, tree, &QTreeView::collapseAll);
+  connect(filterEdit_, &DebouncedLineEdit::debouncedTextEdited, model, &SignalTreeModel::setFilter);
+  connect(sparklineRangeSlider_, &QSlider::valueChanged, this, &SignalEditor::setSparklineRange);
+  connect(collapseBtn_, &QPushButton::clicked, tree_, &QTreeView::collapseAll);
+
   connect(model, &QAbstractItemModel::modelReset, this, &SignalEditor::rowsChanged);
   connect(model, &QAbstractItemModel::rowsRemoved, this, &SignalEditor::rowsChanged);
   connect(model, &QAbstractItemModel::rowsInserted, this, &SignalEditor::rowsChanged);
-  connect(model, &QAbstractItemModel::modelAboutToBeReset, delegate, &SignalTreeDelegate::clearHoverState);
-  connect(model, &QAbstractItemModel::rowsAboutToBeRemoved, delegate, &SignalTreeDelegate::clearHoverState);
+  connect(model, &QAbstractItemModel::modelAboutToBeReset, delegate_, &SignalTreeDelegate::clearHoverState);
+  connect(model, &QAbstractItemModel::rowsAboutToBeRemoved, delegate_, &SignalTreeDelegate::clearHoverState);
+
   connect(GetDBC(), &dbc::Manager::signalAdded, this, &SignalEditor::handleSignalAdded);
   connect(GetDBC(), &dbc::Manager::signalUpdated, this, &SignalEditor::handleSignalUpdated);
-  connect(tree, &SignalTree::highlightRequested, this, &SignalEditor::highlight);
-  connect(tree->verticalScrollBar(), &QScrollBar::valueChanged, [this]() { updateState(); });
-  connect(tree->verticalScrollBar(), &QScrollBar::rangeChanged, [this]() { updateState(); });
+
+  connect(tree_, &SignalTree::highlightRequested, this, &SignalEditor::highlight);
+  connect(tree_->verticalScrollBar(), &QScrollBar::valueChanged, [this]() { updateState(); });
+  connect(tree_->verticalScrollBar(), &QScrollBar::rangeChanged, [this]() { updateState(); });
+
   connect(charts, &ChartsPanel::seriesChanged, model,
           [this, charts]() { model->updateChartedSignals(charts->getChartedSignals()); });
 
-  connect(delegate, &SignalTreeDelegate::removeRequested, this,
+  connect(delegate_, &SignalTreeDelegate::removeRequested, this,
           [this](const dbc::Signal* sig) { UndoStack::push(new RemoveSigCommand(model->messageId(), sig)); });
-  connect(delegate, &SignalTreeDelegate::plotRequested, this, [this](const dbc::Signal* sig, bool show, bool merge) {
+
+  connect(delegate_, &SignalTreeDelegate::plotRequested, this, [this](const dbc::Signal* sig, bool show, bool merge) {
     emit showChart(model->messageId(), sig, show, merge);
   });
 }
 
 void SignalEditor::setMessage(const MessageId& id) {
-  filter_edit->clear();
+  filterEdit_->clear();
   model->setMessage(id);
-  tree->scrollToTop();
+  tree_->scrollToTop();
 }
 
 void SignalEditor::clearMessage() {
-  filter_edit->clear();
+  filterEdit_->clear();
   model->setMessage(MessageId());
-  tree->scrollToTop();
+  tree_->scrollToTop();
 }
 
 void SignalEditor::updateState(const std::set<MessageId>* msgs) {
-  // Skip update if the widget is hidden or collapsed
+  // Skip update if widget is hidden or collapsed
   if (!isVisible() || height() == 0 || width() == 0) return;
 
-  const auto* last_msg = StreamManager::stream()->snapshot(model->messageId());
+  const auto* lastMsg = StreamManager::stream()->snapshot(model->messageId());
   if (model->rowCount() == 0 || (msgs && !msgs->count(model->messageId()))) return;
 
-  auto [first_v, last_v] = visibleSignalRange();
-  if (!first_v.isValid()) return;
+  auto [firstV, lastV] = visibleSignalRange();
+  if (!firstV.isValid()) return;
 
-  model->updateValues(last_msg);
+  model->updateValues(lastMsg);
 
-  int fixed_parts = delegate->getButtonsWidth() + model->maxValueWidth() + (delegate->kPadding * 4);
-  int value_col_width = tree->columnWidth(1);
-  int spark_w = std::max(value_col_width - fixed_parts, value_col_width / 2);
-  model->updateSparklines(last_msg, first_v.row(), last_v.row(), QSize(spark_w, delegate->kBtnSize));
+  int fixedParts = delegate_->getButtonsWidth() + model->maxValueWidth() + (SignalTreeDelegate::kPadding * 4);
+  int valueColWidth = tree_->columnWidth(1);
+  int sparkW = std::max(valueColWidth - fixedParts, valueColWidth / 2);
+  model->updateSparklines(lastMsg, firstV.row(), lastV.row(), QSize(sparkW, SignalTreeDelegate::kBtnSize));
 }
 
 void SignalEditor::rowsChanged() {
@@ -137,26 +141,27 @@ void SignalEditor::rowsChanged() {
 }
 
 void SignalEditor::selectSignal(const dbc::Signal* sig, bool expand) {
-  if (int row = model->signalRow(sig); row != -1) {
-    auto idx = model->index(row, 0);
-    if (expand) {
-      tree->setExpanded(idx, !tree->isExpanded(idx));
-    }
-    tree->scrollTo(idx, QAbstractItemView::PositionAtTop);
-    tree->setCurrentIndex(idx);
+  int row = model->signalRow(sig);
+  if (row == -1) return;
+
+  auto idx = model->index(row, 0);
+  if (expand) {
+    tree_->setExpanded(idx, !tree_->isExpanded(idx));
   }
+  tree_->scrollTo(idx, QAbstractItemView::PositionAtTop);
+  tree_->setCurrentIndex(idx);
 }
 
 void SignalEditor::updateToolBar() {
-  signal_count_lb->setText(tr("Signals: %1").arg(model->rowCount()));
-  sparkline_label->setText(utils::formatSeconds(settings.sparkline_range));
+  signalCountLabel_->setText(tr("Signals: %1").arg(model->rowCount()));
+  sparklineLabel_->setText(utils::formatSeconds(settings.sparkline_range));
 }
 
 void SignalEditor::setSparklineRange(int value) {
   settings.sparkline_range = value;
   updateToolBar();
 
-  // Clear history to prevent scaling artifacts when range changes drastically
+  // Clear history to prevent scaling artifacts
   model->resetSparklines();
   updateState();
 }
@@ -168,49 +173,55 @@ void SignalEditor::handleSignalAdded(MessageId id, const dbc::Signal* sig) {
 }
 
 void SignalEditor::handleSignalUpdated(const dbc::Signal* sig) {
-  if (int row = model->signalRow(sig); row != -1) updateState();
+  if (model->signalRow(sig) != -1) {
+    updateState();
+  }
 }
 
 std::pair<QModelIndex, QModelIndex> SignalEditor::visibleSignalRange() {
   auto topLevelIndex = [](QModelIndex index) {
-    while (index.isValid() && index.parent().isValid()) index = index.parent();
+    while (index.isValid() && index.parent().isValid()) {
+      index = index.parent();
+    }
     return index;
   };
 
-  const auto viewport_rect = tree->viewport()->rect();
-  QModelIndex first_visible = tree->indexAt(viewport_rect.topLeft());
-  if (first_visible.parent().isValid()) {
-    first_visible = topLevelIndex(first_visible);
-    first_visible = first_visible.siblingAtRow(first_visible.row() + 1);
+  const auto viewportRect = tree_->viewport()->rect();
+  QModelIndex firstVisible = tree_->indexAt(viewportRect.topLeft());
+
+  if (firstVisible.parent().isValid()) {
+    firstVisible = topLevelIndex(firstVisible);
+    firstVisible = firstVisible.siblingAtRow(firstVisible.row() + 1);
   }
 
-  QModelIndex last_visible = topLevelIndex(tree->indexAt(viewport_rect.bottomRight()));
-  if (!last_visible.isValid()) {
-    last_visible = model->index(model->rowCount() - 1, 0);
+  QModelIndex lastVisible = topLevelIndex(tree_->indexAt(viewportRect.bottomRight()));
+  if (!lastVisible.isValid()) {
+    lastVisible = model->index(model->rowCount() - 1, 0);
   }
-  return {first_visible, last_visible};
+
+  return {firstVisible, lastVisible};
 }
 
 void SignalEditor::updateColumnWidths() {
-  auto* m = GetDBC()->msg(model->messageId());
-  if (!m) return;
+  auto* msg = GetDBC()->msg(model->messageId());
+  if (!msg) return;
 
-  const int limit = std::max(150, tree->viewport()->width() / 3);
-  int max_content_w = 0;
-  int indentation = tree->indentation();
+  const int limit = std::max(150, tree_->viewport()->width() / 3);
+  int maxContentW = 0;
+  int indentation = tree_->indentation();
 
-  for (const auto* sig : m->getSignals()) {
-    int w = delegate->nameColumnWidth(sig) + indentation;
-    max_content_w = std::max(max_content_w, w);
-    if (max_content_w > limit) break;  // No need to calculate further
+  for (const auto* sig : msg->getSignals()) {
+    int w = delegate_->nameColumnWidth(sig) + indentation;
+    maxContentW = std::max(maxContentW, w);
+    if (maxContentW > limit) break;
   }
 
-  int finalWidth = std::clamp(max_content_w, 150, limit);
+  int finalWidth = std::clamp(maxContentW, 150, limit);
 
   // Block signals to prevent resizeEvent recursion
-  tree->header()->blockSignals(true);
-  tree->setColumnWidth(0, finalWidth);
-  tree->header()->blockSignals(false);
+  tree_->header()->blockSignals(true);
+  tree_->setColumnWidth(0, finalWidth);
+  tree_->header()->blockSignals(false);
 
   updateState();
 }

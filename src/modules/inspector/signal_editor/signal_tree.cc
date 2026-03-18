@@ -15,13 +15,12 @@ SignalTree::SignalTree(QWidget* parent) : QTreeView(parent) {
   viewport()->setAttribute(Qt::WA_AlwaysShowToolTips, true);
   setToolTipDuration(1000);
 
-  // Use a distinctive background for the whole row containing a QSpinBox or QLineEdit
   QString nodeBgColor = palette().color(QPalette::AlternateBase).name(QColor::HexArgb);
   setStyleSheet(QString("QSpinBox{background-color:%1;border:none;} QLineEdit{background-color:%1;}").arg(nodeBgColor));
 }
 
 void SignalTree::dataChanged(const QModelIndex& topLeft, const QModelIndex& bottomRight, const QVector<int>& roles) {
-  // Bypass the slow call to QTreeView::dataChanged.
+  // Bypass the slow call to QTreeView::dataChanged
   QAbstractItemView::dataChanged(topLeft, bottomRight, roles);
 }
 
@@ -34,25 +33,27 @@ void SignalTree::leaveEvent(QEvent* event) {
 void SignalTree::mouseMoveEvent(QMouseEvent* event) {
   QTreeView::mouseMoveEvent(event);
 
-  const dbc::Signal* current_sig = nullptr;
+  const dbc::Signal* currentSig = nullptr;
   QModelIndex idx = indexAt(event->pos());
 
   if (idx.isValid()) {
-    if (auto m = qobject_cast<SignalTreeModel*>(model())) {
-      if (auto item = m->itemFromIndex(idx)) {
-        current_sig = item->sig;
+    if (auto* item = static_cast<TreeItem*>(idx.internalPointer())) {
+      if (auto* sigItem = dynamic_cast<SignalItem*>(item)) {
+        currentSig = sigItem->sig;
+      } else if (auto* propItem = dynamic_cast<PropertyItem*>(item)) {
+        currentSig = propItem->sig;
       }
     }
   } else {
     static_cast<SignalTreeDelegate*>(itemDelegate())->clearHoverState();
   }
 
-  updateHighlight(current_sig);
+  updateHighlight(currentSig);
 }
 
 void SignalTree::updateHighlight(const dbc::Signal* sig) {
-  if (sig != last_sig) {
-    last_sig = sig;
+  if (sig != lastSig_) {
+    lastSig_ = sig;
     emit highlightRequested(sig);
   }
 }
