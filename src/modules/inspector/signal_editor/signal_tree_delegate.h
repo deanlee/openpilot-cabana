@@ -10,14 +10,18 @@
 class SignalTreeDelegate : public QStyledItemDelegate {
   Q_OBJECT
  public:
-  // Layout Constants
-  const int kBtnSize = 22;
-  const int kBtnSpacing = 4;
-  const int kPadding = 6;
-  const int kColorLabelW = 18;
+  // Layout constants
+  static constexpr int kBtnSize = 22;
+  static constexpr int kBtnSpacing = 4;
+  static constexpr int kPadding = 6;
+  static constexpr int kColorLabelW = 18;
 
-  SignalTreeDelegate(QObject* parent);
+  explicit SignalTreeDelegate(QObject* parent);
   void clearHoverState();
+  int nameColumnWidth(const dbc::Signal* sig) const;
+  int getButtonsWidth() const { return (2 * kBtnSize) + kBtnSpacing + kPadding; }
+
+  // QStyledItemDelegate overrides
   void paint(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const override;
   QSize sizeHint(const QStyleOptionViewItem& option, const QModelIndex& index) const override;
   QWidget* createEditor(QWidget* parent, const QStyleOptionViewItem& option, const QModelIndex& idx) const override;
@@ -26,31 +30,38 @@ class SignalTreeDelegate : public QStyledItemDelegate {
                    const QModelIndex& index) override;
   bool helpEvent(QHelpEvent* event, QAbstractItemView* view, const QStyleOptionViewItem& option,
                  const QModelIndex& index) override;
-  int nameColumnWidth(const dbc::Signal* sig) const;
-  inline int getButtonsWidth() const {
-    // Calculate total space taken by buttons area on the right
-    return (2 * kBtnSize) + kBtnSpacing + kPadding;
-  }
 
  signals:
   void removeRequested(const dbc::Signal*);
   void plotRequested(const dbc::Signal*, bool show, bool merge);
 
  private:
-  QRect getButtonRect(const QRect& columnRect, int buttonIndex) const;
-  int buttonAt(const QPoint& pos, const QRect& rect) const;
-  void drawNameColumn(QPainter* p, QRect r, const QStyleOptionViewItem& opt, SignalTreeModel::Item* item,
-                      const QModelIndex& idx) const;
-  void drawDataColumn(QPainter* p, QRect r, const QStyleOptionViewItem& opt, SignalTreeModel::Item* item,
-                      const QModelIndex& idx) const;
-  void drawButtons(QPainter* painter, const QStyleOptionViewItem& option, SignalTreeModel::Item* item,
-                   const QModelIndex& idx) const;
+  // Painting helpers
+  void paintSignalRow(QPainter* p, const QStyleOptionViewItem& opt, SignalItem* item, const QModelIndex& idx) const;
+  void paintSignalNameColumn(QPainter* p, QRect rect, const QStyleOptionViewItem& opt, SignalItem* item) const;
+  void paintSignalValueColumn(QPainter* p, QRect rect, const QStyleOptionViewItem& opt, SignalItem* item,
+                              const QModelIndex& idx) const;
+  void paintButtons(QPainter* p, const QStyleOptionViewItem& opt, SignalItem* item, const QModelIndex& idx) const;
+  void paintPropertyRow(QPainter* p, const QStyleOptionViewItem& opt, PropertyItem* item, const QModelIndex& idx) const;
 
-  QValidator* name_validator = nullptr;
-  QValidator* double_validator = nullptr;
-  QValidator* node_validator = nullptr;
-  QFont label_font, minmax_font, value_font;
-  QColor signal_text_color;
-  mutable QPersistentModelIndex hoverIndex;
-  mutable int hoverButton = -1;  // -1: none, 0: plot, 1: remove
+  // Button handling
+  QRect buttonRect(const QRect& colRect, int btnIdx) const;
+  int buttonAt(const QPoint& pos, const QRect& rect) const;
+
+  // Validators
+  QValidator* nameValidator_ = nullptr;
+  QValidator* doubleValidator_ = nullptr;
+  QValidator* nodeValidator_ = nullptr;
+
+  // Fonts
+  QFont labelFont_;
+  QFont minmaxFont_;
+  QFont valueFont_;
+
+  // Colors
+  QColor signalTextColor_;
+
+  // Hover state
+  mutable QPersistentModelIndex hoverIndex_;
+  mutable int hoverButton_ = -1;  // -1: none, 0: remove, 1: plot
 };

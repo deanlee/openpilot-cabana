@@ -41,11 +41,11 @@ class SignalEditor : public QFrame {
   void updateColumnWidths();
   std::pair<QModelIndex, QModelIndex> visibleSignalRange();
 
-  SignalTree* tree;
-  QLabel* sparkline_label;
-  QSlider* sparkline_range_slider;
-  DebouncedLineEdit* filter_edit;
-  QLabel* signal_count_lb;
-  SignalTreeDelegate* delegate;
-  ToolButton* collapse_btn;
+  SignalTree* tree_;
+  QLabel* sparklineLabel_;
+  QSlider* sparklineRangeSlider_;
+  DebouncedLineEdit* filterEdit_;
+  QLabel* signalCountLabel_;
+  SignalTreeDelegate* delegate_;
+  ToolButton* collapseBtn_;
 };

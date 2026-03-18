@@ -4,240 +4,221 @@
 #include <QPainter>
 #include <QPalette>
 #include <algorithm>
-#include <limits>
+#include <cmath>
 
-void Sparkline::prepareWindow(uint64_t current_ns, int time_window, const QSize& size) {
-  const uint64_t range_ns = static_cast<uint64_t>(time_window) * 1000000000ULL;
-  const float w = static_cast<float>(size.width());
-  const float eff_w = std::max(1.0f, w - (2.0f * pad_));
-  const double ns_per_px = std::max(1.0, static_cast<double>(range_ns) / eff_w);
+// ViewTransform implementation
+
+void Sparkline::ViewTransform::configure(uint64_t current_ns, int window_sec, const QSize& size,
+                                         const Bounds& bounds) {
+  const uint64_t range_ns = static_cast<uint64_t>(window_sec) * 1'000'000'000ULL;
+  const float usable_w = std::max(1.0f, size.width() - 2.0f * pad);
+  const float usable_h = std::max(1.0f, size.height() - 2.0f * pad);
+  const double ns_per_px = std::max(1.0, static_cast<double>(range_ns) / usable_w);
   const uint64_t step = static_cast<uint64_t>(ns_per_px);
 
-  win_end_ns_ = current_ns;
-  win_start_ns_ = (current_ns > range_ns) ? (current_ns - range_ns) : 0;
-  win_start_ns_ = (win_start_ns_ / step) * step;
-  widget_size_ = size;
-  right_edge_ = w - pad_;
-  px_per_ns_ = 1.0 / ns_per_px;
+  end_ns = current_ns;
+  start_ns = (current_ns > range_ns) ? (current_ns - range_ns) : 0;
+  start_ns = (start_ns / step) * step;  // Align to pixel boundary
+
+  width = static_cast<float>(size.width());
+  height = static_cast<float>(size.height());
+  px_per_ns = 1.0 / ns_per_px;
+
+  // Y-axis transform (value -> pixel)
+  y_base = height - pad;
+  y_scale = bounds.isFlat() ? 0.0 : usable_h / bounds.range();
 }
+
+float Sparkline::ViewTransform::timeToX(uint64_t ts) const {
+  if (ts >= end_ns) return width - pad;
+  float x = pad + static_cast<float>(static_cast<double>(ts - start_ns) * px_per_ns);
+  return std::max(pad, x);
+}
+
+float Sparkline::ViewTransform::valueToY(double v, double min_val) const {
+  return y_base - static_cast<float>((v - min_val) * y_scale);
+}
+
+// Sparkline implementation
 
 void Sparkline::update(const dbc::Signal* sig, CanEventIter first, CanEventIter last,
-                       uint64_t current_ns, int time_window, const QSize& size) {
-  signal_color_ = sig->color;
-  prepareWindow(current_ns, time_window, size);
-  updateDataPoints(sig, first, last);
-  last_processed_ns_ = win_end_ns_;
+                       uint64_t current_ns, int time_window_sec, const QSize& size) {
+  color_ = sig->color;
 
-  if (!history_.empty()) {
-    const qreal dpr = qApp->devicePixelRatio();
-    QSize pixelSize = widget_size_ * dpr;
+  ingestNewSamples(sig, first, last);
+  recomputeBoundsIfDirty();
+  view_.configure(current_ns, time_window_sec, size, bounds_);
+  purgeOldSamples();
 
-    if (image_.size() != pixelSize) {
-      image_ = QImage(pixelSize, QImage::Format_ARGB32_Premultiplied);
-      image_.setDevicePixelRatio(dpr);
-    }
-    image_.fill(Qt::transparent);
+  last_update_ns_ = current_ns;
 
-    mapHistoryToPoints();
-    render();
+  if (history_.empty()) return;
+
+  // Prepare image buffer
+  const qreal dpr = qApp->devicePixelRatio();
+  QSize pixel_size = size * dpr;
+  if (image_.size() != pixel_size) {
+    image_ = QImage(pixel_size, QImage::Format_ARGB32_Premultiplied);
+    image_.setDevicePixelRatio(dpr);
   }
+  image_.fill(Qt::transparent);
+
+  buildRenderPath();
+  renderToImage();
 }
 
-void Sparkline::updateDataPoints(const dbc::Signal* sig, CanEventIter first, CanEventIter last) {
-  // Skip events already processed by this sparkline
-  auto it = std::lower_bound(first, last, last_processed_ns_ + 1,
+void Sparkline::ingestNewSamples(const dbc::Signal* sig, CanEventIter first, CanEventIter last) {
+  // Skip events already processed
+  auto it = std::lower_bound(first, last, last_update_ns_ + 1,
                              [](const CanEvent* e, uint64_t ns) { return e->mono_ns < ns; });
 
   double val = 0.0;
   for (; it != last; ++it) {
-    auto* e = *it;
+    const auto* e = *it;
     if (sig->parse(e->dat, e->size, &val)) {
       history_.push_back({e->mono_ns, val});
-      // Update running bounds
-      if (val < min_val_) min_val_ = val;
-      if (val > max_val_) max_val_ = val;
-    }
-  }
-
-  // Purge data older than the window
-  // Keep ONE point just outside win_start_ns_ for smooth edge rendering
-  size_t purge_count = 0;
-  while (history_.size() - purge_count > 1 && history_[purge_count].mono_ns < win_start_ns_) {
-    purge_count++;
-  }
-  if (purge_count > 0) {
-    history_.pop_front_n(purge_count);
-    bounds_dirty_ = true;  // Purged points may have held min/max
-  }
-}
-
-void Sparkline::mapHistoryToPoints() {
-  render_pts_.clear();
-
-  updateValueBounds();
-  const bool is_flat = (max_val_ - min_val_) < kFlatnessEps;
-
-  if (is_flat) {
-    mapFlatPath();
-  } else {
-    mapNoisyPath();
-  }
-
-  if (render_pts_.size() == 1) {
-    render_pts_.push_back(render_pts_[0]);
-    render_pts_[0].setX(render_pts_[1].x() - 1.0);
-  }
-}
-
-// O(1) Path: Simply draws a centered line across the visible data range
-void Sparkline::mapFlatPath() {
-  uint64_t draw_start = std::max(win_start_ns_, history_.front().mono_ns);
-  uint64_t draw_end = std::min(win_end_ns_, history_.back().mono_ns);
-
-  if (draw_start <= draw_end) {
-    float y = widget_size_.height() * 0.5f;  // Explicitly centered
-    render_pts_.emplace_back(getX(draw_start), y);
-    if (draw_start < draw_end) {
-      render_pts_.emplace_back(getX(draw_end), y);
+      bounds_.expand(val);
     }
   }
 }
 
-// O(N) Path: M4 Algorithm to reduce high-frequency data into pixel buckets.
-// Bucket tracks extremes in signal-value space; canvas-Y conversion happens in flushBucket.
-void Sparkline::mapNoisyPath() {
-  const float eff_h = std::max(1.0f, widget_size_.height() - (2.0f * pad_));
-  const double y_scale = static_cast<double>(eff_h) / (max_val_ - min_val_);
-  const float base_y = widget_size_.height() - pad_;
+void Sparkline::purgeOldSamples() {
+  // Keep one sample before window start for smooth edge rendering
+  size_t purge = 0;
+  while (history_.size() - purge > 1 && history_[purge].ts < view_.start_ns) {
+    ++purge;
+  }
+  if (purge > 0) {
+    history_.pop_front_n(purge);
+    bounds_.dirty = true;
+  }
+}
 
-  size_t max_expected_points = static_cast<size_t>(widget_size_.width()) * 4;
-  if (render_pts_.capacity() < max_expected_points) render_pts_.reserve(max_expected_points);
-
-  int last_x = -1;
-  Bucket b;
+void Sparkline::recomputeBoundsIfDirty() {
+  if (!bounds_.dirty) return;
+  bounds_.reset();
 
   for (size_t i = 0; i < history_.size(); ++i) {
-    const auto& pt = history_[i];
-    int x = static_cast<int>(getX(pt.mono_ns));
+    bounds_.expand(history_[i].value);
+  }
+}
 
-    if (x != last_x) {
-      if (last_x != -1) {
-        flushBucket(last_x, b, base_y, y_scale);
+void Sparkline::buildRenderPath() {
+  points_.clear();
+
+  if (bounds_.isFlat()) {
+    // Flat signal: draw horizontal line across visible range
+    uint64_t t0 = std::max(view_.start_ns, history_.front().ts);
+    uint64_t t1 = std::min(view_.end_ns, history_.back().ts);
+    if (t0 <= t1) {
+      float y = view_.height * 0.5f;
+      points_.emplace_back(view_.timeToX(t0), y);
+      if (t0 < t1) points_.emplace_back(view_.timeToX(t1), y);
+    }
+  } else {
+    // M4 downsampling: bucket samples by pixel column
+    points_.reserve(static_cast<size_t>(view_.width) * 4);
+
+    PixelBucket bucket;
+    int prev_x = -1;
+
+    for (size_t i = 0; i < history_.size(); ++i) {
+      const auto& s = history_[i];
+      int x = static_cast<int>(view_.timeToX(s.ts));
+
+      if (x != prev_x) {
+        if (prev_x >= 0) emitBucketPoints(prev_x, bucket);
+        bucket.init(s.value, s.ts);
+        prev_x = x;
+      } else {
+        bucket.add(s.value, s.ts);
       }
-      b.init(pt.value, pt.mono_ns);
-      last_x = x;
-    } else {
-      b.update(pt.value, pt.mono_ns);
+    }
+    if (prev_x >= 0) emitBucketPoints(prev_x, bucket);
+
+    // Pin final point to right edge
+    if (!history_.empty()) {
+      float final_y = view_.valueToY(history_.back().value, bounds_.min);
+      addPoint(view_.width - view_.pad, final_y);
     }
   }
-  flushBucket(last_x, b, base_y, y_scale);
 
-  // Pin the very last point to the right edge to prevent the line from stopping
-  // short due to pixel-bucket alignment.
-  if (!history_.empty()) {
-    const double last_value = history_.back().value;
-    float final_y = base_y - static_cast<float>((last_value - min_val_) * y_scale);
-    addUniquePoint(static_cast<int>(right_edge_), final_y);
+  // Ensure at least 2 points for polyline
+  if (points_.size() == 1) {
+    points_.push_back(points_[0]);
+    points_[0].setX(points_[1].x() - 1.0f);
   }
 }
 
-void Sparkline::flushBucket(int x, const Bucket& b, float base_y, double y_scale) {
-  auto toY = [&](double value) -> float {
-    return base_y - static_cast<float>((value - min_val_) * y_scale);
-  };
+void Sparkline::emitBucketPoints(int x, const PixelBucket& b) {
+  auto toY = [&](double v) { return view_.valueToY(v, bounds_.min); };
+  float fx = static_cast<float>(x);
 
-  addUniquePoint(x, toY(b.entry));
+  addPoint(fx, toY(b.entry));
 
-  // Emit val_min and val_max in chronological order to preserve the visual shape.
-  if (b.val_min_ts < b.val_max_ts) {
-    if (b.val_min != b.entry && b.val_min != b.exit) addUniquePoint(x, toY(b.val_min));
-    if (b.val_max != b.entry && b.val_max != b.exit) addUniquePoint(x, toY(b.val_max));
-  } else {
-    if (b.val_max != b.entry && b.val_max != b.exit) addUniquePoint(x, toY(b.val_max));
-    if (b.val_min != b.entry && b.val_min != b.exit) addUniquePoint(x, toY(b.val_min));
-  }
+  // Emit min/max in chronological order to preserve waveform shape
+  bool lo_first = (b.lo_ts < b.hi_ts);
+  double first_extreme = lo_first ? b.lo : b.hi;
+  double second_extreme = lo_first ? b.hi : b.lo;
 
-  addUniquePoint(x, toY(b.exit));
+  if (first_extreme != b.entry && first_extreme != b.exit) addPoint(fx, toY(first_extreme));
+  if (second_extreme != b.entry && second_extreme != b.exit) addPoint(fx, toY(second_extreme));
+
+  addPoint(fx, toY(b.exit));
 }
 
-void Sparkline::addUniquePoint(int x, float y) {
-  if (!render_pts_.empty()) {
-    auto& last = render_pts_.back();
+void Sparkline::addPoint(float x, float y) {
+  constexpr float kEps = 0.1f;
 
-    // If the new point is visually identical to the last one, skip it.
-    constexpr float EPS = 0.1f;
-    bool same_y = std::abs(last.y() - y) < EPS;
+  if (!points_.empty()) {
+    auto& last = points_.back();
+    bool same_y = std::abs(last.y() - y) < kEps;
 
-    if ((int)last.x() == x && same_y) return;
+    // Skip visually identical points
+    if (static_cast<int>(last.x()) == static_cast<int>(x) && same_y) return;
 
-    // Horizontal Segment Collapsing
-    // If P_prev, P_last, and P_new form a flat line, we just move P_last to P_new's X.
-    if (render_pts_.size() >= 2) {
-      const auto& prev = render_pts_[render_pts_.size() - 2];
-      bool prev_flat = std::abs(prev.y() - last.y()) < EPS;
-
-      if (prev_flat && same_y) {
-        last.setX(x);  // Stretch the line
+    // Collapse horizontal segments: if prev->last->new are all on same Y, just extend
+    if (points_.size() >= 2 && same_y) {
+      const auto& prev = points_[points_.size() - 2];
+      if (std::abs(prev.y() - last.y()) < kEps) {
+        last.setX(x);
         return;
       }
     }
   }
-  render_pts_.emplace_back(x, y);
+  points_.emplace_back(x, y);
 }
 
-void Sparkline::render() {
-  if (render_pts_.empty()) return;
+void Sparkline::renderToImage() {
+  if (points_.empty()) return;
 
   QPainter p(&image_);
-  const QColor color = is_highlighted_ ? qApp->palette().color(QPalette::HighlightedText) : signal_color_;
+  const QColor c = highlighted_ ? qApp->palette().color(QPalette::HighlightedText) : color_;
 
-  if (render_pts_.size() > 1) {
-    // Line Rendering: Aliasing OFF for crisp 1px lines
+  // Draw polyline (no anti-aliasing for crisp 1px lines)
+  if (points_.size() > 1) {
     p.setRenderHint(QPainter::Antialiasing, false);
-    p.setPen(QPen(color, 0));  // 0 = Hairline cosmetic pen
-    p.drawPolyline(render_pts_.data(), (int)render_pts_.size());
+    p.setPen(QPen(c, 0));
+    p.drawPolyline(points_.data(), static_cast<int>(points_.size()));
   }
 
-  // Endpoint Dot: Aliasing ON for smoothness
+  // Draw endpoint dot (with anti-aliasing for smoothness)
   p.setRenderHint(QPainter::Antialiasing, true);
   p.setPen(Qt::NoPen);
-  p.setBrush(color);
-  p.drawEllipse(render_pts_.back(), 1.5, 1.5);
-}
-
-void Sparkline::updateValueBounds() {
-  if (!bounds_dirty_) return;
-  bounds_dirty_ = false;
-
-  if (history_.empty()) {
-    min_val_ = std::numeric_limits<double>::max();
-    max_val_ = std::numeric_limits<double>::lowest();
-    return;
-  }
-
-  double lo = history_[0].value;
-  double hi = lo;
-  for (size_t i = 1; i < history_.size(); ++i) {
-    const double v = history_[i].value;
-    if (v < lo) lo = v;
-    if (v > hi) hi = v;
-  }
-  min_val_ = lo;
-  max_val_ = hi;
+  p.setBrush(c);
+  p.drawEllipse(points_.back(), 1.5, 1.5);
 }
 
 void Sparkline::clearHistory() {
   history_.clear();
-  render_pts_.clear();
+  points_.clear();
   image_ = QImage();
-  min_val_ = std::numeric_limits<double>::max();
-  max_val_ = std::numeric_limits<double>::lowest();
-  bounds_dirty_ = false;
-  last_processed_ns_ = 0;
+  bounds_.reset();
+  last_update_ns_ = 0;
 }
 
-void Sparkline::setHighlight(bool highlight) {
-  if (is_highlighted_ == highlight) return;
-  is_highlighted_ = highlight;
-  if (!render_pts_.empty()) render();
+void Sparkline::setHighlight(bool on) {
+  if (highlighted_ == on) return;
+  highlighted_ = on;
+  if (!points_.empty()) renderToImage();
 }

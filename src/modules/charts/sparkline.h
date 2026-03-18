@@ -3,109 +3,129 @@
 #include <QColor>
 #include <QImage>
 #include <QPointF>
+#include <array>
+#include <limits>
 #include <vector>
 
 #include "core/dbc/dbc_message.h"
 #include "core/streams/abstract_stream.h"
 
-// Size 32768 supports 30s of 1000Hz data
-template <typename T, size_t N = 32768>
+// Fixed-size ring buffer for time-series data. Size 32768 supports 30s of 1kHz data.
+template <typename T, size_t Capacity = 32768>
 class RingBuffer {
-  static_assert((N & (N - 1)) == 0, "Size must be power of two");
+  static_assert((Capacity & (Capacity - 1)) == 0, "Capacity must be power of two");
+  static constexpr size_t kMask = Capacity - 1;
 
  public:
   void push_back(const T& item) {
-    buffer[head++ & (N - 1)] = item;
-    if (count < N) count++;
+    buffer_[head_++ & kMask] = item;
+    if (size_ < Capacity) ++size_;
   }
-  const T& operator[](size_t i) const { return buffer[(head - count + i) & (N - 1)]; }
+
+  const T& operator[](size_t i) const { return buffer_[(head_ - size_ + i) & kMask]; }
   const T& front() const { return (*this)[0]; }
-  const T& back() const { return (*this)[count - 1]; }
-  void pop_front_n(size_t n) { count = (n >= count) ? 0 : count - n; }
-  void pop_front() {
-    if (count > 0) count--;
-  }
-  void clear() {
-    head = 0;
-    count = 0;
-  }
-  size_t size() const { return count; }
-  bool empty() const { return count == 0; }
+  const T& back() const { return (*this)[size_ - 1]; }
+
+  void pop_front_n(size_t n) { size_ = (n >= size_) ? 0 : size_ - n; }
+  void clear() { head_ = size_ = 0; }
+  size_t size() const { return size_; }
+  bool empty() const { return size_ == 0; }
 
  private:
-  std::array<T, N> buffer;
-  size_t head = 0;
-  size_t count = 0;
+  std::array<T, Capacity> buffer_;
+  size_t head_ = 0;
+  size_t size_ = 0;
 };
 
+// Lightweight sparkline chart for signal visualization in the message list.
+// Uses M4 downsampling to efficiently render high-frequency data.
 class Sparkline {
  public:
-  struct DataPoint {
-    uint64_t mono_ns;
+  struct Sample {
+    uint64_t ts;     // Timestamp in nanoseconds
     double value;
   };
+
   void update(const dbc::Signal* sig, CanEventIter first, CanEventIter last,
-              uint64_t current_ns, int time_window, const QSize& size);
+              uint64_t current_ns, int time_window_sec, const QSize& size);
+
   bool isEmpty() const { return image_.isNull(); }
-  bool isUpToDate(uint64_t current_ns) const { return last_processed_ns_ == current_ns; }
-  void setHighlight(bool highlight);
+  bool isUpToDate(uint64_t current_ns) const { return last_update_ns_ == current_ns; }
+  void setHighlight(bool on);
   void clearHistory();
 
   const QImage& image() const { return image_; }
-  double minVal() const { return min_val_; }
-  double maxVal() const { return max_val_; }
+  double minVal() const { return bounds_.min; }
+  double maxVal() const { return bounds_.max; }
 
  private:
-  static constexpr double kFlatnessEps = 1e-9;
+  // Value range tracker with lazy recomputation
+  struct Bounds {
+    double min = std::numeric_limits<double>::max();
+    double max = std::numeric_limits<double>::lowest();
+    bool dirty = false;
 
-  // Tracks per-pixel extremes in signal-value space (M4 downsampling algorithm).
-  struct Bucket {
-    double entry = 0.0, exit = 0.0;
-    double val_min = std::numeric_limits<double>::max();
-    double val_max = std::numeric_limits<double>::lowest();
-    uint64_t val_min_ts = 0, val_max_ts = 0;
+    void expand(double v) {
+      if (v < min) min = v;
+      if (v > max) max = v;
+    }
+    void reset() {
+      min = std::numeric_limits<double>::max();
+      max = std::numeric_limits<double>::lowest();
+      dirty = false;
+    }
+    double range() const { return max - min; }
+    bool isFlat() const { return range() < 1e-9; }
+  };
 
-    void init(double value, uint64_t ts) {
-      entry = exit = val_min = val_max = value;
-      val_min_ts = val_max_ts = ts;
+  // M4 bucket: tracks entry/exit values and extremes within a pixel column
+  struct PixelBucket {
+    double entry, exit;
+    double lo, hi;
+    uint64_t lo_ts, hi_ts;
+
+    void init(double v, uint64_t ts) {
+      entry = exit = lo = hi = v;
+      lo_ts = hi_ts = ts;
     }
 
-    void update(double value, uint64_t ts) {
-      exit = value;
-      if (value < val_min) { val_min = value; val_min_ts = ts; }
-      if (value > val_max) { val_max = value; val_max_ts = ts; }
+    void add(double v, uint64_t ts) {
+      exit = v;
+      if (v < lo) { lo = v; lo_ts = ts; }
+      if (v > hi) { hi = v; hi_ts = ts; }
     }
   };
 
-  void prepareWindow(uint64_t current_ns, int time_window, const QSize& size);
-  void updateDataPoints(const dbc::Signal* sig, CanEventIter first, CanEventIter last);
-  void mapHistoryToPoints();
-  void updateValueBounds();
-  void flushBucket(int x, const Bucket& b, float base_y, double y_scale);
-  void addUniquePoint(int x, float y);
-  void render();
-  void mapFlatPath();
-  void mapNoisyPath();
-  inline float getX(uint64_t ts) const {
-    if (ts >= win_end_ns_) return right_edge_;
-    float x = pad_ + static_cast<float>(static_cast<double>(ts - win_start_ns_) * px_per_ns_);
-    return (x < pad_) ? pad_ : x;
-  }
+  // Coordinate mapping from time/value to pixel space
+  struct ViewTransform {
+    uint64_t start_ns = 0, end_ns = 0;
+    float width = 0, height = 0;
+    float pad = 2.0f;
+    double px_per_ns = 0;
+    double y_scale = 0;
+    float y_base = 0;
 
-  static constexpr float pad_ = 2.0f;
-  uint64_t win_start_ns_ = 0;
-  uint64_t win_end_ns_ = 0;
-  float right_edge_ = 0.0f;
-  float px_per_ns_ = 0;
-  QSize widget_size_;
+    void configure(uint64_t current_ns, int window_sec, const QSize& size, const Bounds& bounds);
+    float timeToX(uint64_t ts) const;
+    float valueToY(double v, double min_val) const;
+  };
 
-  RingBuffer<DataPoint> history_;
-  std::vector<QPointF> render_pts_;
-  bool bounds_dirty_ = true;
-  bool is_highlighted_ = false;
-  uint64_t last_processed_ns_ = 0;
-  QColor signal_color_;
+  void ingestNewSamples(const dbc::Signal* sig, CanEventIter first, CanEventIter last);
+  void purgeOldSamples();
+  void recomputeBoundsIfDirty();
+  void buildRenderPath();
+  void renderToImage();
+
+  void emitBucketPoints(int x, const PixelBucket& b);
+  void addPoint(float x, float y);
+
+  RingBuffer<Sample> history_;
+  std::vector<QPointF> points_;
+  Bounds bounds_;
+  ViewTransform view_;
+
   QImage image_;
-  double min_val_ = std::numeric_limits<double>::max();
-  double max_val_ = std::numeric_limits<double>::lowest();
+  QColor color_;
+  uint64_t last_update_ns_ = 0;
+  bool highlighted_ = false;
 };

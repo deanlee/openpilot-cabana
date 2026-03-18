@@ -4,10 +4,10 @@
 
 #include "core/dbc/dbc_message.h"
 
-struct SignalTree : public QTreeView {
+class SignalTree : public QTreeView {
   Q_OBJECT
  public:
-  SignalTree(QWidget* parent);
+  explicit SignalTree(QWidget* parent);
   void dataChanged(const QModelIndex& topLeft, const QModelIndex& bottomRight,
                    const QVector<int>& roles = QVector<int>()) override;
   void leaveEvent(QEvent* event) override;
@@ -20,6 +20,5 @@ struct SignalTree : public QTreeView {
   void paintEvent(QPaintEvent* event) override;
   void updateHighlight(const dbc::Signal* sig);
 
- private:
-  const dbc::Signal* last_sig = nullptr;
+  const dbc::Signal* lastSig_ = nullptr;
 };
