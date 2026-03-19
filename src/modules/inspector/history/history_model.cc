@@ -5,6 +5,7 @@
 #include "core/dbc/dbc_manager.h"
 #include "modules/message_list/message_delegate.h"
 #include "modules/system/stream_manager.h"
+#include "utils/util.h"
 
 static const size_t LIVE_VIEW_LIMIT = 500;
 
@@ -166,11 +167,14 @@ void MessageHistoryModel::fetchData(int insert_pos_idx, uint64_t from_time, uint
   if (!msgs.empty()) {
     if (isHexMode() && (min_time > 0 || messages.empty())) {
       const auto freq = stream->snapshot(msg_id)->freq;
+      const bool is_dark = utils::isDarkTheme();
       for (auto it = msgs.rbegin(); it != msgs.rend(); ++it) {
         double ts = it->mono_ns / 1e9;
         hex_colors.update(it->data.data(), it->size, ts, freq);
-        hex_colors.updateAllPatternColors(ts);
-        it->colors = hex_colors.colors;
+        for (int i = 0; i < it->size; ++i) {
+          auto info = hex_colors.bytePattern(i);
+          it->colors[i] = colorFromDataPattern(info.pattern, ts, info.last_change_ts, freq, is_dark);
+        }
       }
     }
 

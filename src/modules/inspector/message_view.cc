@@ -239,7 +239,7 @@ void MessageView::refresh() {
 }
 
 void MessageView::updateState(const std::set<MessageId>* msgs) {
-  if ((msgs && !msgs->count(msg_id))) return;
+  if (msgs && !msgs->count(msg_id)) return;
 
   binary_model->updateState();
   if (tab_widget->currentIndex() == 0) {
