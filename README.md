@@ -1,12 +1,26 @@
 ![Screenshot](assets/screenshot.png)
 
-## Cabana: CAN Bus Visualizer & Analyzer
+# Cabana
 
-Cabana is a Qt-based graphical tool for viewing, analyzing, and reverse-engineering raw CAN bus data. It supports creating and editing DBC (Database CAN) files, plotting signals over time, and optional synchronized video playback.
+**CAN / CAN FD bus analyzer.** Decode signals, reverse-engineer unknown messages, plot data, and replay drives with synchronized video — all in one tool.
 
-Cabana was originally developed by the repository author for the [openpilot](https://github.com/commaai/openpilot), and is now maintained as a standalone, general-purpose CAN analysis tool.
+Built-in [OpenDBC](https://github.com/commaai/opendbc) library with 50+ vehicle definitions. Works with ASC, candump, TRC logs, SocketCAN, [Panda](https://github.com/commaai/panda), and [openpilot](https://github.com/commaai/openpilot) routes. MIT licensed.
 
-It supports multiple CAN data sources, including:
+### Highlights
+
+- **Live bit heatmap** — bit flips flash on change and fade out, instantly revealing active signals
+- **Pattern coloring** — bytes auto-colored by trend: increasing, decreasing, toggling, or noisy
+- **Find Similar Bits** — discover related signals across messages and buses
+- **Find Signal** — search all messages by value range or threshold
+- **Bit muting** — suppress known bits to isolate undocumented signals
+- **Sparklines** — inline signal previews in the message list
+- **Signal charts** — drag-and-drop plotting with multi-column layout and tabs
+- **Video sync** — multi-camera playback locked to the CAN timeline
+- **Log stitching** — merge multiple log files into one continuous timeline
+- **CAN FD** — frames up to 64 bytes
+- **DBC editor** — full editing with undo/redo, value tables, and CSV export
+
+### Supported Sources
 
 | Source | Description |
 | :--- | :--- |
@@ -17,8 +31,6 @@ It supports multiple CAN data sources, including:
 | **SocketCAN** | Live capture from a SocketCAN interface (e.g. `can0`) |
 | **comma.ai Panda** | Live capture from a USB-connected Panda device |
 | **ZMQ / Msgq** | Live streaming from a comma device over the network |
-
-No openpilot installation is required. Cabana is suitable for automotive diagnostics, CAN reverse-engineering, research, and any project involving CAN networks.
 
 ## Prerequisites
 
