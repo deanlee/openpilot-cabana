@@ -10,11 +10,16 @@ constexpr int MAX_CAN_LEN = 64;
 
 enum class DataPattern : uint8_t { None = 0, Increasing, Decreasing, Toggle, RandomlyNoisy };
 
+struct BytePatternInfo {
+  DataPattern pattern = DataPattern::None;
+  double last_change_ts = 0.0;
+};
+
 class MessageState {
  public:
   void init(const uint8_t* new_data, uint8_t data_size, double current_ts);
   void update(const uint8_t* new_data, uint8_t data_size, double current_ts, double manual_freq = 0, bool is_seek = false);
-  void updateAllPatternColors(double current_ts);
+  BytePatternInfo bytePattern(int byte_idx) const;
   void applyMask(const std::vector<uint8_t>& dbc_mask);
   size_t muteActiveBits(const std::vector<uint8_t>& dbc_mask);
   void unmuteActiveBits(const std::vector<uint8_t>& dbc_mask);
@@ -26,8 +31,6 @@ class MessageState {
   bool dirty = false;  // Whether this message has uncommitted changes (for snapshotting)
 
   std::array<uint8_t, MAX_CAN_LEN> data = {0};  // Raw payload
-  std::array<uint32_t, MAX_CAN_LEN> colors = {0};
-
   std::array<std::array<uint32_t, 8>, MAX_CAN_LEN> bit_flips = {};
 
  private:
@@ -56,8 +59,8 @@ class MessageState {
 class MessageSnapshot {
  public:
   MessageSnapshot() = default;
-  explicit MessageSnapshot(const MessageState& s) { updateFrom(s); }
   void updateFrom(const MessageState& s);
+  void computeColors(double current_sec, bool is_dark_theme);
   void updateActiveState(double now);
 
   double ts = 0.0;
@@ -68,6 +71,9 @@ class MessageSnapshot {
   std::array<uint8_t, MAX_CAN_LEN> data = {0};
   std::array<uint32_t, MAX_CAN_LEN> colors = {0};
   std::array<std::array<uint32_t, 8>, MAX_CAN_LEN> bit_flips = {{}};
+
+ private:
+  std::array<BytePatternInfo, MAX_CAN_LEN> patterns_ = {};
 };
 
-uint32_t colorFromDataPattern(DataPattern pattern, double current_ts, double last_ts, double freq);
+uint32_t colorFromDataPattern(DataPattern pattern, double current_ts, double last_ts, double freq, bool is_dark_theme);

@@ -41,11 +41,16 @@ void AbstractStream::commitSnapshots() {
 
     for (const auto& id : shared_state_.dirty_ids) {
       auto& state = shared_state_.master_state[id];
-      state.updateAllPatternColors(current_sec_);
       structure_changed |= updateSnapshot(id, state);
       state.dirty = false;
     }
     updated_ids = std::move(shared_state_.dirty_ids);
+  }
+
+  // Compute colors outside lock — purely presentational, main-thread-only
+  const bool is_dark = utils::isDarkTheme();
+  for (const auto& id : updated_ids) {
+    snapshot_map_[id]->computeColors(current_sec_, is_dark);
   }
 
   updateActivityStates();
@@ -128,7 +133,6 @@ void AbstractStream::updateSnapshotsTo(double sec) {
     m.init(prev_ev->dat, prev_ev->size, toSeconds(prev_ev->mono_ns));
     m.applyMask(getMask(id));
     m.count = std::distance(ev_list.begin(), it);
-    m.updateAllPatternColors(sec);  // Important: Update colors before snapshotting
 
     updateSnapshot(id, m);
     snapshot_map_[id]->updateActiveState(sec);
@@ -145,6 +149,12 @@ void AbstractStream::updateSnapshotsTo(double sec) {
   shared_state_.seek_finished = true;
   lk.unlock();
   seek_finished_cv_.notify_one();
+
+  // Compute colors outside lock — snapshot_map_ is main-thread-only
+  const bool is_dark = utils::isDarkTheme();
+  for (auto& [id, snap] : snapshot_map_) {
+    snap->computeColors(sec, is_dark);
+  }
 
   if (sources_changed) {
     emit sourcesUpdated(sources_);
@@ -170,7 +180,7 @@ void AbstractStream::waitForSeekFinished() {
 }
 
 const CanEvent* AbstractStream::newEvent(uint64_t mono_ns, uint8_t src, uint32_t address, const uint8_t* data, uint8_t size) {
-  CanEvent* e = (CanEvent*)event_buffer_->allocate(sizeof(CanEvent) + sizeof(uint8_t) * size);
+  auto* e = static_cast<CanEvent*>(event_buffer_->allocate(sizeof(CanEvent) + sizeof(uint8_t) * size));
   e->src = src;
   e->address = address;
   e->mono_ns = mono_ns;
@@ -291,7 +301,8 @@ const std::vector<uint8_t>& AbstractStream::getMask(const MessageId& id) const {
 bool AbstractStream::updateSnapshot(const MessageId& id, const MessageState& state) {
   auto& snap = snapshot_map_[id];
   if (!snap) {
-    snap = std::make_unique<MessageSnapshot>(state);
+    snap = std::make_unique<MessageSnapshot>();
+    snap->updateFrom(state);
     sources_.insert(id.source);
     return true;
   }

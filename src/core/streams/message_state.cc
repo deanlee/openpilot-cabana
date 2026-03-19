@@ -6,7 +6,6 @@
 #include <cstring>
 
 #include "modules/settings/settings.h"
-#include "utils/util.h"
 
 namespace {
 
@@ -36,7 +35,6 @@ void MessageState::init(const uint8_t* new_data, uint8_t data_size, double curre
   std::memcpy(data.data(), new_data, size);
 
   analysis.fill({});
-  colors.fill(0);
   for (auto& f : bit_flips) f.fill(0);
 
   suppressed_mask.fill(0);
@@ -202,14 +200,12 @@ void MessageState::unmuteActiveBits(const std::vector<uint8_t>& dbc_mask) {
   applyMask(dbc_mask);
 }
 
-void MessageState::updateAllPatternColors(double current_can_sec) {
-  for (size_t i = 0; i < size; ++i) {
-    const auto& a = analysis[i];
-    colors[i] = colorFromDataPattern(a.pattern, current_can_sec, a.last_change_ts, freq);
-  }
+BytePatternInfo MessageState::bytePattern(int byte_idx) const {
+  const auto& a = analysis[byte_idx];
+  return {a.pattern, a.last_change_ts};
 }
 
-uint32_t colorFromDataPattern(DataPattern pattern, double current_ts, double last_ts, double freq) {
+uint32_t colorFromDataPattern(DataPattern pattern, double current_ts, double last_ts, double freq, bool is_dark_theme) {
   if (pattern == DataPattern::None) return 0x00000000;
 
   const double elapsed = std::max(0.0, current_ts - last_ts);
@@ -248,7 +244,7 @@ uint32_t colorFromDataPattern(DataPattern pattern, double current_ts, double las
   };
 
   const int index = std::clamp(static_cast<int>(pattern), 0, 4);
-  const RGB& rgb = utils::isDarkTheme() ? palette[index].dark : palette[index].light;
+  const RGB& rgb = is_dark_theme ? palette[index].dark : palette[index].light;
 
   // Manual bit-shift construction: 0xAARRGGBB
   return (alpha << 24) | (rgb.r << 16) | (rgb.g << 8) | rgb.b;
@@ -264,8 +260,16 @@ void MessageSnapshot::updateFrom(const MessageState& s) {
   is_active = true;
 
   std::memcpy(data.data(), s.data.data(), size);
-  std::memcpy(colors.data(), s.colors.data(), size * sizeof(uint32_t));
   std::memcpy(bit_flips.data(), s.bit_flips.data(), size * sizeof(bit_flips[0]));
+  for (int i = 0; i < size; ++i) {
+    patterns_[i] = s.bytePattern(i);
+  }
+}
+
+void MessageSnapshot::computeColors(double current_sec, bool is_dark_theme) {
+  for (int i = 0; i < size; ++i) {
+    colors[i] = colorFromDataPattern(patterns_[i].pattern, current_sec, patterns_[i].last_change_ts, freq, is_dark_theme);
+  }
 }
 
 void MessageSnapshot::updateActiveState(double now) {
