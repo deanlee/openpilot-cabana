@@ -34,15 +34,16 @@ class MessageState {
   std::array<std::array<uint32_t, 8>, MAX_CAN_LEN> bit_flips = {};
 
  private:
-  // Per-byte analysis state for pattern detection and activity tracking
+  // Hot per-byte state (16 bytes) — 4 fit per cache line.
+  // Cold per-bit timestamps (bit_change_ts_) stored separately.
   struct ByteAnalysis {
-    std::array<double, 8> bit_change_ts = {};  // Per-bit last-change timestamps (index 0 = MSB)
     double last_change_ts = 0.0;               // Last time any bit in this byte changed
     float toggle_ema = 0.0f;                   // EMA of byte change rate [0,1]
     int16_t last_delta = 0;                    // Previous byte delta for toggle detection
     int8_t trend_streak = 0;                   // Signed saturating streak counter
     DataPattern pattern = DataPattern::None;
   };
+  static_assert(sizeof(ByteAnalysis) == 16);
 
   void updateByteActivity(int byte_idx, uint8_t old_byte, uint8_t new_byte, double current_ts);
   void updateFrequency(double current_ts, double manual_freq, bool is_seek);
@@ -51,9 +52,9 @@ class MessageState {
 
   double last_freq_ts = 0;
   std::array<ByteAnalysis, MAX_CAN_LEN> analysis = {};
-  std::array<uint8_t, MAX_CAN_LEN> suppressed_mask = {};       // Per-byte bit suppression (0xFF = all suppressed)
-  std::array<uint64_t, 8> prev_data_64 = {};                   // Previous data packed as 8-byte blocks
-  std::array<uint64_t, 8> ignore_mask_64 = {};                 // Packed ignore masks per 8-byte block
+  std::array<std::array<double, 8>, MAX_CAN_LEN> bit_change_ts_ = {};
+  std::array<uint8_t, MAX_CAN_LEN> suppressed_mask = {};
+  std::array<uint8_t, MAX_CAN_LEN> ignore_mask = {};  // Combined DBC + suppressed mask
 };
 
 class MessageSnapshot {
