@@ -230,16 +230,17 @@ bool BinaryModel::updateRowCells(int row, const MessageSnapshot* msg, const std:
 
 QColor BinaryModel::calculateBitHeatColor(Item& item, uint32_t flips, float log_max, bool is_light_theme,
                                           const QColor& base_bg, float decay_factor) {
-  float target = std::clamp(std::log2(static_cast<float>(flips) + 1.0f) / log_max, 0.0f, 1.0f);
   if (heatmap_live_mode) {
     if (flips != item.last_flips) {
-      item.intensity = std::max(item.intensity, target);
+      // Any change flashes at full intensity, then decays
+      item.intensity = 1.0f;
       item.last_flips = flips;
     } else {
-      item.intensity *= decay_factor;  // Smoothly fade out
+      item.intensity *= decay_factor;
     }
   } else {
-    item.intensity = target;  // Direct mapping for static range view
+    // Static range view: log-scale normalization of cumulative flip counts
+    item.intensity = std::clamp(std::log2(static_cast<float>(flips) + 1.0f) / log_max, 0.0f, 1.0f);
   }
 
   const float i = item.intensity;
