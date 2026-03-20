@@ -20,9 +20,9 @@ class MessageState {
   void init(const uint8_t* new_data, uint8_t data_size, double current_ts);
   void update(const uint8_t* new_data, uint8_t data_size, double current_ts, double manual_freq = 0, bool is_seek = false);
   BytePatternInfo bytePattern(int byte_idx) const;
-  void applyMask(const std::vector<uint8_t>& dbc_mask);
-  size_t muteActiveBits(const std::vector<uint8_t>& dbc_mask);
-  void unmuteActiveBits(const std::vector<uint8_t>& dbc_mask);
+  void setDbcMask(const std::vector<uint8_t>& mask);
+  size_t muteActiveBits();
+  void unmuteActiveBits();
 
   double ts = 0.0;     // Latest message timestamp
   double freq = 0.0;   // Message frequency (Hz)
@@ -53,8 +53,8 @@ class MessageState {
   double last_freq_ts = 0;
   std::array<ByteAnalysis, MAX_CAN_LEN> analysis = {};
   std::array<std::array<double, 8>, MAX_CAN_LEN> bit_change_ts_ = {};
+  std::array<uint8_t, MAX_CAN_LEN> dbc_mask_ = {};
   std::array<uint8_t, MAX_CAN_LEN> suppressed_mask = {};
-  std::array<uint8_t, MAX_CAN_LEN> ignore_mask = {};  // Combined DBC + suppressed mask
 };
 
 class MessageSnapshot {

@@ -34,7 +34,6 @@ void MessageState::init(const uint8_t* new_data, uint8_t data_size, double curre
 
   // Preserve suppressed mask for [0, size); clear the tail
   std::memset(suppressed_mask.data() + size, 0, MAX_CAN_LEN - size);
-  ignore_mask.fill(0);
 }
 
 void MessageState::update(const uint8_t* new_data, uint8_t data_size, double current_ts, double manual_freq, bool is_seek) {
@@ -53,9 +52,10 @@ void MessageState::update(const uint8_t* new_data, uint8_t data_size, double cur
     a.toggle_ema *= decay;
 
     if (new_data[i] != data[i]) {
-      const uint8_t diff = (new_data[i] ^ data[i]) & ~ignore_mask[i];
+      const uint8_t mask = dbc_mask_[i] | suppressed_mask[i];
+      const uint8_t diff = (new_data[i] ^ data[i]) & ~mask;
       if (diff != 0) {
-        updateByteActivity(i, data[i] & ~ignore_mask[i], new_data[i] & ~ignore_mask[i], current_ts);
+        updateByteActivity(i, data[i] & ~mask, new_data[i] & ~mask, current_ts);
       }
       data[i] = new_data[i];
     } else if (a.toggle_ema <= NOISE_EMA_THRESHOLD) {
@@ -123,39 +123,31 @@ void MessageState::updateByteActivity(int byte_idx, uint8_t old_byte, uint8_t ne
   a.last_delta = static_cast<int16_t>(delta);
 }
 
-void MessageState::applyMask(const std::vector<uint8_t>& dbc_mask) {
-  ignore_mask.fill(0);
-  for (size_t i = 0; i < size; ++i) {
-    ignore_mask[i] = ((i < dbc_mask.size()) ? dbc_mask[i] : 0) | suppressed_mask[i];
-  }
+void MessageState::setDbcMask(const std::vector<uint8_t>& mask) {
+  dbc_mask_.fill(0);
+  std::memcpy(dbc_mask_.data(), mask.data(), std::min(mask.size(), static_cast<size_t>(size)));
 }
 
-size_t MessageState::muteActiveBits(const std::vector<uint8_t>& dbc_mask) {
-  bool modified = false;
-  size_t total_suppressed_bits = 0;
+size_t MessageState::muteActiveBits() {
+  const double cutoff = std::max(0.0, ts - kMuteActivityWindowSec);
+  size_t total = 0;
 
   for (size_t i = 0; i < size; ++i) {
     const auto& bts = bit_change_ts_[i];
     uint8_t active_bits = 0;
     for (int bit = 0; bit < 8; ++bit) {
-      if (bts[bit] > 0 && ts - bts[bit] < kMuteActivityWindowSec) {
+      if (bts[bit] > cutoff) {
         active_bits |= (0x80 >> bit);
       }
     }
-
-    uint8_t old_mask = suppressed_mask[i];
     suppressed_mask[i] |= active_bits;
-    if (suppressed_mask[i] != old_mask) modified = true;
-    total_suppressed_bits += std::popcount(suppressed_mask[i]);
+    total += std::popcount(suppressed_mask[i]);
   }
-
-  if (modified) applyMask(dbc_mask);
-  return total_suppressed_bits;
+  return total;
 }
 
-void MessageState::unmuteActiveBits(const std::vector<uint8_t>& dbc_mask) {
+void MessageState::unmuteActiveBits() {
   suppressed_mask.fill(0);
-  applyMask(dbc_mask);
 }
 
 BytePatternInfo MessageState::bytePattern(int byte_idx) const {
