@@ -29,8 +29,9 @@ void MessageState::init(const uint8_t* new_data, uint8_t data_size, double curre
   std::memset(data.data() + size, 0, MAX_CAN_LEN - size);
 
   analysis.fill({});
-  bit_change_ts_.fill({});
   std::memset(bit_flips.data(), 0, sizeof(bit_flips));
+  mute_snapshot_flips_.fill({});
+  mute_snapshot_ts_ = current_ts;
 
   // Preserve suppressed mask for [0, size); clear the tail
   std::memset(suppressed_mask.data() + size, 0, MAX_CAN_LEN - size);
@@ -48,6 +49,13 @@ void MessageState::update(const uint8_t* new_data, uint8_t data_size, double cur
   updateFrequency(current_ts, manual_freq, is_seek);
 
   const float decay = 1.0f - TOGGLE_EMA_ALPHA;
+
+  // Refresh mute activity snapshot every ~2 seconds
+  if (current_ts - mute_snapshot_ts_ >= kMuteActivityWindowSec) {
+    std::memcpy(mute_snapshot_flips_.data(), bit_flips.data(), size * sizeof(bit_flips[0]));
+    mute_snapshot_ts_ = current_ts;
+  }
+
   for (int i = 0; i < size; ++i) {
     auto& a = analysis[i];
     a.toggle_ema *= decay;
@@ -55,12 +63,9 @@ void MessageState::update(const uint8_t* new_data, uint8_t data_size, double cur
     if (new_data[i] != data[i]) {
       const uint8_t xor_bits = new_data[i] ^ data[i];
 
-      // Always track bit flips for ALL changed bits (never masked)
-      auto& bts = bit_change_ts_[i];
+      // Track bit flips for ALL changed bits
       for (uint8_t bits = xor_bits; bits != 0; bits &= bits - 1) {
-        const int bit = 7 - std::countr_zero(bits);
-        bit_flips[i][bit]++;
-        bts[bit] = current_ts;
+        bit_flips[i][7 - std::countr_zero(bits)]++;
       }
 
       // Pattern analysis only for unmasked bits
@@ -138,14 +143,12 @@ void MessageState::setDbcMask(const std::vector<uint8_t>& mask) {
 }
 
 size_t MessageState::muteActiveBits() {
-  const double cutoff = std::max(0.0, ts - kMuteActivityWindowSec);
   size_t total = 0;
 
   for (size_t i = 0; i < size; ++i) {
-    const auto& bts = bit_change_ts_[i];
     uint8_t active_bits = 0;
     for (int bit = 0; bit < 8; ++bit) {
-      if (bts[bit] > cutoff) {
+      if (bit_flips[i][bit] != mute_snapshot_flips_[i][bit]) {
         active_bits |= (0x80 >> bit);
       }
     }
@@ -158,6 +161,9 @@ size_t MessageState::muteActiveBits() {
 
 void MessageState::unmuteActiveBits() {
   suppressed_mask.fill(0);
+  // Reset baseline so next mute starts fresh
+  std::memcpy(mute_snapshot_flips_.data(), bit_flips.data(), size * sizeof(bit_flips[0]));
+  mute_snapshot_ts_ = ts;
   updateCombinedMask();
 }
 
