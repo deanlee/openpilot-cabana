@@ -20,6 +20,7 @@ class MessageState {
   void init(const uint8_t* new_data, uint8_t data_size, double current_ts);
   void update(const uint8_t* new_data, uint8_t data_size, double current_ts, double manual_freq = 0, bool is_seek = false);
   BytePatternInfo bytePattern(int byte_idx) const;
+  const auto& combinedMask() const { return mask_; }
   void setDbcMask(const std::vector<uint8_t>& mask);
   size_t muteActiveBits();
   void unmuteActiveBits();
@@ -45,8 +46,9 @@ class MessageState {
   };
   static_assert(sizeof(ByteAnalysis) == 16);
 
-  void updateByteActivity(int byte_idx, uint8_t old_byte, uint8_t new_byte, double current_ts);
+  void updateByteAnalysis(int byte_idx, uint8_t old_byte, uint8_t new_byte, double current_ts);
   void updateFrequency(double current_ts, double manual_freq, bool is_seek);
+  void updateCombinedMask();
 
   static constexpr double kMuteActivityWindowSec = 2.0;
 
@@ -55,6 +57,7 @@ class MessageState {
   std::array<std::array<double, 8>, MAX_CAN_LEN> bit_change_ts_ = {};
   std::array<uint8_t, MAX_CAN_LEN> dbc_mask_ = {};
   std::array<uint8_t, MAX_CAN_LEN> suppressed_mask = {};
+  std::array<uint8_t, MAX_CAN_LEN> mask_ = {};  // Precomputed dbc_mask_ | suppressed_mask
 };
 
 class MessageSnapshot {
@@ -72,6 +75,7 @@ class MessageSnapshot {
   std::array<uint8_t, MAX_CAN_LEN> data = {0};
   std::array<uint32_t, MAX_CAN_LEN> colors = {0};
   std::array<std::array<uint32_t, 8>, MAX_CAN_LEN> bit_flips = {{}};
+  std::array<uint8_t, MAX_CAN_LEN> mask = {0};
 
  private:
   std::array<BytePatternInfo, MAX_CAN_LEN> patterns_ = {};

@@ -174,7 +174,7 @@ void BinaryModel::updateState() {
   int first_dirty = -1, last_dirty = -1;
 
   for (size_t i = 0; i < msg_size; ++i) {
-    if (updateRowCells(i, last_msg, bit_flips[i], log_max, is_light_theme, base_bg, decay_factor)) {
+    if (updateRowCells(i, last_msg, bit_flips[i], last_msg->mask[i], log_max, is_light_theme, base_bg, decay_factor)) {
       if (first_dirty == -1) first_dirty = i;
       last_dirty = i;
     }
@@ -207,7 +207,7 @@ QSet<const dbc::Signal*> BinaryModel::findOverlappingSignals() const {
 }
 
 bool BinaryModel::updateRowCells(int row, const MessageSnapshot* msg, const std::array<uint32_t, 8>& row_flips,
-                               float log_max, bool is_light_theme, const QColor& base_bg, float decay_factor) {
+                               uint8_t byte_mask, float log_max, bool is_light_theme, const QColor& base_bg, float decay_factor) {
   bool row_dirty = false;
   const uint8_t byte_val = msg->data[row];
   const size_t row_offset = row * column_count;
@@ -216,8 +216,9 @@ bool BinaryModel::updateRowCells(int row, const MessageSnapshot* msg, const std:
   for (int j = 0; j < 8; ++j) {
     auto& item = items[row_offset + j];
     const int bit_val = (byte_val >> (7 - j)) & 1;
+    const bool is_masked = (byte_mask >> (7 - j)) & 1;
 
-    QColor heat_color = calculateBitHeatColor(item, row_flips[j], log_max, is_light_theme, base_bg, decay_factor);
+    QColor heat_color = calculateBitHeatColor(item, row_flips[j], is_masked, log_max, is_light_theme, base_bg, decay_factor);
     row_dirty |= updateItem(row, j, bit_val, heat_color);
   }
 
@@ -228,53 +229,40 @@ bool BinaryModel::updateRowCells(int row, const MessageSnapshot* msg, const std:
   return row_dirty;
 }
 
-QColor BinaryModel::calculateBitHeatColor(Item& item, uint32_t flips, float log_max, bool is_light_theme,
+QColor BinaryModel::calculateBitHeatColor(Item& item, uint32_t flips, bool is_masked, float log_max, bool is_light_theme,
                                           const QColor& base_bg, float decay_factor) {
-  if (heatmap_live_mode) {
+  // Update intensity tracking (even when masked, to avoid stale flash on unmute)
+  if (is_masked) {
+    item.last_flips = flips;
+    item.intensity = 0.0f;
+  } else if (heatmap_live_mode) {
     if (flips != item.last_flips) {
-      // Any change flashes at full intensity, then decays
       item.intensity = 1.0f;
       item.last_flips = flips;
     } else {
       item.intensity *= decay_factor;
     }
   } else {
-    // Static range view: log-scale normalization of cumulative flip counts
     item.intensity = std::clamp(std::log2(static_cast<float>(flips) + 1.0f) / log_max, 0.0f, 1.0f);
   }
 
   const float i = item.intensity;
-  const bool is_in_signal = !item.signal_list.empty();
 
-  // 2. Signal Coloring Logic (Hue Preservation)
-  if (is_in_signal) {
-    QColor c = item.signal_list.back()->color;
-
-    // Minimum Alpha Floor (100) so signals are always identifiable
-    // Maximum Alpha (255) for high activity
-    int alpha = static_cast<int>(100 + (155 * i));
-
-    if (i > 0.05f) {
-      int h, s, v, a;
-      c.getHsv(&h, &s, &v, &a);
-      // Boost Value (Brightness) and Saturation slightly based on heat
-      // Using HSV prevents the "whitening" caused by HSL lighter()
-      v = std::min(255, v + static_cast<int>(50 * i));
-      s = std::min(255, s + static_cast<int>(20 * i));
-      c.setHsv(h, s, v, alpha);
-    } else {
-      c.setAlpha(alpha);
-    }
-    return c;
+  // Signal bits: base color with alpha [100..255] and HSV boost proportional to heat
+  if (!item.signal_list.empty()) {
+    int h, s, v, a;
+    item.signal_list.back()->color.getHsv(&h, &s, &v, &a);
+    v = std::min(255, v + static_cast<int>(50 * i));
+    s = std::min(255, s + static_cast<int>(20 * i));
+    return QColor::fromHsv(h, s, v, static_cast<int>(100 + 155 * i));
   }
 
-  // 3. Empty Space Heatmap Logic (Background -> Red)
+  // Unsignaled bits: background -> hot color blend
   if (i < 0.01f) return Qt::transparent;
 
-  QColor hot = is_light_theme ? QColor(255, 0, 0) : QColor(255, 80, 80);
-  float inv_i = 1.0f - i;
-  int min_alpha = is_light_theme ? 40 : 60;
-
+  const QColor hot = is_light_theme ? QColor(255, 0, 0) : QColor(255, 80, 80);
+  const float inv_i = 1.0f - i;
+  const int min_alpha = is_light_theme ? 40 : 60;
   return QColor(static_cast<int>(base_bg.red() * inv_i + hot.red() * i),
                 static_cast<int>(base_bg.green() * inv_i + hot.green() * i),
                 static_cast<int>(base_bg.blue() * inv_i + hot.blue() * i),

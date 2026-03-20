@@ -34,6 +34,7 @@ void MessageState::init(const uint8_t* new_data, uint8_t data_size, double curre
 
   // Preserve suppressed mask for [0, size); clear the tail
   std::memset(suppressed_mask.data() + size, 0, MAX_CAN_LEN - size);
+  updateCombinedMask();
 }
 
 void MessageState::update(const uint8_t* new_data, uint8_t data_size, double current_ts, double manual_freq, bool is_seek) {
@@ -52,10 +53,20 @@ void MessageState::update(const uint8_t* new_data, uint8_t data_size, double cur
     a.toggle_ema *= decay;
 
     if (new_data[i] != data[i]) {
-      const uint8_t mask = dbc_mask_[i] | suppressed_mask[i];
-      const uint8_t diff = (new_data[i] ^ data[i]) & ~mask;
+      const uint8_t xor_bits = new_data[i] ^ data[i];
+
+      // Always track bit flips for ALL changed bits (never masked)
+      auto& bts = bit_change_ts_[i];
+      for (uint8_t bits = xor_bits; bits != 0; bits &= bits - 1) {
+        const int bit = 7 - std::countr_zero(bits);
+        bit_flips[i][bit]++;
+        bts[bit] = current_ts;
+      }
+
+      // Pattern analysis only for unmasked bits
+      const uint8_t diff = xor_bits & ~mask_[i];
       if (diff != 0) {
-        updateByteActivity(i, data[i] & ~mask, new_data[i] & ~mask, current_ts);
+        updateByteAnalysis(i, data[i] & ~mask_[i], new_data[i] & ~mask_[i], current_ts);
       }
       data[i] = new_data[i];
     } else if (a.toggle_ema <= NOISE_EMA_THRESHOLD) {
@@ -85,16 +96,13 @@ void MessageState::updateFrequency(double current_ts, double manual_freq, bool i
   }
 }
 
-void MessageState::updateByteActivity(int byte_idx, uint8_t old_byte, uint8_t new_byte, double current_ts) {
-  auto& a = analysis[byte_idx];
+void MessageState::updateCombinedMask() {
+  for (int i = 0; i < MAX_CAN_LEN; ++i)
+    mask_[i] = dbc_mask_[i] | suppressed_mask[i];
+}
 
-  // Bit flip counters & timestamps (index 0 = MSB)
-  auto& bts = bit_change_ts_[byte_idx];
-  for (uint8_t bits = old_byte ^ new_byte; bits != 0; bits &= bits - 1) {
-    const int bit = 7 - std::countr_zero(bits);
-    bit_flips[byte_idx][bit]++;
-    bts[bit] = current_ts;
-  }
+void MessageState::updateByteAnalysis(int byte_idx, uint8_t old_byte, uint8_t new_byte, double current_ts) {
+  auto& a = analysis[byte_idx];
 
   a.toggle_ema += TOGGLE_EMA_ALPHA;
   a.last_change_ts = current_ts;
@@ -126,6 +134,7 @@ void MessageState::updateByteActivity(int byte_idx, uint8_t old_byte, uint8_t ne
 void MessageState::setDbcMask(const std::vector<uint8_t>& mask) {
   dbc_mask_.fill(0);
   std::memcpy(dbc_mask_.data(), mask.data(), std::min(mask.size(), static_cast<size_t>(size)));
+  updateCombinedMask();
 }
 
 size_t MessageState::muteActiveBits() {
@@ -143,11 +152,13 @@ size_t MessageState::muteActiveBits() {
     suppressed_mask[i] |= active_bits;
     total += std::popcount(suppressed_mask[i]);
   }
+  updateCombinedMask();
   return total;
 }
 
 void MessageState::unmuteActiveBits() {
   suppressed_mask.fill(0);
+  updateCombinedMask();
 }
 
 BytePatternInfo MessageState::bytePattern(int byte_idx) const {
@@ -199,6 +210,7 @@ void MessageSnapshot::updateFrom(const MessageState& s) {
 
   std::memcpy(data.data(), s.data.data(), size);
   std::memcpy(bit_flips.data(), s.bit_flips.data(), size * sizeof(bit_flips[0]));
+  std::memcpy(mask.data(), s.combinedMask().data(), size);
   for (int i = 0; i < size; ++i) {
     patterns_[i] = s.bytePattern(i);
   }
