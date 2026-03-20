@@ -83,7 +83,7 @@ void AbstractStream::processNewMessage(const MessageId& id, uint64_t mono_ns, co
   auto& state = shared_state_.master_state[id];
   if (state.size != size) {
     state.init(data, size, sec);
-    state.applyMask(getMask(id));
+    state.setDbcMask(getMask(id));
   } else {
     state.update(data, size, sec);
   }
@@ -131,7 +131,7 @@ void AbstractStream::updateSnapshotsTo(double sec) {
     auto& m = shared_state_.master_state[id];
     m.dirty = false;
     m.init(prev_ev->dat, prev_ev->size, toSeconds(prev_ev->mono_ns));
-    m.applyMask(getMask(id));
+    m.setDbcMask(getMask(id));
     m.count = std::distance(ev_list.begin(), it);
 
     updateSnapshot(id, m);
@@ -266,7 +266,7 @@ void AbstractStream::updateMasks() {
 
   // Refresh all states based on the new cache
   for (auto& [id, state] : shared_state_.master_state) {
-    state.applyMask(getMask(id));
+    state.setDbcMask(getMask(id));
   }
 }
 
@@ -284,7 +284,7 @@ void AbstractStream::updateMessageMask(const MessageId& id) {
 
     auto it = shared_state_.master_state.find(target_id);
     if (it != shared_state_.master_state.end()) {
-      it->second.applyMask(getMask(target_id));
+      it->second.setDbcMask(getMask(target_id));
     }
   }
 }
@@ -325,7 +325,7 @@ size_t AbstractStream::suppressHighlighted() {
   std::lock_guard lk(mutex_);
   size_t cnt = 0;
   for (auto& [id, m] : shared_state_.master_state) {
-    cnt += m.muteActiveBits(getMask(id));
+    cnt += m.muteActiveBits();
   }
   return cnt;
 }
@@ -333,6 +333,6 @@ size_t AbstractStream::suppressHighlighted() {
 void AbstractStream::clearSuppressed() {
   std::lock_guard lk(mutex_);
   for (auto& [id, m] : shared_state_.master_state) {
-    m.unmuteActiveBits(getMask(id));
+    m.unmuteActiveBits();
   }
 }
