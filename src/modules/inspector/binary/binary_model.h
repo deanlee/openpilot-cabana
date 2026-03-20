@@ -70,9 +70,9 @@ class BinaryModel : public QAbstractTableModel {
   std::vector<Item> items;
   QFont header_font_;
 
-  bool updateRowCells(int row, const MessageSnapshot* msg, const std::array<uint32_t, 8>& row_flips, float log_max,
+  bool updateRowCells(int row, const MessageSnapshot* msg, const std::array<uint32_t, 8>& row_flips, uint8_t byte_mask, float log_max,
                     bool is_light_theme, const QColor& base_bg, float decay_factor);
-  QColor calculateBitHeatColor(Item& item, uint32_t flips, float log_max, bool is_light_theme, const QColor& base_bg,
+  QColor calculateBitHeatColor(Item& item, uint32_t flips, bool is_masked, float log_max, bool is_light_theme, const QColor& base_bg,
                                float decay_factor);
   bool updateItem(int row, int col, uint8_t val, const QColor& color);
 };
