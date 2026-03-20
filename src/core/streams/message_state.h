@@ -54,7 +54,8 @@ class MessageState {
 
   double last_freq_ts = 0;
   std::array<ByteAnalysis, MAX_CAN_LEN> analysis = {};
-  std::array<std::array<double, 8>, MAX_CAN_LEN> bit_change_ts_ = {};
+  std::array<std::array<uint32_t, 8>, MAX_CAN_LEN> mute_snapshot_flips_ = {};
+  double mute_snapshot_ts_ = 0;
   std::array<uint8_t, MAX_CAN_LEN> dbc_mask_ = {};
   std::array<uint8_t, MAX_CAN_LEN> suppressed_mask = {};
   std::array<uint8_t, MAX_CAN_LEN> mask_ = {};  // Precomputed dbc_mask_ | suppressed_mask
