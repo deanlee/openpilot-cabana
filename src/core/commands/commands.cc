@@ -9,7 +9,7 @@
 
 EditMsgCommand::EditMsgCommand(const MessageId& id, const QString& name, int size, const QString& node,
                                const QString& comment, QUndoCommand* parent)
-    : id(id), new_name(name), new_size(size), new_node(node), new_comment(comment), QUndoCommand(parent) {
+    : QUndoCommand(parent), id(id), new_name(name), new_size(size), new_node(node), new_comment(comment) {
   if (auto msg = GetDBC()->msg(id)) {
     old_name = msg->name;
     old_size = msg->size;
@@ -32,7 +32,7 @@ void EditMsgCommand::redo() { GetDBC()->updateMsg(id, new_name, new_size, new_no
 
 // RemoveMsgCommand
 
-RemoveMsgCommand::RemoveMsgCommand(const MessageId& id, QUndoCommand* parent) : id(id), QUndoCommand(parent) {
+RemoveMsgCommand::RemoveMsgCommand(const MessageId& id, QUndoCommand* parent) : QUndoCommand(parent), id(id) {
   if (auto msg = GetDBC()->msg(id)) {
     message = *msg;
     setText(QObject::tr("remove message %1:%2").arg(message.name).arg(id.address));
@@ -53,7 +53,7 @@ void RemoveMsgCommand::redo() {
 // AddSigCommand
 
 AddSigCommand::AddSigCommand(const MessageId& id, const dbc::Signal& sig, QUndoCommand* parent)
-    : id(id), signal(sig), QUndoCommand(parent) {
+    : QUndoCommand(parent), id(id), signal(sig) {
   setText(QObject::tr("add signal %1 to %2:%3").arg(sig.name).arg(msgName(id)).arg(id.address));
 }
 
@@ -75,7 +75,7 @@ void AddSigCommand::redo() {
 // RemoveSigCommand
 
 RemoveSigCommand::RemoveSigCommand(const MessageId& id, const dbc::Signal* sig, QUndoCommand* parent)
-    : id(id), QUndoCommand(parent) {
+    : QUndoCommand(parent), id(id) {
   sigs.push_back(*sig);
   if (sig->type == dbc::Signal::Type::Multiplexor) {
     for (const auto& s : GetDBC()->msg(id)->sigs) {
@@ -98,7 +98,7 @@ void RemoveSigCommand::redo() {
 
 EditSignalCommand::EditSignalCommand(const MessageId& id, const dbc::Signal* sig, const dbc::Signal& new_sig,
                                      QUndoCommand* parent)
-    : id(id), QUndoCommand(parent) {
+    : QUndoCommand(parent), id(id) {
   sigs.push_back({*sig, new_sig});
   if (sig->type == dbc::Signal::Type::Multiplexor && new_sig.type == dbc::Signal::Type::Normal) {
     // convert all multiplexed signals to normal signals
