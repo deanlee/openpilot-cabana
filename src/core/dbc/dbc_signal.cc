@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstring>
 
 #include "utils/util.h"
 
@@ -102,7 +103,8 @@ bool dbc::Signal::operator==(const dbc::Signal& other) const {
          lsb == other.lsb && is_signed == other.is_signed && is_little_endian == other.is_little_endian &&
          factor == other.factor && offset == other.offset && min == other.min && max == other.max &&
          comment == other.comment && unit == other.unit && value_table == other.value_table &&
-         multiplex_value == other.multiplex_value && type == other.type && receiver_name == other.receiver_name;
+         multiplex_value == other.multiplex_value && type == other.type && val_type == other.val_type &&
+         receiver_name == other.receiver_name;
 }
 
 uint64_t dbc::Signal::decodeRaw(const uint8_t* data, size_t data_size) const {
@@ -135,7 +137,20 @@ uint64_t dbc::Signal::decodeRaw(const uint8_t* data, size_t data_size) const {
 double dbc::Signal::toPhysical(const uint8_t* data, size_t data_size) const {
   uint64_t val = decodeRaw(data, data_size);
 
-  // Sign extension
+  // IEEE 754 float/double decoding (SIG_VALTYPE_)
+  if (val_type == ValType::IEEEFloat && size == 32) {
+    uint32_t u32 = static_cast<uint32_t>(val);
+    float f;
+    std::memcpy(&f, &u32, sizeof(f));
+    return static_cast<double>(f) * factor + offset;
+  }
+  if (val_type == ValType::IEEEDouble && size == 64) {
+    double d;
+    std::memcpy(&d, &val, sizeof(d));
+    return d * factor + offset;
+  }
+
+  // Sign extension for integer signals
   if (is_signed && (val & (1ULL << (size - 1)))) {
     val |= ~((1ULL << size) - 1);
     return static_cast<int64_t>(val) * factor + offset;
