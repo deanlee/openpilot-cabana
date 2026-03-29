@@ -177,7 +177,7 @@ void MainWindow::createMessagesDock() {
 
 void MainWindow::createVideoChartsDock() {
   video_dock_ = new QDockWidget("", this);
-  video_dock_->setObjectName(tr("VideoPanel"));
+  video_dock_->setObjectName("VideoPanel");
   video_dock_->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
   video_dock_->setFeatures(QDockWidget::DockWidgetMovable | QDockWidget::DockWidgetFloatable |
                            QDockWidget::DockWidgetClosable);
@@ -307,13 +307,17 @@ void MainWindow::createLoadingDialog(bool is_live) {
 
 void MainWindow::eventsMerged() {
   auto* stream = StreamManager::stream();
-  if (!stream->liveStreaming() && std::exchange(car_fingerprint_, stream->carFingerprint()) != car_fingerprint_) {
-    video_dock_->setWindowTitle(tr("ROUTE: %1  FINGERPRINT: %2")
-                                    .arg(stream->routeName())
-                                    .arg(car_fingerprint_.isEmpty() ? tr("Unknown Car") : car_fingerprint_));
-    // Don't overwrite already loaded DBC
-    if (!GetDBC()->nonEmptyFileCount()) {
-      QTimer::singleShot(0, this, [this]() { dbc_controller_->loadFromFingerprint(car_fingerprint_); });
+  if (!stream->liveStreaming()) {
+    const QString prev_fingerprint = car_fingerprint_;
+    car_fingerprint_ = stream->carFingerprint();
+    if (prev_fingerprint != car_fingerprint_) {
+      video_dock_->setWindowTitle(tr("ROUTE: %1  FINGERPRINT: %2")
+                                      .arg(stream->routeName())
+                                      .arg(car_fingerprint_.isEmpty() ? tr("Unknown Car") : car_fingerprint_));
+      // Don't overwrite already loaded DBC
+      if (!GetDBC()->nonEmptyFileCount()) {
+        QTimer::singleShot(0, this, [this]() { dbc_controller_->loadFromFingerprint(car_fingerprint_); });
+      }
     }
   }
 }
