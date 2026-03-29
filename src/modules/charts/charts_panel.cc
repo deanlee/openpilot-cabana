@@ -179,8 +179,8 @@ void ChartsPanel::updateState() {
     c->updatePlot(cur_sec, range.first, range.second);
   }
 
-  if (hover_time_ >= 0 && std::abs(prev_display_start - display_range.first) > EPSILON ||
-      std::abs(prev_display_end - display_range.second) > EPSILON) {
+  if (hover_time_ >= 0 && (std::abs(prev_display_start - display_range.first) > EPSILON ||
+      std::abs(prev_display_end - display_range.second) > EPSILON)) {
     updateHoverFromCursor();
   }
 }
