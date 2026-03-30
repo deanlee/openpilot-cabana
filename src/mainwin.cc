@@ -2,11 +2,14 @@
 
 #include <QApplication>
 #include <QFileDialog>
+#include <QHBoxLayout>
+#include <QLabel>
 #include <QMenuBar>
 #include <QMessageBox>
 #include <QProgressDialog>
 #include <QScreen>
 #include <QShortcut>
+#include <QToolButton>
 #include <QUndoView>
 #include <QWidgetAction>
 
@@ -197,6 +200,44 @@ void MainWindow::createVideoChartsDock() {
           [this](bool floating) { charts_panel->getToolBar()->setIsDocked(!floating); });
   connect(charts_panel, &ChartsPanel::toggleChartsDocking, this, &MainWindow::toggleChartsDocking);
   connect(charts_panel, &ChartsPanel::showCursor, video_player_, &VideoPlayer::showThumbnail);
+
+  // Custom title bar for charts dock (adds maximize button)
+  auto *title_bar = new QWidget(charts_dock_);
+  auto *tb_layout = new QHBoxLayout(title_bar);
+  tb_layout->setContentsMargins(4, 0, 2, 0);
+  tb_layout->setSpacing(0);
+  tb_layout->addWidget(new QLabel(tr("CHARTS"), title_bar));
+  tb_layout->addStretch();
+
+  auto *maximize_btn = new QToolButton(title_bar);
+  maximize_btn->setAutoRaise(true);
+  maximize_btn->setIcon(style()->standardIcon(QStyle::SP_TitleBarMaxButton));
+  maximize_btn->setToolTip(tr("Maximize"));
+  tb_layout->addWidget(maximize_btn);
+
+  auto *float_btn = new QToolButton(title_bar);
+  float_btn->setAutoRaise(true);
+  float_btn->setText(tr("Undock"));
+  tb_layout->addWidget(float_btn);
+
+  auto *close_btn = new QToolButton(title_bar);
+  close_btn->setAutoRaise(true);
+  close_btn->setIcon(style()->standardIcon(QStyle::SP_TitleBarCloseButton));
+  close_btn->setToolTip(tr("Close"));
+  tb_layout->addWidget(close_btn);
+
+  connect(maximize_btn, &QToolButton::clicked, [this] {
+    if (!charts_dock_->isFloating()) {
+      charts_dock_->setFloating(true);
+    }
+    charts_dock_->isMaximized() ? charts_dock_->showNormal() : charts_dock_->showMaximized();
+  });
+  connect(float_btn, &QToolButton::clicked, this, &MainWindow::toggleChartsDocking);
+  connect(close_btn, &QToolButton::clicked, charts_dock_, &QDockWidget::close);
+  connect(charts_dock_, &QDockWidget::topLevelChanged, [float_btn](bool floating) {
+    float_btn->setText(floating ? MainWindow::tr("Dock") : MainWindow::tr("Undock"));
+  });
+  charts_dock_->setTitleBarWidget(title_bar);
 }
 
 void MainWindow::createShortcuts() {
