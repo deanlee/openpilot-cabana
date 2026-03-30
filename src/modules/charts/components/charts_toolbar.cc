@@ -6,7 +6,6 @@
 #include <QMenu>
 #include <QStyle>
 
-#include "charts_toolbar.h"
 #include "modules/settings/settings.h"
 
 ChartsToolBar::ChartsToolBar(QWidget* parent) : QWidget(parent) {
@@ -102,7 +101,7 @@ void ChartsToolBar::createTypeMenu() {
 void ChartsToolBar::createColumnMenu() {
   QMenu* menu = new QMenu(this);
   for (int i = 0; i < MAX_COLUMN_COUNT; ++i) {
-    menu->addAction(tr("%1").arg(i + 1), [=, count = i + 1]() {
+    menu->addAction(QString::number(i + 1), [=, count = i + 1]() {
       settings.chart_column_count = count;
       columns_btn->setText(QString::number(count));
       emit columnCountChanged(count);
@@ -150,14 +149,15 @@ void ChartsToolBar::updateState(int chart_count) {
   range_lb->setText(utils::formatSeconds(settings.chart_range));
 
   auto* stream = StreamManager::stream();
-  bool is_zoomed = stream->timeRange().has_value();
+  auto time_range = stream->timeRange();
+  bool is_zoomed = time_range.has_value();
   range_lb->setVisible(!is_zoomed);
   range_slider->setVisible(!is_zoomed);
   undo_btn->setVisible(is_zoomed);
   redo_btn->setVisible(is_zoomed);
   reset_zoom_btn->setVisible(is_zoomed);
   reset_zoom_btn->setText(
-      is_zoomed ? tr("%1-%2").arg(stream->timeRange()->first, 0, 'f', 2).arg(stream->timeRange()->second, 0, 'f', 2)
+      is_zoomed ? tr("%1-%2").arg(time_range->first, 0, 'f', 2).arg(time_range->second, 0, 'f', 2)
                 : "");
   remove_all_btn->setEnabled(chart_count > 0);
 }
