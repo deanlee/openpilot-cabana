@@ -8,7 +8,6 @@
 #include <QScreen>
 #include <QShortcut>
 #include <QUndoView>
-#include <QVBoxLayout>
 #include <QWidgetAction>
 
 #include "core/commands/commands.h"
@@ -138,6 +137,7 @@ void MainWindow::createViewMenu() {
   view_menu->addSeparator();
   view_menu->addAction(messages_dock_->toggleViewAction());
   view_menu->addAction(video_dock_->toggleViewAction());
+  view_menu->addAction(charts_dock_->toggleViewAction());
   view_menu->addSeparator();
   view_menu->addAction(tr("Reset Window Layout"), [this]() { restoreState(default_window_state_); });
 }
@@ -176,29 +176,25 @@ void MainWindow::createMessagesDock() {
 }
 
 void MainWindow::createVideoChartsDock() {
+  video_player_ = new VideoPlayer(this);
   video_dock_ = new QDockWidget("", this);
   video_dock_->setObjectName("VideoPanel");
   video_dock_->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
   video_dock_->setFeatures(QDockWidget::DockWidgetMovable | QDockWidget::DockWidgetFloatable |
                            QDockWidget::DockWidgetClosable);
-
-  QWidget* charts_container = new QWidget(this);
-  charts_layout_ = new QVBoxLayout(charts_container);
-  charts_layout_->setContentsMargins(0, 0, 0, 0);
-  charts_layout_->addWidget(charts_panel);
-
-  // splitter between video and charts
-  video_splitter_ = new PanelSplitter(Qt::Vertical, this);
-  video_player_ = new VideoPlayer(this);
-  video_splitter_->addWidget(video_player_);
-
-  video_splitter_->addWidget(charts_container);
-  video_splitter_->setStretchFactor(0, 0);
-  video_splitter_->setStretchFactor(1, 1);
-
-  video_dock_->setWidget(video_splitter_);
+  video_dock_->setWidget(video_player_);
   addDockWidget(Qt::RightDockWidgetArea, video_dock_);
 
+  charts_dock_ = new QDockWidget(tr("CHARTS"), this);
+  charts_dock_->setObjectName("ChartsPanel");
+  charts_dock_->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
+  charts_dock_->setFeatures(QDockWidget::DockWidgetMovable | QDockWidget::DockWidgetFloatable |
+                            QDockWidget::DockWidgetClosable);
+  charts_dock_->setWidget(charts_panel);
+  splitDockWidget(video_dock_, charts_dock_, Qt::Vertical);
+
+  connect(charts_dock_, &QDockWidget::topLevelChanged,
+          [this](bool floating) { charts_panel->getToolBar()->setIsDocked(!floating); });
   connect(charts_panel, &ChartsPanel::toggleChartsDocking, this, &MainWindow::toggleChartsDocking);
   connect(charts_panel, &ChartsPanel::showCursor, video_player_, &VideoPlayer::showThumbnail);
 }
@@ -210,9 +206,7 @@ void MainWindow::createShortcuts() {
   // TODO: add more shortcuts here.
 }
 
-void MainWindow::onStreamChanged() {
-  video_splitter_->handle(1)->setEnabled(!StreamManager::instance().isLiveStream());
-}
+void MainWindow::onStreamChanged() {}
 
 void MainWindow::undoStackCleanChanged(bool clean) { setWindowModified(!clean); }
 
@@ -276,9 +270,8 @@ void MainWindow::openStream(AbstractStream* stream, const QString& dbc_file) {
   tools_menu_->setEnabled(has_stream);
 
   video_dock_->setWindowTitle(sm.stream()->routeName());
-  if (is_live_stream || video_splitter_->sizes()[0] == 0) {
-    // display video at minimum size.
-    video_splitter_->setSizes({1, 1});
+  if (is_live_stream || video_dock_->height() == 0) {
+    resizeDocks({video_dock_, charts_dock_}, {1, 1}, Qt::Vertical);
   }
   // Don't overwrite already loaded DBC
   if (!GetDBC()->nonEmptyFileCount()) {
@@ -323,31 +316,11 @@ void MainWindow::eventsMerged() {
 }
 
 bool MainWindow::eventFilter(QObject* obj, QEvent* event) {
-  if (obj == floating_window_ && event->type() == QEvent::Close) {
-    toggleChartsDocking();
-    return true;
-  }
   return QMainWindow::eventFilter(obj, event);
 }
 
 void MainWindow::toggleChartsDocking() {
-  if (floating_window_) {
-    // Dock the charts widget back to the main window
-    floating_window_->removeEventFilter(this);
-    charts_layout_->insertWidget(0, charts_panel, 1);
-    floating_window_->deleteLater();
-    floating_window_ = nullptr;
-    charts_panel->getToolBar()->setIsDocked(true);
-  } else {
-    // Float the charts widget in a separate window
-    floating_window_ = new QWidget(this, Qt::Window);
-    floating_window_->setWindowTitle("Charts");
-    floating_window_->setLayout(new QVBoxLayout());
-    floating_window_->layout()->addWidget(charts_panel);
-    floating_window_->installEventFilter(this);
-    floating_window_->showMaximized();
-    charts_panel->getToolBar()->setIsDocked(false);
-  }
+  charts_dock_->setFloating(!charts_dock_->isFloating());
 }
 
 void MainWindow::closeEvent(QCloseEvent* event) {
@@ -356,14 +329,9 @@ void MainWindow::closeEvent(QCloseEvent* event) {
 
   dbc_controller_->remindSaveChanges();
 
-  if (floating_window_) floating_window_->deleteLater();
-
   // save states
   settings.geometry = saveGeometry();
   settings.window_state = saveState();
-  if (!StreamManager::instance().isLiveStream()) {
-    settings.video_splitter_state = video_splitter_->saveState();
-  }
   settings.message_header_state = message_list_->saveHeaderState();
 
   saveSessionState();

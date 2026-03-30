@@ -36,7 +36,6 @@ class Settings : public QObject {
   QString last_dir;
   QString last_route_dir;
   QByteArray geometry;
-  QByteArray video_splitter_state;
   QByteArray window_state;
   QStringList recent_files;
   QByteArray message_header_state;
