@@ -10,7 +10,7 @@
 static const size_t LIVE_VIEW_LIMIT = 500;
 
 QVariant MessageHistoryModel::data(const QModelIndex& index, int role) const {
-  if (!index.isValid() || index.row() >= (int)messages.size()) return {};
+  if (!index.isValid() || index.row() >= static_cast<int>(messages.size())) return {};
 
   const auto& m = messages[index.row()];
   const int col = index.column();
@@ -40,11 +40,7 @@ void MessageHistoryModel::setPauseState(bool paused) {
 
   if (!is_paused) {
     // Transitioning back to Live: Prune the list to the live limit immediately
-    if (messages.size() > LIVE_VIEW_LIMIT) {
-      beginRemoveRows({}, LIVE_VIEW_LIMIT, messages.size() - 1);
-      messages.erase(messages.begin() + LIVE_VIEW_LIMIT, messages.end());
-      endRemoveRows();
-    }
+    pruneToLiveLimit();
     updateState(false);
   }
 }
@@ -114,11 +110,7 @@ void MessageHistoryModel::updateState(bool clear) {
   // Insert at index 0 (top of the list)
   fetchData(0, current_time, last_time);
 
-  if (!is_paused && messages.size() > LIVE_VIEW_LIMIT) {
-    beginRemoveRows({}, LIVE_VIEW_LIMIT, messages.size() - 1);
-    messages.erase(messages.begin() + LIVE_VIEW_LIMIT, messages.end());
-    endRemoveRows();
-  }
+  if (!is_paused) pruneToLiveLimit();
 }
 
 bool MessageHistoryModel::canFetchMore(const QModelIndex& parent) const {
@@ -134,7 +126,15 @@ bool MessageHistoryModel::canFetchMore(const QModelIndex& parent) const {
 void MessageHistoryModel::fetchMore(const QModelIndex& parent) {
   if (messages.empty()) return;
   // Fetch older data at the end (Infinite Scroll)
-  fetchData((int)messages.size(), messages.back().mono_ns, 0);
+  fetchData(static_cast<int>(messages.size()), messages.back().mono_ns, 0);
+}
+
+void MessageHistoryModel::pruneToLiveLimit() {
+  if (messages.size() > LIVE_VIEW_LIMIT) {
+    beginRemoveRows({}, static_cast<int>(LIVE_VIEW_LIMIT), static_cast<int>(messages.size()) - 1);
+    messages.erase(messages.begin() + LIVE_VIEW_LIMIT, messages.end());
+    endRemoveRows();
+  }
 }
 
 void MessageHistoryModel::fetchData(int insert_pos_idx, uint64_t from_time, uint64_t min_time) {
@@ -152,10 +152,13 @@ void MessageHistoryModel::fetchData(int insert_pos_idx, uint64_t from_time, uint
     const CanEvent* e = *first;
     if (e->mono_ns <= min_time) break;
 
-    for (int i = 0; i < sigs.size(); ++i) {
+    for (int i = 0; i < static_cast<int>(sigs.size()); ++i) {
       sigs[i].sig->parse(e->dat, e->size, &values[i]);
     }
-    if (!filter_cmp || filter_cmp(values[filter_sig_idx], filter_value)) {
+    const bool passes = !filter_cmp ||
+        (filter_sig_idx >= 0 && filter_sig_idx < static_cast<int>(values.size()) &&
+         filter_cmp(values[filter_sig_idx], filter_value));
+    if (passes) {
       auto& m = msgs.emplace_back(LogEntry{e->mono_ns, values, e->size});
       std::copy_n(e->dat, std::min<int>(e->size, MAX_CAN_LEN), m.data.begin());
       if (msgs.size() >= batch_size && min_time == 0) {
