@@ -72,7 +72,7 @@ void ChartView::manageSignals() {
     dlg.addSelected(s.msg_id, s.sig);
   }
   if (dlg.exec() == QDialog::Accepted) {
-    auto items = dlg.seletedItems();
+    auto items = dlg.selectedItems();
     for (auto s : items) {
       chart_->addSignal(s->msg_id, s->sig);
     }

@@ -73,13 +73,13 @@ void SignalPicker::setupConnections() {
 }
 
 void SignalPicker::add(QListWidgetItem* item) {
-  auto it = (ListItem*)item;
+  auto it = static_cast<ListItem*>(item);
   addItemToList(selected_list, it->msg_id, it->sig, true);
   delete item;
 }
 
 void SignalPicker::remove(QListWidgetItem* item) {
-  auto it = (ListItem*)item;
+  auto it = static_cast<ListItem*>(item);
   if (it->msg_id == msgs_combo->currentData().value<MessageId>()) {
     addItemToList(available_list, it->msg_id, it->sig);
   }
@@ -90,7 +90,7 @@ void SignalPicker::updateAvailableList(int index) {
   if (index == -1) return;
   available_list->clear();
   MessageId msg_id = msgs_combo->itemData(index).value<MessageId>();
-  auto selected_items = seletedItems();
+  auto selected_items = selectedItems();
   for (auto s : GetDBC()->msg(msg_id)->getSignals()) {
     bool is_selected = std::any_of(selected_items.begin(), selected_items.end(),
                                    [sig = s, &msg_id](auto it) { return it->msg_id == msg_id && it->sig == sig; });
@@ -101,8 +101,8 @@ void SignalPicker::updateAvailableList(int index) {
 }
 
 void SignalPicker::addItemToList(QListWidget* parent, const MessageId id, const dbc::Signal* sig, bool show_msg_name) {
-  QString text = QString("<span style=\"color:%0;\">■ </span> %1").arg(sig->color.name(), sig->name);
-  if (show_msg_name) text += QString(" <font color=\"gray\">%0 %1</font>").arg(msgName(id), id.toString());
+  QString text = QString("<span style=\"color:%1;\">■ </span> %2").arg(sig->color.name(), sig->name);
+  if (show_msg_name) text += QString(" <font color=\"gray\">%1 %2</font>").arg(msgName(id), id.toString());
 
   QLabel* label = new QLabel(text);
   label->setContentsMargins(5, 0, 5, 0);
@@ -111,7 +111,7 @@ void SignalPicker::addItemToList(QListWidget* parent, const MessageId id, const 
   parent->setItemWidget(new_item, label);
 }
 
-QList<SignalPicker::ListItem*> SignalPicker::seletedItems() {
+QList<SignalPicker::ListItem*> SignalPicker::selectedItems() {
   QList<SignalPicker::ListItem*> ret;
   for (int i = 0; i < selected_list->count(); ++i) ret.push_back((ListItem*)selected_list->item(i));
   return ret;
