@@ -124,7 +124,7 @@ void MessageHistory::filterChanged() {
       std::greater<double>{}, std::equal_to<double>{}, [](double l, double r) { return l != r; }, std::less<double>{}};
 
   int idx = comp_box->currentIndex();
-  if (idx >= 0 && idx < ops.size()) {
+  if (idx >= 0 && idx < static_cast<int>(ops.size())) {
     model->setFilter(signals_cb->currentIndex(), value_edit->text(), ops[idx]);
   }
 }

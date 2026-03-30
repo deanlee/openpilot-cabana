@@ -36,7 +36,7 @@ class MessageHistoryModel : public QAbstractTableModel {
   QVariant data(const QModelIndex& index, int role = Qt::DisplayRole) const override;
   void fetchMore(const QModelIndex& parent) override;
   bool canFetchMore(const QModelIndex& parent) const override;
-  int rowCount(const QModelIndex& parent = QModelIndex()) const override { return messages.size(); }
+  int rowCount(const QModelIndex& parent = QModelIndex()) const override { return static_cast<int>(messages.size()); }
   int columnCount(const QModelIndex& parent = QModelIndex()) const override {
     return !isHexMode() ? sigs.size() + 1 : 2;
   }
@@ -48,6 +48,7 @@ class MessageHistoryModel : public QAbstractTableModel {
   const std::vector<SignalColumn>& messageSignals() const { return sigs; }
   void setPauseState(bool paused);
   void fetchData(int insert_pos_idx, uint64_t from_time, uint64_t min_time);
+  void pruneToLiveLimit();
 
   MessageId msg_id;
 
