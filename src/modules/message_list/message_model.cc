@@ -110,6 +110,8 @@ std::optional<MessageModel::FilterRange> MessageModel::parseFilter(QString filte
   } else if (parts.size() == 2) {
     if (!parts[0].isEmpty()) r.min = parse(parts[0], &ok);
     if (!parts[1].isEmpty()) r.max = parse(parts[1], &ok);
+  } else {
+    ok = false;
   }
 
   return ok ? std::optional<FilterRange>(r) : std::nullopt;
