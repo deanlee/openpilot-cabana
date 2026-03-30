@@ -38,12 +38,11 @@ class DbcController : public QObject {
   void populateRecentMenu(QMenu* recent_menu);
   void populateManageMenu(QMenu* manage_menu);
   void remindSaveChanges();
-  void updateRecentFiles(const QString& fn);
 
  signals:
   void statusMessage(const QString& msg, int timeout_ms = 2000);
 
  private:
-  QWidget* parent_ = nullptr;
+  void updateRecentFiles(const QString& fn);
   QJsonDocument fingerprint_to_dbc_;
 };
