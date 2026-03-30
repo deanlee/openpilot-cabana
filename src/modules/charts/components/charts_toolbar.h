@@ -58,9 +58,9 @@ class ChartsToolBar : public QWidget {
 
 class ZoomCommand : public QUndoCommand {
  public:
-  ZoomCommand(std::pair<double, double> range) : range(range), QUndoCommand() {
+  ZoomCommand(std::pair<double, double> new_range) : QUndoCommand(), range(new_range) {
     prev_range = StreamManager::stream()->timeRange();
-    setText(QObject::tr("Zoom to %1-%2").arg(range.first, 0, 'f', 2).arg(range.second, 0, 'f', 2));
+    setText(QObject::tr("Zoom to %1-%2").arg(new_range.first, 0, 'f', 2).arg(new_range.second, 0, 'f', 2));
   }
   void undo() override { StreamManager::stream()->setTimeRange(prev_range); }
   void redo() override { StreamManager::stream()->setTimeRange(range); }
