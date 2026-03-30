@@ -339,7 +339,7 @@ QSize ChartsPanel::minimumSizeHint() const { return QSize(CHART_MIN_WIDTH * 1.5,
 void ChartsPanel::newChart() {
   SignalPicker dlg(tr("New Chart"), this);
   if (dlg.exec() == QDialog::Accepted) {
-    auto items = dlg.seletedItems();
+    auto items = dlg.selectedItems();
     if (!items.isEmpty()) {
       auto c = createChart();
       for (auto it : items) {

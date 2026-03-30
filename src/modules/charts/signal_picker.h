@@ -12,13 +12,13 @@ class SignalPicker : public QDialog {
  public:
   struct ListItem : public QListWidgetItem {
     ListItem(const MessageId& msg_id, const dbc::Signal* sig, QListWidget* parent)
-        : msg_id(msg_id), sig(sig), QListWidgetItem(parent) {}
+        : QListWidgetItem(parent), msg_id(msg_id), sig(sig) {}
     MessageId msg_id;
     const dbc::Signal* sig;
   };
 
   SignalPicker(QString title, QWidget* parent);
-  QList<ListItem*> seletedItems();
+  QList<ListItem*> selectedItems();
   inline void addSelected(const MessageId& id, const dbc::Signal* sig) { addItemToList(selected_list, id, sig, true); }
 
  private:
