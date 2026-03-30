@@ -21,7 +21,7 @@ inline QString GetOpendbcFilePath(const QString& name) {
   return QDir::current().absoluteFilePath(QString("data/opendbc/%1").arg(name));
 }
 
-DbcController::DbcController(QWidget* parent) : QObject(parent), parent_(parent) {
+DbcController::DbcController(QWidget* parent) : QObject(parent) {
   QFile json_file(GetOpendbcFilePath("car_fingerprint_to_dbc.json"));
   if (json_file.open(QIODevice::ReadOnly)) {
     fingerprint_to_dbc_ = QJsonDocument::fromJson(json_file.readAll());
@@ -35,7 +35,7 @@ void DbcController::newFile(SourceSet s) {
 
 void DbcController::openFile(SourceSet s) {
   remindSaveChanges();
-  QString fn = QFileDialog::getOpenFileName(parent_, QObject::tr("Open File"), settings.last_dir, "DBC (*.dbc)");
+  QString fn = QFileDialog::getOpenFileName(qobject_cast<QWidget*>(parent()), QObject::tr("Open File"), settings.last_dir, "DBC (*.dbc)");
   if (!fn.isEmpty()) loadFile(fn, s);
 }
 
@@ -64,7 +64,7 @@ void DbcController::loadFromClipboard(SourceSet s, bool /*close_all*/) {
   QString error;
   bool ret = GetDBC()->open(s, "", dbc_str, &error);
   if (ret && GetDBC()->nonEmptyFileCount() > 0) {
-    QMessageBox::information(parent_, QObject::tr("Load From Clipboard"), QObject::tr("DBC Successfully Loaded!"));
+    QMessageBox::information(qobject_cast<QWidget*>(parent()), QObject::tr("Load From Clipboard"), QObject::tr("DBC Successfully Loaded!"));
   } else {
     QMessageBox msg_box(QMessageBox::Warning, QObject::tr("Failed to load DBC from clipboard"),
                         QObject::tr("Make sure that you paste the text with correct format."));
@@ -126,7 +126,7 @@ void DbcController::saveFile(dbc::File* dbc_file) {
 
 void DbcController::saveFileAs(dbc::File* dbc_file) {
   QString title = QObject::tr("Save File (bus: %1)").arg(toString(GetDBC()->getSourcesForFile(dbc_file)));
-  QString fn = QFileDialog::getSaveFileName(parent_, title, QDir::cleanPath(settings.last_dir + "/untitled.dbc"),
+  QString fn = QFileDialog::getSaveFileName(qobject_cast<QWidget*>(parent()), title, QDir::cleanPath(settings.last_dir + "/untitled.dbc"),
                                             QObject::tr("DBC (*.dbc)"));
   if (!fn.isEmpty()) {
     dbc_file->saveAs(fn);
@@ -145,7 +145,7 @@ void DbcController::saveToClipboard() {
 void DbcController::saveFileToClipboard(dbc::File* dbc_file) {
   Q_ASSERT(dbc_file != nullptr);
   QGuiApplication::clipboard()->setText(dbc_file->toDBCString());
-  QMessageBox::information(parent_, QObject::tr("Copy To Clipboard"), QObject::tr("DBC Successfully copied!"));
+  QMessageBox::information(qobject_cast<QWidget*>(parent()), QObject::tr("Copy To Clipboard"), QObject::tr("DBC Successfully copied!"));
 }
 
 void DbcController::populateRecentMenu(QMenu* recent_menu) {
@@ -223,7 +223,7 @@ void DbcController::remindSaveChanges() {
   while (!UndoStack::instance()->isClean()) {
     QString text = QObject::tr("You have unsaved changes. Press ok to save them, cancel to discard.");
     int ret =
-        QMessageBox::question(parent_, QObject::tr("Unsaved Changes"), text, QMessageBox::Ok | QMessageBox::Cancel);
+        QMessageBox::question(qobject_cast<QWidget*>(parent()), QObject::tr("Unsaved Changes"), text, QMessageBox::Ok | QMessageBox::Cancel);
     if (ret != QMessageBox::Ok) break;
     save();
   }
