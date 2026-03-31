@@ -161,7 +161,7 @@ QWidget* SignalTreeDelegate::createEditor(QWidget* parent, const QStyleOptionVie
     auto* c = new QComboBox(parent);
     c->addItem(signalTypeToString(dbc::Signal::Type::Normal), static_cast<int>(dbc::Signal::Type::Normal));
     auto* msg = GetDBC()->msg(static_cast<const SignalTreeModel*>(idx.model())->messageId());
-    if (!msg->getMultiplexor())
+    if (!msg->multiplexor)
       c->addItem(signalTypeToString(dbc::Signal::Type::Multiplexor), static_cast<int>(dbc::Signal::Type::Multiplexor));
     else if (item->sig->type != dbc::Signal::Type::Multiplexor)
       c->addItem(signalTypeToString(dbc::Signal::Type::Multiplexed), static_cast<int>(dbc::Signal::Type::Multiplexed));

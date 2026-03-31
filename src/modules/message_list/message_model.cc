@@ -189,7 +189,7 @@ std::vector<MessageModel::Item> MessageModel::fetchItems() {
     if (matchesFilter(item)) {
       if (msg) {
         dbc_msg_count_++;
-        signal_count_ += msg->signalCount();
+        signal_count_ += msg->sigs.size();
       }
       new_items.push_back(std::move(item));
     }
@@ -225,7 +225,7 @@ bool MessageModel::matchesFilter(const MessageModel::Item& item) const {
       case Column::NAME: {
         if (item.name.contains(txt, Qt::CaseInsensitive)) continue;
         if (auto* m = GetDBC()->msg(item.id)) {
-          if (std::ranges::any_of(m->getSignals(), [&](const auto& s) { return s->name.contains(txt, Qt::CaseInsensitive); })) {
+          if (std::ranges::any_of(m->sigs, [&](const auto& s) { return s->name.contains(txt, Qt::CaseInsensitive); })) {
             continue;
           }
         }
