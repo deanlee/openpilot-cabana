@@ -260,7 +260,7 @@ void AbstractStream::updateMasks() {
   // Rebuild the mask cache
   for (uint8_t s : sources_) {
     for (const auto& [address, msg] : dbc->getMessages(s)) {
-      shared_state_.masks[{s, address}] = msg.mask;
+      shared_state_.masks[{s, address}] = msg.getMask();
     }
   }
 
@@ -277,7 +277,7 @@ void AbstractStream::updateMessageMask(const MessageId& id) {
   for (const uint8_t s : sources_) {
     const MessageId target_id(s, id.address);
     if (const auto* m = dbc_manager->msg(target_id)) {
-      shared_state_.masks[target_id] = m->mask;
+      shared_state_.masks[target_id] = m->getMask();
     } else {
       shared_state_.masks.erase(target_id);
     }

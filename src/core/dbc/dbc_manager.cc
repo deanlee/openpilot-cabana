@@ -103,7 +103,7 @@ void Manager::updateSignal(const MessageId& id, const QString& sig_name, const d
 
 void Manager::removeSignal(const MessageId& id, const QString& sig_name) {
   if (auto m = msg(id)) {
-    if (auto s = m->sig(sig_name)) {
+    if (auto s = m->findSignal(sig_name)) {
       emit signalRemoved(s);
       m->removeSignal(sig_name);
       emit maskUpdated(id);

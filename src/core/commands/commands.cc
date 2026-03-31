@@ -78,7 +78,7 @@ RemoveSigCommand::RemoveSigCommand(const MessageId& id, const dbc::Signal* sig, 
     : QUndoCommand(parent), id(id) {
   sigs.push_back(*sig);
   if (sig->type == dbc::Signal::Type::Multiplexor) {
-    for (const auto& s : GetDBC()->msg(id)->sigs) {
+    for (const auto& s : GetDBC()->msg(id)->getSignals()) {
       if (s->type == dbc::Signal::Type::Multiplexed) {
         sigs.push_back(*s);
       }
@@ -104,7 +104,7 @@ EditSignalCommand::EditSignalCommand(const MessageId& id, const dbc::Signal* sig
     // convert all multiplexed signals to normal signals
     auto msg = GetDBC()->msg(id);
     assert(msg);
-    for (const auto& s : msg->sigs) {
+    for (const auto& s : msg->getSignals()) {
       if (s->type == dbc::Signal::Type::Multiplexed) {
         auto new_s = *s;
         new_s.type = dbc::Signal::Type::Normal;
