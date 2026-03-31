@@ -20,7 +20,7 @@ class RingBuffer {
   }
   const T& operator[](size_t i) const { return buffer[(head - count + i) & (N - 1)]; }
   const T& front() const { return (*this)[0]; }
-  const T& back() const { return (*this)[count - 1]; }
+  const T& back() const { return (*this)[count > 0 ? count - 1 : 0]; }
   void pop_front_n(size_t n) { count = (n >= count) ? 0 : count - n; }
   void pop_front() {
     if (count > 0) count--;
