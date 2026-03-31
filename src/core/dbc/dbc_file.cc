@@ -71,7 +71,7 @@ dbc::Msg* File::msg(const QString& name) {
 
 dbc::Signal* File::signal(uint32_t address, const QString& name) {
   auto m = msg(address);
-  return m ? (dbc::Signal*)m->sig(name) : nullptr;
+  return m ? m->findSignal(name) : nullptr;
 }
 
 void File::parse(const QString& content) {
@@ -150,7 +150,7 @@ void File::parseSG(const QString& line, dbc::Msg* current_msg, int& multiplexor_
   }
 
   QString name = match.captured("name");
-  if (current_msg->sig(name) != nullptr) {
+  if (current_msg->findSignal(name) != nullptr) {
     throw std::runtime_error(QString("Duplicate signal name: %1").arg(name).toStdString());
   }
 
@@ -187,7 +187,7 @@ void File::parseSG(const QString& line, dbc::Msg* current_msg, int& multiplexor_
   s.unit = match.captured("unit");
   s.receiver_name = match.captured("receiver").trimmed();
 
-  current_msg->sigs.push_back(new dbc::Signal(s));
+  current_msg->addSignal(s);
 }
 
 void File::parseComment(const QString& line, QTextStream& stream) {

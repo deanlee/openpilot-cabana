@@ -338,7 +338,7 @@ void SignalTreeModel::highlightSignalRow(const dbc::Signal* sig) {
 
 bool SignalTreeModel::saveSignal(const dbc::Signal* origin_s, dbc::Signal& s) {
   auto* msg = GetDBC()->msg(msg_id);
-  if (s.name != origin_s->name && msg->sig(s.name) != nullptr) {
+  if (s.name != origin_s->name && msg->findSignal(s.name) != nullptr) {
     QString text = tr("There is already a signal with the same name '%1'").arg(s.name);
     QMessageBox::warning(nullptr, tr("Failed to save signal"), text);
     return false;

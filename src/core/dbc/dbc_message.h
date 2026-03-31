@@ -3,6 +3,7 @@
 #include <QMetaType>
 #include <QString>
 #include <limits>
+#include <memory>
 #include <utility>
 #include <vector>
 
@@ -48,27 +49,39 @@ namespace dbc {
 class Msg {
  public:
   Msg() = default;
-  Msg(const Msg& other) { *this = other; }
-  ~Msg();
-  dbc::Signal* addSignal(const dbc::Signal& sig);
-  dbc::Signal* updateSignal(const QString& sig_name, const dbc::Signal& sig);
-  void removeSignal(const QString& sig_name);
+  Msg(const Msg& other);
   Msg& operator=(const Msg& other);
-  int indexOf(const dbc::Signal* sig) const;
-  dbc::Signal* sig(const QString& sig_name) const;
-  QString newSignalName();
-  void update();
-  inline const std::vector<dbc::Signal*>& getSignals() const { return sigs; }
+  ~Msg() = default;
 
-  uint32_t address;
+  Signal* addSignal(const Signal& sig);
+  Signal* updateSignal(const QString& sig_name, const Signal& new_sig);
+  void removeSignal(const QString& sig_name);
+  Signal* findSignal(const QString& sig_name) const;
+  int indexOf(const Signal* sig) const;
+  QString newSignalName() const;
+  void update();
+
+  const std::vector<Signal*>& getSignals() const { return sorted_sigs_; }
+  size_t signalCount() const { return signals_.size(); }
+  const std::vector<uint8_t>& getMask() const { return mask_; }
+  Signal* getMultiplexor() const { return multiplexor_; }
+
+  uint32_t address = 0;
   QString name;
-  uint32_t size;
+  uint32_t size = 0;
   QString comment;
   QString transmitter;
-  std::vector<dbc::Signal*> sigs;
 
-  std::vector<uint8_t> mask;
-  dbc::Signal* multiplexor = nullptr;
+ private:
+  void rebuildMask();
+  void resolveMultiplexing();
+
+  std::vector<std::unique_ptr<Signal>> signals_;
+
+  // Derived state, rebuilt by update()
+  std::vector<Signal*> sorted_sigs_;
+  std::vector<uint8_t> mask_;
+  Signal* multiplexor_ = nullptr;
 };
 
 }  // namespace dbc
