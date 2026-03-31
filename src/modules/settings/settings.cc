@@ -22,7 +22,6 @@ void settings_op(SettingOperation op) {
   op(s, "last_route_dir", settings.last_route_dir);
   op(s, "window_state", settings.window_state);
   op(s, "geometry", settings.geometry);
-  op(s, "video_splitter_state", settings.video_splitter_state);
   op(s, "recent_files", settings.recent_files);
   op(s, "message_header_state", settings.message_header_state);
   op(s, "chart_series_type", settings.chart_series_type);
