@@ -25,8 +25,11 @@ class Signal {
   inline bool operator!=(const dbc::Signal& other) const { return !(*this == other); }
 
   enum class Type { Normal = 0, Multiplexed, Multiplexor };
+  // SIG_VALTYPE_: 0=integer (default), 1=IEEE float, 2=IEEE double
+  enum class ValType { Integer = 0, IEEEFloat = 1, IEEEDouble = 2 };
 
   Type type = Type::Normal;
+  ValType val_type = ValType::Integer;
   QString name;
   int start_bit, msb, lsb, size;
   double factor = 1.0;
