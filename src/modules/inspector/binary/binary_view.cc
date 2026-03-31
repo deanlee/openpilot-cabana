@@ -209,7 +209,7 @@ std::tuple<int, int, bool> BinaryView::calculateSelection(QModelIndex index) {
     QModelIndex top_left_index = (cursor_pos < anchor_pos) ? index : anchor_index_;
 
     start_bit = absoluteBitIndex(top_left_index);
-    size = std::abs(flipBitPos(cur_bit) - flipBitPos(anchor_bit)) + 1;
+    size = std::abs(dbc::Signal::flipBitPos(cur_bit) - dbc::Signal::flipBitPos(anchor_bit)) + 1;
   }
 
   return {start_bit, size, is_le};
@@ -223,7 +223,7 @@ void BinaryView::setSelection(const QRect& rect, QItemSelectionModel::SelectionF
   QItemSelection selection;
 
   for (int j = 0; j < size; ++j) {
-    int abs_bit = is_le ? (start + j) : flipBitPos(flipBitPos(start) + j);
+    int abs_bit = is_le ? (start + j) : dbc::Signal::flipBitPos(dbc::Signal::flipBitPos(start) + j);
     selection << QItemSelectionRange{model->index(abs_bit / 8, 7 - (abs_bit % 8))};
   }
   selectionModel()->select(selection, flags);

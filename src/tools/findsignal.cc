@@ -242,7 +242,7 @@ void FindSignalDlg::setInitialSignals() {
             FindSignalModel::SearchSignal s{.id = id, .mono_ns = first_time, .sig = sig};
             s.sig.start_bit = start;
             s.sig.size = size;
-            updateMsbLsb(s.sig);
+            s.sig.update();
             s.value = s.sig.toPhysical((*e)->dat, (*e)->size);
             model->initial_signals.push_back(s);
           }

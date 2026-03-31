@@ -153,7 +153,7 @@ void MessageHistoryModel::fetchData(int insert_pos_idx, uint64_t from_time, uint
     if (e->mono_ns <= min_time) break;
 
     for (int i = 0; i < static_cast<int>(sigs.size()); ++i) {
-      sigs[i].sig->parse(e->dat, e->size, &values[i]);
+      values[i] = sigs[i].sig->parse(e->dat, e->size).value_or(0);
     }
     const bool passes = !filter_cmp ||
         (filter_sig_idx >= 0 && filter_sig_idx < static_cast<int>(values.size()) &&

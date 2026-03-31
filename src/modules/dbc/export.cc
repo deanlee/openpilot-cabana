@@ -33,8 +33,7 @@ void exportSignalsToCSV(const QString& file_name, const MessageId& msg_id) {
       stream << QString::number(can->toSeconds(e->mono_ns), 'f', 3) << ","
              << "0x" << QString::number(e->address, 16) << "," << e->src;
       for (auto s : msg->sigs) {
-        double value = 0;
-        s->parse(e->dat, e->size, &value);
+        double value = s->parse(e->dat, e->size).value_or(0);
         stream << "," << QString::number(value, 'f', s->precision);
       }
       stream << "\n";

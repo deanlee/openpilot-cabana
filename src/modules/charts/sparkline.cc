@@ -48,14 +48,12 @@ void Sparkline::updateDataPoints(const dbc::Signal* sig, CanEventIter first, Can
   auto it = std::lower_bound(first, last, last_processed_ns_ + 1,
                              [](const CanEvent* e, uint64_t ns) { return e->mono_ns < ns; });
 
-  double val = 0.0;
   for (; it != last; ++it) {
     auto* e = *it;
-    if (sig->parse(e->dat, e->size, &val)) {
-      history_.push_back({e->mono_ns, val});
-      // Update running bounds
-      if (val < min_val_) min_val_ = val;
-      if (val > max_val_) max_val_ = val;
+    if (auto val = sig->parse(e->dat, e->size)) {
+      history_.push_back({e->mono_ns, *val});
+      if (*val < min_val_) min_val_ = *val;
+      if (*val > max_val_) max_val_ = *val;
     }
   }
 
