@@ -7,16 +7,26 @@
 #include "utils/util.h"
 
 void dbc::Signal::update() {
-  updateMsbLsb(*this);
+  computeMsbLsb();
   if (receiver_name.isEmpty()) {
     receiver_name = DEFAULT_NODE_NAME;
   }
   precision = std::max(utils::num_decimals(factor), utils::num_decimals(offset));
-
-  updateColor();
+  computeColor();
 }
 
-void dbc::Signal::updateColor() {
+void dbc::Signal::computeMsbLsb() {
+  int end_bit = getBitIndex(size - 1);
+  if (is_little_endian) {
+    lsb = start_bit;
+    msb = end_bit;
+  } else {
+    msb = start_bit;
+    lsb = end_bit;
+  }
+}
+
+void dbc::Signal::computeColor() {
   // 1. Hue angle: Golden ratio stride in [0, 2π) for maximal separation.
   const float phi_inv = 0.6180339887f;
   const float hue = std::fmod(static_cast<float>(lsb) * phi_inv, 1.0f) * 6.2831853f;
@@ -66,13 +76,11 @@ int dbc::Signal::getBitIndex(int i) const {
   if (is_little_endian) {
     return start_bit + i;
   } else {
-    // Motorola Big Endian Sawtooth
     return flipBitPos(flipBitPos(start_bit) + i);
   }
 }
 
 QString dbc::Signal::formatValue(double value, bool with_unit) const {
-  // Show enum string
   if (!value_table.empty()) {
     int64_t raw_value = std::round((value - offset) / factor);
     for (const auto& [val, desc] : value_table) {
@@ -89,20 +97,19 @@ QString dbc::Signal::formatValue(double value, bool with_unit) const {
   return val_str;
 }
 
-bool dbc::Signal::parse(const uint8_t* data, size_t data_size, double* val) const {
-  if (multiplexor && multiplexor->decodeRaw(data, data_size) != multiplex_value) {
-    return false;
+std::optional<double> dbc::Signal::parse(const uint8_t* data, size_t data_size) const {
+  if (multiplexor && multiplexor->decodeRaw(data, data_size) != static_cast<uint64_t>(multiplex_value)) {
+    return std::nullopt;
   }
-  *val = toPhysical(data, data_size);
-  return true;
+  return toPhysical(data, data_size);
 }
 
 bool dbc::Signal::operator==(const dbc::Signal& other) const {
-  return name == other.name && size == other.size && start_bit == other.start_bit && msb == other.msb &&
-         lsb == other.lsb && is_signed == other.is_signed && is_little_endian == other.is_little_endian &&
+  return type == other.type && name == other.name && start_bit == other.start_bit && size == other.size &&
+         is_signed == other.is_signed && is_little_endian == other.is_little_endian &&
          factor == other.factor && offset == other.offset && min == other.min && max == other.max &&
-         comment == other.comment && unit == other.unit && value_table == other.value_table &&
-         multiplex_value == other.multiplex_value && type == other.type && receiver_name == other.receiver_name;
+         unit == other.unit && comment == other.comment && receiver_name == other.receiver_name &&
+         value_table == other.value_table && multiplex_value == other.multiplex_value;
 }
 
 uint64_t dbc::Signal::decodeRaw(const uint8_t* data, size_t data_size) const {
@@ -116,7 +123,6 @@ uint64_t dbc::Signal::decodeRaw(const uint8_t* data, size_t data_size) const {
   if (msb_byte == lsb_byte) {
     val = (data[msb_byte] >> (lsb & 7)) & ((1ULL << size) - 1);
   } else {
-    // Multi-byte case: signal spans across multiple bytes
     int bits = size;
     int i = msb_byte;
     const int step = is_little_endian ? -1 : 1;
@@ -135,22 +141,10 @@ uint64_t dbc::Signal::decodeRaw(const uint8_t* data, size_t data_size) const {
 double dbc::Signal::toPhysical(const uint8_t* data, size_t data_size) const {
   uint64_t val = decodeRaw(data, data_size);
 
-  // Sign extension
   if (is_signed && (val & (1ULL << (size - 1)))) {
     val |= ~((1ULL << size) - 1);
     return static_cast<int64_t>(val) * factor + offset;
   }
 
   return val * factor + offset;
-}
-
-void updateMsbLsb(dbc::Signal& s) {
-  int end_bit = s.getBitIndex(s.size - 1);
-  if (s.is_little_endian) {
-    s.lsb = s.start_bit;
-    s.msb = end_bit;
-  } else {
-    s.msb = s.start_bit;
-    s.lsb = end_bit;
-  }
 }

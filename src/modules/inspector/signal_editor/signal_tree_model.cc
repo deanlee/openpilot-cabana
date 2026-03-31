@@ -56,9 +56,8 @@ void SignalTreeModel::updateValues(const MessageSnapshot* msg) {
     if (msg->size == 0) {
       item->sig_val = QStringLiteral("-");
     } else {
-      double val = 0;
-      if (item->sig->parse(msg->data.data(), msg->size, &val)) {
-        item->sig_val = item->sig->formatValue(val);
+      if (auto val = item->sig->parse(msg->data.data(), msg->size)) {
+        item->sig_val = item->sig->formatValue(*val);
       }
     }
     item->value_width = fm.horizontalAdvance(item->sig_val);
@@ -345,7 +344,7 @@ bool SignalTreeModel::saveSignal(const dbc::Signal* origin_s, dbc::Signal& s) {
   }
 
   if (s.is_little_endian != origin_s->is_little_endian) {
-    s.start_bit = flipBitPos(s.start_bit);
+    s.start_bit = dbc::Signal::flipBitPos(s.start_bit);
   }
   UndoStack::push(new EditSignalCommand(msg_id, origin_s, s));
   return true;

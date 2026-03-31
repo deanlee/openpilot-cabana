@@ -7,17 +7,16 @@ static void appendCanEvents(const dbc::Signal* sig, const std::vector<const CanE
   vals.reserve(vals.size() + events.capacity());
   step_vals.reserve(step_vals.size() + events.capacity() * 2);
 
-  double value = 0;
   auto* can = StreamManager::stream();
   for (const CanEvent* e : events) {
-    if (sig->parse(e->dat, e->size, &value)) {
+    if (auto value = sig->parse(e->dat, e->size)) {
       const double ts = can->toSeconds(e->mono_ns);
-      vals.emplace_back(ts, value);
+      vals.emplace_back(ts, *value);
 
-      series_bounds.addPoint(value);
+      series_bounds.addPoint(*value);
 
       if (!step_vals.empty()) step_vals.emplace_back(ts, step_vals.back().y());
-      step_vals.emplace_back(ts, value);
+      step_vals.emplace_back(ts, *value);
     }
   }
 }
