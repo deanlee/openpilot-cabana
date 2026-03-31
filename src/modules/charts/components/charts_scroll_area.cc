@@ -3,22 +3,26 @@
 #include <QApplication>
 #include <QMouseEvent>
 #include <QScrollBar>
-#include <QTimerEvent>
+
+#include "modules/settings/settings.h"
 
 ChartsScrollArea::ChartsScrollArea(QWidget* parent) : QScrollArea(parent) {
   setFrameStyle(QFrame::NoFrame);
   setWidgetResizable(true);
   setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
   viewport()->setBackgroundRole(QPalette::Base);
+
+  auto_scroll_timer_ = new QTimer(this);
+  connect(auto_scroll_timer_, &QTimer::timeout, this, &ChartsScrollArea::doAutoScroll);
 }
 
 void ChartsScrollArea::startAutoScroll() {
-  if (!auto_scroll_timer_.isActive()) {
-    auto_scroll_timer_.start(kAutoScrollIntervalMs, this);
+  if (!auto_scroll_timer_->isActive()) {
+    auto_scroll_timer_->start(kAutoScrollIntervalMs);
   }
 }
 
-void ChartsScrollArea::stopAutoScroll() { auto_scroll_timer_.stop(); }
+void ChartsScrollArea::stopAutoScroll() { auto_scroll_timer_->stop(); }
 
 int ChartsScrollArea::autoScrollDelta(int pos, int viewportHeight) const {
   if (pos < kAutoScrollMargin) {
@@ -34,12 +38,7 @@ int ChartsScrollArea::autoScrollDelta(int pos, int viewportHeight) const {
   return 0;
 }
 
-void ChartsScrollArea::timerEvent(QTimerEvent* event) {
-  if (event->timerId() != auto_scroll_timer_.timerId()) {
-    QScrollArea::timerEvent(event);
-    return;
-  }
-
+void ChartsScrollArea::doAutoScroll() {
   const QPoint global_pos = QCursor::pos();
   const QPoint local_pos = viewport()->mapFromGlobal(global_pos);
   const int delta = autoScrollDelta(local_pos.y(), viewport()->height());

@@ -1,7 +1,7 @@
 #pragma once
 
-#include <QBasicTimer>
 #include <QScrollArea>
+#include <QTimer>
 
 class ChartsScrollArea : public QScrollArea {
   Q_OBJECT
@@ -11,9 +11,6 @@ class ChartsScrollArea : public QScrollArea {
   void startAutoScroll();
   void stopAutoScroll();
 
- protected:
-  void timerEvent(QTimerEvent* event) override;
-
  private:
   static constexpr int kAutoScrollIntervalMs = 16;  // ~60Hz for smooth scrolling
   static constexpr int kAutoScrollMargin = 60;       // Edge sensitivity zone in pixels
@@ -21,6 +18,7 @@ class ChartsScrollArea : public QScrollArea {
   static constexpr int kMaxScrollSpeed = 30;
 
   int autoScrollDelta(int pos, int viewportHeight) const;
+  void doAutoScroll();
 
-  QBasicTimer auto_scroll_timer_;
+  QTimer* auto_scroll_timer_ = nullptr;
 };

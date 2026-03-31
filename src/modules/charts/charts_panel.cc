@@ -316,7 +316,7 @@ void ChartsPanel::restoreChartsFromIds(const QStringList& chart_ids) {
       auto* msg = GetDBC()->msg(msg_id);
       if (!msg) continue;
 
-      auto* sig = msg->findSignal(sig_parts[1]);
+      auto* sig = msg->sig(sig_parts[1]);
       if (sig) showChart(msg_id, sig, true, index++ > 0);
     }
   }
