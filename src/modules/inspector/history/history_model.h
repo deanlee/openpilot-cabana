@@ -1,7 +1,6 @@
 #pragma once
 #include <QAbstractTableModel>
 #include <QColor>
-#include <deque>
 #include <vector>
 
 #include "core/dbc/dbc_manager.h"
@@ -54,11 +53,11 @@ class MessageHistoryModel : public QAbstractTableModel {
 
  private:
   MessageState hex_colors;
-  const int batch_size = 50;
+  static constexpr int batch_size = 50;
   int filter_sig_idx = -1;
   double filter_value = 0;
   std::function<bool(double, double)> filter_cmp = nullptr;
-  std::deque<LogEntry> messages;
+  std::vector<LogEntry> messages;
   std::vector<SignalColumn> sigs;
   bool hex_mode = false;
   bool is_paused = false;

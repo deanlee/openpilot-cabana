@@ -146,17 +146,18 @@ void MessageHistoryModel::fetchData(int insert_pos_idx, uint64_t from_time, uint
       std::lower_bound(events.rbegin(), events.rend(), from_time, [](auto e, uint64_t ts) { return e->mono_ns > ts; });
 
   std::vector<MessageHistoryModel::LogEntry> msgs;
-  std::vector<double> values(sigs.size());
+  const int sig_count = static_cast<int>(sigs.size());
+  std::vector<double> values(sig_count);
   msgs.reserve(batch_size);
   for (; first != events.rend(); ++first) {
     const CanEvent* e = *first;
     if (e->mono_ns <= min_time) break;
 
-    for (int i = 0; i < static_cast<int>(sigs.size()); ++i) {
+    for (int i = 0; i < sig_count; ++i) {
       values[i] = sigs[i].sig->parse(e->dat, e->size).value_or(0);
     }
     const bool passes = !filter_cmp ||
-        (filter_sig_idx >= 0 && filter_sig_idx < static_cast<int>(values.size()) &&
+        (filter_sig_idx >= 0 && filter_sig_idx < sig_count &&
          filter_cmp(values[filter_sig_idx], filter_value));
     if (passes) {
       auto& m = msgs.emplace_back(LogEntry{e->mono_ns, values, e->size});
