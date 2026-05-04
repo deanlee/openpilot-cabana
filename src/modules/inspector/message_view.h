@@ -19,7 +19,7 @@ class MessageView : public QWidget {
   void setMessage(const MessageId& message_id);
   void refresh();
   std::pair<QString, QStringList> serializeMessageIds() const;
-  void restoreTabs(const QString active_msg_id, const QStringList& msg_ids);
+  void restoreTabs(const QString& active_msg_id, const QStringList& msg_ids);
   void resetState();
   void toggleCenterOrientation();
 

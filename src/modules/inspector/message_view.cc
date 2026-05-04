@@ -195,7 +195,7 @@ std::pair<QString, QStringList> MessageView::serializeMessageIds() const {
   return {msg_id.toString(), msgs};
 }
 
-void MessageView::restoreTabs(const QString active_msg_id, const QStringList& msg_ids) {
+void MessageView::restoreTabs(const QString& active_msg_id, const QStringList& msg_ids) {
   resetState();
   tabbar->blockSignals(true);
   for (const auto& str_id : msg_ids) {
@@ -215,8 +215,8 @@ void MessageView::restoreTabs(const QString active_msg_id, const QStringList& ms
 void MessageView::refresh() {
   QStringList warnings;
   auto msg = GetDBC()->msg(msg_id);
-  auto* can_msg = StreamManager::stream()->snapshot(msg_id);
   if (msg) {
+    auto* can_msg = StreamManager::stream()->snapshot(msg_id);
     if (msg_id.source == INVALID_SOURCE) {
       warnings.push_back(tr("No messages received."));
     } else if (can_msg->ts > 0 && msg->size != can_msg->size) {
