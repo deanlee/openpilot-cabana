@@ -1,10 +1,13 @@
 #pragma once
 
+#include <QPixmap>
+#include <QTimer>
 #include <memory>
 
 #include "camera_view.h"
 #include "replay/include/logreader.h"
 #include "replay/include/timeline.h"
+#include "thumbnail_cache.h"
 
 const int THUMBNAIL_MARGIN = 3;
 const int MIN_VIDEO_HEIGHT = 100;
@@ -24,17 +27,34 @@ class PlaybackCameraView : public CameraView {
  public:
   PlaybackCameraView(std::string stream_name, VisionStreamType stream_type, QWidget* parent = nullptr);
   void paintGL() override;
-  void parseQLog(std::shared_ptr<LogReader> qlog);
+
+  // Shadows CameraView::setStreamType to also retarget the thumbnail cache.
+  void setStreamType(VisionStreamType type);
+
+  // Update hover time and (debounced) kick off an async thumbnail request.
+  // seconds < 0 hides any thumbnail overlay.
+  void setHoverTime(double seconds);
+
+ private slots:
+  void onThumbnailReady(double seconds, QPixmap pixmap);
+  void onHoverDebounceTimeout();
 
  private:
-  QPixmap generateThumbnail(QPixmap thumbnail, double seconds);
+  QPixmap decorateScrubThumbnail(const QPixmap& thumb, double seconds);
+  QPixmap decorateHoverThumbnail(const QPixmap& thumb, double seconds);
   void drawAlert(QPainter& p, const QRect& rect, const Timeline::Entry& alert);
   void drawThumbnail(QPainter& p);
   void drawScrubThumbnail(QPainter& p);
   void drawTime(QPainter& p, const QRect& rect, double seconds);
 
-  QMap<uint64_t, QPixmap> big_thumbnails;
-  QMap<uint64_t, QPixmap> thumbnails;
+  ThumbnailCache thumb_cache_;
+  QTimer hover_debounce_;
+  double pending_hover_time_ = -1;
   double thumbnail_dispaly_time = -1;
+
+  // Last decoded thumbnail (kept as the most recent full-res pixmap).
+  QPixmap last_thumb_pixmap_;
+  double last_thumb_time_ = -1;
+
   friend class VideoPlayer;
 };

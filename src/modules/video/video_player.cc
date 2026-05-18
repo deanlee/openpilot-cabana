@@ -169,8 +169,6 @@ QWidget* VideoPlayer::createCameraWidget() {
   connect(&StreamManager::instance(), &StreamManager::eventsMerged, slider, &TimelineSlider::updateCache);
   connect(&StreamManager::instance(), &StreamManager::qLogLoaded, slider, &TimelineSlider::updateCache,
           Qt::QueuedConnection);
-  connect(&StreamManager::instance(), &StreamManager::qLogLoaded, cam_widget, &PlaybackCameraView::parseQLog,
-          Qt::QueuedConnection);
   connect(cam_widget, &PlaybackCameraView::clicked,
           []() { StreamManager::stream()->pause(!StreamManager::stream()->isPaused()); });
   connect(cam_widget, &PlaybackCameraView::vipcAvailableStreamsUpdated, this,
@@ -251,9 +249,7 @@ void VideoPlayer::updatePlayBtnState() {
 
 void VideoPlayer::showThumbnail(double seconds) {
   if (StreamManager::stream()->liveStreaming()) return;
-
-  cam_widget->thumbnail_dispaly_time = seconds;
-  cam_widget->update();
+  cam_widget->setHoverTime(seconds);
 }
 
 void VideoPlayer::showRouteInfo() {
