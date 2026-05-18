@@ -42,6 +42,17 @@ class Settings : public QObject {
   QByteArray message_header_state;
   DragDirection drag_direction = MsbFirst;
 
+  // Last opened stream options and parameters
+  int last_stream_option = 0;
+  QString last_route;
+  QStringList last_asc_files;
+  QStringList last_candump_files;
+  QStringList last_trc_files;
+  QString last_panda_serial;
+  QString last_socketcan_device;
+  QString last_device_ip;
+  int last_device_type = 1; // Default to ZMQ (1)
+
   // session data
   QString recent_dbc_file;
   QString active_msg_id;

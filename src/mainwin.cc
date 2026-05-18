@@ -364,22 +364,25 @@ public:
       void *context = zmq_ctx_new();
       void *subscriber = zmq_socket(context, ZMQ_SUB);
       zmq_setsockopt(subscriber, ZMQ_SUBSCRIBE, "", 0);
-      int timeout = 1500; // 1.5 seconds timeout
+      int timeout = 2500; // Increase to 2.5 seconds timeout
       zmq_setsockopt(subscriber, ZMQ_RCVTIMEO, &timeout, sizeof(int));
       
       std::string addr = "tcp://" + ip.toStdString() + ":" + std::to_string(panda_states_port);
       if (zmq_connect(subscriber, addr.c_str()) == 0) {
+        QThread::msleep(500); // Allow ZMQ background connection handshake to complete
         zmq_msg_t reply_msg;
         zmq_msg_init(&reply_msg);
-        if (zmq_msg_recv(&reply_msg, subscriber, 0) > 0) {
+        int rc = zmq_msg_recv(&reply_msg, subscriber, 0);
+        if (rc > 0) {
           try {
             int size = zmq_msg_size(&reply_msg);
             if (size >= 8) {
+              int words_size = size / sizeof(capnp::word);
+              std::vector<capnp::word> aligned_buf(words_size);
+              memcpy(aligned_buf.data(), zmq_msg_data(&reply_msg), size);
+              
               capnp::FlatArrayMessageReader reader(
-                kj::ArrayPtr<const capnp::word>(
-                  reinterpret_cast<const capnp::word*>(zmq_msg_data(&reply_msg)),
-                  size / sizeof(capnp::word)
-                )
+                kj::ArrayPtr<const capnp::word>(aligned_buf.data(), words_size)
               );
               auto event = reader.getRoot<cereal::Event>();
               if (event.which() == cereal::Event::Which::PANDA_STATES) {
@@ -409,6 +412,7 @@ private:
   QLabel *title_label;
   QLabel *ping_label;
   QLabel *socket_label;
+  QLabel *zmq_label;
   QLabel *ignition_label;
   QLabel *advice_label;
   QTimer *diag_timer;
@@ -418,7 +422,7 @@ public:
   ZmqLoadDialog(QString ip_address, QWidget *parent = nullptr) : QDialog(parent), ip(ip_address) {
     setWindowTitle(tr("Connecting to ZMQ Stream"));
     setWindowModality(Qt::WindowModal);
-    setFixedSize(420, 280);
+    setFixedSize(420, 310);
 
     QVBoxLayout *layout = new QVBoxLayout(this);
     layout->setContentsMargins(20, 20, 20, 20);
@@ -435,14 +439,17 @@ public:
 
     ping_label = new QLabel("⚪ [Ping] ➔ Connecting...", this);
     socket_label = new QLabel("⚪ [Socket] ➔ Connecting...", this);
+    zmq_label = new QLabel("⚪ [ZMQ Handshake] ➔ Connecting...", this);
     ignition_label = new QLabel("⚪ [Ignition] ➔ Connecting...", this);
 
     ping_label->setStyleSheet("font-size: 13px; color: #9ca3af;");
     socket_label->setStyleSheet("font-size: 13px; color: #9ca3af;");
+    zmq_label->setStyleSheet("font-size: 13px; color: #9ca3af;");
     ignition_label->setStyleSheet("font-size: 13px; color: #9ca3af;");
 
     layout->addWidget(ping_label);
     layout->addWidget(socket_label);
+    layout->addWidget(zmq_label);
     layout->addWidget(ignition_label);
 
     QFrame *line = new QFrame(this);
@@ -508,16 +515,22 @@ public:
     }
 
     if (worker->socket_ok) {
+      socket_label->setText(tr("🟢 [Socket] ➔ OK (Port %1 is open)").arg(worker->port));
+      socket_label->setStyleSheet("color: #22c55e; font-size: 13px; font-weight: bold;");
+      
       if (worker->zmq_handshake_ok) {
-        socket_label->setText(tr("🟢 [Socket] ➔ OK (Bridge port %1 listening)").arg(worker->port));
-        socket_label->setStyleSheet("color: #22c55e; font-size: 13px; font-weight: bold;");
+        zmq_label->setText(tr("🟢 [ZMQ Status] ➔ OK (ZMQ handshake succeeded)"));
+        zmq_label->setStyleSheet("color: #22c55e; font-size: 13px; font-weight: bold;");
       } else {
-        socket_label->setText(tr("🔴 [Socket] ➔ KO (Port %1 open but handshake failed)").arg(worker->port));
-        socket_label->setStyleSheet("color: #f59e0b; font-size: 13px; font-weight: bold;");
+        zmq_label->setText(tr("🔴 [ZMQ Status] ➔ KO (Handshake failed)"));
+        zmq_label->setStyleSheet("color: #ef4444; font-size: 13px; font-weight: bold;");
       }
     } else {
-      socket_label->setText(tr("🔴 [Socket] ➔ KO (Bridge port %1 closed)").arg(worker->port));
+      socket_label->setText(tr("🔴 [Socket] ➔ KO (Port %1 is closed)").arg(worker->port));
       socket_label->setStyleSheet("color: #ef4444; font-size: 13px; font-weight: bold;");
+      
+      zmq_label->setText(tr("⚪ [ZMQ Status] ➔ --"));
+      zmq_label->setStyleSheet("color: #9ca3af; font-size: 13px;");
     }
 
     if (!worker->ping_ok) {
@@ -544,8 +557,8 @@ public:
           advice_label->setText(tr("Connection established! Please turn your car's IGNITION ON to start streaming live CAN data."));
         }
       } else {
-        ignition_label->setText(tr("⚪ [Ignition] ➔ -- (Cannot query)"));
-        ignition_label->setStyleSheet("color: #9ca3af; font-size: 13px;");
+        ignition_label->setText(tr("🔴 [Ignition] ➔ KO (Cannot query pandaStates)"));
+        ignition_label->setStyleSheet("color: #ef4444; font-size: 13px; font-weight: bold;");
         advice_label->setText(tr("Port is open, but cannot query pandaStates. Check your firewall settings."));
       }
     }

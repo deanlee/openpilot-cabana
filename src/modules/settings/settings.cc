@@ -35,6 +35,15 @@ void settings_op(SettingOperation op) {
   op(s, "active_msg_id", settings.active_msg_id);
   op(s, "selected_msg_ids", settings.selected_msg_ids);
   op(s, "active_charts", settings.active_charts);
+  op(s, "last_stream_option", settings.last_stream_option);
+  op(s, "last_route", settings.last_route);
+  op(s, "last_asc_files", settings.last_asc_files);
+  op(s, "last_candump_files", settings.last_candump_files);
+  op(s, "last_trc_files", settings.last_trc_files);
+  op(s, "last_panda_serial", settings.last_panda_serial);
+  op(s, "last_socketcan_device", settings.last_socketcan_device);
+  op(s, "last_device_ip", settings.last_device_ip);
+  op(s, "last_device_type", settings.last_device_type);
 }
 
 Settings::Settings() {

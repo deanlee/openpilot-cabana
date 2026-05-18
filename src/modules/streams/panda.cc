@@ -9,6 +9,7 @@
 #include <QTimer>
 
 #include "modules/system/stream_manager.h"
+#include "modules/settings/settings.h"
 
 PandaWidget::PandaWidget(QWidget* parent) : AbstractStreamWidget(parent) {
   form_layout = new QFormLayout(this);
@@ -41,6 +42,12 @@ void PandaWidget::refreshSerials() {
   serial_edit->clear();
   for (auto serial : Panda::list()) {
     serial_edit->addItem(QString::fromStdString(serial));
+  }
+  if (!settings.last_panda_serial.isEmpty()) {
+    int idx = serial_edit->findText(settings.last_panda_serial);
+    if (idx != -1) {
+      serial_edit->setCurrentIndex(idx);
+    }
   }
 }
 
@@ -116,7 +123,9 @@ void PandaWidget::buildConfigForm() {
 
 AbstractStream* PandaWidget::open() {
   try {
-    return new PandaStream(qApp, config);
+    auto stream = new PandaStream(qApp, config);
+    settings.last_panda_serial = config.serial;
+    return stream;
   } catch (std::exception& e) {
     QMessageBox::warning(nullptr, tr("Warning"), tr("Failed to connect to panda: '%1'").arg(e.what()));
     return nullptr;

@@ -8,6 +8,7 @@
 #include <QRegularExpressionValidator>
 
 #include "core/streams/device_stream.h"
+#include "modules/settings/settings.h"
 
 DeviceWidget::DeviceWidget(QWidget* parent) : AbstractStreamWidget(parent) {
   QRadioButton* msgq = new QRadioButton(tr("MSGQ"));
@@ -30,11 +31,24 @@ DeviceWidget::DeviceWidget(QWidget* parent) : AbstractStreamWidget(parent) {
   setFocusProxy(ip_address);
   connect(group, qOverload<QAbstractButton*, bool>(&QButtonGroup::buttonToggled),
           [=](QAbstractButton* button, bool checked) { ip_address->setEnabled(button == zmq && checked); });
-  zmq->setChecked(true);
+
+  if (!settings.last_device_ip.isEmpty()) {
+    ip_address->setText(settings.last_device_ip);
+  }
+  if (settings.last_device_type == 0) {
+    msgq->setChecked(true);
+    ip_address->setEnabled(false);
+  } else {
+    zmq->setChecked(true);
+    ip_address->setEnabled(true);
+  }
 }
 
 AbstractStream* DeviceWidget::open() {
   QString ip = ip_address->text().isEmpty() ? "127.0.0.1" : ip_address->text();
   bool msgq = group->checkedId() == 0;
-  return new DeviceStream(qApp, msgq ? "" : ip);
+  auto stream = new DeviceStream(qApp, msgq ? "" : ip);
+  settings.last_device_ip = ip_address->text();
+  settings.last_device_type = msgq ? 0 : 1;
+  return stream;
 }

@@ -1,5 +1,6 @@
 #include "status_bar.h"
 
+#include <chrono>
 #include <unistd.h>
 
 #include <QFontDatabase>
@@ -7,6 +8,9 @@
 #include <QProgressBar>
 #include <QTimer>
 
+#include "modules/system/stream_manager.h"
+#include "core/streams/abstract_stream.h"
+#include "core/streams/device_stream.h"
 #ifdef __linux__
 #include <unistd.h>
 
@@ -35,6 +39,7 @@ StatusBar::StatusBar(QWidget* parent) : QStatusBar(parent) {
   status_label_ = new QLabel(this);
   cpu_label_ = new QLabel(this);
   mem_label_ = new QLabel(this);
+  live_stats_label_ = new QLabel(this);
 
   QFont mono_font = QFontDatabase::systemFont(QFontDatabase::FixedFont);
   mono_font.setPixelSize(12);
@@ -43,23 +48,88 @@ StatusBar::StatusBar(QWidget* parent) : QStatusBar(parent) {
   status_label_->setFont(mono_font);
   cpu_label_->setFont(mono_font);
   mem_label_->setFont(mono_font);
+  live_stats_label_->setFont(mono_font);
 
   // Add in order (Right to Left)
   addPermanentWidget(progress_bar_);
   addPermanentWidget(status_label_);
   addPermanentWidget(cpu_label_);
   addPermanentWidget(mem_label_);
+  addPermanentWidget(live_stats_label_);
 
   setStyleSheet("QStatusBar::item { border: none; padding-left: 10px; }");
+
+  connect(&StreamManager::instance(), &StreamManager::streamChanged, this, &StatusBar::monitorLiveStream);
 
   timer_ = new QTimer(this);
   connect(timer_, &QTimer::timeout, this, &StatusBar::updateMetrics);
   timer_->start(2000);
 }
 
+void StatusBar::monitorLiveStream() {
+  // Only monitor remote device streams (not local logs/replays)
+  if (StreamManager::instance().isLiveStream() && 
+      dynamic_cast<DeviceStream*>(StreamManager::stream()) != nullptr) {
+    connect(StreamManager::stream(), &AbstractStream::eventsMerged, this, [this](const MessageEventsMap& events_map) {
+      int64_t total_events = 0;
+      uint64_t total_size = 0;
+      for (const auto& [id, events] : events_map) {
+        total_events += events.size();
+        for (const auto* e : events) {
+          total_size += sizeof(CanEvent) + e->size;
+        }
+      }
+
+      auto now = std::chrono::steady_clock::now();
+      auto elapsed = std::chrono::duration<double>(now - last_time_).count();
+      if (elapsed >= 1.0) {
+        // Calculate average interval (ms) over the last period
+        int64_t event_delta = total_events - last_event_count_;
+        if (event_delta > 0) {
+          last_avg_interval_ = (elapsed * 1000.0) / event_delta;
+        }
+
+        // Update last minute counters
+        last_minute_count_ = total_events - last_event_count_;
+        last_minute_data_ = total_size - last_data_size_;
+
+        // Reset counters for next interval
+        last_event_count_ = total_events;
+        last_data_size_ = total_size;
+        last_time_ = now;
+      }
+    });
+  }
+}
+
 void StatusBar::updateMetrics() {
   double cpu_percent = 0.0;
   double mem_mb = 0.0;
+
+  // Update live stream stats if active
+  if (StreamManager::instance().isLiveStream() && 
+      dynamic_cast<DeviceStream*>(StreamManager::stream()) != nullptr) {
+    // Calculate total events and data size
+    int64_t total_event_count = 0;
+    uint64_t total_data_size = 0;
+    const auto& events_map = StreamManager::stream()->eventsMap();
+    for (const auto& [id, events] : events_map) {
+      total_event_count += events.size();
+      for (const auto* e : events) {
+        total_data_size += sizeof(CanEvent) + e->size;
+      }
+    }
+
+    QString stats_text = QString("Avg: %1ms | Last 1s: %2 events (%3) | Total: %4 events (%5)")
+                            .arg(last_avg_interval_, 6, 'f', 2)
+                            .arg(last_minute_count_, 6)
+                            .arg(QString::fromStdString(formattedDataSize(last_minute_data_)))
+                            .arg(total_event_count, 6)
+                            .arg(QString::fromStdString(formattedDataSize(total_data_size)));
+    live_stats_label_->setText(stats_text);
+  } else {
+    live_stats_label_->setText("");
+  }
 
 #ifdef __linux__
   uint64_t proc_utime, proc_stime;

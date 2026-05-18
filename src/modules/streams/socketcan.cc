@@ -6,6 +6,8 @@
 #include <QMessageBox>
 #include <QPushButton>
 
+#include "modules/settings/settings.h"
+
 SocketCanWidget::SocketCanWidget(QWidget* parent) : AbstractStreamWidget(parent) {
   QVBoxLayout* main_layout = new QVBoxLayout(this);
   main_layout->addStretch(1);
@@ -35,13 +37,21 @@ void SocketCanWidget::refreshDevices() {
   for (auto& device : QCanBus::instance()->availableDevices(QStringLiteral("socketcan"))) {
     device_edit->addItem(device.name());
   }
+  if (!settings.last_socketcan_device.isEmpty()) {
+    int idx = device_edit->findText(settings.last_socketcan_device);
+    if (idx != -1) {
+      device_edit->setCurrentIndex(idx);
+    }
+  }
   config.device = device_edit->currentText();
   emit enableOpenButton(!config.device.isEmpty());
 }
 
 AbstractStream* SocketCanWidget::open() {
   try {
-    return new SocketCanStream(qApp, config);
+    auto stream = new SocketCanStream(qApp, config);
+    settings.last_socketcan_device = config.device;
+    return stream;
   } catch (std::exception& e) {
     QMessageBox::warning(nullptr, tr("Warning"), tr("Failed to connect to SocketCAN device: '%1'").arg(e.what()));
     return nullptr;

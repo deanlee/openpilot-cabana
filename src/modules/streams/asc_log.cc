@@ -30,6 +30,13 @@ AscLogWidget::AscLogWidget(QWidget* parent) : AbstractStreamWidget(parent) {
   setFocusProxy(file_edit_);
   emit enableOpenButton(false);
 
+  if (!settings.last_asc_files.isEmpty()) {
+    file_paths_ = settings.last_asc_files;
+    file_edit_->setText(file_paths_.size() == 1 ? file_paths_.first()
+                                                : tr("%1 files selected").arg(file_paths_.size()));
+    emit enableOpenButton(true);
+  }
+
   connect(browse_btn, &QPushButton::clicked, this, [this]() {
     QStringList files = QFileDialog::getOpenFileNames(this, tr("Open ASC Log File(s)"),
                                                      settings.last_dir,
@@ -58,5 +65,6 @@ AbstractStream* AscLogWidget::open() {
     delete stream;
     return nullptr;
   }
+  settings.last_asc_files = file_paths_;
   return stream;
 }

@@ -15,8 +15,10 @@
 
 StreamSelector::StreamSelector(QWidget* parent) : QDialog(parent) {
   setWindowTitle(tr("Open stream"));
+  setMinimumWidth(620);
   QVBoxLayout* layout = new QVBoxLayout(this);
   tab = new QTabWidget(this);
+  tab->setUsesScrollButtons(false);
   layout->addWidget(tab);
 
   QHBoxLayout* dbc_layout = new QHBoxLayout();
@@ -53,10 +55,15 @@ StreamSelector::StreamSelector(QWidget* parent) : QDialog(parent) {
   }
   addStreamWidget(new DeviceWidget, tr("&Device"));
 
+  if (settings.last_stream_option >= 0 && settings.last_stream_option < tab->count()) {
+    tab->setCurrentIndex(settings.last_stream_option);
+  }
+
   connect(btn_box, &QDialogButtonBox::rejected, this, &QDialog::reject);
   connect(btn_box, &QDialogButtonBox::accepted, [=]() {
     setEnabled(false);
     if (stream_ = ((AbstractStreamWidget*)tab->currentWidget())->open(); stream_) {
+      settings.last_stream_option = tab->currentIndex();
       accept();
     }
     setEnabled(true);

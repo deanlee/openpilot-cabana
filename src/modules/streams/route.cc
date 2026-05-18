@@ -17,6 +17,7 @@ RouteWidget::RouteWidget(QWidget* parent) : AbstractStreamWidget(parent) {
   grid_layout->addWidget(new QLabel(tr("Route")), 0, 0);
   grid_layout->addWidget(route_edit = new QLineEdit(this), 0, 1);
   route_edit->setPlaceholderText(tr("Enter route name or browse for local/remote route"));
+  route_edit->setText(settings.last_route);
   auto browse_remote_btn = new QPushButton(tr("Browse remote..."), this);
   grid_layout->addWidget(browse_remote_btn, 0, 2);
   auto browse_local_btn = new QPushButton(tr("Browse local..."), this);
@@ -66,6 +67,7 @@ AbstractStream* RouteWidget::open() {
     if (flags == REPLAY_FLAG_NONE && !cameras[0]->isChecked()) flags = REPLAY_FLAG_NO_VIPC;
 
     if (replay_stream->loadRoute(route, data_dir, flags)) {
+      settings.last_route = route_edit->text();
       return replay_stream.release();
     }
   }
