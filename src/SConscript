@@ -12,7 +12,7 @@ qt_env['QT_MOCFROMHDIR'] = os.path.join(build_dir, 'moc')
 qt_env['QT_MOCFROMCXXDIR'] = os.path.join(build_dir, 'moc')
 
 qt_env["CPPPATH"] += ["#"]
-qt_modules = ["Widgets", "Gui", "Core", "Concurrent", "DBus", "Svg", "OpenGL", "OpenGLWidgets", "PrintSupport", "Charts", "SerialBus"]
+qt_modules = ["Widgets", "Gui", "Core", "Concurrent", "DBus", "Svg", "OpenGL", "OpenGLWidgets", "PrintSupport", "Charts", "SerialBus", "Network"]
 
 qt_libs = []
 qt_host_bins = ""
@@ -59,10 +59,9 @@ qt_env['QT3DIR'] = qt_env['QTDIR']
 qt_env.Tool('qt3')
 
 # Define absolute paths to binaries
-moc_bin = os.path.join(qt_host_bins, 'moc')
-
-uic_bin = os.path.join(qt_host_bins, 'uic')
-rcc_bin = os.path.join(qt_host_bins, 'rcc')
+moc_bin = '/usr/lib/qt6/moc' if os.path.exists('/usr/lib/qt6/moc') else os.path.join(qt_host_bins, 'moc')
+uic_bin = '/usr/lib/qt6/uic' if os.path.exists('/usr/lib/qt6/uic') else os.path.join(qt_host_bins, 'uic')
+rcc_bin = '/usr/lib/qt6/rcc' if os.path.exists('/usr/lib/qt6/rcc') else os.path.join(qt_host_bins, 'rcc')
 
 # Replace the command templates that SCons uses internally
 qt_env.Replace(
