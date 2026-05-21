@@ -40,43 +40,40 @@ assert arch in [
 ]
 
 env = Environment(
-  ENV={
-    "PATH": os.environ['PATH'],
-    "PYTHONPATH": Dir("#").abspath + "/opendbc",
-  },
-  CC='clang',
-  CXX='clang++',
-  CCFLAGS=[
-    "-g",
-    "-fPIC",
-    "-O2",
-    "-Wunused",
-    "-Werror",
-    "-Wshadow",
-    "-Wno-unknown-warning-option",
-    "-Wno-inconsistent-missing-override",
-    "-Wno-c99-designator",
-    "-Wno-reorder-init-list",
-    "-Wno-vla-cxx-extension",
-  ],
-  CFLAGS=["-std=gnu11"],
-  CXXFLAGS=["-std=c++20"],
-  CPPPATH=[
-    "#",
-    "#replay",
-    "#replay/msgq",
-    "#replay/include"
-  ],
-  LIBPATH=[
-    "#replay/common",
-    "#replay/msgq",
-  ],
-  RPATH=[],
-  CYTHONCFILESUFFIX=".cpp",
-  COMPILATIONDB_USE_ABSPATH=True,
-  REDNOSE_ROOT="#",
-  tools=["default", "cython"],
-  toolpath=["#replay/msgq/site_scons/site_tools"],
+    ENV={
+        "PATH": os.environ["PATH"],
+        "PYTHONPATH": Dir("#").abspath + "/opendbc",
+    },
+    CC="clang",
+    CXX="clang++",
+    CCFLAGS=[
+        "-g",
+        "-fPIC",
+        "-O3",
+        "-march=native",  # Use all CPU instructions available locally
+        "-ffp-contract=fast",  # Enables Fused Multiply-Add (FMA) for chart math
+        "-Wunused",
+        "-Werror",
+        "-Wshadow",
+        "-Wno-unknown-warning-option",
+        "-Wno-inconsistent-missing-override",
+        "-Wno-c99-designator",
+        "-Wno-reorder-init-list",
+        "-Wno-vla-cxx-extension",
+    ],
+    LINKFLAGS=[
+        "-O3",
+    ],
+    CFLAGS=["-std=gnu11"],
+    CXXFLAGS=["-std=c++20"],
+    CPPPATH=["#", "#replay", "#replay/msgq", "#replay/include"],
+    LIBPATH=["#replay/common", "#replay/msgq"],
+    RPATH=[],
+    CYTHONCFILESUFFIX=".cpp",
+    COMPILATIONDB_USE_ABSPATH=True,
+    REDNOSE_ROOT="#",
+    tools=["default", "cython"],
+    toolpath=["#replay/msgq/site_scons/site_tools"],
 )
 
 # Arch-specific flags and paths
@@ -102,6 +99,7 @@ elif arch == "Darwin":
     f"{brew_prefix}/include",
     f"{brew_prefix}/opt/openssl@3.0/include",
   ])
+  env["LINKFLAGS"].remove("-fuse-ld=lld") # not available on macOS
 else:
   env.Append(LIBPATH=[
     "/usr/lib",
