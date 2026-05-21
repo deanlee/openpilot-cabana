@@ -3,19 +3,15 @@
 #include <QDockWidget>
 #include <QMainWindow>
 #include <QMenu>
-#include <QSplitter>
-
 #include "core/dbc/dbc_manager.h"
 #include "modules/charts/charts_panel.h"
 #include "modules/inspector/message_inspector.h"
 #include "modules/message_list/message_list.h"
 #include "modules/video/video_player.h"
 #include "tools/findsimilarbits.h"
-#include "widgets/panel_splitter.h"
 #include "widgets/status_bar.h"
 
 class DbcController;
-class QVBoxLayout;
 
 class MainWindow : public QMainWindow {
   Q_OBJECT
@@ -63,12 +59,10 @@ class MainWindow : public QMainWindow {
 
   VideoPlayer* video_player_ = nullptr;
   QDockWidget* video_dock_ = nullptr;
+  QDockWidget* charts_dock_ = nullptr;
   QDockWidget* messages_dock_ = nullptr;
   MessageList* message_list_ = nullptr;
   MessageInspector* inspector_widget_ = nullptr;
-  QWidget* floating_window_ = nullptr;
-  QVBoxLayout* charts_layout_ = nullptr;
-  PanelSplitter* video_splitter_ = nullptr;
   StatusBar* status_bar_ = nullptr;
   QMenu* recent_files_menu_ = nullptr;
   QMenu* manage_dbcs_menu_ = nullptr;
