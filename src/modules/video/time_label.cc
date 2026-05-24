@@ -1,5 +1,7 @@
 #include "time_label.h"
 
+#include <cmath>
+
 #include <QFontDatabase>
 #include <QPainter>
 
@@ -12,10 +14,12 @@ TimeLabel::TimeLabel(QWidget* parent) : QWidget(parent) {
   fixed_font = QFontDatabase::systemFont(QFontDatabase::FixedFont);
   bold_font = fixed_font;
   bold_font.setBold(true);
+  setToolTip(settings.absolute_time ? tr("Absolute time") : tr("Elapsed time"));
 }
 
 void TimeLabel::setTime(double cur, double total) {
-  if (cur != current_sec || total != total_sec) {
+  // Avoid strict float equality checks and skip unnecessary repaints.
+  if (std::abs(cur - current_sec) > 1e-6 || std::abs(total - total_sec) > 1e-6) {
     current_sec = cur;
     total_sec = total;
     updateTime();
@@ -40,21 +44,31 @@ void TimeLabel::paintEvent(QPaintEvent* event) {
 }
 
 void TimeLabel::updateTime() {
-  current_sec_text = formatTime(current_sec, true);
-  cur_time_width = QFontMetrics(bold_font).horizontalAdvance(current_sec_text);
+  const QString new_current_text = formatTime(current_sec, true);
+  const int new_cur_width = QFontMetrics(bold_font).horizontalAdvance(new_current_text);
+  QString new_total_text;
 
   if (total_sec >= 0) {
-    total_sec_text = " / " + formatTime(total_sec);
-  } else {
-    total_sec_text.clear();
+    new_total_text = " / " + formatTime(total_sec);
   }
+
+  if (new_current_text == current_sec_text && new_total_text == total_sec_text && new_cur_width == cur_time_width) {
+    return;
+  }
+
+  current_sec_text = new_current_text;
+  total_sec_text = new_total_text;
+  cur_time_width = new_cur_width;
   update();
 }
 
 QString TimeLabel::formatTime(double sec, bool include_milliseconds) {
   const bool abs = settings.absolute_time;
   if (abs) {
-    sec = StreamManager::stream()->beginDateTime().addMSecs(sec * 1000).toMSecsSinceEpoch() / 1000.0;
+    auto* stream = StreamManager::stream();
+    if (stream) {
+      sec = stream->beginDateTime().addMSecs(sec * 1000).toMSecsSinceEpoch() / 1000.0;
+    }
   }
   return utils::formatSeconds(sec, include_milliseconds, abs);
 }
@@ -62,6 +76,6 @@ QString TimeLabel::formatTime(double sec, bool include_milliseconds) {
 void TimeLabel::mousePressEvent(QMouseEvent* event) {
   settings.absolute_time = !settings.absolute_time;
   updateTime();
-  setToolTip(settings.absolute_time ? tr("Elapsed time") : tr("Absolute time"));
+  setToolTip(settings.absolute_time ? tr("Absolute time") : tr("Elapsed time"));
   QWidget::mousePressEvent(event);
 }
