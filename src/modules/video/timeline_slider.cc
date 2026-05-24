@@ -1,5 +1,7 @@
 #include "timeline_slider.h"
 
+#include <cmath>
+
 #include <QMouseEvent>
 #include <QPainter>
 
@@ -42,11 +44,20 @@ void TimelineSlider::setTime(double t) {
 }
 
 void TimelineSlider::setThumbnailTime(double t) {
-  if (thumbnail_display_time != t) {
-    thumbnail_display_time = t;
-    emit timeHovered(t);
-    update();
+  const double old_time = thumbnail_display_time;
+  if (old_time == t) return;
+
+  // Coalesce hover updates that land on the same pixel to reduce repaint and
+  // thumbnail decode churn when the mouse is moving slowly.
+  if (old_time >= 0 && t >= 0) {
+    const int old_x = std::lround(timeToX(old_time));
+    const int new_x = std::lround(timeToX(t));
+    if (old_x == new_x) return;
   }
+
+  thumbnail_display_time = t;
+  emit timeHovered(t);
+  updateHoverIndicator(old_time, t);
 }
 
 void TimelineSlider::paintEvent(QPaintEvent* ev) {
@@ -73,7 +84,7 @@ void TimelineSlider::paintEvent(QPaintEvent* ev) {
   if (thumbnail_display_time >= 0) {
     p.fillRect(QRectF(timeToX(thumbnail_display_time) - 1, 0, 2, height()), palette().highlight());
   }
-  drawScrubber(p, height(), scale);
+  drawScrubber(p, height());
 }
 
 void TimelineSlider::drawEvents(QPainter& p, int y, int h, double scale) {
@@ -94,7 +105,8 @@ void TimelineSlider::drawEvents(QPainter& p, int y, int h, double scale) {
 
 void TimelineSlider::drawUnloadedOverlay(QPainter& p, int y, int h, double scale) {
   auto replay = getReplay();
-  if (!replay || !replay->getEventData()) return;
+  auto event_data = replay ? replay->getEventData() : nullptr;
+  if (!replay || !event_data) return;
 
   QColor overlay = palette().color(QPalette::Window);
   overlay.setAlpha(160);
@@ -103,15 +115,17 @@ void TimelineSlider::drawUnloadedOverlay(QPainter& p, int y, int h, double scale
     double start = n * 60.0;
     double end = start + 60.0;
 
-    if (end > min_time && start < max_time && !replay->getEventData()->isSegmentLoaded(n)) {
+    if (end > min_time && start < max_time && !event_data->isSegmentLoaded(n)) {
       int x1 = std::max(0.0, (start - min_time) * scale);
       int x2 = std::min((double)timeline_cache.width(), (end - min_time) * scale);
-      p.fillRect(x1, y, x2 - x1, h, overlay);
+      if (x2 > x1) {
+        p.fillRect(x1, y, x2 - x1, h, overlay);
+      }
     }
   }
 }
 
-void TimelineSlider::drawScrubber(QPainter& p, int h, double scale) {
+void TimelineSlider::drawScrubber(QPainter& p, int h) {
   double x = timeToX(current_time);
   QColor highlight = palette().highlight().color();
   p.setPen(QPen(QColor(0, 0, 0, 80), 3));
@@ -129,9 +143,12 @@ void TimelineSlider::drawScrubber(QPainter& p, int h, double scale) {
 }
 
 void TimelineSlider::handleMouse(int x) {
+  auto* stream = StreamManager::stream();
+  if (!stream) return;
+
   double seek_to = xToTime(x);
   if (std::abs(seek_to - last_sent_seek_time) > 0.1 || !is_scrubbing) {
-    StreamManager::stream()->seekTo(seek_to);
+    stream->seekTo(seek_to);
     last_sent_seek_time = seek_to;
   }
   current_time = seek_to;
@@ -145,18 +162,19 @@ void TimelineSlider::mousePressEvent(QMouseEvent* e) {
     resume_after_scrub = stream && !stream->isPaused();
 
     if (resume_after_scrub) stream->pause(true);
-    handleMouse(e->position().x());
+    handleMouse(std::lround(e->position().x()));
   }
 }
 
 void TimelineSlider::mouseMoveEvent(QMouseEvent* e) {
-  setThumbnailTime(xToTime(e->position().x()));
+  setThumbnailTime(xToTime(std::lround(e->position().x())));
   bool near = std::abs(e->pos().x() - timeToX(current_time)) < 20;
   if (near != is_hovered) {
     is_hovered = near;
-    update();
+    int x = std::lround(timeToX(current_time));
+    update(QRect(x - 16, 0, 32, height()));
   }
-  if (is_scrubbing) handleMouse(e->position().x());
+  if (is_scrubbing) handleMouse(std::lround(e->position().x()));
 }
 
 void TimelineSlider::mouseReleaseEvent(QMouseEvent* e) {
@@ -200,4 +218,21 @@ double TimelineSlider::xToTime(int x) const {
   if (track_w <= 0) return min_time;
   double t = min_time + (double)(x - kMargin) / track_w * (max_time - min_time);
   return std::clamp(t, min_time, max_time);
+}
+
+void TimelineSlider::updateHoverIndicator(double old_time, double new_time) {
+  const int w = width();
+  if (w <= 0) {
+    update();
+    return;
+  }
+
+  auto repaint_line = [this](double t) {
+    if (t < 0) return;
+    int x = std::lround(timeToX(t));
+    update(QRect(x - 2, 0, 5, height()));
+  };
+
+  repaint_line(old_time);
+  repaint_line(new_time);
 }
