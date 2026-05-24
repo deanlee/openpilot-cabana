@@ -5,8 +5,6 @@
 #include <cstdlib>
 #include <cstring>
 
-#include "modules/settings/settings.h"
-
 namespace {
 
 constexpr float TOGGLE_EMA_ALPHA = 0.15f;  // ~6-sample half-life for change rate EMA
@@ -38,8 +36,9 @@ void MessageState::init(const uint8_t* new_data, uint8_t data_size, double curre
 }
 
 void MessageState::update(const uint8_t* new_data, uint8_t data_size, double current_ts, double manual_freq, bool is_seek) {
-  if (size != data_size) {
-    init(new_data, data_size, current_ts);
+  const uint8_t new_size = std::min<uint8_t>(data_size, MAX_CAN_LEN);
+  if (size != new_size) {
+    init(new_data, new_size, current_ts);
     return;
   }
 
@@ -80,6 +79,7 @@ void MessageState::update(const uint8_t* new_data, uint8_t data_size, double cur
 void MessageState::updateFrequency(double current_ts, double manual_freq, bool is_seek) {
   if (manual_freq > 0) {
     freq = manual_freq;
+    last_freq_ts = current_ts;
   } else if (is_seek || last_freq_ts == 0) {
     last_freq_ts = current_ts;
   } else {
@@ -133,7 +133,10 @@ void MessageState::updateByteAnalysis(int byte_idx, uint8_t old_byte, uint8_t ne
 
 void MessageState::setDbcMask(const std::vector<uint8_t>& mask) {
   dbc_mask_.fill(0);
-  std::memcpy(dbc_mask_.data(), mask.data(), std::min(mask.size(), static_cast<size_t>(size)));
+  const size_t copy_len = std::min(mask.size(), static_cast<size_t>(size));
+  if (copy_len > 0) {
+    std::memcpy(dbc_mask_.data(), mask.data(), copy_len);
+  }
   updateCombinedMask();
 }
 
@@ -162,6 +165,7 @@ void MessageState::unmuteActiveBits() {
 }
 
 BytePatternInfo MessageState::bytePattern(int byte_idx) const {
+  if (byte_idx < 0 || byte_idx >= size) return {};
   const auto& a = analysis[byte_idx];
   return {a.pattern, a.last_change_ts};
 }
