@@ -40,7 +40,7 @@ class PlaybackCameraView : public CameraView {
   void onHoverDebounceTimeout();
 
  private:
-  QPixmap decorateScrubThumbnail(const QPixmap& thumb, double seconds);
+    QPixmap decorateScrubThumbnail(const QPixmap& thumb);
   QPixmap decorateHoverThumbnail(const QPixmap& thumb, double seconds);
   void drawAlert(QPainter& p, const QRect& rect, const Timeline::Entry& alert);
   void drawThumbnail(QPainter& p);

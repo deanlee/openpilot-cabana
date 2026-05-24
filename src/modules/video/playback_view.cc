@@ -1,5 +1,7 @@
 #include "playback_view.h"
 
+#include <cmath>
+
 #include "modules/system/stream_manager.h"
 
 namespace {
@@ -30,6 +32,9 @@ void PlaybackCameraView::setStreamType(VisionStreamType type) {
 }
 
 void PlaybackCameraView::setHoverTime(double seconds) {
+  auto* stream = StreamManager::stream();
+  if (!stream) return;
+
   if (seconds < 0) {
     pending_hover_time_ = -1;
     thumbnail_dispaly_time = -1;
@@ -40,7 +45,6 @@ void PlaybackCameraView::setHoverTime(double seconds) {
   thumbnail_dispaly_time = seconds;
   pending_hover_time_ = seconds;
 
-  auto *stream = StreamManager::stream();
   bool scrubbing = stream && stream->isPaused();
   if (scrubbing) {
     // During active scrub drags, classic debounce can starve requests because
@@ -59,14 +63,20 @@ void PlaybackCameraView::setHoverTime(double seconds) {
 
 void PlaybackCameraView::onHoverDebounceTimeout() {
   if (pending_hover_time_ < 0) return;
+  auto* stream = StreamManager::stream();
+  if (!stream) return;
+
   // Request a height appropriate for the current display mode. When paused we
   // render a full-frame scrub thumbnail; otherwise a small corner thumbnail.
-  bool scrubbing = StreamManager::stream() && StreamManager::stream()->isPaused();
+  bool scrubbing = stream->isPaused();
   int target_h = scrubbing ? height() : (MIN_VIDEO_HEIGHT - THUMBNAIL_MARGIN * 2);
   thumb_cache_.requestThumbnail(pending_hover_time_, std::max(target_h, 64));
 }
 
 void PlaybackCameraView::onThumbnailReady(double seconds, QPixmap pixmap) {
+  // Ignore stale callbacks from older hover requests.
+  if (thumbnail_dispaly_time >= 0 && std::abs(seconds - thumbnail_dispaly_time) > 0.5) return;
+
   last_thumb_pixmap_ = pixmap;
   last_thumb_time_ = seconds;
   update();
@@ -81,18 +91,21 @@ void PlaybackCameraView::paintGL() {
 
   CameraView::paintGL();
 
+  auto* stream = StreamManager::stream();
+  auto* replay = getReplay();
+  if (!stream || !replay) return;
+
   QPainter p(this);
   bool scrubbing = false;
   if (thumbnail_dispaly_time >= 0) {
-    scrubbing = StreamManager::stream()->isPaused();
+    scrubbing = stream->isPaused();
     scrubbing ? drawScrubThumbnail(p) : drawThumbnail(p);
   }
-  if (auto alert =
-          getReplay()->findAlertAtTime(scrubbing ? thumbnail_dispaly_time : StreamManager::stream()->currentSec())) {
+  if (auto alert = replay->findAlertAtTime(scrubbing ? thumbnail_dispaly_time : stream->currentSec())) {
     drawAlert(p, rect(), *alert);
   }
 
-  if (StreamManager::stream()->isPaused()) {
+  if (stream->isPaused()) {
     p.setPen(QColor(200, 200, 200));
     p.setFont(QFont(font().family(), 16, QFont::Bold));
     p.drawText(rect(), Qt::AlignCenter, tr("PAUSED"));
@@ -124,14 +137,14 @@ QPixmap PlaybackCameraView::decorateHoverThumbnail(const QPixmap& thumb, double 
   return scaled;
 }
 
-QPixmap PlaybackCameraView::decorateScrubThumbnail(const QPixmap& thumb, double /*seconds*/) {
+QPixmap PlaybackCameraView::decorateScrubThumbnail(const QPixmap& thumb) {
   return thumb.scaled(rect().size(), Qt::KeepAspectRatio, Qt::SmoothTransformation);
 }
 
 void PlaybackCameraView::drawScrubThumbnail(QPainter& p) {
   p.fillRect(rect(), Qt::black);
   if (last_thumb_pixmap_.isNull()) return;
-  QPixmap scaled_thumb = decorateScrubThumbnail(last_thumb_pixmap_, last_thumb_time_);
+  QPixmap scaled_thumb = decorateScrubThumbnail(last_thumb_pixmap_);
   QRect thumb_rect(rect().center() - scaled_thumb.rect().center(), scaled_thumb.size());
   p.drawPixmap(thumb_rect.topLeft(), scaled_thumb);
   drawTime(p, thumb_rect, thumbnail_dispaly_time);
