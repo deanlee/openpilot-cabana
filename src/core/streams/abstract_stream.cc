@@ -68,6 +68,8 @@ void AbstractStream::commitSnapshots() {
 }
 
 void AbstractStream::setTimeRange(const std::optional<std::pair<double, double>>& range) {
+  if (time_range_ == range) return;
+
   time_range_ = range;
   if (time_range_ && (current_sec_ < time_range_->first || current_sec_ >= time_range_->second)) {
     seekTo(time_range_->first);
@@ -119,8 +121,13 @@ void AbstractStream::updateSnapshotsTo(double sec) {
   for (const auto& [id, ev_list] : events_) {
     if (ev_list.empty()) continue;
 
-    auto [s_min, s_max] = time_index_map_[id].getBounds(ev_list.front()->mono_ns, target_ns, ev_list.size());
-    auto it = std::ranges::upper_bound(ev_list.begin() + s_min, ev_list.begin() + s_max, target_ns, {}, &CanEvent::mono_ns);
+    size_t s_min = 0;
+    size_t s_max = ev_list.size();
+    if (auto idx_it = time_index_map_.find(id); idx_it != time_index_map_.end()) {
+      std::tie(s_min, s_max) = idx_it->second.getBounds(ev_list.front()->mono_ns, target_ns, ev_list.size());
+    }
+    auto it = std::ranges::upper_bound(ev_list.begin() + s_min, ev_list.begin() + s_max, target_ns, {},
+                                       &CanEvent::mono_ns);
     if (it == ev_list.begin()) {
       has_erased |= (shared_state_.master_state.erase(id) > 0);
       has_erased |= (snapshot_map_.erase(id) > 0);
