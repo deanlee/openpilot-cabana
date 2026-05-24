@@ -220,13 +220,18 @@ void MainWindow::createVideoChartsDock() {
 
 void MainWindow::createShortcuts() {
   auto shortcut = new QShortcut(QKeySequence(Qt::Key_Space), this, nullptr, nullptr, Qt::ApplicationShortcut);
-  connect(shortcut, &QShortcut::activated, this,
-          []() { StreamManager::stream()->pause(!StreamManager::stream()->isPaused()); });
+  connect(shortcut, &QShortcut::activated, this, []() {
+    if (auto* stream = StreamManager::stream()) {
+      stream->pause(!stream->isPaused());
+    }
+  });
   // TODO: add more shortcuts here.
 }
 
 void MainWindow::onStreamChanged() {
-  video_splitter_->handle(1)->setEnabled(!StreamManager::instance().isLiveStream());
+  if (auto* handle = video_splitter_->handle(1)) {
+    handle->setEnabled(!StreamManager::instance().isLiveStream());
+  }
 }
 
 void MainWindow::undoStackCleanChanged(bool clean) { setWindowModified(!clean); }
@@ -268,7 +273,10 @@ void MainWindow::closeStream() {
 }
 
 void MainWindow::exportToCSV() {
-  QString dir = QString("%1/%2.csv").arg(settings.last_dir).arg(StreamManager::stream()->routeName());
+  auto* stream = StreamManager::stream();
+  if (!stream) return;
+
+  QString dir = QString("%1/%2.csv").arg(settings.last_dir).arg(stream->routeName());
   QString fn = QFileDialog::getSaveFileName(this, "Export stream to CSV file", dir, tr("csv (*.csv)"));
   if (!fn.isEmpty()) {
     exportMessagesToCSV(fn);
@@ -290,7 +298,7 @@ void MainWindow::openStream(AbstractStream* stream, const QString& dbc_file) {
   export_to_csv_act_->setEnabled(has_stream);
   tools_menu_->setEnabled(has_stream);
 
-  video_dock_->setWindowTitle(sm.stream()->routeName());
+  video_dock_->setWindowTitle(has_stream ? sm.stream()->routeName() : tr("Video"));
   if (is_live_stream || video_splitter_->sizes()[0] == 0) {
     // display video at minimum size.
     video_splitter_->setSizes({1, 1});
@@ -587,13 +595,19 @@ void MainWindow::createLoadingDialog(bool is_live) {
     connect(wait_dlg, &QProgressDialog::canceled, this, &MainWindow::close);
     connect(&StreamManager::instance(), &StreamManager::eventsMerged, wait_dlg, &QProgressDialog::accept);
     connect(&SystemRelay::instance(), &SystemRelay::downloadProgress, wait_dlg,
-            [=](uint64_t cur, uint64_t total, bool success) { wait_dlg->setValue((int)((cur / (double)total) * 100)); });
+            [=](uint64_t cur, uint64_t total, bool success) {
+              Q_UNUSED(success);
+              if (total == 0) return;
+              wait_dlg->setValue((int)((cur / (double)total) * 100));
+            });
     wait_dlg->show();
   }
 }
 
 void MainWindow::eventsMerged() {
   auto* stream = StreamManager::stream();
+  if (!stream) return;
+
   if (!stream->liveStreaming()) {
     const QString prev_fingerprint = car_fingerprint_;
     car_fingerprint_ = stream->carFingerprint();
@@ -655,7 +669,7 @@ void MainWindow::closeEvent(QCloseEvent* event) {
 
   saveSessionState();
   SystemRelay::instance().uninstallHandlers();
-  QWidget::closeEvent(event);
+  QMainWindow::closeEvent(event);
 }
 
 void MainWindow::setOption() {
