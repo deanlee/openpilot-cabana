@@ -1,0 +1,39 @@
+name: Sync AUR package
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'aur/**'
+
+jobs:
+  sync-aur:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup SSH for AUR
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.AUR_SSH_KEY }}" > ~/.ssh/aur
+          chmod 600 ~/.ssh/aur
+          cat >> ~/.ssh/config << 'EOF'
+          Host aur.archlinux.org
+            IdentityFile ~/.ssh/aur
+            StrictHostKeyChecking no
+            User aur
+          EOF
+
+      - name: Push to AUR
+        run: |
+          git clone aur@aur.archlinux.org:openpilot-cabana.git /tmp/aur-sync
+          rsync -av --delete --exclude='.git' aur/ /tmp/aur-sync/
+          cd /tmp/aur-sync
+          git add -A
+          git diff --quiet && exit 0
+          git commit -m "update AUR package to fork commit ${{ github.sha }}"
+          git push

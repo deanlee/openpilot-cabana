@@ -48,7 +48,7 @@ yay -S openpilot-cabana
 paru -S openpilot-cabana
 ```
 
-Report issues with the AUR package [here](https://github.com/P6g9YHK6/openpilot-cabana-arch-aur/issues).
+Report issues with the AUR package [here](https://github.com/P6g9YHK6/openpilot-cabana-arch/issues).
 
 ### Ubuntu / Debian
 
