@@ -60,15 +60,22 @@ class MessageModel : public QAbstractTableModel {
     bool is_exact = false;
   };
 
+  struct CompiledFilter {
+    int column = Column::NAME;
+    QString text;
+    std::optional<FilterRange> range;
+  };
+
   std::optional<FilterRange> parseFilter(QString filter, int base = 10);
   std::vector<Item> fetchItems();
   void sortItems(std::vector<MessageModel::Item>& items) const;
-  bool matchesFilter(const MessageModel::Item& item) const;
+  bool matchesFilter(const MessageModel::Item& item, const dbc::Msg* msg = nullptr) const;
   QString formatFreq(const Item& item) const;
 
   std::vector<Item> items_;
   QMap<int, QString> filters_;
-  QMap<int, FilterRange> filter_ranges_;
+  std::vector<CompiledFilter> compiled_filters_;
+  bool has_dynamic_filters_ = false;
   bool show_inactive_ = true;
   int sort_column_ = 0;
   Qt::SortOrder sort_order_ = Qt::AscendingOrder;

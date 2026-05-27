@@ -77,16 +77,22 @@ void MessageModel::setInactiveMessagesVisible(bool show) {
 
 void MessageModel::setFilterStrings(const QMap<int, QString>& filters) {
   filters_ = filters;
-  filter_ranges_.clear();
+  compiled_filters_.clear();
+  compiled_filters_.reserve(filters.size());
+  has_dynamic_filters_ = false;
 
   for (auto it = filters.cbegin(); it != filters.cend(); ++it) {
     const int col = it.key();
-    // Only pre-parse numeric/range columns
-    if (col == Column::SOURCE || col == Column::ADDRESS || col == Column::FREQ || col == Column::COUNT) {
-      if (auto range = parseFilter(it.value(), col == Column::ADDRESS ? 16 : 10)) {
-        filter_ranges_[col] = *range;
-      }
+    if (col == Column::FREQ || col == Column::COUNT || col == Column::DATA) {
+      has_dynamic_filters_ = true;
     }
+
+    CompiledFilter compiled{.column = col, .text = it.value()};
+    // Pre-parse numeric/range columns once; invalid ranges stay unset and fail during matching.
+    if (col == Column::SOURCE || col == Column::ADDRESS || col == Column::FREQ || col == Column::COUNT) {
+      compiled.range = parseFilter(it.value(), col == Column::ADDRESS ? 16 : 10);
+    }
+    compiled_filters_.push_back(std::move(compiled));
   }
 
   rebuild();
@@ -137,9 +143,7 @@ void MessageModel::rebuild() {
 }
 
 void MessageModel::onSnapshotsUpdated(const std::set<MessageId>* ids, bool needs_rebuild) {
-  if (needs_rebuild ||
-      ((filters_.contains(Column::FREQ) || filters_.contains(Column::COUNT) || filters_.contains(Column::DATA)) &&
-       ++sort_threshold_ == settings.fps)) {
+  if (needs_rebuild || (has_dynamic_filters_ && ++sort_threshold_ == settings.fps)) {
     sort_threshold_ = 0;
     rebuild();
     return;
@@ -173,7 +177,9 @@ std::vector<MessageModel::Item> MessageModel::fetchItems() {
   new_items.reserve(snapshots.size() + dbc_messages.size());
 
   std::unordered_set<uint32_t> snapshot_addrs;
-  snapshot_addrs.reserve(snapshots.size());
+  if (show_inactive_) {
+    snapshot_addrs.reserve(snapshots.size());
+  }
 
   auto processItem = [&](const MessageId& id, const dbc::Msg* msg, const MessageSnapshot* data) {
     const QString& addr_hex = getHexCached(id.address);
@@ -186,7 +192,7 @@ std::vector<MessageModel::Item> MessageModel::fetchItems() {
         .is_active = data && data->is_active,
     };
 
-    if (matchesFilter(item)) {
+    if (matchesFilter(item, msg)) {
       if (msg) {
         dbc_msg_count_++;
         signal_count_ += msg->sigs.size();
@@ -197,7 +203,9 @@ std::vector<MessageModel::Item> MessageModel::fetchItems() {
 
   // Process live snapshots
   for (const auto& [id, data] : snapshots) {
-    snapshot_addrs.insert(id.address);
+    if (show_inactive_) {
+      snapshot_addrs.insert(id.address);
+    }
     if (show_inactive_ || (data && data->is_active)) {
       processItem(id, dbc->msg(id), data.get());
     }
@@ -216,18 +224,17 @@ std::vector<MessageModel::Item> MessageModel::fetchItems() {
   return new_items;
 }
 
-bool MessageModel::matchesFilter(const MessageModel::Item& item) const {
-  for (auto it = filters_.cbegin(); it != filters_.cend(); ++it) {
-    const int col = it.key();
-    const QString& txt = it.value();
+bool MessageModel::matchesFilter(const MessageModel::Item& item, const dbc::Msg* msg) const {
+  for (const auto& filter : compiled_filters_) {
+    const int col = filter.column;
+    const QString& txt = filter.text;
 
     switch (col) {
       case Column::NAME: {
         if (item.name.contains(txt, Qt::CaseInsensitive)) continue;
-        if (auto* m = GetDBC()->msg(item.id)) {
-          if (std::ranges::any_of(m->sigs, [&](const auto& s) { return s->name.contains(txt, Qt::CaseInsensitive); })) {
-            continue;
-          }
+        if (msg && std::ranges::any_of(msg->sigs,
+                                       [&](const auto& s) { return s->name.contains(txt, Qt::CaseInsensitive); })) {
+          continue;
         }
         return false;
       }
@@ -246,10 +253,9 @@ bool MessageModel::matchesFilter(const MessageModel::Item& item) const {
         [[fallthrough]];
 
       default: {  // SOURCE, FREQ, COUNT, and ADDRESS range
-        auto it_range = filter_ranges_.constFind(col);
-        if (it_range == filter_ranges_.constEnd()) return false;
+        if (!filter.range) return false;
 
-        const auto& r = it_range.value();
+        const auto& r = *filter.range;
         const double val = (col == Column::SOURCE)    ? static_cast<double>(item.id.source)
                            : (col == Column::ADDRESS) ? static_cast<double>(item.id.address)
                            : (col == Column::FREQ)    ? (item.data ? item.data->freq : -1.0)
