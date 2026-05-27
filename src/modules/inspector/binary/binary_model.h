@@ -3,7 +3,9 @@
 #include <QAbstractTableModel>
 #include <QColor>
 #include <QFont>
+#include <QHash>
 #include <QSet>
+#include <QVector>
 #include <array>
 #include <optional>
 #include <vector>
@@ -68,6 +70,7 @@ class BinaryModel : public QAbstractTableModel {
   const int column_count = 9;
   bool heatmap_live_mode = true;
   std::vector<Item> items;
+  QHash<const dbc::Signal*, QVector<int>> signal_to_item_indices_;
   QFont header_font_;
 
   bool updateRowCells(int row, const MessageSnapshot* msg, const std::array<uint32_t, 8>& row_flips, uint8_t byte_mask, float log_max,

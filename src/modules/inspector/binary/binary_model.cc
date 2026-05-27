@@ -53,6 +53,7 @@ void BinaryModel::rebuild() {
 void BinaryModel::initializeItems() {
   bit_flip_tracker = {};
   items.clear();
+  signal_to_item_indices_.clear();
 
   auto snapshot = StreamManager::stream()->snapshot(message_id);
   auto dbc_msg = GetDBC()->msg(message_id);
@@ -82,12 +83,15 @@ void BinaryModel::mapSignalsToItems(const dbc::Msg* msg) {
       item.bg_color.setAlpha(100);
 
       item.signal_list.push_back(sig);
+      signal_to_item_indices_[sig].push_back(idx);
+    }
+  }
 
-      // Sort overlapping signals: Smallest (inner) signals last
-      // so they are prioritized for hover/interaction
-      if (item.signal_list.size() > 1) {
-        std::ranges::sort(item.signal_list, std::ranges::greater{}, &dbc::Signal::size);
-      }
+  // Sort overlaps once per populated cell: smallest (inner) signals last
+  // so they are prioritized for hover/interaction.
+  for (auto& item : items) {
+    if (item.signal_list.size() > 1) {
+      std::ranges::sort(item.signal_list, std::ranges::greater{}, &dbc::Signal::size);
     }
   }
 }
@@ -131,6 +135,16 @@ bool BinaryModel::updateItem(int row, int col, uint8_t val, const QColor& color)
 
 void BinaryModel::updateState() {
   const auto* last_msg = StreamManager::stream()->snapshot(message_id);
+  if (!last_msg) {
+    if (row_count > 0) {
+      for (auto& item : items) {
+        item.value = INVALID_BIT;
+      }
+      emit dataChanged(index(0, 0), index(row_count - 1, column_count - 1), {Qt::DisplayRole});
+    }
+    return;
+  }
+
   const size_t msg_size = last_msg->size;
   if (msg_size == 0) {
     for (auto& item : items) {
@@ -186,11 +200,12 @@ void BinaryModel::updateState() {
 }
 
 void BinaryModel::updateSignalCells(const dbc::Signal* sig) {
-  for (int i = 0; i < items.size(); ++i) {
-    if (items[i].signal_list.contains(sig)) {
-      auto index = this->index(i / column_count, i % column_count);
-      emit dataChanged(index, index, {Qt::DisplayRole});
-    }
+  auto it = signal_to_item_indices_.constFind(sig);
+  if (it == signal_to_item_indices_.constEnd()) return;
+
+  for (int idx : it.value()) {
+    auto model_index = this->index(idx / column_count, idx % column_count);
+    emit dataChanged(model_index, model_index, {Qt::DisplayRole});
   }
 }
 
