@@ -84,6 +84,7 @@ QVariant MessageHistoryModel::headerData(int section, Qt::Orientation orientatio
 }
 
 void MessageHistoryModel::setHexMode(bool hex) {
+  if (hex_mode == hex) return;
   hex_mode = hex;
   rebuild();
 }
@@ -104,7 +105,9 @@ void MessageHistoryModel::updateState(bool clear) {
   }
 
   auto* stream = StreamManager::stream();
-  uint64_t current_time = stream->toMonoNs(stream->snapshot(msg_id)->ts) + 1;
+  const auto* snapshot = stream ? stream->snapshot(msg_id) : nullptr;
+  if (!snapshot) return;
+  uint64_t current_time = stream->toMonoNs(snapshot->ts) + 1;
   uint64_t last_time = messages.empty() ? 0 : messages.front().mono_ns;
 
   // Insert at index 0 (top of the list)
@@ -114,6 +117,7 @@ void MessageHistoryModel::updateState(bool clear) {
 }
 
 bool MessageHistoryModel::canFetchMore(const QModelIndex& parent) const {
+  Q_UNUSED(parent);
   // Strategy: Only allow fetching older history when paused to prevent list jumps
   if (!is_paused || messages.empty()) return false;
 
@@ -124,6 +128,7 @@ bool MessageHistoryModel::canFetchMore(const QModelIndex& parent) const {
 }
 
 void MessageHistoryModel::fetchMore(const QModelIndex& parent) {
+  Q_UNUSED(parent);
   if (messages.empty()) return;
   // Fetch older data at the end (Infinite Scroll)
   fetchData(static_cast<int>(messages.size()), messages.back().mono_ns, 0);
@@ -139,37 +144,54 @@ void MessageHistoryModel::pruneToLiveLimit() {
 
 void MessageHistoryModel::fetchData(int insert_pos_idx, uint64_t from_time, uint64_t min_time) {
   auto* stream = StreamManager::stream();
+  if (!stream) return;
   const auto& events = stream->events(msg_id);
   if (events.empty()) return;
 
   auto first =
       std::lower_bound(events.rbegin(), events.rend(), from_time, [](auto e, uint64_t ts) { return e->mono_ns > ts; });
 
+  const bool in_hex_mode = isHexMode();
+  const int sig_count = static_cast<int>(sigs.size());
+  const bool has_filter = filter_cmp && filter_sig_idx >= 0 && filter_sig_idx < sig_count;
+
   std::vector<MessageHistoryModel::LogEntry> msgs;
-  std::vector<double> values(sigs.size());
   msgs.reserve(batch_size);
   for (; first != events.rend(); ++first) {
     const CanEvent* e = *first;
     if (e->mono_ns <= min_time) break;
 
-    for (int i = 0; i < static_cast<int>(sigs.size()); ++i) {
-      values[i] = sigs[i].sig->parse(e->dat, e->size).value_or(0);
+    // Parse filter signal first — reject before any further work
+    double filter_parsed = 0.0;
+    if (has_filter) {
+      filter_parsed = sigs[filter_sig_idx].sig->parse(e->dat, e->size).value_or(0);
+      if (!filter_cmp(filter_parsed, filter_value)) continue;
     }
-    const bool passes = !filter_cmp ||
-        (filter_sig_idx >= 0 && filter_sig_idx < static_cast<int>(values.size()) &&
-         filter_cmp(values[filter_sig_idx], filter_value));
-    if (passes) {
-      auto& m = msgs.emplace_back(LogEntry{e->mono_ns, values, e->size});
-      std::copy_n(e->dat, std::min<int>(e->size, MAX_CAN_LEN), m.data.begin());
-      if (msgs.size() >= batch_size && min_time == 0) {
-        break;
+
+    LogEntry entry;
+    entry.mono_ns = e->mono_ns;
+    entry.size = e->size;
+    std::copy_n(e->dat, std::min<int>(e->size, MAX_CAN_LEN), entry.data.begin());
+
+    // Skip signal decoding entirely in hex mode — delegate renders raw bytes
+    if (!in_hex_mode) {
+      entry.sig_values.resize(sig_count);
+      for (int i = 0; i < sig_count; ++i) {
+        entry.sig_values[i] = (has_filter && i == filter_sig_idx)
+            ? filter_parsed
+            : sigs[i].sig->parse(e->dat, e->size).value_or(0);
       }
     }
+
+    msgs.push_back(std::move(entry));
+    if (msgs.size() >= batch_size && min_time == 0) break;
   }
 
   if (!msgs.empty()) {
-    if (isHexMode() && (min_time > 0 || messages.empty())) {
-      const auto freq = stream->snapshot(msg_id)->freq;
+    if (in_hex_mode && (min_time > 0 || messages.empty())) {
+      const auto* snapshot = stream->snapshot(msg_id);
+      if (!snapshot) return;
+      const auto freq = snapshot->freq;
       const bool is_dark = utils::isDarkTheme();
       for (auto it = msgs.rbegin(); it != msgs.rend(); ++it) {
         double ts = it->mono_ns / 1e9;
@@ -182,8 +204,12 @@ void MessageHistoryModel::fetchData(int insert_pos_idx, uint64_t from_time, uint
     }
 
     beginInsertRows({}, insert_pos_idx, insert_pos_idx + msgs.size() - 1);
-    messages.insert(messages.begin() + insert_pos_idx, std::make_move_iterator(msgs.begin()),
-                    std::make_move_iterator(msgs.end()));
+    // push_front/push_back
+    if (insert_pos_idx == 0) {
+      for (auto it = msgs.rbegin(); it != msgs.rend(); ++it) messages.push_front(std::move(*it));
+    } else {
+      for (auto& m : msgs) messages.push_back(std::move(m));
+    }
     endInsertRows();
   }
 }
