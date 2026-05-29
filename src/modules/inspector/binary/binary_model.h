@@ -73,6 +73,7 @@ class BinaryModel : public QAbstractTableModel {
   QHash<const dbc::Signal*, QVector<int>> signal_to_item_indices_;
   QFont header_font_;
 
+  void clearRowsToInvalid();
   bool updateRowCells(int row, const MessageSnapshot* msg, const std::array<uint32_t, 8>& row_flips, uint8_t byte_mask, float log_max,
                     bool is_light_theme, const QColor& base_bg, float decay_factor);
   QColor calculateBitHeatColor(Item& item, uint32_t flips, bool is_masked, float log_max, bool is_light_theme, const QColor& base_bg,

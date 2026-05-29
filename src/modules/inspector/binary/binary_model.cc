@@ -133,27 +133,23 @@ bool BinaryModel::updateItem(int row, int col, uint8_t val, const QColor& color)
   return false;
 }
 
+void BinaryModel::clearRowsToInvalid() {
+  if (row_count <= 0) return;
+
+  for (auto& item : items) {
+    item.value = INVALID_BIT;
+  }
+  emit dataChanged(index(0, 0), index(row_count - 1, column_count - 1), {Qt::DisplayRole});
+}
+
 void BinaryModel::updateState() {
   const auto* last_msg = StreamManager::stream()->snapshot(message_id);
-  if (!last_msg) {
-    if (row_count > 0) {
-      for (auto& item : items) {
-        item.value = INVALID_BIT;
-      }
-      emit dataChanged(index(0, 0), index(row_count - 1, column_count - 1), {Qt::DisplayRole});
-    }
+  if (!last_msg || last_msg->size == 0) {
+    clearRowsToInvalid();
     return;
   }
 
   const size_t msg_size = last_msg->size;
-  if (msg_size == 0) {
-    for (auto& item : items) {
-      item.value = INVALID_BIT;
-    }
-    emit dataChanged(index(0, 0), index(row_count - 1, column_count - 1), {Qt::DisplayRole});
-    return;
-  }
-
   if (msg_size > row_count) {
     beginInsertRows({}, row_count, msg_size - 1);
     row_count = msg_size;
