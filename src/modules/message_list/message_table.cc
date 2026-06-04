@@ -28,7 +28,7 @@ void MessageTable::dataChanged(const QModelIndex& topLeft, const QModelIndex& bo
 }
 
 void MessageTable::wheelEvent(QWheelEvent* event) {
-  if (event->modifiers() == Qt::ShiftModifier) {
+  if (event->modifiers().testFlag(Qt::ShiftModifier)) {
     QApplication::sendEvent(horizontalScrollBar(), event);
   } else {
     QTreeView::wheelEvent(event);
