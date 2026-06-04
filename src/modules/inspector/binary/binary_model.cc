@@ -22,7 +22,7 @@ BinaryModel::BinaryModel(QObject* parent) : QAbstractTableModel(parent) {
 
 const BinaryModel::Item* BinaryModel::getItem(const QModelIndex& index) const {
   if (!index.isValid()) return nullptr;
-  int idx = index.row() * column_count + index.column();
+  int idx = cellIndex(index.row(), index.column());
   return (idx >= 0 && idx < (int)items.size()) ? &items[idx] : nullptr;
 }
 
@@ -69,7 +69,7 @@ void BinaryModel::mapSignalsToItems(const dbc::Msg* msg) {
       int abs_bit = sig->getBitIndex(j);
       int row = abs_bit / 8;
       int col = 7 - (abs_bit % 8);  // Physical grid: Col 0 is Bit 7
-      int idx = row * column_count + col;
+      int idx = cellIndex(row, col);
 
       if (idx >= items.size()) {
         qWarning() << "Signal" << sig->name << "out of bounds at bit" << abs_bit;
@@ -99,7 +99,7 @@ void BinaryModel::mapSignalsToItems(const dbc::Msg* msg) {
 void BinaryModel::updateBorders() {
   for (int row = 0; row < row_count; ++row) {
     for (int col = 0; col < column_count; ++col) {
-      auto& item = items[row * column_count + col];
+      auto& item = items[cellIndex(row, col)];
       if (item.signal_list.isEmpty()) {
         item.borders = {};
         continue;
@@ -107,7 +107,7 @@ void BinaryModel::updateBorders() {
 
       auto matches = [&](int neighbor_row, int neighbor_col) {
         if (neighbor_row < 0 || neighbor_row >= row_count || neighbor_col < 0 || neighbor_col >= column_count) return false;
-        return items[neighbor_row * column_count + neighbor_col].signal_list == item.signal_list;
+        return items[cellIndex(neighbor_row, neighbor_col)].signal_list == item.signal_list;
       };
 
       item.borders.left = !matches(row, col - 1);
@@ -124,7 +124,7 @@ void BinaryModel::updateBorders() {
 }
 
 bool BinaryModel::updateItem(int row, int col, uint8_t val, const QColor& color) {
-  auto& item = items[row * column_count + col];
+  auto& item = items[cellIndex(row, col)];
   if (item.value != val || item.bg_color != color) {
     item.value = val;
     item.bg_color = color;
@@ -191,7 +191,7 @@ void BinaryModel::updateState() {
   }
 
   if (first_dirty != -1) {
-    emit dataChanged(index(first_dirty, 0), index(last_dirty, 8), {Qt::DisplayRole});
+    emit dataChanged(index(first_dirty, 0), index(last_dirty, kHexColumn), {Qt::DisplayRole});
   }
 }
 
@@ -221,10 +221,10 @@ bool BinaryModel::updateRowCells(int row, const MessageSnapshot* msg, const std:
                                uint8_t byte_mask, float log_max, bool is_light_theme, const QColor& base_bg, float decay_factor) {
   bool row_dirty = false;
   const uint8_t byte_val = msg->data[row];
-  const size_t row_offset = row * column_count;
+  const size_t row_offset = cellIndex(row, 0);
 
   // Update 8 Bit Columns
-  for (int j = 0; j < 8; ++j) {
+  for (int j = 0; j < kBitColumns; ++j) {
     auto& item = items[row_offset + j];
     const int bit_val = (byte_val >> (7 - j)) & 1;
     const bool is_masked = (byte_mask >> (7 - j)) & 1;
@@ -233,9 +233,9 @@ bool BinaryModel::updateRowCells(int row, const MessageSnapshot* msg, const std:
     row_dirty |= updateItem(row, j, bit_val, heat_color);
   }
 
-  // Update 9th Column (Hex Value)
+  // Update Hex Value column
   QColor byte_color = QColor::fromRgba(msg->colors[row]);
-  row_dirty |= updateItem(row, 8, byte_val, byte_color);
+  row_dirty |= updateItem(row, kHexColumn, byte_val, byte_color);
 
   return row_dirty;
 }

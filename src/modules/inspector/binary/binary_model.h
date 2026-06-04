@@ -38,7 +38,7 @@ class BinaryModel : public QAbstractTableModel {
 
   explicit BinaryModel(QObject* parent);
   const Item *getItem(const QModelIndex& index) const;
-  void setMessage(const MessageId& message_id);
+  void setMessage(const MessageId& message_id);  
   void initializeItems();
   void mapSignalsToItems(const dbc::Msg* msg);
   void setHeatmapMode(bool live);
@@ -66,8 +66,13 @@ class BinaryModel : public QAbstractTableModel {
     std::array<std::array<uint32_t, 8>, MAX_CAN_LEN> flip_counts;
   } bit_flip_tracker;
 
+  static constexpr int kBitColumns = 8;            // one column per data bit
+  static constexpr int kHexColumn = kBitColumns;   // trailing column shows the hex byte value
+  static constexpr int column_count = kBitColumns + 1;
+
+  int cellIndex(int row, int col) const { return row * column_count + col; }
+
   int row_count = 0;
-  const int column_count = 9;
   bool heatmap_live_mode = true;
   std::vector<Item> items;
   QHash<const dbc::Signal*, QVector<int>> signal_to_item_indices_;
