@@ -158,12 +158,10 @@ void MessageList::updateTitle() {
 }
 
 void MessageList::onCurrentChanged(const QModelIndex& current) {
-  if (current.isValid()) {
-    auto* item = model_->getItem(current);
-    if (!current_msg_id_ || item->id != *current_msg_id_) {
-      current_msg_id_ = item->id;
-      emit msgSelectionChanged(*current_msg_id_);
-    }
+  auto* item = model_->getItem(current);
+  if (item && (!current_msg_id_ || item->id != *current_msg_id_)) {
+    current_msg_id_ = item->id;
+    emit msgSelectionChanged(*current_msg_id_);
   }
 }
 
