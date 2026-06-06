@@ -1,7 +1,6 @@
 #include "dbc_message.h"
 
 #include <algorithm>
-#include <cmath>
 
 #include "dbc_manager.h"
 #include "utils/util.h"
@@ -23,11 +22,12 @@ MessageId MessageId::fromString(const QString& str) {
   const int sep = str.indexOf(':');
   if (sep == -1) return {};  // Return invalid ID if no separator
 
-  bool ok_src, ok_addr;
-  uint8_t src = static_cast<uint8_t>(str.left(sep).toUInt(&ok_src));
+  bool ok_src = false, ok_addr = false;
+  const uint32_t src_val = str.left(sep).toUInt(&ok_src);
   uint32_t addr = str.mid(sep + 1).toUInt(&ok_addr, 16);
 
-  if (!ok_src || !ok_addr) return {};
+  if (!ok_src || !ok_addr || src_val > std::numeric_limits<uint8_t>::max()) return {};
+  const uint8_t src = static_cast<uint8_t>(src_val);
   return MessageId{src, addr};
 }
 
@@ -63,6 +63,8 @@ void dbc::Msg::removeSignal(const QString& sig_name) {
 }
 
 dbc::Msg& dbc::Msg::operator=(const dbc::Msg& other) {
+  if (this == &other) return *this;
+
   address = other.address;
   name = other.name;
   size = other.size;
@@ -71,6 +73,7 @@ dbc::Msg& dbc::Msg::operator=(const dbc::Msg& other) {
 
   for (auto s : sigs) delete s;
   sigs.clear();
+  sigs.reserve(other.sigs.size());
   for (auto s : other.sigs) {
     sigs.push_back(new dbc::Signal(*s));
   }
@@ -91,7 +94,7 @@ int dbc::Msg::indexOf(const dbc::Signal* sig) const {
   return -1;
 }
 
-QString dbc::Msg::newSignalName() {
+QString dbc::Msg::newSignalName() const {
   QString new_name;
   for (int i = 1; /**/; ++i) {
     new_name = QString("NEW_SIGNAL_%1").arg(i);

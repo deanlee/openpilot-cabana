@@ -56,7 +56,7 @@ class Msg {
   Msg& operator=(const Msg& other);
   int indexOf(const dbc::Signal* sig) const;
   dbc::Signal* sig(const QString& sig_name) const;
-  QString newSignalName();
+  QString newSignalName() const;
   void update();
   inline const std::vector<dbc::Signal*>& getSignals() const { return sigs; }
 
