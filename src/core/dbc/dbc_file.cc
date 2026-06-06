@@ -8,11 +8,9 @@
 
 namespace dbc {
 
-static QRegularExpression RE_SIGNAL(
+static const QRegularExpression RE_SIGNAL(
     R"(^SG_\s+(?<name>\w+)\s*(?<mux>M|m\d+)?\s*:\s*(?<start>\d+)\|(?<size>\d+)@(?<endian>[01])(?<sign>[\+-])\s*\((?<factor>[0-9.+\-eE]+),(?<offset>[0-9.+\-eE]+)\)\s*\[(?<min>[0-9.+\-eE]+)\|(?<max>[0-9.+\-eE]+)\]\s*\"(?<unit>.*)\"\s*(?<receiver>.*))");
-static QRegularExpression sgm_regexp(
-    R"(^SG_ (\w+) (\w+) *: (\d+)\|(\d+)@(\d+)([\+|\-]) \(([0-9.+\-eE]+),([0-9.+\-eE]+)\) \[([0-9.+\-eE]+)\|([0-9.+\-eE]+)\] \"(.*)\" (.*))");
-static QRegularExpression RE_MESSAGE(R"(^BO_ (?<address>\w+) (?<name>\w+) *: (?<size>\w+) (?<transmitter>\w+))");
+static const QRegularExpression RE_MESSAGE(R"(^BO_ (?<address>\w+) (?<name>\w+) *: (?<size>\w+) (?<transmitter>\w+))");
 static const QRegularExpression RE_COMMENT(R"(CM_\s+(BO_|SG_)\s+(\d+)\s*(\w+)?\s*\"(.*)\"\s*;)",
                                            QRegularExpression::DotMatchesEverythingOption);
 static const QRegularExpression RE_VALUE_HEADER(R"(VAL_\s+(\d+)\s+(\w+))");
@@ -82,7 +80,7 @@ void File::parse(const QString& content) {
   dbc::Msg* current_msg = nullptr;
   int multiplexor_cnt = 0;
   bool seen_first = false;
-  QTextStream stream((QString*)&content);
+  QTextStream stream(const_cast<QString*>(&content));
 
   while (!stream.atEnd()) {
     ++line_num;
