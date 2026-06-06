@@ -26,7 +26,8 @@ SignalTreeDelegate::SignalTreeDelegate(QObject* parent) : QStyledItemDelegate(pa
 
 QSize SignalTreeDelegate::sizeHint(const QStyleOptionViewItem& option, const QModelIndex& index) const {
   // Use toolbar icon size + padding for row height; width determined by header
-  int height = option.widget->style()->pixelMetric(QStyle::PM_ToolBarIconSize) + kPadding;
+  const int icon_size = option.widget ? option.widget->style()->pixelMetric(QStyle::PM_ToolBarIconSize) : kBtnSize;
+  int height = icon_size + kPadding;
   return QSize(-1, height);
 }
 
@@ -161,7 +162,7 @@ QWidget* SignalTreeDelegate::createEditor(QWidget* parent, const QStyleOptionVie
     auto* c = new QComboBox(parent);
     c->addItem(signalTypeToString(dbc::Signal::Type::Normal), static_cast<int>(dbc::Signal::Type::Normal));
     auto* msg = GetDBC()->msg(static_cast<const SignalTreeModel*>(idx.model())->messageId());
-    if (!msg->multiplexor)
+    if (!msg || !msg->multiplexor)
       c->addItem(signalTypeToString(dbc::Signal::Type::Multiplexor), static_cast<int>(dbc::Signal::Type::Multiplexor));
     else if (item->sig->type != dbc::Signal::Type::Multiplexor)
       c->addItem(signalTypeToString(dbc::Signal::Type::Multiplexed), static_cast<int>(dbc::Signal::Type::Multiplexed));
@@ -245,7 +246,7 @@ void SignalTreeDelegate::drawButtons(QPainter* p, const QStyleOptionViewItem& op
     QSize iconSize = QSize(kBtnSize - (iconPadding * 2), kBtnSize - (iconPadding * 2));
 
     QColor icon_color;
-    if (btnIdx == 0 && hovered) {
+    if (btnIdx == RemoveButton && hovered) {
       icon_color = QColor(220, 53, 69);  // Soft Red
     } else {
       icon_color =
@@ -255,9 +256,8 @@ void SignalTreeDelegate::drawButtons(QPainter* p, const QStyleOptionViewItem& op
     p->drawPixmap(rect.left() + iconPadding, rect.top() + iconPadding, pix);
   };
 
-  // 0: Remove, 1: Plot
-  drawBtn(0, "circle-minus", false);
-  drawBtn(1, chart_opened ? "chart-area" : "chart-line", chart_opened);
+  drawBtn(RemoveButton, "circle-minus", false);
+  drawBtn(PlotButton, chart_opened ? "chart-area" : "chart-line", chart_opened);
 }
 
 bool SignalTreeDelegate::helpEvent(QHelpEvent* event, QAbstractItemView* view, const QStyleOptionViewItem& option,
@@ -270,11 +270,11 @@ bool SignalTreeDelegate::helpEvent(QHelpEvent* event, QAbstractItemView* view, c
   // Button Hit-Testing
   int btnIdx = buttonAt(event->pos(), option.rect);
   if (btnIdx != -1) {
-    if (btnIdx == 1) {  // Plot Button
+    if (btnIdx == PlotButton) {
       bool opened = index.data(IsChartedRole).toBool();
       QToolTip::showText(event->globalPos(),
                          opened ? tr("Close Plot") : tr("Show Plot\nSHIFT click to add to previous opened plot"), view);
-    } else {  // Remove Button
+    } else {
       QToolTip::showText(event->globalPos(), tr("Remove Signal"), view);
     }
     return true;
@@ -332,10 +332,10 @@ bool SignalTreeDelegate::editorEvent(QEvent* event, QAbstractItemModel* model, c
 
   if (btn != -1) {
     if (type == QEvent::MouseButtonRelease) {
-      if (btn == 1) {  // Plot Button
+      if (btn == PlotButton) {
         bool isCharted = idx.data(IsChartedRole).toBool();
         emit plotRequested(item->sig, !isCharted, mouseEvent->modifiers() & Qt::ShiftModifier);
-      } else if (btn == 0) {  // Remove Button
+      } else if (btn == RemoveButton) {
         clearHoverState();    // Reset before model potentially deletes 'item'
         emit removeRequested(item->sig);
       }

@@ -10,6 +10,8 @@
 class SignalTreeDelegate : public QStyledItemDelegate {
   Q_OBJECT
  public:
+  enum ButtonIndex { RemoveButton = 0, PlotButton = 1 };
+
   // Layout Constants
   const int kBtnSize = 22;
   const int kBtnSpacing = 4;
@@ -52,5 +54,5 @@ class SignalTreeDelegate : public QStyledItemDelegate {
   QFont label_font, minmax_font, value_font;
   QColor signal_text_color;
   mutable QPersistentModelIndex hoverIndex;
-  mutable int hoverButton = -1;  // -1: none, 0: plot, 1: remove
+  mutable int hoverButton = -1;  // -1: none, 0: remove, 1: plot
 };
