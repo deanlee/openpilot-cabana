@@ -105,7 +105,7 @@ void MessageList::setupConnections() {
   connect(GetDBC(), &dbc::Manager::DBCFileChanged, model_, &MessageModel::rebuild);
   connect(UndoStack::instance(), &QUndoStack::indexChanged, model_, &MessageModel::rebuild);
   connect(table_->selectionModel(), &QItemSelectionModel::currentChanged, this, &MessageList::onCurrentChanged);
-  connect(model_, &MessageModel::modelReset, [this]() {
+  connect(model_, &MessageModel::modelReset, this, [this]() {
     if (current_msg_id_) {
       selectMessageForced(*current_msg_id_, true);
     }
@@ -172,7 +172,7 @@ void MessageList::onMenuAboutToShow() {
   for (int i = 0; i < header_->count(); ++i) {
     int logical_index = header_->logicalIndex(i);
     auto action = menu_->addAction(model_->headerData(logical_index, Qt::Horizontal).toString(),
-                                  [=](bool checked) { header_->setSectionHidden(logical_index, !checked); });
+                                  [=, this](bool checked) { header_->setSectionHidden(logical_index, !checked); });
     action->setCheckable(true);
     action->setChecked(!header_->isSectionHidden(logical_index));
     // Can't hide the name column
