@@ -21,7 +21,7 @@ SettingsDialog::SettingsDialog(QWidget* parent) : QDialog(parent) {
   QFormLayout* form_layout = new QFormLayout(groupbox);
 
   form_layout->addRow(tr("Color Theme"), theme = new QComboBox(this));
-  theme->setToolTip(tr("You may need to restart cabana after changes theme"));
+  theme->setToolTip(tr("You may need to restart cabana after changing the theme"));
   theme->addItems({tr("Automatic"), tr("Light"), tr("Dark")});
   theme->setCurrentIndex(settings.theme);
 
@@ -53,11 +53,14 @@ SettingsDialog::SettingsDialog(QWidget* parent) : QDialog(parent) {
 
   log_livestream = new QGroupBox(tr("Enable live stream logging"), this);
   log_livestream->setCheckable(true);
+  log_livestream->setChecked(settings.log_livestream);
   QHBoxLayout* path_layout = new QHBoxLayout(log_livestream);
   path_layout->addWidget(log_path = new QLineEdit(settings.log_path, this));
   log_path->setReadOnly(true);
   auto browse_btn = new QPushButton(tr("B&rowse..."));
   path_layout->addWidget(browse_btn);
+  log_path->setEnabled(settings.log_livestream);
+  browse_btn->setEnabled(settings.log_livestream);
   main_layout->addWidget(log_livestream);
 
   auto buttonBox = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
@@ -72,12 +75,18 @@ SettingsDialog::SettingsDialog(QWidget* parent) : QDialog(parent) {
       log_path->setText(fn);
     }
   });
+  connect(log_livestream, &QGroupBox::toggled, this, [this, browse_btn](bool enabled) {
+    log_path->setEnabled(enabled);
+    browse_btn->setEnabled(enabled);
+  });
   connect(buttonBox, &QDialogButtonBox::rejected, this, &QDialog::reject);
   connect(buttonBox, &QDialogButtonBox::accepted, this, &SettingsDialog::save);
 }
 
 void SettingsDialog::save() {
-  if (std::exchange(settings.theme, theme->currentIndex()) != settings.theme) {
+  const int selected_theme = theme->currentIndex();
+  if (settings.theme != selected_theme) {
+    settings.theme = selected_theme;
     // set theme before emit changed
     utils::setTheme(settings.theme);
   }
@@ -86,7 +95,7 @@ void SettingsDialog::save() {
   settings.chart_height = chart_height->value();
   settings.log_livestream = log_livestream->isChecked();
   settings.log_path = log_path->text();
-  settings.drag_direction = (Settings::DragDirection)drag_direction->currentIndex();
+  settings.drag_direction = static_cast<Settings::DragDirection>(drag_direction->currentIndex());
   emit settings.changed();
   QDialog::accept();
 }
