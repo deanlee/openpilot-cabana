@@ -1,13 +1,9 @@
 #include "message_table.h"
 
 #include <QApplication>
-#include <QHeaderView>
 #include <QScrollBar>
 
-#include "message_delegate.h"
 #include "message_model.h"
-#include "modules/settings/settings.h"
-#include "modules/system/stream_manager.h"
 
 MessageTable::MessageTable(QWidget* parent) : QTreeView(parent) {
   setSortingEnabled(true);
