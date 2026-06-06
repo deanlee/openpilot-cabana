@@ -37,12 +37,12 @@ void PlaybackCameraView::setHoverTime(double seconds) {
 
   if (seconds < 0) {
     pending_hover_time_ = -1;
-    thumbnail_dispaly_time = -1;
+    thumbnail_display_time_ = -1;
     hover_debounce_.stop();
     update();
     return;
   }
-  thumbnail_dispaly_time = seconds;
+  thumbnail_display_time_ = seconds;
   pending_hover_time_ = seconds;
 
   bool scrubbing = stream && stream->isPaused();
@@ -75,7 +75,7 @@ void PlaybackCameraView::onHoverDebounceTimeout() {
 
 void PlaybackCameraView::onThumbnailReady(double seconds, QPixmap pixmap) {
   // Ignore stale callbacks from older hover requests.
-  if (thumbnail_dispaly_time >= 0 && std::abs(seconds - thumbnail_dispaly_time) > 0.5) return;
+  if (thumbnail_display_time_ >= 0 && std::abs(seconds - thumbnail_display_time_) > 0.5) return;
 
   last_thumb_pixmap_ = pixmap;
   last_thumb_time_ = seconds;
@@ -97,11 +97,11 @@ void PlaybackCameraView::paintGL() {
 
   QPainter p(this);
   bool scrubbing = false;
-  if (thumbnail_dispaly_time >= 0) {
+  if (thumbnail_display_time_ >= 0) {
     scrubbing = stream->isPaused();
     scrubbing ? drawScrubThumbnail(p) : drawThumbnail(p);
   }
-  if (auto alert = replay->findAlertAtTime(scrubbing ? thumbnail_dispaly_time : stream->currentSec())) {
+  if (auto alert = replay->findAlertAtTime(scrubbing ? thumbnail_display_time_ : stream->currentSec())) {
     drawAlert(p, rect(), *alert);
   }
 
@@ -147,7 +147,7 @@ void PlaybackCameraView::drawScrubThumbnail(QPainter& p) {
   QPixmap scaled_thumb = decorateScrubThumbnail(last_thumb_pixmap_);
   QRect thumb_rect(rect().center() - scaled_thumb.rect().center(), scaled_thumb.size());
   p.drawPixmap(thumb_rect.topLeft(), scaled_thumb);
-  drawTime(p, thumb_rect, thumbnail_dispaly_time);
+  drawTime(p, thumb_rect, thumbnail_display_time_);
 }
 
 void PlaybackCameraView::drawThumbnail(QPainter& p) {
@@ -158,12 +158,12 @@ void PlaybackCameraView::drawThumbnail(QPainter& p) {
   auto [min_sec, max_sec] = stream->timeRange().value_or(
       std::make_pair(stream->minSeconds(), stream->maxSeconds()));
   if (max_sec <= min_sec) return;
-  int pos = (thumbnail_dispaly_time - min_sec) * width() / (max_sec - min_sec);
+  int pos = (thumbnail_display_time_ - min_sec) * width() / (max_sec - min_sec);
   int x = std::clamp(pos - thumb.width() / 2, THUMBNAIL_MARGIN, width() - thumb.width() - THUMBNAIL_MARGIN + 1);
   int y = height() - thumb.height() - THUMBNAIL_MARGIN;
 
   p.drawPixmap(x, y, thumb);
-  drawTime(p, QRect{x, y, thumb.width(), thumb.height()}, thumbnail_dispaly_time);
+  drawTime(p, QRect{x, y, thumb.width(), thumb.height()}, thumbnail_display_time_);
 }
 
 void PlaybackCameraView::drawTime(QPainter& p, const QRect& rect, double seconds) {

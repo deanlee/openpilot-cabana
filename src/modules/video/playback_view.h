@@ -40,7 +40,7 @@ class PlaybackCameraView : public CameraView {
   void onHoverDebounceTimeout();
 
  private:
-    QPixmap decorateScrubThumbnail(const QPixmap& thumb);
+  QPixmap decorateScrubThumbnail(const QPixmap& thumb);
   QPixmap decorateHoverThumbnail(const QPixmap& thumb, double seconds);
   void drawAlert(QPainter& p, const QRect& rect, const Timeline::Entry& alert);
   void drawThumbnail(QPainter& p);
@@ -50,7 +50,7 @@ class PlaybackCameraView : public CameraView {
   ThumbnailCache thumb_cache_;
   QTimer hover_debounce_;
   double pending_hover_time_ = -1;
-  double thumbnail_dispaly_time = -1;
+  double thumbnail_display_time_ = -1;
 
   // Last decoded thumbnail (kept as the most recent full-res pixmap).
   QPixmap last_thumb_pixmap_;
