@@ -28,7 +28,7 @@ class ReplayStream : public AbstractStream {
   inline QString carFingerprint() const override { return replay->carFingerprint().c_str(); }
   double minSeconds() const override { return replay->minSeconds(); }
   double maxSeconds() const override { return replay->maxSeconds(); }
-  inline QDateTime beginDateTime() const { return QDateTime::fromSecsSinceEpoch(replay->routeDateTime()); }
+  inline QDateTime beginDateTime() const override { return QDateTime::fromSecsSinceEpoch(replay->routeDateTime()); }
   inline uint64_t beginMonoNs() const override { return replay->routeStartNanos(); }
   inline void setSpeed(float speed) override { replay->setSpeed(speed); }
   inline double getSpeed() const override { return replay->getSpeed(); }

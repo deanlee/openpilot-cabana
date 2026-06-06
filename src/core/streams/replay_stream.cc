@@ -33,9 +33,7 @@ ReplayStream::ReplayStream(QObject* parent) : AbstractStream(parent) {
 void ReplayStream::mergeSegments() {
   auto event_data = replay->getEventData();
   for (const auto& [n, seg] : event_data->segments) {
-    if (!processed_segments.count(n)) {
-      processed_segments.insert(n);
-
+    if (processed_segments.insert(n).second) {
       std::vector<const CanEvent*> new_events;
       new_events.reserve(seg->log->events.size());
       for (const Event& e : seg->log->events) {
