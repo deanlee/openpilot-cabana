@@ -40,6 +40,8 @@ void Sparkline::update(const dbc::Signal* sig, CanEventIter first, CanEventIter 
 
     mapHistoryToPoints();
     render();
+  } else {
+    image_ = QImage();  // Keep isEmpty() consistent when all history is purged.
   }
 }
 

@@ -88,6 +88,7 @@ class Sparkline {
   void mapNoisyPath();
   inline float getX(uint64_t ts) const {
     if (ts >= win_end_ns_) return right_edge_;
+    if (ts <= win_start_ns_) return pad_;
     float x = pad_ + static_cast<float>(static_cast<double>(ts - win_start_ns_) * px_per_ns_);
     return (x < pad_) ? pad_ : x;
   }
