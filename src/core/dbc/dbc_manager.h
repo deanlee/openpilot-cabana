@@ -12,10 +12,6 @@ const int GLOBAL_SOURCE_ID = -1;
 using SourceSet = std::set<int>;
 const SourceSet SOURCE_ALL = {GLOBAL_SOURCE_ID};
 
-inline bool operator<(const std::shared_ptr<dbc::File>& l, const std::shared_ptr<dbc::File>& r) {
-  return l.get() < r.get();
-}
-
 namespace dbc {
 
 class Manager : public QObject {
@@ -45,12 +41,12 @@ class Manager : public QObject {
   dbc::Msg* msg(uint8_t source, const QString& name) const;
 
   QStringList signalNames() const;
-  inline size_t fileCount() const { return unique_files.size(); }
+  size_t fileCount() const { return unique_files.size(); }
   int nonEmptyFileCount() const;
 
-  const SourceSet getSourcesForFile(const File* dbc_file) const;
-  File* findDBCFile(const uint8_t source) const;
-  const std::vector<std::shared_ptr<File>>& allFiles() const { return unique_files; };
+  SourceSet getSourcesForFile(const File* dbc_file) const;
+  File* findDBCFile(uint8_t source) const;
+  const std::vector<std::shared_ptr<File>>& allFiles() const { return unique_files; }
 
  signals:
   void signalAdded(MessageId id, const dbc::Signal* sig);
@@ -59,13 +55,14 @@ class Manager : public QObject {
   void msgUpdated(MessageId id);
   void msgRemoved(MessageId id);
   void DBCFileChanged();
-  void maskUpdated(const MessageId& address);
+  void maskUpdated(const MessageId& id);
 
  private:
   std::map<int, std::shared_ptr<File>> source_to_file;  // Source -> File (Fast Lookup)
   std::vector<std::shared_ptr<File>> unique_files;      // Unique List (UI & Lifecycle)
 
   void removeOrphanedFiles();
+  void assignSources(const SourceSet& sources, std::shared_ptr<File> file);
 };
 
 }  // namespace dbc

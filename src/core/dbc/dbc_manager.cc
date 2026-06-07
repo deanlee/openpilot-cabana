@@ -2,7 +2,6 @@
 
 #include <QSet>
 #include <algorithm>
-#include <numeric>
 
 namespace dbc {
 
@@ -10,26 +9,15 @@ Manager::Manager(QObject* parent) : QObject(parent) { qRegisterMetaType<SourceSe
 
 bool Manager::open(const SourceSet& sources, const QString& dbc_file_name, QString* error) {
   try {
-    // 1. Find or Create the unique file
     auto it = std::ranges::find_if(unique_files, [&](const auto& f) { return f->filename == dbc_file_name; });
-
-    std::shared_ptr<File> file = (it != unique_files.end()) ? *it : std::make_shared<File>(dbc_file_name);
-
     if (it == unique_files.end()) {
-      unique_files.push_back(file);
+      it = unique_files.insert(unique_files.end(), std::make_shared<File>(dbc_file_name));
     }
-
-    // 2. Map the sources to this file
-    for (int s : sources) {
-      source_to_file[s] = file;
-    }
-
-    removeOrphanedFiles();
+    assignSources(sources, *it);
   } catch (const std::exception& e) {
     if (error) *error = e.what();
     return false;
   }
-
   emit DBCFileChanged();
   return true;
 }
@@ -38,33 +26,24 @@ bool Manager::open(const SourceSet& sources, const QString& name, const QString&
   try {
     auto file = std::make_shared<File>(name, content);
     unique_files.push_back(file);
-    for (int s : sources) {
-      source_to_file[s] = file;
-    }
-    removeOrphanedFiles();
+    assignSources(sources, file);
   } catch (const std::exception& e) {
     if (error) *error = e.what();
     return false;
   }
-
   emit DBCFileChanged();
   return true;
 }
 
 void Manager::closeSources(const SourceSet& sources) {
-  for (int s : sources) {
-    source_to_file.erase(s);
-  }
+  std::erase_if(source_to_file, [&](const auto& pair) { return sources.contains(pair.first); });
   removeOrphanedFiles();
   emit DBCFileChanged();
 }
 
 void Manager::closeFile(File* dbc_file) {
-  // Remove from map
   std::erase_if(source_to_file, [dbc_file](const auto& pair) { return pair.second.get() == dbc_file; });
-  // Remove from unique list
   std::erase_if(unique_files, [dbc_file](const auto& f) { return f.get() == dbc_file; });
-
   emit DBCFileChanged();
 }
 
@@ -75,10 +54,14 @@ void Manager::closeAll() {
 }
 
 void Manager::removeOrphanedFiles() {
-  // Removes files from unique_files if no source is pointing to them anymore
   std::erase_if(unique_files, [this](const auto& file) {
     return std::ranges::none_of(source_to_file, [&](const auto& pair) { return pair.second == file; });
   });
+}
+
+void Manager::assignSources(const SourceSet& sources, std::shared_ptr<File> file) {
+  for (int s : sources) source_to_file[s] = file;
+  removeOrphanedFiles();
 }
 
 // --- Signal & Message Logic ---
@@ -128,12 +111,12 @@ void Manager::removeMsg(const MessageId& id) {
 }
 
 QString Manager::newMsgName(const MessageId& id) const {
-  return QString("NEW_MSG_") + QString::number(id.address, 16).toUpper();
+  return QStringLiteral("NEW_MSG_") + QString::number(id.address, 16).toUpper();
 }
 
 QString Manager::newSignalName(const MessageId& id) const {
   auto m = msg(id);
-  return m ? m->newSignalName() : "";
+  return m ? m->newSignalName() : QString{};
 }
 
 const std::map<uint32_t, dbc::Msg>& Manager::getMessages(uint8_t source) const {
@@ -171,16 +154,13 @@ int Manager::nonEmptyFileCount() const {
 }
 
 File* Manager::findDBCFile(uint8_t source) const {
-  if (auto it = source_to_file.find(source); it != source_to_file.end()) {
-    return it->second.get();
-  }
-  if (auto it = source_to_file.find(GLOBAL_SOURCE_ID); it != source_to_file.end()) {
-    return it->second.get();
+  for (int key : {(int)source, GLOBAL_SOURCE_ID}) {
+    if (auto it = source_to_file.find(key); it != source_to_file.end()) return it->second.get();
   }
   return nullptr;
 }
 
-const SourceSet Manager::getSourcesForFile(const File* dbc_file) const {
+SourceSet Manager::getSourcesForFile(const File* dbc_file) const {
   SourceSet result;
   for (const auto& [source, file_ptr] : source_to_file) {
     if (file_ptr.get() == dbc_file) result.insert(source);
@@ -191,10 +171,12 @@ const SourceSet Manager::getSourcesForFile(const File* dbc_file) const {
 }  // namespace dbc
 
 QString toString(const SourceSet& ss) {
-  return std::accumulate(ss.cbegin(), ss.cend(), QString(), [](QString str, int source) {
-    if (!str.isEmpty()) str += QStringLiteral(", ");
-    return str + (source == GLOBAL_SOURCE_ID ? QStringLiteral("all") : QString::number(source));
-  });
+  QStringList parts;
+  parts.reserve(static_cast<int>(ss.size()));
+  for (int source : ss) {
+    parts += (source == GLOBAL_SOURCE_ID) ? QStringLiteral("all") : QString::number(source);
+  }
+  return parts.join(QStringLiteral(", "));
 }
 
 dbc::Manager* GetDBC() {
