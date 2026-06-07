@@ -32,15 +32,15 @@ File::File(const QString& name, const QString& content) : name_(name), filename(
 
 bool File::save() {
   assert(!filename.isEmpty());
-  return safeToFile(filename);
+  return saveToFile(filename);
 }
 
 bool File::saveAs(const QString& new_filename) {
   filename = new_filename;
-  return safeToFile(filename);
+  return saveToFile(filename);
 }
 
-bool File::safeToFile(const QString& fn) {
+bool File::saveToFile(const QString& fn) {
   QFile file(fn);
   if (file.open(QIODevice::WriteOnly)) {
     return file.write(toDBCString().toUtf8()) >= 0;
@@ -70,7 +70,7 @@ dbc::Msg* File::msg(const QString& name) {
 
 dbc::Signal* File::signal(uint32_t address, const QString& name) {
   auto m = msg(address);
-  return m ? (dbc::Signal*)m->sig(name) : nullptr;
+  return m ? m->sig(name) : nullptr;
 }
 
 void File::parse(const QString& content) {
@@ -104,7 +104,7 @@ void File::parse(const QString& content) {
       }
     } catch (std::exception& e) {
       throw std::runtime_error(
-          QString("[%1:%2]%3: %4").arg(filename).arg(line_num).arg(e.what()).arg(line).toStdString());
+          QString("[%1:%2] %3: %4").arg(filename).arg(line_num).arg(e.what()).arg(line).toStdString());
     }
 
     if (recognized) {

@@ -33,7 +33,7 @@ class File {
 
  private:
   void parse(const QString& content);
-  bool safeToFile(const QString& fn);
+  bool saveToFile(const QString& fn);
   dbc::Msg* parseBO(const QString& line);
   void parseSG(const QString& line, dbc::Msg* current_msg, int& multiplexor_cnt);
   void parseComment(const QString& line, QTextStream& stream);
