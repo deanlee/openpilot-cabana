@@ -11,26 +11,6 @@
 #include "modules/inspector/history/history_model.h"
 #include "utils/util.h"
 
-namespace {
-// Internal helper to abstract data access from different models
-struct MessageDataRef {
-  uint8_t len = 0;
-  const std::array<uint8_t, MAX_CAN_LEN>* bytes = nullptr;
-  const std::array<uint32_t, MAX_CAN_LEN>* colors = nullptr;
-};
-
-MessageDataRef getDataRef(CallerType type, const QModelIndex& index) {
-  if (type == CallerType::MessageList) {
-    const auto* item = static_cast<const MessageModel*>(index.model())->getItem(index);
-    return item->data ? MessageDataRef{item->data->size, &item->data->data, &item->data->colors}
-                      : MessageDataRef{0, nullptr, nullptr};
-  } else {
-    const auto* msg = static_cast<const MessageHistoryModel*>(index.model())->getItem(index);
-    return msg ? MessageDataRef{msg->size, &msg->data, &msg->colors} : MessageDataRef{0, nullptr, nullptr};
-  }
-}
-}  // namespace
-
 MessageDelegate::MessageDelegate(QObject* parent, CallerType caller_type)
     : QStyledItemDelegate(parent), caller_type_(caller_type) {
   fixed_font_ = QFontDatabase::systemFont(QFontDatabase::FixedFont);
@@ -44,6 +24,18 @@ MessageDelegate::MessageDelegate(QObject* parent, CallerType caller_type)
   v_margin_ = QApplication::style()->pixelMetric(QStyle::PM_FocusFrameVMargin) + 1;
 
   updatePixmapCache(qApp->palette());
+}
+
+MessageDelegate::DataRef MessageDelegate::getDataRef(const QModelIndex& index) const {
+  if (caller_type_ == CallerType::MessageList) {
+    const auto* item = static_cast<const MessageModel*>(index.model())->getItem(index);
+    if (item && item->data)
+      return {item->data->size, &item->data->data, &item->data->colors};
+    return {};
+  } else {
+    const auto* msg = static_cast<const MessageHistoryModel*>(index.model())->getItem(index);
+    return msg ? DataRef{msg->size, &msg->data, &msg->colors} : DataRef{};
+  }
 }
 
 QSize MessageDelegate::sizeForBytes(int n) const {
@@ -64,7 +56,7 @@ QSize MessageDelegate::sizeHint(const QStyleOptionViewItem& option, const QModel
     return QStyledItemDelegate::sizeHint(option, index);
   }
 
-  const MessageDataRef ref = getDataRef(caller_type_, index);
+  const DataRef ref = getDataRef(index);
   return sizeForBytes(std::clamp(static_cast<int>(ref.len), 8, 64));
 }
 
@@ -102,20 +94,14 @@ void MessageDelegate::drawItemText(QPainter* p, const QStyleOptionViewItem& opt,
   const QRect textRect = opt.rect.adjusted(h_margin_, 0, -h_margin_, 0);
   const QFontMetrics& fm = opt.fontMetrics;
   const int y_baseline = textRect.top() + (textRect.height() - fm.height()) / 2 + fm.ascent();
-
-  if (fm.horizontalAdvance(text) <= textRect.width()) {
-    p->drawText(textRect.left(), y_baseline, text);
-  } else {
-    const QString elided = fm.elidedText(text, Qt::ElideRight, textRect.width());
-    p->drawText(textRect.left(), y_baseline, elided);
-  }
+  p->drawText(textRect.left(), y_baseline, fm.elidedText(text, Qt::ElideRight, textRect.width()));
 }
 
 void MessageDelegate::drawHexData(QPainter* p, const QStyleOptionViewItem& opt, const QModelIndex& idx, bool sel,
                                   bool active) const {
   updatePixmapCache(opt.palette);
 
-  const MessageDataRef ref = getDataRef(caller_type_, idx);
+  const DataRef ref = getDataRef(idx);
   if (!ref.bytes || ref.len == 0) return;
 
   const int x_start = opt.rect.left() + h_margin_;

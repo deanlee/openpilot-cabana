@@ -11,6 +11,8 @@ enum ColumnTypeRole {
   IsHexColumn = Qt::UserRole + 11,
 };
 
+#include "core/streams/message_state.h"
+
 class MessageDelegate : public QStyledItemDelegate {
   Q_OBJECT
  public:
@@ -23,6 +25,13 @@ class MessageDelegate : public QStyledItemDelegate {
   enum RenderState { StateNormal = 0, StateSelected = 1, StateDisabled = 2, StateCount = 3 };
   static constexpr int kGapWidth = 8;  // Extra pixels added every 8 bytes
 
+  struct DataRef {
+    uint8_t len = 0;
+    const std::array<uint8_t, MAX_CAN_LEN>* bytes = nullptr;
+    const std::array<uint32_t, MAX_CAN_LEN>* colors = nullptr;
+  };
+
+  DataRef getDataRef(const QModelIndex& index) const;
   void updatePixmapCache(const QPalette& palette) const;
   void drawItemText(QPainter* p, const QStyleOptionViewItem& opt, const QModelIndex& idx, bool sel, bool active) const;
   void drawHexData(QPainter* p, const QStyleOptionViewItem& opt, const QModelIndex& idx, bool sel, bool active) const;
@@ -30,7 +39,7 @@ class MessageDelegate : public QStyledItemDelegate {
   CallerType caller_type_;
   QFont fixed_font_;
   QSize byte_size_ = {};
-  int h_margin_, v_margin_;
+  int h_margin_ = 0, v_margin_ = 0;
 
   mutable std::array<std::array<QPixmap, StateCount>, 256> hex_pixmap_table_;
   mutable qint64 cached_palette_key_ = 0;
