@@ -11,9 +11,10 @@ namespace dbc {
 static const QRegularExpression RE_SIGNAL(
     R"(^SG_\s+(?<name>\w+)\s*(?<mux>M|m\d+)?\s*:\s*(?<start>\d+)\|(?<size>\d+)@(?<endian>[01])(?<sign>[\+-])\s*\((?<factor>[0-9.+\-eE]+),(?<offset>[0-9.+\-eE]+)\)\s*\[(?<min>[0-9.+\-eE]+)\|(?<max>[0-9.+\-eE]+)\]\s*\"(?<unit>.*)\"\s*(?<receiver>.*))");
 static const QRegularExpression RE_MESSAGE(R"(^BO_ (?<address>\w+) (?<name>\w+) *: (?<size>\w+) (?<transmitter>\w+))");
-static const QRegularExpression RE_COMMENT(R"(CM_\s+(BO_|SG_)\s+(\d+)\s*(\w+)?\s*\"(.*)\"\s*;)",
-                                           QRegularExpression::DotMatchesEverythingOption);
-static const QRegularExpression RE_VALUE_HEADER(R"(VAL_\s+(\d+)\s+(\w+))");
+static const QRegularExpression RE_COMMENT(
+    R"(CM_\s+(?<type>BO_|SG_)\s+(?<address>\d+)\s*(?<signal>\w+)?\s*\"(?<comment>.*)\"\s*;)",
+    QRegularExpression::DotMatchesEverythingOption);
+static const QRegularExpression RE_VALUE_HEADER(R"(VAL_\s+(?<address>\d+)\s+(?<signal>\w+))");
 static const QRegularExpression RE_VALUE_PAIR(R"((-?\d+)\s+\"([^\"]*)\")");
 
 File::File(const QString& dbc_file_name) {
@@ -87,7 +88,7 @@ void File::parse(const QString& content) {
     QString raw_line = stream.readLine();
     line = raw_line.trimmed();
 
-    bool seen = true;
+    bool recognized = true;
     try {
       if (line.startsWith("BO_ ")) {
         multiplexor_cnt = 0;
@@ -96,19 +97,17 @@ void File::parse(const QString& content) {
         parseSG(line, current_msg, multiplexor_cnt);
       } else if (line.startsWith("VAL_ ")) {
         parseVAL(line);
-      } else if (line.startsWith("CM_ BO_")) {
-        parseComment(line, stream);
-      } else if (line.startsWith("CM_ SG_ ")) {
+      } else if (line.startsWith("CM_ BO_") || line.startsWith("CM_ SG_ ")) {
         parseComment(line, stream);
       } else {
-        seen = false;
+        recognized = false;
       }
     } catch (std::exception& e) {
       throw std::runtime_error(
           QString("[%1:%2]%3: %4").arg(filename).arg(line_num).arg(e.what()).arg(line).toStdString());
     }
 
-    if (seen) {
+    if (recognized) {
       seen_first = true;
     } else if (!seen_first) {
       header += raw_line + "\n";
@@ -125,11 +124,11 @@ dbc::Msg* File::parseBO(const QString& line) {
   if (!match.hasMatch()) throw std::runtime_error("Invalid BO_ line format");
 
   uint32_t address = match.captured("address").toUInt();
-  if (msgs.count(address) > 0)
+  auto [it, inserted] = msgs.try_emplace(address);
+  if (!inserted)
     throw std::runtime_error(QString("Duplicate message address: %1").arg(address).toStdString());
 
-  // Create a new message object
-  dbc::Msg* msg = &msgs[address];
+  dbc::Msg* msg = &it->second;
   msg->address = address;
   msg->name = match.captured("name");
   msg->size = match.captured("size").toULong();
@@ -198,13 +197,13 @@ void File::parseComment(const QString& line, QTextStream& stream) {
   auto match = RE_COMMENT.match(raw);
   if (!match.hasMatch()) return;
 
-  uint32_t addr = match.captured(2).toUInt();
-  QString comment = match.captured(4).replace("\\\"", "\"").trimmed();
+  uint32_t addr = match.captured("address").toUInt();
+  QString comment = match.captured("comment").replace("\\\"", "\"").trimmed();
 
-  if (match.captured(1) == "BO_") {
+  if (match.captured("type") == "BO_") {
     if (auto m = msg(addr)) m->comment = comment;
   } else {
-    if (auto s = signal(addr, match.captured(3))) s->comment = comment;
+    if (auto s = signal(addr, match.captured("signal"))) s->comment = comment;
   }
 }
 
@@ -212,8 +211,8 @@ void File::parseVAL(const QString& line) {
   auto header_match = RE_VALUE_HEADER.match(line);
   if (!header_match.hasMatch()) return;
 
-  uint32_t addr = header_match.captured(1).toUInt();
-  QString sig_name = header_match.captured(2);
+  uint32_t addr = header_match.captured("address").toUInt();
+  QString sig_name = header_match.captured("signal");
 
   if (auto s = signal(addr, sig_name)) {
     s->value_table.clear();
@@ -270,7 +269,7 @@ QString File::toDBCString() {
       if (!sig->value_table.empty()) {
         val_stream << "VAL_ " << address << " " << sig->name;
         for (const auto& [val, desc] : sig->value_table) {
-          val_stream << " " << val << " \"" << desc << "\"";
+          val_stream << " " << static_cast<long long>(val) << " \"" << desc << "\"";
         }
         val_stream << ";\n";
       }

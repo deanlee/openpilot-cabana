@@ -15,7 +15,6 @@ class File {
 
   bool save();
   bool saveAs(const QString& new_filename);
-  bool safeToFile(const QString& fn);
   QString toDBCString();
 
   void updateMsg(const MessageId& id, const QString& name, uint32_t size, const QString& node, const QString& comment);
@@ -34,6 +33,7 @@ class File {
 
  private:
   void parse(const QString& content);
+  bool safeToFile(const QString& fn);
   dbc::Msg* parseBO(const QString& line);
   void parseSG(const QString& line, dbc::Msg* current_msg, int& multiplexor_cnt);
   void parseComment(const QString& line, QTextStream& stream);
