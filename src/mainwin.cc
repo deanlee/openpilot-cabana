@@ -3,34 +3,23 @@
 #include <QApplication>
 #include <QDialog>
 #include <QFileDialog>
-#include <QHBoxLayout>
-#include <QLabel>
 #include <QMenuBar>
 #include <QMessageBox>
-#include <QPointer>
-#include <QProcess>
-#include <QProgressBar>
 #include <QProgressDialog>
-#include <QPushButton>
 #include <QScreen>
 #include <QShortcut>
-#include <QTcpSocket>
-#include <QThread>
 #include <QTimer>
 #include <QUndoView>
 #include <QVBoxLayout>
 #include <QWidgetAction>
-#include <zmq.h>
-#include <capnp/message.h>
-#include <capnp/serialize.h>
 
-#include "cereal/gen/cpp/log.capnp.h"
 #include "core/streams/device_stream.h"
 #include "core/commands/commands.h"
 #include "modules/dbc/dbc_controller.h"
 #include "modules/dbc/export.h"
 #include "modules/settings/settings_dialog.h"
 #include "modules/streams/stream_selector.h"
+#include "modules/streams/zmq_load_dialog.h"
 #include "modules/system/stream_manager.h"
 #include "modules/system/system_relay.h"
 #include "replay/include/http.h"
@@ -313,295 +302,36 @@ void MainWindow::openStream(AbstractStream* stream, const QString& dbc_file) {
   }
 }
 
-static size_t fnv1a_hash_endpoint(const std::string &str) {
-  const size_t fnv_prime = 0x100000001b3;
-  size_t hash_value = 0xcbf29ce484222325;
-  for (char c : str) {
-    hash_value ^= (unsigned char)c;
-    hash_value *= fnv_prime;
-  }
-  return hash_value;
-}
-
-static int get_zmq_port(std::string endpoint) {
-  size_t hash_value = fnv1a_hash_endpoint(endpoint);
-  int start_port = 8023;
-  int max_port = 65535;
-  return start_port + (hash_value % (max_port - start_port));
-}
-
-class ZmqDiagnosticWorker : public QThread {
-public:
-  QString ip;
-  int port;
-  bool ping_ok = false;
-  bool socket_ok = false;
-  bool zmq_handshake_ok = false;
-  bool ignition_on = false;
-  bool can_query_ignition = false;
-
-  ZmqDiagnosticWorker(QString ip, int port, QObject *parent = nullptr) 
-    : QThread(parent), ip(ip), port(port) {}
-
-  void run() override {
-    // 1. Ping Check
-    QProcess ping;
-    ping.start("ping", {"-c", "1", "-W", "1", ip});
-    if (ping.waitForFinished(1500)) {
-      ping_ok = (ping.exitCode() == 0);
-    }
-
-    // 2. Socket Check
-    QTcpSocket tcp;
-    tcp.connectToHost(ip, port);
-    if (tcp.waitForConnected(1000)) {
-      socket_ok = true;
-      
-      // 3. Additional ZMQ protocol handshake check
-      tcp.write("\xff\x00\x00\x00\x00\x00\x00\x00\x01\x7f", 10);
-      if (tcp.waitForBytesWritten(500) && tcp.waitForReadyRead(1000)) {
-        QByteArray reply = tcp.read(64);
-        if (reply.size() >= 10 && (unsigned char)reply[0] == 0xff) {
-          zmq_handshake_ok = true;
-        }
-      }
-      tcp.disconnectFromHost();
-      
-      // 4. Ignition Check
-      int panda_states_port = get_zmq_port("pandaStates");
-      void *context = zmq_ctx_new();
-      void *subscriber = zmq_socket(context, ZMQ_SUB);
-      zmq_setsockopt(subscriber, ZMQ_SUBSCRIBE, "", 0);
-      int timeout = 2500; // Increase to 2.5 seconds timeout
-      zmq_setsockopt(subscriber, ZMQ_RCVTIMEO, &timeout, sizeof(int));
-      
-      std::string addr = "tcp://" + ip.toStdString() + ":" + std::to_string(panda_states_port);
-      if (zmq_connect(subscriber, addr.c_str()) == 0) {
-        QThread::msleep(500); // Allow ZMQ background connection handshake to complete
-        zmq_msg_t reply_msg;
-        zmq_msg_init(&reply_msg);
-        int rc = zmq_msg_recv(&reply_msg, subscriber, 0);
-        if (rc > 0) {
-          try {
-            int size = zmq_msg_size(&reply_msg);
-            if (size >= 8) {
-              int words_size = size / sizeof(capnp::word);
-              std::vector<capnp::word> aligned_buf(words_size);
-              memcpy(aligned_buf.data(), zmq_msg_data(&reply_msg), size);
-              
-              capnp::FlatArrayMessageReader reader(
-                kj::ArrayPtr<const capnp::word>(aligned_buf.data(), words_size)
-              );
-              auto event = reader.getRoot<cereal::Event>();
-              if (event.which() == cereal::Event::Which::PANDA_STATES) {
-                can_query_ignition = true;
-                for (auto p : event.getPandaStates()) {
-                  if (p.getIgnitionLine() || p.getIgnitionCan()) {
-                    ignition_on = true;
-                  }
-                }
-              }
-            }
-          } catch (...) {
-            // Safe fallback on parsing error
-          }
-        }
-        zmq_msg_close(&reply_msg);
-      }
-      zmq_close(subscriber);
-      zmq_ctx_destroy(context);
-    }
-  }
-};
-
-class ZmqLoadDialog : public QDialog {
-private:
-  QString ip;
-  QLabel *title_label;
-  QLabel *ping_label;
-  QLabel *socket_label;
-  QLabel *zmq_label;
-  QLabel *ignition_label;
-  QLabel *advice_label;
-  QTimer *diag_timer;
-  QPointer<ZmqDiagnosticWorker> worker = nullptr;
-
-public:
-  ZmqLoadDialog(QString ip_address, QWidget *parent = nullptr) : QDialog(parent), ip(ip_address) {
-    setWindowTitle(tr("Connecting to ZMQ Stream"));
-    setWindowModality(Qt::WindowModal);
-    setFixedSize(420, 310);
-
-    QVBoxLayout *layout = new QVBoxLayout(this);
-    layout->setContentsMargins(20, 20, 20, 20);
-    layout->setSpacing(12);
-
-    title_label = new QLabel(tr("Connecting to %1...").arg(ip.isEmpty() ? "127.0.0.1" : ip), this);
-    title_label->setStyleSheet("font-size: 15px; font-weight: bold;");
-    layout->addWidget(title_label);
-
-    QProgressBar *progress = new QProgressBar(this);
-    progress->setRange(0, 0);
-    progress->setFixedHeight(12);
-    layout->addWidget(progress);
-
-    ping_label = new QLabel("⚪ [Ping] ➔ Connecting...", this);
-    socket_label = new QLabel("⚪ [Socket] ➔ Connecting...", this);
-    zmq_label = new QLabel("⚪ [ZMQ Handshake] ➔ Connecting...", this);
-    ignition_label = new QLabel("⚪ [Ignition] ➔ Connecting...", this);
-
-    ping_label->setStyleSheet("font-size: 13px; color: #9ca3af;");
-    socket_label->setStyleSheet("font-size: 13px; color: #9ca3af;");
-    zmq_label->setStyleSheet("font-size: 13px; color: #9ca3af;");
-    ignition_label->setStyleSheet("font-size: 13px; color: #9ca3af;");
-
-    layout->addWidget(ping_label);
-    layout->addWidget(socket_label);
-    layout->addWidget(zmq_label);
-    layout->addWidget(ignition_label);
-
-    QFrame *line = new QFrame(this);
-    line->setFrameShape(QFrame::HLine);
-    line->setFrameShadow(QFrame::Sunken);
-    layout->addWidget(line);
-
-    advice_label = new QLabel(tr("Initializing connection diagnostics..."), this);
-    advice_label->setWordWrap(true);
-    advice_label->setStyleSheet("font-size: 12px; color: #6b7280;");
-    layout->addWidget(advice_label);
-
-    layout->addStretch();
-
-    QHBoxLayout *btn_layout = new QHBoxLayout();
-    QPushButton *abort_btn = new QPushButton(tr("&Abort"), this);
-    abort_btn->setFixedWidth(100);
-    btn_layout->addStretch();
-    btn_layout->addWidget(abort_btn);
-    layout->addLayout(btn_layout);
-
-    connect(abort_btn, &QPushButton::clicked, this, &QDialog::reject);
-
-    diag_timer = new QTimer(this);
-    connect(diag_timer, &QTimer::timeout, this, &ZmqLoadDialog::runDiagnostics);
-    diag_timer->start(5000);
-
-    QTimer::singleShot(200, this, &ZmqLoadDialog::runDiagnostics);
-  }
-
-  ~ZmqLoadDialog() {
-    diag_timer->stop();
-    if (worker && worker->isRunning()) {
-      worker->requestInterruption();
-      worker->wait();
-    }
-  }
-
-  void runDiagnostics() {
-    if (worker && worker->isRunning()) {
-      return;
-    }
-    
-    int port = get_zmq_port("can");
-    worker = new ZmqDiagnosticWorker(ip.isEmpty() ? "127.0.0.1" : ip, port, this);
-    connect(worker, &QThread::finished, this, [=]() {
-      updateUI();
-      worker->deleteLater();
-      worker = nullptr;
-    });
-    worker->start();
-  }
-
-  void updateUI() {
-    if (!worker) return;
-
-    if (worker->ping_ok) {
-      ping_label->setText(tr("🟢 [Ping] ➔ OK (Device is online)"));
-      ping_label->setStyleSheet("color: #22c55e; font-size: 13px; font-weight: bold;");
-    } else {
-      ping_label->setText(tr("🔴 [Ping] ➔ KO (Device unreachable)"));
-      ping_label->setStyleSheet("color: #ef4444; font-size: 13px; font-weight: bold;");
-    }
-
-    if (worker->socket_ok) {
-      socket_label->setText(tr("🟢 [Socket] ➔ OK (Port %1 is open)").arg(worker->port));
-      socket_label->setStyleSheet("color: #22c55e; font-size: 13px; font-weight: bold;");
-      
-      if (worker->zmq_handshake_ok) {
-        zmq_label->setText(tr("🟢 [ZMQ Status] ➔ OK (ZMQ handshake succeeded)"));
-        zmq_label->setStyleSheet("color: #22c55e; font-size: 13px; font-weight: bold;");
-      } else {
-        zmq_label->setText(tr("🔴 [ZMQ Status] ➔ KO (Handshake failed)"));
-        zmq_label->setStyleSheet("color: #ef4444; font-size: 13px; font-weight: bold;");
-      }
-    } else {
-      socket_label->setText(tr("🔴 [Socket] ➔ KO (Port %1 is closed)").arg(worker->port));
-      socket_label->setStyleSheet("color: #ef4444; font-size: 13px; font-weight: bold;");
-      
-      zmq_label->setText(tr("⚪ [ZMQ Status] ➔ --"));
-      zmq_label->setStyleSheet("color: #9ca3af; font-size: 13px;");
-    }
-
-    if (!worker->ping_ok) {
-      ignition_label->setText(tr("⚪ [Ignition] ➔ --"));
-      ignition_label->setStyleSheet("color: #9ca3af; font-size: 13px;");
-      if (ip == "127.0.0.1" || ip == "localhost") {
-        advice_label->setText(tr("Make sure openpilot/camerad is running locally on this PC."));
-      } else {
-        advice_label->setText(tr("Make sure the Comma device is powered ON and your PC is connected to the same Wi-Fi subnet."));
-      }
-    } else if (!worker->socket_ok) {
-      ignition_label->setText(tr("⚪ [Ignition] ➔ --"));
-      ignition_label->setStyleSheet("color: #9ca3af; font-size: 13px;");
-      advice_label->setText(tr("The device is reachable, but the ZMQ bridge service is not running. Please start the bridge process on the device."));
-    } else {
-      if (worker->can_query_ignition) {
-        if (worker->ignition_on) {
-          ignition_label->setText(tr("🟢 [Ignition] ➔ ON (CAN traffic active)"));
-          ignition_label->setStyleSheet("color: #22c55e; font-size: 13px; font-weight: bold;");
-          advice_label->setText(tr("Initializing live CAN stream... Waiting for the first packets to arrive."));
-        } else {
-          ignition_label->setText(tr("🟡 [Ignition] ➔ OFF (Panda in standby)"));
-          ignition_label->setStyleSheet("color: #f59e0b; font-size: 13px; font-weight: bold;");
-          advice_label->setText(tr("Connection established! Please turn your car's IGNITION ON to start streaming live CAN data."));
-        }
-      } else {
-        ignition_label->setText(tr("🔴 [Ignition] ➔ KO (Cannot query pandaStates)"));
-        ignition_label->setStyleSheet("color: #ef4444; font-size: 13px; font-weight: bold;");
-        advice_label->setText(tr("Port is open, but cannot query pandaStates. Check your firewall settings."));
-      }
-    }
-  }
-};
-
 void MainWindow::createLoadingDialog(bool is_live) {
   auto* stream = StreamManager::stream();
-  DeviceStream* device_stream = dynamic_cast<DeviceStream*>(stream);
+  auto* device_stream = dynamic_cast<DeviceStream*>(stream);
 
   if (is_live && device_stream) {
-    QString ip = device_stream->zmqAddress();
-    auto wait_dlg = new ZmqLoadDialog(ip, this);
+    const QString ip = device_stream->zmqAddress();
+    auto* wait_dlg = new ZmqLoadDialog(ip, this);
     wait_dlg->setAttribute(Qt::WA_DeleteOnClose);
     connect(wait_dlg, &QDialog::rejected, this, &MainWindow::close);
     connect(&StreamManager::instance(), &StreamManager::eventsMerged, wait_dlg, &QDialog::accept);
     wait_dlg->show();
-  } else {
-    auto wait_dlg = new QProgressDialog(is_live ? tr("Waiting for live stream...") : tr("Loading segments..."),
-                                        tr("&Abort"), 0, 100, this);
-
-    wait_dlg->setWindowModality(Qt::WindowModal);
-    wait_dlg->setAttribute(Qt::WA_DeleteOnClose);
-    wait_dlg->setFixedSize(400, wait_dlg->sizeHint().height());
-
-    connect(wait_dlg, &QProgressDialog::canceled, this, &MainWindow::close);
-    connect(&StreamManager::instance(), &StreamManager::eventsMerged, wait_dlg, &QProgressDialog::accept);
-    connect(&SystemRelay::instance(), &SystemRelay::downloadProgress, wait_dlg,
-            [=](uint64_t cur, uint64_t total, bool success) {
-              Q_UNUSED(success);
-              if (total == 0) return;
-              wait_dlg->setValue((int)((cur / (double)total) * 100));
-            });
-    wait_dlg->show();
+    return;
   }
+
+  auto* wait_dlg = new QProgressDialog(is_live ? tr("Waiting for live stream...") : tr("Loading segments..."),
+                                       tr("&Abort"), 0, 100, this);
+
+  wait_dlg->setWindowModality(Qt::WindowModal);
+  wait_dlg->setAttribute(Qt::WA_DeleteOnClose);
+  wait_dlg->setFixedSize(400, wait_dlg->sizeHint().height());
+
+  connect(wait_dlg, &QProgressDialog::canceled, this, &MainWindow::close);
+  connect(&StreamManager::instance(), &StreamManager::eventsMerged, wait_dlg, &QProgressDialog::accept);
+  connect(&SystemRelay::instance(), &SystemRelay::downloadProgress, wait_dlg,
+          [wait_dlg](uint64_t cur, uint64_t total, bool success) {
+            Q_UNUSED(success);
+            if (total == 0) return;
+            wait_dlg->setValue((int)((cur / (double)total) * 100));
+          });
+  wait_dlg->show();
 }
 
 void MainWindow::eventsMerged() {
