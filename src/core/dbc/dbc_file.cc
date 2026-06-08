@@ -73,22 +73,21 @@ dbc::Signal* File::signal(uint32_t address, const QString& name) {
   return m ? m->sig(name) : nullptr;
 }
 
-void File::parse(const QString& content) {
+void File::parse(QString content) {
   msgs.clear();
-
+  header.clear();
+  QTextStream stream(&content);
   int line_num = 0;
-  QString line;
   dbc::Msg* current_msg = nullptr;
   int multiplexor_cnt = 0;
   bool seen_first = false;
-  QTextStream stream(const_cast<QString*>(&content));
 
   while (!stream.atEnd()) {
     ++line_num;
-    QString raw_line = stream.readLine();
-    line = raw_line.trimmed();
+    const QString raw_line = stream.readLine();
+    const QString line = raw_line.trimmed();
 
-    bool recognized = true;
+    bool matched = true;
     try {
       if (line.startsWith("BO_ ")) {
         multiplexor_cnt = 0;
@@ -98,25 +97,22 @@ void File::parse(const QString& content) {
       } else if (line.startsWith("VAL_ ")) {
         parseVAL(line);
       } else if (line.startsWith("CM_ BO_") || line.startsWith("CM_ SG_ ")) {
-        parseComment(line, stream);
+        parseComment(line, stream, line_num);
       } else {
-        recognized = false;
+        matched = false;
       }
     } catch (std::exception& e) {
       throw std::runtime_error(
           QString("[%1:%2] %3: %4").arg(filename).arg(line_num).arg(e.what()).arg(line).toStdString());
     }
 
-    if (recognized) {
+    if (matched)
       seen_first = true;
-    } else if (!seen_first) {
-      header += raw_line + "\n";
-    }
+    else if (!seen_first)
+      header += raw_line + '\n';
   }
 
-  for (auto& [_, m] : msgs) {
-    m.update();
-  }
+  for (auto& [_, m] : msgs) m.update();
 }
 
 dbc::Msg* File::parseBO(const QString& line) {
@@ -125,8 +121,7 @@ dbc::Msg* File::parseBO(const QString& line) {
 
   uint32_t address = match.captured("address").toUInt();
   auto [it, inserted] = msgs.try_emplace(address);
-  if (!inserted)
-    throw std::runtime_error(QString("Duplicate message address: %1").arg(address).toStdString());
+  if (!inserted) throw std::runtime_error(QString("Duplicate message address: %1").arg(address).toStdString());
 
   dbc::Msg* msg = &it->second;
   msg->address = address;
@@ -151,47 +146,44 @@ void File::parseSG(const QString& line, dbc::Msg* current_msg, int& multiplexor_
     throw std::runtime_error(QString("Duplicate signal name: %1").arg(name).toStdString());
   }
 
-  dbc::Signal s{};
-  s.name = name;
+  auto* s = new dbc::Signal();
+  s->name = name;
 
-  // Handle Multiplexing logic
-  QString mux = match.captured("mux");
+  // Multiplexing
+  const QString mux = match.captured("mux");
   if (mux == "M") {
-    if (++multiplexor_cnt >= 2) {
+    if (++multiplexor_cnt >= 2)
       throw std::runtime_error("Multiple multiplexor switch signals (M) found in one message");
-    }
-    s.type = dbc::Signal::Type::Multiplexor;
+    s->type = dbc::Signal::Type::Multiplexor;
   } else if (mux.startsWith('m')) {
-    s.type = dbc::Signal::Type::Multiplexed;
-    s.multiplex_value = mux.mid(1).toInt();
-  } else {
-    s.type = dbc::Signal::Type::Normal;
+    s->type = dbc::Signal::Type::Multiplexed;
+    s->multiplex_value = mux.mid(1).toInt();
   }
 
-  // Bit layout and Encoding
-  s.start_bit = match.captured("start").toInt();
-  s.size = match.captured("size").toInt();
-  s.is_little_endian = (match.captured("endian") == "1");
-  s.is_signed = (match.captured("sign") == "-");
+  // Bit layout
+  s->start_bit = match.captured("start").toInt();
+  s->size = match.captured("size").toInt();
+  s->is_little_endian = (match.captured("endian") == "1");
+  s->is_signed = (match.captured("sign") == "-");
 
-  // Physical range and Factor
-  s.factor = match.captured("factor").toDouble();
-  s.offset = match.captured("offset").toDouble();
-  s.min = match.captured("min").toDouble();
-  s.max = match.captured("max").toDouble();
+  // Physical value
+  s->factor = match.captured("factor").toDouble();
+  s->offset = match.captured("offset").toDouble();
+  s->min = match.captured("min").toDouble();
+  s->max = match.captured("max").toDouble();
 
   // Metadata
-  s.unit = match.captured("unit");
-  s.receiver_name = match.captured("receiver").trimmed();
+  s->unit = match.captured("unit");
+  s->receiver_name = match.captured("receiver").trimmed();
 
-  current_msg->sigs.push_back(new dbc::Signal(s));
+  current_msg->sigs.push_back(s);
 }
 
-void File::parseComment(const QString& line, QTextStream& stream) {
+void File::parseComment(const QString& line, QTextStream& stream, int& line_num) {
   QString raw = line;
-  // Consume stream until the entry is closed by a semicolon
   while (!raw.endsWith(';') && !stream.atEnd()) {
-    raw += "\n" + stream.readLine();
+    raw += '\n' + stream.readLine();
+    ++line_num;
   }
 
   auto match = RE_COMMENT.match(raw);
@@ -228,56 +220,43 @@ void File::parseVAL(const QString& line) {
 
 QString File::toDBCString() {
   QString body, comments, value_tables;
-
-  // Use QTextStream for efficient buffer management
   QTextStream body_stream(&body);
   QTextStream comm_stream(&comments);
   QTextStream val_stream(&value_tables);
 
+  auto quoteEscape = [](const QString& s) { return QString(s).replace('"', "\\\""); };
+  auto muxPrefix = [](const dbc::Signal* sig) -> QString {
+    if (sig->type == dbc::Signal::Type::Multiplexor) return "M ";
+    if (sig->type == dbc::Signal::Type::Multiplexed) return QString("m%1 ").arg(sig->multiplex_value);
+    return {};
+  };
+
   for (const auto& [address, m] : msgs) {
-    // 1. Generate Message (BO_)
     const QString transmitter = m.transmitter.isEmpty() ? DEFAULT_NODE_NAME : m.transmitter;
     body_stream << "BO_ " << address << " " << m.name << ": " << m.size << " " << transmitter << "\n";
 
-    // 2. Generate Message Comment
-    if (!m.comment.isEmpty()) {
-      comm_stream << "CM_ BO_ " << address << " \"" << QString(m.comment).replace("\"", "\\\"") << "\";\n";
-    }
+    if (!m.comment.isEmpty()) comm_stream << "CM_ BO_ " << address << " \"" << quoteEscape(m.comment) << "\";\n";
 
-    for (auto sig : m.getSignals()) {
-      // 3. Generate Signal (SG_)
-      QString mux;
-      if (sig->type == dbc::Signal::Type::Multiplexor) {
-        mux = "M ";
-      } else if (sig->type == dbc::Signal::Type::Multiplexed) {
-        mux = QString("m%1 ").arg(sig->multiplex_value);
-      }
-
-      body_stream << " SG_ " << sig->name << " " << mux << ": " << sig->start_bit << "|" << sig->size << "@"
+    for (const auto* sig : m.getSignals()) {
+      body_stream << " SG_ " << sig->name << " " << muxPrefix(sig) << ": " << sig->start_bit << "|" << sig->size << "@"
                   << (sig->is_little_endian ? '1' : '0') << (sig->is_signed ? '-' : '+') << " ("
                   << utils::doubleToString(sig->factor) << "," << utils::doubleToString(sig->offset) << ") ["
                   << utils::doubleToString(sig->min) << "|" << utils::doubleToString(sig->max) << "] \"" << sig->unit
                   << "\" " << (sig->receiver_name.isEmpty() ? DEFAULT_NODE_NAME : sig->receiver_name) << "\n";
 
-      // 4. Generate Signal Comment
-      if (!sig->comment.isEmpty()) {
-        comm_stream << "CM_ SG_ " << address << " " << sig->name << " \"" << QString(sig->comment).replace("\"", "\\\"")
-                    << "\";\n";
-      }
+      if (!sig->comment.isEmpty())
+        comm_stream << "CM_ SG_ " << address << " " << sig->name << " \"" << quoteEscape(sig->comment) << "\";\n";
 
-      // 5. Generate Value Table (VAL_)
       if (!sig->value_table.empty()) {
         val_stream << "VAL_ " << address << " " << sig->name;
-        for (const auto& [val, desc] : sig->value_table) {
+        for (const auto& [val, desc] : sig->value_table)
           val_stream << " " << static_cast<long long>(val) << " \"" << desc << "\"";
-        }
         val_stream << ";\n";
       }
     }
     body_stream << "\n";
   }
 
-  // Combine components in standard DBC order: Header -> BO/SG -> CM -> VAL
   return header + body + comments + value_tables;
 }
 

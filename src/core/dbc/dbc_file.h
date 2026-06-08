@@ -11,7 +11,7 @@ class File {
  public:
   File(const QString& dbc_file_name);
   File(const QString& name, const QString& content);
-  ~File() {}
+  ~File() = default;
 
   bool save();
   bool saveAs(const QString& new_filename);
@@ -32,11 +32,11 @@ class File {
   QString filename;
 
  private:
-  void parse(const QString& content);
+  void parse(QString content);
   bool saveToFile(const QString& fn);
   dbc::Msg* parseBO(const QString& line);
   void parseSG(const QString& line, dbc::Msg* current_msg, int& multiplexor_cnt);
-  void parseComment(const QString& line, QTextStream& stream);
+  void parseComment(const QString& line, QTextStream& stream, int& line_num);
   void parseVAL(const QString& line);
 
   QString header;
