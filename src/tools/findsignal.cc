@@ -8,57 +8,88 @@
 #include <QVBoxLayout>
 #include <QtConcurrent>
 
+#include <cmath>
+
 #include "modules/system/stream_manager.h"
 #include "widgets/validators.h"
 
-// FindSignalModel
+// ─── FindSignalModel ─────────────────────────────────────────────────────────
 
 QVariant FindSignalModel::headerData(int section, Qt::Orientation orientation, int role) const {
-  static QString titles[] = {"Id", "Start Bit, size", "(time, value)"};
   if (role != Qt::DisplayRole) return {};
-  return orientation == Qt::Horizontal ? titles[section] : QString::number(section + 1);
+  if (orientation == Qt::Vertical) return QString::number(section + 1);
+  static const QString titles[] = {"Message", "Signal (start|size)", "Prev Value", "Value", "Δ"};
+  return titles[section];
 }
 
 QVariant FindSignalModel::data(const QModelIndex& index, int role) const {
+  if (!index.isValid() || index.row() >= (int)filtered_signals.size()) return {};
+  const auto& s = filtered_signals[index.row()];
   if (role == Qt::DisplayRole) {
-    const auto& s = filtered_signals[index.row()];
     switch (index.column()) {
       case 0: return s.id.toString();
-      case 1: return QString("%1, %2").arg(s.sig.start_bit).arg(s.sig.size);
-      case 2: return s.values.join(" ");
+      case 1: {
+        const char endian = s.sig.is_little_endian ? 'L' : 'B';
+        const char sign   = s.sig.is_signed ? 'S' : 'U';
+        return QString("%1|%2 [%3%4]").arg(s.sig.start_bit).arg(s.sig.size).arg(endian).arg(sign);
+      }
+      case 2: return histories.size() > 1 ? QString::number(s.prev_value, 'g', 6) : QStringLiteral("—");
+      case 3: return QString::number(s.value, 'g', 6);
+      case 4: {
+        if (histories.size() <= 1) return QStringLiteral("—");
+        const double delta = s.value - s.prev_value;
+        return delta > 0 ? QString("+%1").arg(delta, 0, 'g', 4) : QString::number(delta, 'g', 4);
+      }
     }
+  }
+  if (role == Qt::ForegroundRole && index.column() == 4 && histories.size() > 1) {
+    const double delta = s.value - s.prev_value;
+    if (delta > 0) return QColor(0x22, 0xc5, 0x5e);
+    if (delta < 0) return QColor(0xef, 0x44, 0x44);
   }
   return {};
 }
 
-void FindSignalModel::search(std::function<bool(double)> cmp) {
+// On the first scan the values are already captured inside initial_signals;
+// on subsequent scans we look up the value at scan_ns and compare against the
+// stored (previous) value, then update the stored value for the next step.
+void FindSignalModel::search(uint64_t scan_ns, std::function<bool(double, double)> cmp) {
   beginResetModel();
 
-  std::mutex lock;
-  const auto prev_sigs = !histories.isEmpty() ? histories.back() : initial_signals;
+  const bool is_first = histories.isEmpty();
+  const auto& candidates = is_first ? initial_signals : histories.back();
+
   filtered_signals.clear();
-  filtered_signals.reserve(prev_sigs.size());
-  QtConcurrent::blockingMap(prev_sigs, [&](auto& s) {
-    const auto& events = StreamManager::stream()->events(s.id);
-    auto first = std::ranges::upper_bound(events, s.mono_ns, {}, &CanEvent::mono_ns);
-    auto last = events.cend();
-    if (last_time < std::numeric_limits<uint64_t>::max()) {
-      last = std::ranges::upper_bound(events, last_time, {}, &CanEvent::mono_ns);
-    }
+  filtered_signals.reserve(candidates.size());
 
-    auto it =
-        std::ranges::find_if(first, last, cmp, [&](const CanEvent* e) { return s.sig.toPhysical(e->dat, e->size); });
-    if (it != last) {
-      auto values = s.values;
-      values += QString("(%1, %2)")
-                    .arg(StreamManager::stream()->toSeconds((*it)->mono_ns), 0, 'f', 3)
-                    .arg(s.sig.toPhysical((*it)->dat, (*it)->size));
+  if (is_first) {
+    for (const auto& s : candidates) {
+      if (cmp(s.prev_value, s.value)) filtered_signals.push_back(s);
+    }
+  } else {
+    std::mutex lock;
+    QtConcurrent::blockingMap(candidates, [&](const SearchSignal& s) {
+      const auto& events = StreamManager::stream()->events(s.id);
+      auto it = std::ranges::upper_bound(events, scan_ns, {}, &CanEvent::mono_ns);
+      if (it == events.cbegin()) return;
+      --it;
+      const double new_value = s.sig.toPhysical((*it)->dat, (*it)->size);
+      if (!cmp(s.value, new_value)) return;
+      SearchSignal updated = s;
+      updated.mono_ns    = (*it)->mono_ns;
+      updated.prev_value = s.value;
+      updated.value      = new_value;
       std::lock_guard lk(lock);
-      filtered_signals.push_back({.id = s.id, .mono_ns = (*it)->mono_ns, .sig = s.sig, .values = values});
-    }
-  });
-  histories.push_back(filtered_signals);
+      filtered_signals.push_back(std::move(updated));
+    });
+    std::ranges::sort(filtered_signals, [](const SearchSignal& a, const SearchSignal& b) {
+      if (a.id != b.id) return a.id < b.id;
+      if (a.sig.start_bit != b.sig.start_bit) return a.sig.start_bit < b.sig.start_bit;
+      return a.sig.size < b.sig.size;
+    });
+  }
 
+  histories.push_back(filtered_signals);
   endResetModel();
 }
 
@@ -80,138 +111,191 @@ void FindSignalModel::reset() {
   endResetModel();
 }
 
-// FindSignalDlg
+// ─── FindSignalDlg ───────────────────────────────────────────────────────────
+
 FindSignalDlg::FindSignalDlg(QWidget* parent) : QDialog(parent, Qt::WindowFlags() | Qt::Window) {
   setWindowTitle(tr("Find Signal"));
   setAttribute(Qt::WA_DeleteOnClose);
-  QVBoxLayout* main_layout = new QVBoxLayout(this);
+  auto* main_layout = new QVBoxLayout(this);
 
   // Messages group
   message_group = new QGroupBox(tr("Messages"), this);
-  QFormLayout* message_layout = new QFormLayout(message_group);
+  auto* message_layout = new QFormLayout(message_group);
   message_layout->addRow(tr("Bus"), bus_edit = new QLineEdit());
-  bus_edit->setPlaceholderText(tr("comma-seperated values. Leave blank for all"));
+  bus_edit->setPlaceholderText(tr("comma-separated. Leave blank for all"));
   message_layout->addRow(tr("Address"), address_edit = new QLineEdit());
-  address_edit->setPlaceholderText(tr("comma-seperated hex values. Leave blank for all"));
-  QHBoxLayout* hlayout = new QHBoxLayout();
-  hlayout->addWidget(first_time_edit = new QLineEdit("0"));
-  hlayout->addWidget(new QLabel("-"));
-  hlayout->addWidget(last_time_edit = new QLineEdit("MAX"));
-  hlayout->addWidget(new QLabel("seconds"));
-  hlayout->addStretch(0);
-  message_layout->addRow(tr("Time"), hlayout);
+  address_edit->setPlaceholderText(tr("comma-separated hex. Leave blank for all"));
+  auto* time_row = new QHBoxLayout();
+  time_row->addWidget(scan_time_edit = new QLineEdit("0"));
+  scan_time_edit->setFixedWidth(80);
+  auto* now_btn = new QPushButton(tr("Now"), this);
+  now_btn->setFixedWidth(50);
+  time_row->addWidget(now_btn);
+  time_row->addWidget(new QLabel(tr("sec")));
+  time_row->addStretch();
+  message_layout->addRow(tr("Scan At"), time_row);
 
-  // Signal group
-  properties_group = new QGroupBox(tr("Signal"));
-  QFormLayout* property_layout = new QFormLayout(properties_group);
+  // Signal properties group
+  properties_group = new QGroupBox(tr("Signal"), this);
+  auto* property_layout = new QFormLayout(properties_group);
   property_layout->setFieldGrowthPolicy(QFormLayout::FieldsStayAtSizeHint);
-
-  hlayout = new QHBoxLayout();
-  hlayout->addWidget(min_size = new QSpinBox);
-  hlayout->addWidget(new QLabel("-"));
-  hlayout->addWidget(max_size = new QSpinBox);
-  hlayout->addWidget(litter_endian = new QCheckBox(tr("Little endian")));
-  hlayout->addWidget(is_signed = new QCheckBox(tr("Signed")));
-  hlayout->addStretch(0);
+  auto* size_row = new QHBoxLayout();
+  size_row->addWidget(min_size = new QSpinBox);
+  size_row->addWidget(new QLabel("-"));
+  size_row->addWidget(max_size = new QSpinBox);
+  size_row->addWidget(litter_endian = new QCheckBox(tr("Little endian")));
+  size_row->addWidget(is_signed = new QCheckBox(tr("Signed")));
+  size_row->addStretch();
   min_size->setRange(1, 64);
   max_size->setRange(1, 64);
   min_size->setValue(8);
   max_size->setValue(8);
   litter_endian->setChecked(true);
-  property_layout->addRow(tr("Size"), hlayout);
+  property_layout->addRow(tr("Size"), size_row);
   property_layout->addRow(tr("Factor"), factor_edit = new QLineEdit("1.0"));
   property_layout->addRow(tr("Offset"), offset_edit = new QLineEdit("0.0"));
 
-  // find group
-  QGroupBox* find_group = new QGroupBox(tr("Find signal"), this);
-  QVBoxLayout* vlayout = new QVBoxLayout(find_group);
-  hlayout = new QHBoxLayout();
+  // Scan group
+  auto* find_group = new QGroupBox(tr("Scan"), this);
+  auto* vlayout = new QVBoxLayout(find_group);
+  auto* hlayout = new QHBoxLayout();
   hlayout->addWidget(new QLabel(tr("Value")));
   hlayout->addWidget(compare_cb = new QComboBox(this));
   hlayout->addWidget(value1 = new QLineEdit);
   hlayout->addWidget(to_label = new QLabel("-"));
   hlayout->addWidget(value2 = new QLineEdit);
-  hlayout->addWidget(undo_btn = new QPushButton(tr("Undo prev find"), this));
-  hlayout->addWidget(search_btn = new QPushButton(tr("Find")));
-  hlayout->addWidget(reset_btn = new QPushButton(tr("Reset"), this));
+  hlayout->addWidget(undo_btn = new QPushButton(tr("Undo"), this));
+  hlayout->addWidget(search_btn = new QPushButton(tr("First Scan"), this));
+  hlayout->addWidget(reset_btn = new QPushButton(tr("New Scan"), this));
   vlayout->addLayout(hlayout);
+  vlayout->addWidget(view = new QTableView(this));
 
-  compare_cb->addItems({"=", ">", ">=", "!=", "<", "<=", "between"});
-  value1->setFocus(Qt::OtherFocusReason);
+  // Compare modes: indices 0-7 are absolute, 8-13 are relative (Next Scan)
+  compare_cb->addItems({
+    tr("Any Value"),
+    tr("= Exact Value"),
+    tr("≠ Not Equal"),
+    tr("> Greater Than"),
+    tr("≥ Greater or Equal"),
+    tr("< Less Than"),
+    tr("≤ Less or Equal"),
+    tr("Between A…B"),
+    tr("↕ Changed"),
+    tr("= Unchanged"),
+    tr("↑ Increased"),
+    tr("↓ Decreased"),
+    tr("↑ Increased By"),
+    tr("↓ Decreased By"),
+  });
+
+  value1->setVisible(false);
   value2->setVisible(false);
   to_label->setVisible(false);
   undo_btn->setEnabled(false);
   reset_btn->setEnabled(false);
 
-  auto double_validator = new DoubleValidator(this);
-  for (auto edit : {value1, value2, factor_edit, offset_edit, first_time_edit, last_time_edit}) {
+  auto* double_validator = new DoubleValidator(this);
+  for (auto* edit : {value1, value2, factor_edit, offset_edit, scan_time_edit})
     edit->setValidator(double_validator);
-  }
 
-  vlayout->addWidget(view = new QTableView(this));
   view->setContextMenuPolicy(Qt::CustomContextMenu);
   view->horizontalHeader()->setStretchLastSection(true);
   view->horizontalHeader()->setSelectionMode(QAbstractItemView::NoSelection);
   view->setSelectionBehavior(QAbstractItemView::SelectRows);
   view->setModel(model = new FindSignalModel(this));
 
-  hlayout = new QHBoxLayout();
-  hlayout->addWidget(message_group);
-  hlayout->addWidget(properties_group);
-  main_layout->addLayout(hlayout);
+  auto* filter_row = new QHBoxLayout();
+  filter_row->addWidget(message_group);
+  filter_row->addWidget(properties_group);
+  main_layout->addLayout(filter_row);
   main_layout->addWidget(find_group);
-  main_layout->addWidget(stats_label = new QLabel());
+  main_layout->addWidget(stats_label = new QLabel(
+      tr("Set scan time, signal properties and value condition, then click First Scan.")));
 
   setMinimumSize({700, 650});
+
   connect(search_btn, &QPushButton::clicked, this, &FindSignalDlg::search);
-  connect(undo_btn, &QPushButton::clicked, model, &FindSignalModel::undo);
+  connect(undo_btn,   &QPushButton::clicked, model, &FindSignalModel::undo);
+  connect(reset_btn,  &QPushButton::clicked, model, &FindSignalModel::reset);
   connect(model, &QAbstractItemModel::modelReset, this, &FindSignalDlg::modelReset);
-  connect(reset_btn, &QPushButton::clicked, model, &FindSignalModel::reset);
-  connect(view, &QTableView::customContextMenuRequested, this, &FindSignalDlg::customMenuRequested);
-  connect(view, &QTableView::doubleClicked, [this](const QModelIndex& index) {
+  connect(view,  &QTableView::customContextMenuRequested, this, &FindSignalDlg::customMenuRequested);
+  connect(view,  &QTableView::doubleClicked, [this](const QModelIndex& index) {
     if (index.isValid()) emit openMessage(model->filtered_signals[index.row()].id);
   });
-  connect(compare_cb, qOverload<int>(&QComboBox::currentIndexChanged), [=](int index) {
-    to_label->setVisible(index == compare_cb->count() - 1);
-    value2->setVisible(index == compare_cb->count() - 1);
+  connect(compare_cb, qOverload<int>(&QComboBox::currentIndexChanged),
+          this, &FindSignalDlg::updateValueVisibility);
+  connect(now_btn, &QPushButton::clicked, [this]() {
+    if (auto* can = StreamManager::stream())
+      scan_time_edit->setText(QString::number(can->currentSec(), 'f', 3));
   });
+}
+
+void FindSignalDlg::updateValueVisibility(int idx) {
+  // Absolute modes 1-7 and "Increased/Decreased By" (12-13) need value1.
+  // "Between" (7) also needs value2.
+  const bool needs_v1 = (idx >= 1 && idx <= 7) || idx >= 12;
+  const bool needs_v2 = (idx == 7);
+  value1->setVisible(needs_v1);
+  to_label->setVisible(needs_v2);
+  value2->setVisible(needs_v2);
 }
 
 void FindSignalDlg::search() {
-  if (model->histories.isEmpty()) {
-    setInitialSignals();
+  auto* can = StreamManager::stream();
+  if (!can) return;
+
+  const double scan_sec = scan_time_edit->text().toDouble();
+  const uint64_t scan_ns = can->toMonoNs(scan_sec);
+  const bool is_first = model->histories.isEmpty();
+
+  if (is_first) {
+    setInitialSignals(scan_ns);
+    if (model->initial_signals.isEmpty()) {
+      stats_label->setText(tr("No CAN events found in the selected messages at this time."));
+      stats_label->setVisible(true);
+      return;
+    }
   }
-  auto v1 = value1->text().toDouble();
-  auto v2 = value2->text().toDouble();
-  std::function<bool(double)> cmp = nullptr;
-  switch (compare_cb->currentIndex()) {
-    case 0: cmp = [v1](double v) { return v == v1; }; break;
-    case 1: cmp = [v1](double v) { return v > v1; }; break;
-    case 2: cmp = [v1](double v) { return v >= v1; }; break;
-    case 3: cmp = [v1](double v) { return v != v1; }; break;
-    case 4: cmp = [v1](double v) { return v < v1; }; break;
-    case 5: cmp = [v1](double v) { return v <= v1; }; break;
-    case 6: cmp = [v1, v2](double v) { return v >= v1 && v <= v2; }; break;
+
+  const int idx = compare_cb->currentIndex();
+  const double v1 = value1->text().toDouble();
+  const double v2 = value2->text().toDouble();
+
+  std::function<bool(double, double)> cmp;
+  switch (idx) {
+    case 0:  cmp = [](double, double)            { return true; };                           break;
+    case 1:  cmp = [v1](double, double nv)       { return nv == v1; };                       break;
+    case 2:  cmp = [v1](double, double nv)       { return nv != v1; };                       break;
+    case 3:  cmp = [v1](double, double nv)       { return nv > v1; };                        break;
+    case 4:  cmp = [v1](double, double nv)       { return nv >= v1; };                       break;
+    case 5:  cmp = [v1](double, double nv)       { return nv < v1; };                        break;
+    case 6:  cmp = [v1](double, double nv)       { return nv <= v1; };                       break;
+    case 7:  cmp = [v1, v2](double, double nv)   { return nv >= v1 && nv <= v2; };           break;
+    case 8:  cmp = [](double pv, double nv)      { return nv != pv; };                       break;
+    case 9:  cmp = [](double pv, double nv)      { return nv == pv; };                       break;
+    case 10: cmp = [](double pv, double nv)      { return nv > pv; };                        break;
+    case 11: cmp = [](double pv, double nv)      { return nv < pv; };                        break;
+    case 12: cmp = [v1](double pv, double nv)    { return std::abs((nv - pv) - v1) < 1e-9; }; break;
+    case 13: cmp = [v1](double pv, double nv)    { return std::abs((pv - nv) - v1) < 1e-9; }; break;
+    default: return;
   }
-  properties_group->setEnabled(false);
+
   message_group->setEnabled(false);
+  properties_group->setEnabled(false);
   search_btn->setEnabled(false);
   stats_label->setVisible(false);
-  search_btn->setText("Finding ....");
-  QTimer::singleShot(0, this, [=]() { model->search(cmp); });
+  search_btn->setText(tr("Scanning…"));
+  QTimer::singleShot(0, this, [this, scan_ns, cmp = std::move(cmp)]() { model->search(scan_ns, cmp); });
 }
 
-void FindSignalDlg::setInitialSignals() {
+void FindSignalDlg::setInitialSignals(uint64_t scan_ns) {
   QSet<ushort> buses;
   for (auto bus : bus_edit->text().trimmed().split(",")) {
-    bus = bus.trimmed();
-    if (!bus.isEmpty()) buses.insert(bus.toUShort());
+    if (bus = bus.trimmed(); !bus.isEmpty()) buses.insert(bus.toUShort());
   }
-
   QSet<uint32_t> addresses;
   for (auto addr : address_edit->text().trimmed().split(",")) {
-    addr = addr.trimmed();
-    if (!addr.isEmpty()) addresses.insert(addr.toULong(nullptr, 16));
+    if (addr = addr.trimmed(); !addr.isEmpty()) addresses.insert(addr.toULong(nullptr, 16));
   }
 
   dbc::Signal sig{};
@@ -221,57 +305,63 @@ void FindSignalDlg::setInitialSignals() {
   sig.offset = offset_edit->text().toDouble();
 
   auto* can = StreamManager::stream();
-  double first_time_val = first_time_edit->text().toDouble();
-  double last_time_val = last_time_edit->text().toDouble();
-  auto [first_sec, last_sec] = std::minmax(first_time_val, last_time_val);
-  uint64_t first_time = can->toMonoNs(first_sec);
-  model->last_time = std::numeric_limits<uint64_t>::max();
-  if (last_sec > 0) {
-    model->last_time = can->toMonoNs(last_sec);
-  }
   model->initial_signals.clear();
 
   for (const auto& [id, m] : can->snapshots()) {
-    if ((buses.isEmpty() || buses.contains(id.source)) && (addresses.isEmpty() || addresses.contains(id.address))) {
-      const auto& events = can->events(id);
-      auto e = std::ranges::lower_bound(events, first_time, {}, &CanEvent::mono_ns);
-      if (e != events.cend()) {
-        const int total_size = m->size * 8;
-        for (int size = min_size->value(); size <= max_size->value(); ++size) {
-          for (int start = 0; start <= total_size - size; ++start) {
-            FindSignalModel::SearchSignal s{.id = id, .mono_ns = first_time, .sig = sig};
-            s.sig.start_bit = start;
-            s.sig.size = size;
-            s.sig.update();
-            s.value = s.sig.toPhysical((*e)->dat, (*e)->size);
-            model->initial_signals.push_back(s);
-          }
-        }
+    if ((!buses.isEmpty() && !buses.contains(id.source)) ||
+        (!addresses.isEmpty() && !addresses.contains(id.address)))
+      continue;
+
+    const auto& events = can->events(id);
+    // Find the latest event at or before scan_ns
+    auto it = std::ranges::upper_bound(events, scan_ns, {}, &CanEvent::mono_ns);
+    if (it == events.cbegin()) continue;
+    --it;
+
+    const int total_bits = m->size * 8;
+    for (int size = min_size->value(); size <= max_size->value(); ++size) {
+      for (int start = 0; start <= total_bits - size; ++start) {
+        FindSignalModel::SearchSignal s;
+        s.id            = id;
+        s.mono_ns       = (*it)->mono_ns;
+        s.sig           = sig;
+        s.sig.start_bit = start;
+        s.sig.size      = size;
+        s.sig.update();
+        s.prev_value    = 0.;
+        s.value         = s.sig.toPhysical((*it)->dat, (*it)->size);
+        model->initial_signals.push_back(s);
       }
     }
   }
 }
 
 void FindSignalDlg::modelReset() {
-  properties_group->setEnabled(model->histories.isEmpty());
-  message_group->setEnabled(model->histories.isEmpty());
-  search_btn->setText(model->histories.isEmpty() ? tr("Find") : tr("Find Next"));
-  reset_btn->setEnabled(!model->histories.isEmpty());
+  const bool is_first = model->histories.isEmpty();
+  message_group->setEnabled(is_first);
+  properties_group->setEnabled(is_first);
+  search_btn->setEnabled(!model->filtered_signals.isEmpty() || is_first);
+  search_btn->setText(is_first ? tr("First Scan") : tr("Next Scan"));
+  reset_btn->setEnabled(!is_first);
   undo_btn->setEnabled(model->histories.size() > 1);
-  search_btn->setEnabled(model->rowCount() > 0 || model->histories.isEmpty());
   stats_label->setVisible(true);
-  stats_label->setText(tr("%1 matches. right click on an item to create signal. double click to open message")
-                           .arg(model->filtered_signals.size()));
+  if (is_first) {
+    stats_label->setText(tr("Set scan time, signal properties and value condition, then click First Scan."));
+  } else {
+    stats_label->setText(tr("%1 candidate(s) remaining. Right-click to create signal, double-click to open message.")
+                             .arg(model->filtered_signals.size()));
+  }
 }
 
 void FindSignalDlg::customMenuRequested(const QPoint& pos) {
-  if (auto index = view->indexAt(pos); index.isValid()) {
-    QMenu menu(this);
-    menu.addAction(tr("Create Signal"));
-    if (menu.exec(view->mapToGlobal(pos))) {
-      auto& s = model->filtered_signals[index.row()];
-      UndoStack::push(new AddSigCommand(s.id, s.sig));
-      emit openMessage(s.id);
-    }
+  const auto index = view->indexAt(pos);
+  if (!index.isValid()) return;
+  QMenu menu(this);
+  menu.addAction(tr("Create Signal"));
+  if (menu.exec(view->mapToGlobal(pos))) {
+    auto& s = model->filtered_signals[index.row()];
+    UndoStack::push(new AddSigCommand(s.id, s.sig));
+    emit openMessage(s.id);
   }
 }
+

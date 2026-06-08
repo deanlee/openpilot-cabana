@@ -11,6 +11,7 @@
 #include <QSpinBox>
 #include <QTableView>
 #include <algorithm>
+#include <functional>
 #include <limits>
 
 #include "core/commands/commands.h"
@@ -22,25 +23,24 @@ class FindSignalModel : public QAbstractTableModel {
     MessageId id = {};
     uint64_t mono_ns = 0;
     dbc::Signal sig = {};
-    double value = 0.;
-    QStringList values;
+    double value = 0.;       // value captured at the most recent scan
+    double prev_value = 0.;  // value captured at the previous scan (shown as Δ)
   };
 
   FindSignalModel(QObject* parent) : QAbstractTableModel(parent) {}
   QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const override;
   QVariant data(const QModelIndex& index, int role = Qt::DisplayRole) const override;
-  int columnCount(const QModelIndex& parent = QModelIndex()) const override { return 3; }
+  int columnCount(const QModelIndex& parent = QModelIndex()) const override { return 5; }
   int rowCount(const QModelIndex& parent = QModelIndex()) const override {
-    return std::min<int>((int)(filtered_signals.size()), 300);
+    return std::min<int>((int)(filtered_signals.size()), 500);
   }
-  void search(std::function<bool(double)> cmp);
+  void search(uint64_t scan_ns, std::function<bool(double, double)> cmp);
   void reset();
   void undo();
 
   QList<SearchSignal> filtered_signals;
   QList<SearchSignal> initial_signals;
   QList<QList<SearchSignal>> histories;
-  uint64_t last_time = std::numeric_limits<uint64_t>::max();
 };
 
 class FindSignalDlg : public QDialog {
@@ -54,11 +54,12 @@ class FindSignalDlg : public QDialog {
  private:
   void search();
   void modelReset();
-  void setInitialSignals();
+  void setInitialSignals(uint64_t scan_ns);
   void customMenuRequested(const QPoint& pos);
+  void updateValueVisibility(int cmp_index);
 
   QLineEdit *value1, *value2, *factor_edit, *offset_edit;
-  QLineEdit *bus_edit, *address_edit, *first_time_edit, *last_time_edit;
+  QLineEdit *bus_edit, *address_edit, *scan_time_edit;
   QComboBox* compare_cb;
   QSpinBox *min_size, *max_size;
   QCheckBox *litter_endian, *is_signed;
