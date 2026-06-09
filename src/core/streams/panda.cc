@@ -71,14 +71,14 @@ std::vector<std::string> Panda::list(bool usb_only) {
       libusb_device_handle* handle = NULL;
       int ret = libusb_open(device, &handle);
       if (ret < 0) {
-        goto finish;
+        continue;
       }
 
       unsigned char desc_serial[26] = {0};
       ret = libusb_get_string_descriptor_ascii(handle, desc.iSerialNumber, desc_serial, std::size(desc_serial));
       libusb_close(handle);
       if (ret < 0) {
-        goto finish;
+        continue;
       }
 
       serials.push_back(std::string((char*)desc_serial, ret));
@@ -220,6 +220,7 @@ bool Panda::init_usb_connection(const std::string& serial) {
   }
   if (dev_handle == NULL) goto fail;
   libusb_free_device_list(dev_list, 1);
+  dev_list = NULL;
 
   if (libusb_kernel_driver_active(dev_handle, 0) == 1) {
     libusb_detach_kernel_driver(dev_handle, 0);
