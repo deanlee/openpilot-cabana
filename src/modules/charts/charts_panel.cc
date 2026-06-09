@@ -37,7 +37,8 @@ ChartsPanel::ChartsPanel(QWidget* parent) : QFrame(parent) {
   // init settings
   current_theme = settings.theme;
   column_count = std::clamp(settings.chart_column_count, 1, MAX_COLUMN_COUNT);
-  max_chart_range = std::clamp(settings.chart_range, 1, settings.max_cached_minutes * 60);
+  const int max_range_seconds = std::max(1, settings.max_cached_minutes * 60);
+  max_chart_range = std::clamp(settings.chart_range, 1, max_range_seconds);
   auto min_sec = StreamManager::stream()->minSeconds();
   display_range = std::make_pair(min_sec, min_sec + max_chart_range);
 
@@ -140,8 +141,9 @@ void ChartsPanel::updateHoverFromCursor() {
   }
 
   for (auto* c : charts) {
-    if (c->rect().contains(c->mapFromGlobal(global_mouse_pos))) {
-      hover_time_ = c->secondsAtPoint(c->mapFromGlobal(global_mouse_pos));
+    const QPoint chart_pos = c->mapFromGlobal(global_mouse_pos);
+    if (c->rect().contains(chart_pos)) {
+      hover_time_ = c->secondsAtPoint(chart_pos);
       updateHover(hover_time_);
       return;
     }
@@ -186,7 +188,7 @@ void ChartsPanel::updateState() {
 }
 
 void ChartsPanel::setMaxChartRange(int value) {
-  max_chart_range = value;
+  max_chart_range = std::clamp(value, 1, std::max(1, settings.max_cached_minutes * 60));
   updateState();
 }
 
@@ -199,7 +201,8 @@ void ChartsPanel::settingChanged() {
   }
   for (auto c : charts) {
     c->setFixedHeight(settings.chart_height);
-    c->chart()->setSeriesType((SeriesType)settings.chart_series_type);
+    const auto series_type = static_cast<SeriesType>(std::clamp(settings.chart_series_type, 0, 2));
+    c->chart()->setSeriesType(series_type);
     c->resetChartCache();
   }
 }
