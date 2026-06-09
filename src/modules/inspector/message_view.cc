@@ -217,9 +217,7 @@ void MessageView::refresh() {
   auto msg = GetDBC()->msg(msg_id);
   if (msg) {
     auto* can_msg = StreamManager::stream()->snapshot(msg_id);
-    if (msg_id.source == INVALID_SOURCE) {
-      warnings.push_back(tr("No messages received."));
-    } else if (can_msg->ts > 0 && msg->size != can_msg->size) {
+    if (can_msg->ts > 0 && msg->size != can_msg->size) {
       warnings.push_back(tr("Message size (%1) is incorrect.").arg(msg->size));
     }
     for (auto s : binary_model->findOverlappingSignals()) {
