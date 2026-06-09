@@ -62,7 +62,7 @@ class FindSignalDlg : public QDialog {
   QLineEdit *bus_edit, *address_edit, *scan_time_edit;
   QComboBox* compare_cb;
   QSpinBox *min_size, *max_size;
-  QCheckBox *litter_endian, *is_signed;
+  QCheckBox *little_endian, *is_signed;
   QPushButton *search_btn, *reset_btn, *undo_btn;
   QGroupBox *properties_group, *message_group;
   QTableView* view;

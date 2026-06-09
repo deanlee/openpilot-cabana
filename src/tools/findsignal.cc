@@ -143,14 +143,14 @@ FindSignalDlg::FindSignalDlg(QWidget* parent) : QDialog(parent, Qt::WindowFlags(
   size_row->addWidget(min_size = new QSpinBox);
   size_row->addWidget(new QLabel("-"));
   size_row->addWidget(max_size = new QSpinBox);
-  size_row->addWidget(litter_endian = new QCheckBox(tr("Little endian")));
+  size_row->addWidget(little_endian = new QCheckBox(tr("Little endian")));
   size_row->addWidget(is_signed = new QCheckBox(tr("Signed")));
   size_row->addStretch();
   min_size->setRange(1, 64);
   max_size->setRange(1, 64);
   min_size->setValue(8);
   max_size->setValue(8);
-  litter_endian->setChecked(true);
+  little_endian->setChecked(true);
   property_layout->addRow(tr("Size"), size_row);
   property_layout->addRow(tr("Factor"), factor_edit = new QLineEdit("1.0"));
   property_layout->addRow(tr("Offset"), offset_edit = new QLineEdit("0.0"));
@@ -299,7 +299,7 @@ void FindSignalDlg::setInitialSignals(uint64_t scan_ns) {
   }
 
   dbc::Signal sig{};
-  sig.is_little_endian = litter_endian->isChecked();
+  sig.is_little_endian = little_endian->isChecked();
   sig.is_signed = is_signed->isChecked();
   sig.factor = factor_edit->text().toDouble();
   sig.offset = offset_edit->text().toDouble();
