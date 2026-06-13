@@ -40,11 +40,15 @@ Before running or compiling **openpilot-cabana**, install these dependencies.
 
 ### Arch Linux (AUR)
 
-If you are on Arch Linux, you can install Cabana directly from the AUR:
+If you are on Arch Linux, you can install Cabana directly from the [AUR](https://aur.archlinux.org/packages/openpilot-cabana):
 
 ```bash
 yay -S openpilot-cabana
+# or
+paru -S openpilot-cabana
 ```
+
+Report issues with the AUR package [here](https://github.com/P6g9YHK6/openpilot-cabana-arch/issues).
 
 ### Ubuntu / Debian
 
