@@ -39,6 +39,7 @@ StatusBar::StatusBar(QWidget* parent) : QStatusBar(parent) {
   status_label_ = new QLabel(this);
   cpu_label_ = new QLabel(this);
   mem_label_ = new QLabel(this);
+  feed_status_label_ = new QLabel(this);
   live_stats_label_ = new QLabel(this);
 
   QFont mono_font = QFontDatabase::systemFont(QFontDatabase::FixedFont);
@@ -49,6 +50,9 @@ StatusBar::StatusBar(QWidget* parent) : QStatusBar(parent) {
   cpu_label_->setFont(mono_font);
   mem_label_->setFont(mono_font);
   live_stats_label_->setFont(mono_font);
+  feed_status_label_->setFont(mono_font);
+  live_stats_label_->setMinimumWidth(live_stats_label_->fontMetrics().horizontalAdvance(
+      "Avg: 999.99ms | Last 1s: 9999 events (999.99 MB) | Total: 999999 events (999.99 MB)"));
 
   // Add in order (Right to Left)
   addPermanentWidget(progress_bar_);
@@ -56,6 +60,7 @@ StatusBar::StatusBar(QWidget* parent) : QStatusBar(parent) {
   addPermanentWidget(cpu_label_);
   addPermanentWidget(mem_label_);
   addPermanentWidget(live_stats_label_);
+  addPermanentWidget(feed_status_label_);
 
   setStyleSheet("QStatusBar::item { border: none; padding-left: 10px; }");
 
@@ -68,7 +73,7 @@ StatusBar::StatusBar(QWidget* parent) : QStatusBar(parent) {
 
 void StatusBar::monitorLiveStream() {
   // Only monitor remote device streams (not local logs/replays)
-  if (StreamManager::instance().isLiveStream() && 
+  if (StreamManager::instance().isLiveStream() &&
       dynamic_cast<DeviceStream*>(StreamManager::stream()) != nullptr) {
     connect(StreamManager::stream(), &AbstractStream::eventsMerged, this, [this](const MessageEventsMap& events_map) {
       int64_t total_events = 0;
@@ -80,20 +85,25 @@ void StatusBar::monitorLiveStream() {
         }
       }
 
+      last_update_time_ = std::chrono::steady_clock::now();
+
       auto now = std::chrono::steady_clock::now();
       auto elapsed = std::chrono::duration<double>(now - last_time_).count();
       if (elapsed >= 1.0) {
-        // Calculate average interval (ms) over the last period
-        int64_t event_delta = total_events - last_event_count_;
-        if (event_delta > 0) {
-          last_avg_interval_ = (elapsed * 1000.0) / event_delta;
+        // Detect stream reset (counters decreased) and handle gracefully
+        bool event_count_reset = total_events < last_event_count_;
+        bool data_size_reset = total_size < last_data_size_;
+
+        if (!event_count_reset && !data_size_reset) {
+          int64_t event_delta = total_events - last_event_count_;
+          if (event_delta > 0) {
+            last_avg_interval_ = (elapsed * 1000.0) / event_delta;
+          }
+
+          last_minute_count_ = total_events - last_event_count_;
+          last_minute_data_ = total_size - last_data_size_;
         }
 
-        // Update last minute counters
-        last_minute_count_ = total_events - last_event_count_;
-        last_minute_data_ = total_size - last_data_size_;
-
-        // Reset counters for next interval
         last_event_count_ = total_events;
         last_data_size_ = total_size;
         last_time_ = now;
@@ -122,13 +132,22 @@ void StatusBar::updateMetrics() {
 
     QString stats_text = QString("Avg: %1ms | Last 1s: %2 events (%3) | Total: %4 events (%5)")
                             .arg(last_avg_interval_, 6, 'f', 2)
-                            .arg(last_minute_count_, 6)
-                            .arg(QString::fromStdString(formattedDataSize(last_minute_data_)))
+                            .arg(last_minute_count_, 4)
+                            .arg(QString::fromStdString(formattedDataSize(last_minute_data_)), 9)
                             .arg(total_event_count, 6)
-                            .arg(QString::fromStdString(formattedDataSize(total_data_size)));
+                            .arg(QString::fromStdString(formattedDataSize(total_data_size)), 9);
     live_stats_label_->setText(stats_text);
+
+    auto now = std::chrono::steady_clock::now();
+    auto since_update = std::chrono::duration<double>(now - last_update_time_).count();
+    if (since_update < 5.0) {
+      feed_status_label_->setText("<span style='color: #22c55e;'>🟢</span>");
+    } else {
+      feed_status_label_->setText("<span style='color: #ef4444;'>🔴</span>");
+    }
   } else {
     live_stats_label_->setText("");
+    feed_status_label_->setText("");
   }
 
 #ifdef __linux__

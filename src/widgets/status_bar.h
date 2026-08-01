@@ -25,6 +25,7 @@ class StatusBar : public QStatusBar {
 
   // Live stream stats labels
   QLabel* live_stats_label_;
+  QLabel* feed_status_label_;
 
   uint64_t last_proc_time_ = 0;
   uint64_t last_sys_time_ = 0;
@@ -33,6 +34,7 @@ class StatusBar : public QStatusBar {
   int64_t last_event_count_ = 0;
   uint64_t last_data_size_ = 0;
   std::chrono::steady_clock::time_point last_time_ = std::chrono::steady_clock::now();
+  std::chrono::steady_clock::time_point last_update_time_ = std::chrono::steady_clock::now();
   double last_avg_interval_ = 0.0;
   int64_t last_minute_count_ = 0;
   uint64_t last_minute_data_ = 0;
