@@ -51,6 +51,8 @@ StatusBar::StatusBar(QWidget* parent) : QStatusBar(parent) {
   mem_label_->setFont(mono_font);
   live_stats_label_->setFont(mono_font);
   feed_status_label_->setFont(mono_font);
+  live_stats_label_->setMinimumWidth(live_stats_label_->fontMetrics().horizontalAdvance(
+      "Avg: 999.99ms | Last 1s: 9999 events (999.99 MB) | Total: 999999 events (999.99 MB)"));
 
   // Add in order (Right to Left)
   addPermanentWidget(progress_bar_);
@@ -130,10 +132,10 @@ void StatusBar::updateMetrics() {
 
     QString stats_text = QString("Avg: %1ms | Last 1s: %2 events (%3) | Total: %4 events (%5)")
                             .arg(last_avg_interval_, 6, 'f', 2)
-                            .arg(last_minute_count_, 6)
-                            .arg(QString::fromStdString(formattedDataSize(last_minute_data_)))
+                            .arg(last_minute_count_, 4)
+                            .arg(QString::fromStdString(formattedDataSize(last_minute_data_)), 9)
                             .arg(total_event_count, 6)
-                            .arg(QString::fromStdString(formattedDataSize(total_data_size)));
+                            .arg(QString::fromStdString(formattedDataSize(total_data_size)), 9);
     live_stats_label_->setText(stats_text);
 
     auto now = std::chrono::steady_clock::now();
