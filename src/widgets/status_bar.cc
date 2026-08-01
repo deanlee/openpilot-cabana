@@ -92,13 +92,6 @@ void StatusBar::monitorLiveStream() {
         bool event_count_reset = total_events < last_event_count_;
         bool data_size_reset = total_size < last_data_size_;
 
-        if (event_count_reset) {
-          last_event_count_ = total_events;
-        }
-        if (data_size_reset) {
-          last_data_size_ = total_size;
-        }
-
         if (!event_count_reset && !data_size_reset) {
           int64_t event_delta = total_events - last_event_count_;
           if (event_delta > 0) {
@@ -135,16 +128,10 @@ void StatusBar::updateMetrics() {
       }
     }
 
-    int64_t display_count = std::max<int64_t>(0, last_minute_count_);
-    uint64_t display_size = last_minute_data_;
-    if (last_minute_data_ > std::numeric_limits<uint64_t>::max() / 2) {
-      display_size = 0;
-    }
-
     QString stats_text = QString("Avg: %1ms | Last 1s: %2 events (%3) | Total: %4 events (%5)")
                             .arg(last_avg_interval_, 6, 'f', 2)
-                            .arg(display_count, 6)
-                            .arg(QString::fromStdString(formattedDataSize(display_size)))
+                            .arg(last_minute_count_, 6)
+                            .arg(QString::fromStdString(formattedDataSize(last_minute_data_)))
                             .arg(total_event_count, 6)
                             .arg(QString::fromStdString(formattedDataSize(total_data_size)));
     live_stats_label_->setText(stats_text);
